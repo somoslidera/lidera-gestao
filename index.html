@@ -195,6 +195,17 @@ th.num{text-align:right}
 @media(max-width:560px){.kpi-grid{grid-template-columns:1fr}.comp-row{grid-template-columns:24px 1fr 70px 64px 30px}}
 .hidden{display:none!important}
 .scroll-x{overflow-x:auto}
+.print-only{display:none}
+@media print{
+  .sidebar,.topbar,.no-print,#toastRoot,#modalRoot,.backdrop{display:none!important}
+  body{display:block;background:#fff}
+  .main{display:block}
+  .content{padding:0!important;max-width:none!important;margin:0!important}
+  .card{box-shadow:none!important;border:1px solid #ccc;break-inside:avoid}
+  .print-only{display:block!important}
+  table{font-size:12px}
+  a[href]:after{content:''}
+}
 </style>
 </head>
 <body>
@@ -210,6 +221,7 @@ th.num{text-align:right}
     <a data-route="dashboard" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
     <a data-route="insumos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Insumos</a>
     <a data-route="fichas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2v6M15 2v6M7 8h10l-1 12a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2L7 8z"/></svg>Fichas Técnicas</a>
+    <a data-route="estoque"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>Estoque &amp; Compras</a>
     <div class="lbl">INTELIGÊNCIA</div>
     <a data-route="engenharia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/></svg>Engenharia de Menu</a>
     <a data-route="cmv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h18v4H3zM3 10h18v10H3z"/><path d="M7 14h4M7 17h7"/></svg>Controle de CMV</a>
@@ -244,7 +256,7 @@ th.num{text-align:right}
    LIDERA GESTÃO v2 — gestão financeira p/ restaurante
    Precificação consciente por canal · Programa Lucro e Liberdade
    ============================================================ */
-const STORE_KEY='lidera_gestao_v11';
+const STORE_KEY='lidera_gestao_v12';
 const fmtBRL=v=>(isFinite(v)?v:0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const fmtN=(v,d=0)=>(isFinite(v)?v:0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
 const fmtPct=v=>fmtN(isFinite(v)?v:0,1)+'%';
@@ -280,6 +292,12 @@ function seed(){
   const ketchup=mk('Ketchup','Mercearia','kg',11.00,1);
   // INSUMO PREPARADO (produzido na casa) — rende 1000g
   const molhoEsp=mkp('Molho especial da casa','Molhos','g',1000,[[maionese,600],[ketchup,250],[mostarda,150]]);
+  // estoque (mín/atual na unidade de compra) e fornecedor — exemplo
+  const est=(id,forn,min,atual)=>{const o=i[id];o.fornecedor=forn;o.estoqueMin=min;o.estoqueAtual=atual;};
+  est(carne,'Lojão das Carnes',8,3); est(frango,'Lojão das Carnes',6,6); est(queijo,'Karne e Keijo',4,1);
+  est(pao,'Padaria Central',120,40); est(batata,'Karne e Keijo',10,4); est(alface,'Hortifruti do Zé',5,2);
+  est(tomate,'Hortifruti do Zé',6,5); est(massa,'Distribuidora Central',8,3); est(molhoT,'Distribuidora Central',6,2);
+  est(oleo,'Distribuidora Central',5,2); est(maionese,'Distribuidora Central',4,3); est(mostarda,'Distribuidora Central',2,2); est(ketchup,'Distribuidora Central',3,1);
 
   const f={};
   const mkf=(nome,cat,o)=>{const id=uid();f[id]=Object.assign({id,nome,cat,porcoes:1,custoEmbalagem:0,precoVenda:0,precoIfood:0,vendasMes:0,tempoPreparo:0,utensilios:'',modoPreparo:[],padraoFinalizacao:'',foto:'',comps:[]},o);return id;};
@@ -422,6 +440,7 @@ const ROUTES={
   dashboard:{title:'Dashboard',render:viewDashboard},
   insumos:{title:'Insumos',render:viewInsumos},
   fichas:{title:'Fichas Técnicas',render:viewFichas},
+  estoque:{title:'Estoque & Compras',render:viewEstoque},
   engenharia:{title:'Engenharia de Menu',render:viewEngenharia},
   cmv:{title:'Controle de CMV',render:viewCMV},
   buffet:{title:'Mapa do Buffet',render:viewBuffet},
@@ -1369,6 +1388,99 @@ function saveCmvReg(id){const data=$('#cr_data').value;if(!data)return toast('In
   if(i>=0)DB.cmvRegistros[i]=obj;else DB.cmvRegistros.push(obj);
   save();closeModal();viewCMV();toast(id?'Contagem atualizada':'Contagem registrada');}
 function delCmvReg(id){if(!confirm('Remover esta contagem?'))return;DB.cmvRegistros=(DB.cmvRegistros||[]).filter(x=>x.id!==id);save();viewCMV();toast('Contagem removida');}
+
+/* ===================== ESTOQUE & COMPRAS ===================== */
+let estoqueTab='contagem', estoqueFiltro='Todos';
+function custoUnitCompra(ins){return ins.qtd?ins.preco/ins.qtd:0;} // custo por unidade de compra
+function estoqueItens(){
+  return Object.values(DB.insumos).filter(i=>i.tipo!=='preparado').map(i=>{
+    const custo=custoUnitCompra(i);
+    const min=+i.estoqueMin||0, atual=+i.estoqueAtual||0;
+    const necessidade=Math.max(0,min-atual);
+    const valorEstoque=custo*atual;
+    const qtdPedir=(i.qtdPedir!=null&&i.qtdPedir!=='')?(+i.qtdPedir||0):necessidade;
+    const totalPrevisto=custo*qtdPedir;
+    const comprar=atual<min;
+    return {ins:i,nome:i.nome,cat:i.cat,uni:i.uni,fornecedor:i.fornecedor||'Sem fornecedor',custo,min,atual,necessidade,valorEstoque,qtdPedir,totalPrevisto,comprar};
+  });
+}
+function viewEstoque(){
+  const items=estoqueItens();
+  const valorTotal=items.reduce((s,x)=>s+x.valorEstoque,0);
+  const comprarList=items.filter(x=>x.comprar);
+  const totalCompras=comprarList.reduce((s,x)=>s+x.totalPrevisto,0);
+  $('#topActions').innerHTML = estoqueTab==='compras'
+    ? `<button class="btn btn-gold no-print" onclick="window.print()">🖨️ Imprimir lista</button>`
+    : `<button class="btn btn-ghost no-print" onclick="estoqueTab='compras';viewEstoque()">Ver lista de compras (${comprarList.length})</button>`;
+
+  if(estoqueTab==='contagem'){
+    const cats=['Todos',...new Set(items.map(x=>x.cat))];
+    if(!cats.includes(estoqueFiltro))estoqueFiltro='Todos';
+    const filt=estoqueFiltro==='Todos'?items:items.filter(x=>x.cat===estoqueFiltro);
+    $('#view').innerHTML=`
+    <div class="pill-filter no-print" style="margin-bottom:16px">
+      <button class="${estoqueTab==='contagem'?'on':''}" onclick="estoqueTab='contagem';viewEstoque()">Contagem de Estoque</button>
+      <button class="${estoqueTab==='compras'?'on':''}" onclick="estoqueTab='compras';viewEstoque()">Lista de Compras</button>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="ic ic-navy">${ico('cash')}</div><div class="k-lbl">Valor em estoque</div><div class="k-val">${fmtBRL(valorTotal)}</div><div class="k-sub" style="color:var(--soft)">${items.length} insumos</div></div>
+      <div class="kpi"><div class="ic ${comprarList.length?'ic-red':'ic-green'}">${ico('cmv')}</div><div class="k-lbl">Itens a comprar</div><div class="k-val" style="color:${comprarList.length?'var(--red)':'var(--green)'}">${comprarList.length}</div><div class="k-sub" style="color:var(--soft)">abaixo do mínimo</div></div>
+      <div class="kpi"><div class="ic ic-gold">${ico('mc')}</div><div class="k-lbl">Compra prevista</div><div class="k-val">${fmtBRL(totalCompras)}</div><div class="k-sub" style="color:var(--soft)">para repor o mínimo</div></div>
+      <div class="kpi"><div class="ic ic-navy">${ico('profit')}</div><div class="k-lbl">Cobertura</div><div class="k-val">${items.length?fmtPct(items.filter(x=>!x.comprar).length/items.length*100):'—'}</div><div class="k-sub" style="color:var(--soft)">itens no nível</div></div>
+    </div>
+    <div class="section-head no-print"><div class="pill-filter">${cats.map(c=>`<button class="${c===estoqueFiltro?'on':''}" onclick="estoqueFiltro='${c.replace(/'/g,"\\'")}';viewEstoque()">${c}</button>`).join('')}</div></div>
+    <div class="card"><div class="scroll-x"><table>
+      <thead><tr><th>Insumo</th><th>Fornecedor</th><th class="num">Custo un.</th><th class="num">Mínimo</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Valor estoque</th><th class="num">Status</th></tr></thead>
+      <tbody>${filt.sort((a,b)=>(b.comprar-a.comprar)||a.nome.localeCompare(b.nome)).map(x=>`
+        <tr>
+          <td><b>${x.nome}</b><div style="font-size:12px;color:var(--soft)">${x.cat} · ${x.uni}</div></td>
+          <td><input class="input" style="min-width:130px" value="${esc(x.ins.fornecedor)}" placeholder="Fornecedor" oninput="DB.insumos['${x.ins.id}'].fornecedor=this.value;finTouch()"></td>
+          <td class="num">${fmtBRL(x.custo)}</td>
+          <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.min}" oninput="DB.insumos['${x.ins.id}'].estoqueMin=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
+          <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.atual}" oninput="DB.insumos['${x.ins.id}'].estoqueAtual=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
+          <td class="num">${x.necessidade?fmtN(x.necessidade,x.necessidade%1?2:0)+' '+x.uni:'—'}</td>
+          <td class="num">${fmtBRL(x.valorEstoque)}</td>
+          <td class="num"><span class="tag ${x.comprar?'tag-red':'tag-green'}">${x.comprar?'COMPRAR':'OK'}</span></td>
+        </tr>`).join('')}</tbody>
+      <tfoot><tr style="border-top:2px solid var(--navy);font-weight:700"><td colspan="6" style="padding:12px 13px">Valor total em estoque</td><td class="num" style="padding:12px 13px">${fmtBRL(valorTotal)}</td><td></td></tr></tfoot>
+    </table></div></div>`;
+    return;
+  }
+
+  // ===== LISTA DE COMPRAS =====
+  const byForn={};comprarList.forEach(x=>{(byForn[x.fornecedor]=byForn[x.fornecedor]||[]).push(x);});
+  const forns=Object.keys(byForn).sort();
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  $('#view').innerHTML=`
+  <div class="pill-filter no-print" style="margin-bottom:16px">
+    <button onclick="estoqueTab='contagem';viewEstoque()">Contagem de Estoque</button>
+    <button class="on" onclick="estoqueTab='compras';viewEstoque()">Lista de Compras</button>
+  </div>
+  <div class="print-only" style="margin-bottom:14px">
+    <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700">Lista de Compras</div>
+    <div style="font-size:13px;color:#555">${(DB.conta&&DB.conta.restaurante)||'Restaurante'} · ${hoje}</div>
+  </div>
+  ${comprarList.length===0?`<div class="card">${emptyState('Nada a comprar','Todos os insumos estão no nível mínimo ou acima. Faça a contagem para atualizar.','estoqueTab=&#39;contagem&#39;;viewEstoque()')}</div>`:`
+  <div class="card card-pad no-print" style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <div><div class="ttl">${comprarList.length} item(ns) para comprar</div><div class="desc">Agrupados por fornecedor · ajuste a "Qtd a pedir" se quiser comprar em embalagem/múltiplo</div></div>
+    <div style="font-size:20px;font-weight:700;font-family:'Fraunces',serif">Total: ${fmtBRL(totalCompras)}</div>
+  </div>
+  ${forns.map(fn=>{const arr=byForn[fn];const sub=arr.reduce((s,x)=>s+x.totalPrevisto,0);return`
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-pad" style="padding-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div class="ttl">🚚 ${fn}</div><div style="font-weight:700">${fmtBRL(sub)}</div></div>
+      <div class="scroll-x"><table>
+        <thead><tr><th>Insumo</th><th class="num">Un.</th><th class="num">Mínimo</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Qtd a pedir</th><th class="num">Custo un.</th><th class="num">Total previsto</th></tr></thead>
+        <tbody>${arr.sort((a,b)=>a.nome.localeCompare(b.nome)).map(x=>`
+          <tr>
+            <td><b>${x.nome}</b></td><td class="num">${x.uni}</td><td class="num">${fmtN(x.min,x.min%1?2:0)}</td><td class="num">${fmtN(x.atual,x.atual%1?2:0)}</td>
+            <td class="num">${fmtN(x.necessidade,x.necessidade%1?2:0)}</td>
+            <td class="num"><input class="input no-print" type="number" step="0.01" style="width:78px;text-align:right" value="${x.qtdPedir}" oninput="DB.insumos['${x.ins.id}'].qtdPedir=this.value;finTouch()" onchange="viewEstoque()"><span class="print-only">${fmtN(x.qtdPedir,x.qtdPedir%1?2:0)}</span></td>
+            <td class="num">${fmtBRL(x.custo)}</td><td class="num"><b>${fmtBRL(x.totalPrevisto)}</b></td>
+          </tr>`).join('')}</tbody>
+      </table></div>
+    </div>`;}).join('')}
+  <div class="card card-pad" style="display:flex;justify-content:space-between;align-items:center"><div class="ttl">Total geral da compra</div><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:var(--navy)">${fmtBRL(totalCompras)}</div></div>`}`;
+}
 
 /* ===================== HELPERS ===================== */
 function emptyState(t,d,action){return `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg><div class="t">${t}</div><div class="d">${d}</div><button class="btn btn-primary" style="margin-top:16px" onclick="${action}">${icoPlus} Começar</button></div>`;}
