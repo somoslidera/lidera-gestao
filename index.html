@@ -1571,6 +1571,7 @@ const sb=(window.supabase&&SUPA_URL.indexOf('http')===0)?window.supabase.createC
 let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false;
 function emptyDB(){return {insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};}
 function pushCloud(){if(!CLOUD||!sb||!ORG)return;clearTimeout(window._cloudT);window._cloudT=setTimeout(()=>{sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id).then(()=>{},()=>{});},800);}
+async function chamarFn(nome,body){const s=(await sb.auth.getSession()).data.session;const r=await fetch(SUPA_URL+'/functions/v1/'+nome,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_ANON,'Authorization':'Bearer '+(s?s.access_token:'')},body:JSON.stringify(body||{})});let j={};try{j=await r.json();}catch(e){}return {status:r.status,data:j};}
 
 /* ---- BOOT ---- */
 async function bootApp(){
@@ -1665,8 +1666,22 @@ async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin(
       </div>
     </div>`;}).join(''):`<div style="color:var(--muted)">Nenhum cliente ainda. Crie o primeiro com “Novo cliente”.</div>`;
 }
-async function novoCliente(){const nome=prompt('Nome do restaurante/cliente:');if(!nome)return;const resp=prompt('Responsável (opcional):')||'';
-  const {error}=await sb.from('organizacoes').insert({nome,responsavel:resp,status:'ativo'});if(error)return toast('Erro: '+error.message);toast('Cliente criado');showAdmin();}
+async function novoCliente(){
+  const nome=prompt('Nome do restaurante/cliente:');if(!nome)return;
+  const email=(prompt('E-mail de login do cliente:')||'').trim();if(!email)return;
+  const resp=prompt('Responsável (opcional):')||'';
+  toast('Criando cliente…');
+  let res;try{res=await chamarFn('criar-cliente',{nome,responsavel:resp,email});}catch(e){res={data:{error:e.message}};}
+  const data=res&&res.data;
+  if(!data||data.error){return toast('Erro: '+((data&&data.error)||'falha ao criar'));}
+  modal(`<div class="modal-head"><h3>Cliente criado ✓</h3><button class="x" onclick="closeModal();showAdmin()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:13.5px;color:var(--muted);margin-bottom:14px">Repasse estas credenciais ao cliente. Ele pode trocar a senha depois, em Configurações.</div>
+    <div class="field"><label>Login (e-mail)</label><input class="input" value="${data.email}" readonly onclick="this.select()"></div>
+    <div class="field"><label>Senha provisória</label><input class="input" value="${data.senha}" readonly onclick="this.select()"></div>
+    <div style="font-size:12px;color:var(--soft)">Link de acesso: ${location.origin}${location.pathname}</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal();showAdmin()">Concluir</button></div>`);}
 async function vincularPerfil(perfilId,orgId){if(!orgId)return;await sb.from('perfis').update({org_id:orgId}).eq('id',perfilId);toast('Cliente vinculado');showAdmin();}
 async function toggleStatus(orgId,status){const novo=status==='suspenso'?'ativo':'suspenso';await sb.from('organizacoes').update({status:novo}).eq('id',orgId);toast(novo==='ativo'?'Acesso reativado':'Acesso suspenso');showAdmin();}
 async function abrirCliente(orgId){let org=null;try{org=(await sb.from('organizacoes').select('*').eq('id',orgId).single()).data;}catch(e){}if(!org)return toast('Erro ao abrir');
