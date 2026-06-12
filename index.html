@@ -456,7 +456,7 @@ function go(route){current=route;document.querySelectorAll('#nav a').forEach(a=>
   $('#pageTitle').textContent=ROUTES[route].title;$('#topActions').innerHTML='';ROUTES[route].render();window.scrollTo(0,0);toggleSidebar(false);}
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.route);}));
 function toggleSidebar(open){const sb=$('#sidebar'),bd=$('#backdrop');if(open===undefined)open=!sb.classList.contains('open');sb.classList.toggle('open',open);bd.classList.toggle('hidden',!open);}
-function renderFoot(){const t=totaisGerais();$('#footStats').textContent=`CMV ${fmtPct(t.cmv)} · MC ${fmtPct(t.mcPctMed)}`;const fn=$('#footName');if(fn)fn.textContent=(DB.conta&&DB.conta.restaurante)||'Seu Restaurante';}
+function renderFoot(){const t=totaisGerais();const regs=(DB.cmvRegistros||[]).map(cmvRegCalc).sort((a,b)=>(b.data||'').localeCompare(a.data||''));const real=regs.length?regs[0].pct:null;$('#footStats').textContent=`CMV teó. ${fmtPct(t.cmv)}${real!=null?' · real '+fmtPct(real):''}`;const fn=$('#footName');if(fn)fn.textContent=(DB.conta&&DB.conta.restaurante)||'Seu Restaurante';}
 
 function toast(msg){const el=document.createElement('div');el.className='toast';el.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>${msg}`;$('#toastRoot').appendChild(el);setTimeout(()=>{el.style.opacity='0';el.style.transition='.3s';setTimeout(()=>el.remove(),300);},2200);}
 function modal(html,wide){$('#modalRoot').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal ${wide?'wide':''}">${html}</div></div>`;}
@@ -489,6 +489,13 @@ function viewDashboard(){
   const semPreco=fichas.filter(x=>x.f.precoVenda<=0);
   const diaEqTxt=!isFinite(t.diaEq)?'—':t.diaEq>30?'+30':Math.ceil(t.diaEq);
   const recLiquida=t.faturamento-t.impostoRS-t.comissaoRS-t.taxaCartaoRS;
+  // CMV: teórico (fichas) × real (contagem)
+  const cmvTeorico=t.cmv;
+  const cmvRegs=(DB.cmvRegistros||[]).map(cmvRegCalc).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  const cmvRealUlt=cmvRegs.length?cmvRegs[0].pct:null;
+  const cmvGap=cmvRealUlt!=null?cmvRealUlt-cmvTeorico:null;
+  const cmvHeadVal=cmvRealUlt!=null?cmvRealUlt:cmvTeorico;
+  const cmvCorTh=v=>v<=30?'var(--green)':v<=35?'var(--amber)':'var(--red)';
   // status geral
   const status = t.lucro<0?['Atenção','tag-red','var(--red)']:t.margemLiq>=10?['Lucrativo','tag-green','var(--green)']:['Estável','tag-amber','var(--amber)'];
   const hoje=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
@@ -503,6 +510,7 @@ function viewDashboard(){
   const estruturaTotal=estrutura.reduce((s,x)=>s+x[1],0);
 
   let alerts='';
+  if(cmvGap!=null&&cmvGap>4)alerts+=alertRow(cmvGap>8?'red':'amber',icoWarn,`<b>Perda de ${fmtN(cmvGap,1)} p.p.:</b> o CMV real (${fmtPct(cmvRealUlt)}) está acima do teórico (${fmtPct(cmvTeorico)}) — possível desperdício, furto ou erro de porção.`);
   criticas.slice(0,3).forEach(x=>alerts+=alertRow('red',icoWarn,`<b>${x.f.nome}</b> — CMV crítico de ${fmtPct(x.m.balcao.cmv)} (acima de 35%).`));
   prejuizoIfood.slice(0,2).forEach(x=>alerts+=alertRow('red',icoWarn,`<b>${x.f.nome}</b> dá <b>prejuízo no iFood</b> (${fmtBRL(x.m.ifood.mc)}/un).`));
   atencao.slice(0,2).forEach(x=>alerts+=alertRow('amber',icoWarn,`<b>${x.f.nome}</b> — CMV em ${fmtPct(x.m.balcao.cmv)} (atenção).`));
@@ -518,7 +526,7 @@ function viewDashboard(){
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <div class="dash-pill"><span>Rec. Líquida</span><b>${fmtBRL(recLiquida)}</b></div>
-      <div class="dash-pill"><span>MC</span><b>${fmtPct(t.mcPctMed)}</b></div>
+      <div class="dash-pill"><span>${cmvRealUlt!=null?'CMV Real':'CMV'}</span><b style="color:${cmvCorTh(cmvHeadVal)}">${fmtPct(cmvHeadVal)}</b></div>
       <div class="dash-pill"><span>Ticket</span><b>${fmtBRL(t.ticket)}</b></div>
     </div>
   </div>
@@ -568,13 +576,14 @@ function viewDashboard(){
       <div style="font-size:11px;color:var(--soft);margin-top:12px;border-top:1px solid var(--line);padding-top:10px">Limites saudáveis: marketplace ≤ 23%, custo fixo ≤ 33%, CMV ≤ 30%.</div>
     </div>
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Fichas Técnicas</div><div class="desc">Onde o lucro se protege</div></div></div>
+      <div class="section-head"><div><div class="ttl">CMV — Teórico × Real</div><div class="desc">A diferença revela perda no dia a dia</div></div></div>
       <div style="display:flex;gap:8px;text-align:center;margin-top:4px">
-        <div style="flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px"><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:${t.cmv<=30?'var(--green)':t.cmv<=35?'var(--amber)':'var(--red)'}">${fmtPct(t.cmv)}</div><div style="font-size:11px;color:var(--muted)">CMV Teórico</div></div>
-        <div style="flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px"><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif">${fichas.length}</div><div style="font-size:11px;color:var(--muted)">Fichas ativas</div></div>
-        <div style="flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px"><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:${semPreco.length?'var(--red)':'var(--green)'}">${semPreco.length}</div><div style="font-size:11px;color:var(--muted)">Sem preço</div></div>
+        <div style="flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px"><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:${cmvCorTh(cmvTeorico)}">${fmtPct(cmvTeorico)}</div><div style="font-size:11px;color:var(--muted)">Teórico (fichas)</div></div>
+        <div style="flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px"><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:${cmvRealUlt!=null?cmvCorTh(cmvRealUlt):'var(--soft)'}">${cmvRealUlt!=null?fmtPct(cmvRealUlt):'—'}</div><div style="font-size:11px;color:var(--muted)">Real (contagem)</div></div>
+        <div style="flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px"><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:${cmvGap==null?'var(--soft)':cmvGap<=2?'var(--green)':cmvGap<=5?'var(--amber)':'var(--red)'}">${cmvGap!=null?(cmvGap>=0?'+':'')+fmtN(cmvGap,1):'—'}</div><div style="font-size:11px;color:var(--muted)">Diferença (p.p.)</div></div>
       </div>
-      <div style="margin-top:14px">${alerts}</div>
+      <div style="font-size:11px;color:var(--soft);margin-top:10px">${fichas.length} fichas ativas${semPreco.length?` · <span style="color:var(--red)">${semPreco.length} sem preço</span>`:''}${cmvRealUlt==null?` · <a onclick="go(&#39;cmv&#39;)" style="color:var(--navy);cursor:pointer">registre uma contagem de CMV</a>`:''}</div>
+      <div style="margin-top:12px">${alerts}</div>
     </div>
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">Estrutura de custos</div><div class="desc">% do faturamento</div></div><span class="tag tag-navy">Fixo ${fmtPct(t.fixosPct)}</span></div>
@@ -611,10 +620,11 @@ function viewInsumos(){
   if(!cats.includes(insumoFiltro))insumoFiltro='Todos';
   const filt=insumoFiltro==='Todos'?list:list.filter(i=>i.cat===insumoFiltro);
   $('#view').innerHTML=`
-  <div class="section-head"><div class="pill-filter">${cats.map(c=>`<button class="${c===insumoFiltro?'on':''}" onclick="insumoFiltro='${c}';viewInsumos()">${c}</button>`).join('')}</div></div>
+  <div class="section-head"><div class="pill-filter">${cats.map(c=>`<button class="${c===insumoFiltro?'on':''}" onclick="insumoFiltro='${c}';viewInsumos()">${c}</button>`).join('')}</div>
+    <input class="input" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="filtrarLinhas(this,'#insumosTbody')"></div>
   <div class="card">${list.length?`<div class="scroll-x"><table>
     <thead><tr><th>Insumo</th><th>Tipo</th><th>Categoria</th><th class="num">Compra / Rende</th><th class="num">Custo por unidade</th><th></th></tr></thead>
-    <tbody>${filt.sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>{const prep=i.tipo==='preparado';return`
+    <tbody id="insumosTbody">${filt.sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>{const prep=i.tipo==='preparado';return`
       <tr><td><b>${i.nome}</b>${prep?`<div style="font-size:12px;color:var(--soft)">${(i.comps||[]).length} ingredientes</div>`:''}</td>
       <td>${prep?'<span class="tag tag-gold">Preparado</span>':'<span class="tag tag-navy">Pronto</span>'}</td>
       <td><span class="tag tag-gray">${i.cat}</span></td>
@@ -1443,10 +1453,11 @@ function viewEstoque(){
       <div class="kpi"><div class="ic ic-gold">${ico('mc')}</div><div class="k-lbl">Compra prevista</div><div class="k-val">${fmtBRL(totalCompras)}</div><div class="k-sub" style="color:var(--soft)">para repor o mínimo</div></div>
       <div class="kpi"><div class="ic ic-navy">${ico('profit')}</div><div class="k-lbl">Cobertura</div><div class="k-val">${items.length?fmtPct(items.filter(x=>!x.comprar).length/items.length*100):'—'}</div><div class="k-sub" style="color:var(--soft)">itens no nível</div></div>
     </div>
-    <div class="section-head no-print"><div class="pill-filter">${cats.map(c=>`<button class="${c===estoqueFiltro?'on':''}" onclick="estoqueFiltro='${c.replace(/'/g,"\\'")}';viewEstoque()">${c}</button>`).join('')}</div></div>
+    <div class="section-head no-print"><div class="pill-filter">${cats.map(c=>`<button class="${c===estoqueFiltro?'on':''}" onclick="estoqueFiltro='${c.replace(/'/g,"\\'")}';viewEstoque()">${c}</button>`).join('')}</div>
+      <input class="input" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="filtrarLinhas(this,'#estoqueTbody')"></div>
     <div class="card"><div class="scroll-x"><table>
       <thead><tr><th>Insumo</th><th>Fornecedor</th><th class="num">Custo un.</th><th class="num">Mínimo</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Valor estoque</th><th class="num">Status</th></tr></thead>
-      <tbody>${filt.sort((a,b)=>(b.comprar-a.comprar)||a.nome.localeCompare(b.nome)).map(x=>`
+      <tbody id="estoqueTbody">${filt.sort((a,b)=>(b.comprar-a.comprar)||a.nome.localeCompare(b.nome)).map(x=>`
         <tr>
           <td><b>${x.nome}</b><div style="font-size:12px;color:var(--soft)">${x.cat} · ${x.uni}</div></td>
           <td><input class="input" style="min-width:130px" value="${esc(x.ins.fornecedor)}" placeholder="Fornecedor" oninput="DB.insumos['${x.ins.id}'].fornecedor=this.value;finTouch()"></td>
@@ -1498,6 +1509,7 @@ function viewEstoque(){
 }
 
 /* ===================== HELPERS ===================== */
+function filtrarLinhas(input,sel){const q=(input.value||'').toLowerCase().trim();const tb=document.querySelector(sel);if(!tb)return;tb.querySelectorAll('tr').forEach(tr=>{tr.style.display=(!q||tr.textContent.toLowerCase().includes(q))?'':'none';});}
 function emptyState(t,d,action){return `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg><div class="t">${t}</div><div class="d">${d}</div><button class="btn btn-primary" style="margin-top:16px" onclick="${action}">${icoPlus} Começar</button></div>`;}
 
 renderFoot();go('dashboard');
