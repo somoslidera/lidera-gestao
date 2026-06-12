@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --navy:#1D3573;--navy-700:#172b5e;--navy-900:#10203f;
@@ -195,6 +196,18 @@ th.num{text-align:right}
 @media(max-width:560px){.kpi-grid{grid-template-columns:1fr}.comp-row{grid-template-columns:24px 1fr 70px 64px 30px}}
 .hidden{display:none!important}
 .scroll-x{overflow-x:auto}
+/* ===== Auth / Admin (SaaS) ===== */
+#authScreen{position:fixed;inset:0;z-index:300;background:#1D3573;display:flex;align-items:center;justify-content:center;padding:20px}
+#authScreen .auth-card{background:var(--card);border-radius:18px;box-shadow:var(--shadow-lg);width:100%;max-width:400px;padding:34px 30px}
+#authScreen .auth-wm{font-family:'Fraunces',serif;font-size:34px;font-weight:600;color:var(--navy);text-align:center}
+#authScreen .auth-by{font-size:13px;color:var(--gold);text-align:center;margin-top:-2px;margin-bottom:22px}
+.cloud-banner{background:var(--gold);color:#fff;font-size:12.5px;font-weight:600;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cloud-banner button{background:rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600}
+.admin-wrap{max-width:1240px;margin:0 auto;padding:28px 36px}
+.client-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow);transition:.15s}
+.client-card:hover{border-color:var(--gold-soft)}
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+
 /* ===== marca Flow + botão de tema ===== */
 .brand .by{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--gold-soft);letter-spacing:0;margin-left:4px}
 .theme-toggle{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
@@ -308,7 +321,7 @@ const CAT_FICHA=['Lanches','Pratos','Entradas','Acompanhamentos','Sobremesas','B
 
 let DB=load();
 function load(){try{const d=JSON.parse(localStorage.getItem(STORE_KEY));if(d&&d.insumos)return d;}catch(e){}return seed();}
-function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){if(window.toast)toast('Não foi possível salvar (armazenamento cheio ou bloqueado)');}renderFoot();}
+function save(){if(typeof CLOUD!=='undefined'&&CLOUD){pushCloud();renderFoot();return;}try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){if(window.toast)toast('Não foi possível salvar (armazenamento cheio ou bloqueado)');}renderFoot();}
 function seed(){
   const i={};
   const mk=(nome,cat,uni,valorPago,qtd)=>{const id=uid();i[id]={id,nome,cat,tipo:'pronto',uni,preco:valorPago,qtd};return id;};
@@ -368,7 +381,7 @@ function seed(){
     fat:{lancado:0, mixIfood:35},
     cmvAlvo:30,
     equipe:[{id:uid(),nome:'Gerente Geral',email:'gerente@restaurante.com',senha:''}],
-    conta:{restaurante:'Restaurante Lidera',nome:'',email:'contato@seurestaurante.com.br',telefone:'',cpf:'',nascimento:''},
+    conta:{restaurante:'Restaurante Lidera',nome:'',email:'contato@somoslidera.com.br',telefone:'',cpf:'',nascimento:''},
     buffet:{precoVendaKg:'89.90', cubas:[
       {id:uid(),fichaId:Object.keys(f)[2],pesoKg:'4',x:28,y:36,w:104,h:74,rot:0},
       {id:uid(),fichaId:Object.keys(f)[3],pesoKg:'3',x:152,y:36,w:104,h:74,rot:0},
@@ -1552,8 +1565,123 @@ function viewEstoque(){
 function filtrarLinhas(input,sel){const q=(input.value||'').toLowerCase().trim();const tb=document.querySelector(sel);if(!tb)return;tb.querySelectorAll('tr').forEach(tr=>{tr.style.display=(!q||tr.textContent.toLowerCase().includes(q))?'':'none';});}
 function emptyState(t,d,action){return `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg><div class="t">${t}</div><div class="d">${d}</div><button class="btn btn-primary" style="margin-top:16px" onclick="${action}">${icoPlus} Começar</button></div>`;}
 
+/* ===================== SAAS: AUTH + NUVEM + ADMIN ===================== */
+const SUPA_URL='https://fvcbxorfstqqeewocxkf.supabase.co', SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2J4b3Jmc3RxcWVld29jeGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzM5MjgsImV4cCI6MjA5Njg0OTkyOH0.X9gnZt535F1ASHpUaL24eEZysHHECwzfBwjaR4kVnyw';
+const sb=(window.supabase&&SUPA_URL.indexOf('http')===0)?window.supabase.createClient(SUPA_URL,SUPA_ANON):null;
+let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false;
+function emptyDB(){return {insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};}
+function pushCloud(){if(!CLOUD||!sb||!ORG)return;clearTimeout(window._cloudT);window._cloudT=setTimeout(()=>{sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id).then(()=>{},()=>{});},800);}
+
+/* ---- BOOT ---- */
+async function bootApp(){
+  if(!sb){renderFoot();go('dashboard');return;} // sem backend → modo local (arquivo único)
+  let session=null;try{session=(await sb.auth.getSession()).data.session;}catch(e){}
+  if(!session){showLogin();return;}
+  await afterAuth();
+}
+async function afterAuth(){
+  hideLogin();
+  let uid;try{uid=(await sb.auth.getUser()).data.user.id;}catch(e){showLogin();return;}
+  let perfil=null;try{perfil=(await sb.from('perfis').select('*').eq('id',uid).single()).data;}catch(e){}
+  PERFIL=perfil||{papel:'cliente',org_id:null};
+  if(PERFIL.papel==='admin'){showAdmin();}
+  else{await entrarComoCliente(PERFIL.org_id);}
+}
+async function entrarComoCliente(orgId){
+  if(!orgId){telaMensagem('Conta sem restaurante vinculado','Sua conta foi criada, mas ainda não está liberada por um administrador. Aguarde a liberação.');return;}
+  let org=null;try{org=(await sb.from('organizacoes').select('*').eq('id',orgId).single()).data;}catch(e){}
+  if(!org){telaMensagem('Acesso indisponível','Não foi possível carregar seu restaurante. Tente novamente mais tarde.');return;}
+  ORG=org;
+  if(org.status==='suspenso'){telaMensagem('Acesso suspenso','Seu acesso está temporariamente suspenso. Fale com a Lidera para reativar.');return;}
+  DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();
+  CLOUD=true;ADMIN_MODE=false;hideAdmin();bannerCloud();
+  renderFoot();go('dashboard');
+}
+
+/* ---- LOGIN ---- */
+function authBox(){let b=document.getElementById('authScreen');if(!b){b=document.createElement('div');b.id='authScreen';document.body.appendChild(b);}return b;}
+function showLogin(signup){const b=authBox();b.style.display='flex';
+  b.innerHTML=`<div class="auth-card">
+    <div class="auth-wm">Flow</div><div class="auth-by">by Lidera</div>
+    <div id="auth_err" style="display:none;background:var(--red-bg);color:var(--red);font-size:13px;padding:10px 12px;border-radius:10px;margin-bottom:12px"></div>
+    <div class="field"><label>E-mail</label><input class="input" id="auth_email" type="email" placeholder="voce@restaurante.com"></div>
+    <div class="field"><label>Senha</label><input class="input" id="auth_pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')${signup?'doSignup()':'doLogin()'}"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:6px" onclick="${signup?'doSignup()':'doLogin()'}">${signup?'Criar conta':'Entrar'}</button>
+    <div style="text-align:center;font-size:12.5px;color:var(--muted);margin-top:14px">${signup?'Já tem conta? <a onclick="showLogin(false)" style="color:var(--navy);cursor:pointer">Entrar</a>':'É um novo cliente? <a onclick="showLogin(true)" style="color:var(--navy);cursor:pointer">Criar conta</a>'}</div>
+  </div>`;}
+function hideLogin(){const b=document.getElementById('authScreen');if(b)b.style.display='none';}
+function authErr(m){const e=document.getElementById('auth_err');if(e){e.style.display='block';e.textContent=m;}}
+async function doLogin(){const email=$('#auth_email').value.trim(),pass=$('#auth_pass').value;if(!email||!pass)return authErr('Informe e-mail e senha.');
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});if(error)return authErr('E-mail ou senha inválidos.');await afterAuth();}
+async function doSignup(){const email=$('#auth_email').value.trim(),pass=$('#auth_pass').value;if(!email||pass.length<6)return authErr('Informe e-mail e uma senha de ao menos 6 caracteres.');
+  const {error}=await sb.auth.signUp({email,password:pass});if(error)return authErr(error.message);
+  authErr('');telaMensagem('Conta criada!','Sua conta foi criada. Aguarde a liberação do acesso pela Lidera para começar a usar.');}
+async function logout(){if(sb)await sb.auth.signOut();CLOUD=false;ORG=null;PERFIL=null;location.reload();}
+function telaMensagem(t,d){hideAdmin();const b=authBox();b.style.display='flex';b.innerHTML=`<div class="auth-card" style="text-align:center"><div class="auth-wm">Flow</div><div class="auth-by">by Lidera</div><div style="font-size:17px;font-weight:700;margin:10px 0 6px;font-family:'Fraunces',serif">${t}</div><div style="font-size:13.5px;color:var(--muted);line-height:1.5">${d}</div><button class="btn btn-ghost" style="margin-top:18px" onclick="logout()">Sair</button></div>`;}
+
+/* ---- BANNER (admin vendo cliente) ---- */
+function bannerCloud(){let bn=document.getElementById('cloudBanner');if(ADMIN_MODE){if(!bn){bn=document.createElement('div');bn.id='cloudBanner';bn.className='cloud-banner';document.body.insertBefore(bn,document.body.firstChild);}bn.style.display='flex';bn.innerHTML=`👁️ Você está vendo o cliente: <b style="margin:0 auto 0 4px">${(ORG&&ORG.nome)||''}</b><button onclick="voltarAdmin()">← Voltar ao painel</button>`;}else if(bn){bn.style.display='none';}}
+
+/* ---- ADMIN ---- */
+function adminBox(){let b=document.getElementById('adminScreen');if(!b){b=document.createElement('div');b.id='adminScreen';b.style.cssText='position:fixed;inset:0;z-index:250;background:var(--bg);overflow:auto';document.body.appendChild(b);}return b;}
+function hideAdmin(){const b=document.getElementById('adminScreen');if(b)b.style.display='none';}
+function withDB(d,fn){const bak=DB;DB=d;try{return fn();}finally{DB=bak;}}
+function kpisDe(dados){return withDB((dados&&dados.insumos)?dados:emptyDB(),()=>{const t=totaisGerais();const regs=(DB.cmvRegistros||[]).map(cmvRegCalc).sort((a,b)=>(b.data||'').localeCompare(a.data||''));return {fat:t.faturamento,cmv:t.cmv,real:regs.length?regs[0].pct:null,lucro:t.lucro,nf:Object.keys(DB.fichas).length,ni:Object.keys(DB.insumos).length};});}
+async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin();
+  b.innerHTML=`<div class="admin-wrap"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <div><div style="font-family:'Fraunces',serif;font-size:26px;font-weight:700">Flow <span style="font-size:14px;color:var(--gold)">· Painel Lidera</span></div>
+    <div style="font-size:13px;color:var(--muted)">Controle geral dos clientes</div></div>
+    <div style="display:flex;gap:10px"><button class="btn btn-primary" onclick="novoCliente()">${icoPlus} Novo cliente</button><button class="btn btn-ghost" onclick="logout()">Sair</button></div></div>
+    <div id="admin_kpis" style="margin:18px 0"></div>
+    <div id="admin_pend"></div>
+    <div class="ttl" style="margin:18px 0 12px">Clientes</div>
+    <div id="admin_list" class="admin-grid"><div style="color:var(--muted)">Carregando…</div></div></div>`;
+  let orgs=[],pend=[];
+  try{orgs=(await sb.from('organizacoes').select('*').order('criado_em',{ascending:false})).data||[];}catch(e){}
+  try{pend=(await sb.from('perfis').select('*').eq('papel','cliente').is('org_id',null)).data||[];}catch(e){}
+  const ativos=orgs.filter(o=>o.status!=='suspenso').length;
+  const fatTot=orgs.reduce((s,o)=>s+kpisDe(o.dados).fat,0);
+  $('#admin_kpis').innerHTML=`<div class="kpi-grid" style="margin:0">
+    <div class="kpi"><div class="k-lbl">Clientes</div><div class="k-val">${orgs.length}</div><div class="k-sub" style="color:var(--soft)">${ativos} ativos</div></div>
+    <div class="kpi"><div class="k-lbl">Faturamento somado</div><div class="k-val" style="font-size:21px">${fmtBRL(fatTot)}</div><div class="k-sub" style="color:var(--soft)">de todos os clientes</div></div>
+    <div class="kpi"><div class="k-lbl">Aguardando vínculo</div><div class="k-val" style="color:${pend.length?'var(--amber)':'var(--green)'}">${pend.length}</div><div class="k-sub" style="color:var(--soft)">novos cadastros</div></div>
+    <div class="kpi"><div class="k-lbl">Suspensos</div><div class="k-val">${orgs.filter(o=>o.status==='suspenso').length}</div><div class="k-sub" style="color:var(--soft)">acesso bloqueado</div></div></div>`;
+  $('#admin_pend').innerHTML=pend.length?`<div class="card card-pad" style="border-color:var(--amber)"><div class="ttl" style="margin-bottom:8px">⏳ Novos cadastros aguardando liberação</div>
+    ${pend.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${p.email||'(sem e-mail)'}</b></div>
+      <select class="input" style="max-width:260px" onchange="vincularPerfil('${p.id}',this.value)"><option value="">Vincular a um restaurante…</option>${orgs.map(o=>`<option value="${o.id}">${o.nome}</option>`).join('')}</select></div>`).join('')}</div>`:'';
+  $('#admin_list').innerHTML=orgs.length?orgs.map(o=>{const k=kpisDe(o.dados);const susp=o.status==='suspenso';return`
+    <div class="client-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700;font-size:15px">${o.nome}</div><div style="font-size:12px;color:var(--soft)">${o.responsavel||''}</div></div>
+        <span class="tag ${susp?'tag-red':o.status==='teste'?'tag-amber':'tag-green'}">${o.status}</span></div>
+      <div style="display:flex;gap:14px;margin:14px 0;font-size:12.5px">
+        <div><div style="color:var(--soft);font-size:11px">FATURAMENTO</div><b>${fmtBRL(k.fat)}</b></div>
+        <div><div style="color:var(--soft);font-size:11px">CMV</div><b>${k.real!=null?fmtPct(k.real):fmtPct(k.cmv)}</b></div>
+        <div><div style="color:var(--soft);font-size:11px">FICHAS</div><b>${k.nf}</b></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="abrirCliente('${o.id}')">Abrir app</button>
+        <button class="btn btn-ghost btn-sm" onclick="atividadesCliente('${o.id}','${(o.nome||'').replace(/'/g,'')}')">Atividades</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleStatus('${o.id}','${o.status}')">${susp?'Reativar':'Suspender'}</button>
+      </div>
+    </div>`;}).join(''):`<div style="color:var(--muted)">Nenhum cliente ainda. Crie o primeiro com “Novo cliente”.</div>`;
+}
+async function novoCliente(){const nome=prompt('Nome do restaurante/cliente:');if(!nome)return;const resp=prompt('Responsável (opcional):')||'';
+  const {error}=await sb.from('organizacoes').insert({nome,responsavel:resp,status:'ativo'});if(error)return toast('Erro: '+error.message);toast('Cliente criado');showAdmin();}
+async function vincularPerfil(perfilId,orgId){if(!orgId)return;await sb.from('perfis').update({org_id:orgId}).eq('id',perfilId);toast('Cliente vinculado');showAdmin();}
+async function toggleStatus(orgId,status){const novo=status==='suspenso'?'ativo':'suspenso';await sb.from('organizacoes').update({status:novo}).eq('id',orgId);toast(novo==='ativo'?'Acesso reativado':'Acesso suspenso');showAdmin();}
+async function abrirCliente(orgId){let org=null;try{org=(await sb.from('organizacoes').select('*').eq('id',orgId).single()).data;}catch(e){}if(!org)return toast('Erro ao abrir');
+  ORG=org;DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();CLOUD=true;ADMIN_MODE=true;hideAdmin();bannerCloud();renderFoot();go('dashboard');}
+function voltarAdmin(){CLOUD=false;ADMIN_MODE=false;ORG=null;const bn=document.getElementById('cloudBanner');if(bn)bn.style.display='none';showAdmin();}
+async function atividadesCliente(orgId,nome){let ats=[];try{ats=(await sb.from('atividades').select('*').eq('org_id',orgId).order('criada_em',{ascending:false})).data||[];}catch(e){}
+  modal(`<div class="modal-head"><h3>Atividades — ${nome}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">${ats.length?ats.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)"><div><b>${a.titulo}</b><div style="font-size:12px;color:var(--soft)">${a.descricao||''}${a.prazo?' · prazo '+a.prazo:''}</div></div><span class="tag ${a.status==='concluida'?'tag-green':a.status==='fazendo'?'tag-amber':'tag-navy'}">${a.status}</span></div>`).join(''):'<div style="font-size:13px;color:var(--soft);padding:6px 0">Nenhuma atividade ainda.</div>'}
+    <div style="margin-top:14px"><button class="btn btn-ghost btn-sm" onclick="addAtividade('${orgId}','${nome}')">${icoPlus} Nova atividade</button></div></div>
+  <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal()">Fechar</button></div>`);}
+async function addAtividade(orgId,nome){const titulo=prompt('Título da atividade:');if(!titulo)return;const desc=prompt('Descrição (opcional):')||'';
+  await sb.from('atividades').insert({org_id:orgId,titulo,descricao:desc,status:'aberta'});toast('Atividade criada');closeModal();atividadesCliente(orgId,nome);}
+
 applyTheme((function(){try{return localStorage.getItem('flow_theme')||'light';}catch(e){return 'light';}})());
-renderFoot();go('dashboard');
+bootApp();
 </script>
 </body>
 </html>
