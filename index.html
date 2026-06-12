@@ -272,7 +272,7 @@ const CAT_FICHA=['Lanches','Pratos','Entradas','Acompanhamentos','Sobremesas','B
 
 let DB=load();
 function load(){try{const d=JSON.parse(localStorage.getItem(STORE_KEY));if(d&&d.insumos)return d;}catch(e){}return seed();}
-function save(){localStorage.setItem(STORE_KEY,JSON.stringify(DB));renderFoot();}
+function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){if(window.toast)toast('Não foi possível salvar (armazenamento cheio ou bloqueado)');}renderFoot();}
 function seed(){
   const i={};
   const mk=(nome,cat,uni,valorPago,qtd)=>{const id=uid();i[id]={id,nome,cat,tipo:'pronto',uni,preco:valorPago,qtd};return id;};
@@ -1137,6 +1137,10 @@ function viewMapa(){
 let contaTab='conta';
 function esc(s){return (s==null?'':s).toString().replace(/"/g,'&quot;');}
 function exportDados(){const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='lidera-gestao-dados.json';a.click();toast('Dados exportados');}
+function importarBackup(input){const f=input&&input.files&&input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d||!d.insumos||!d.fichas)throw 0;DB=d;save();renderFoot();go('dashboard');toast('Backup importado com sucesso');}catch(e){toast('Arquivo inválido — selecione um backup do Lidera Gestão');}};rd.readAsText(f);}
+function comecarVazio(){if(!confirm('Isto apaga tudo e inicia o app vazio, sem dados de exemplo. Deseja continuar?'))return;
+  DB={insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};
+  save();renderFoot();go('insumos');toast('App iniciado do zero — comece cadastrando seus insumos');}
 function viewConta(){
   DB.conta=DB.conta||{};const c=DB.conta;
   const tabs=[['conta','Conta'],['seg','Segurança'],['plano','Plano e cobrança'],['priv','Privacidade']];
@@ -1162,8 +1166,12 @@ function viewConta(){
       <span class="tag tag-green">Ativo</span></div></div>`;
   else body=`<div class="card card-pad" style="max-width:740px"><div class="ttl">Privacidade</div><div class="desc" style="margin-bottom:16px">Controle dos seus dados</div>
     <div style="font-size:13.5px;color:var(--muted);margin-bottom:16px">Todos os dados ficam armazenados localmente no seu navegador. Você pode exportar um backup ou apagar tudo a qualquer momento.</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="exportDados()">${icoEdit} Exportar backup (JSON)</button>
-    <button class="btn btn-ghost" style="color:var(--red);border-color:var(--red)" onclick="if(confirm('Apagar TODOS os dados e recomeçar do zero?')){localStorage.removeItem(STORE_KEY);location.reload();}">${icoTrash} Apagar tudo</button></div></div>`;
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="exportDados()">⬇ Exportar backup (JSON)</button>
+      <label class="btn btn-ghost" style="cursor:pointer">⬆ Importar backup<input type="file" accept="application/json,.json" style="display:none" onchange="importarBackup(this)"></label>
+      <button class="btn btn-ghost" onclick="comecarVazio()">Começar do zero</button>
+      <button class="btn btn-ghost" style="color:var(--red);border-color:var(--red)" onclick="if(confirm('Restaurar os dados de exemplo? Seus dados atuais serão substituídos.')){localStorage.removeItem(STORE_KEY);location.reload();}">${icoTrash} Restaurar exemplo</button>
+    </div></div>`;
   $('#view').innerHTML=`<div class="pill-filter" style="margin-bottom:18px">${tabs.map(([k,l])=>`<button class="${contaTab===k?'on':''}" onclick="contaTab='${k}';viewConta()">${l}</button>`).join('')}</div>${body}`;
 }
 
