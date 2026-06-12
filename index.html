@@ -1355,17 +1355,22 @@ function viewCMV(){
       <tbody>${meses.map(m=>`<tr><td><b>${m.label}</b> <span style="color:var(--soft);font-size:12px">(${m.n})</span></td><td class="num">${fmtBRL(m.ei)}</td><td class="num">${fmtBRL(m.co)}</td><td class="num">${fmtBRL(m.ef)}</td><td class="num">${fmtBRL(m.ve)}</td><td class="num"><span class="tag ${cmvCls(m.cls)}">${fmtPct(m.pct)}</span></td></tr>`).join('')}</tbody>
     </table></div></div>`:''}`;
 }
-function editCmvReg(id){
-  const r=id?(DB.cmvRegistros||[]).find(x=>x.id===id):{data:'',ei:'',compras:'',ef:'',vendas:''};
+function editCmvReg(id,prefill){
+  const last=(DB.cmvRegistros||[]).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];
+  const estTot=Math.round(estoqueValorTotal()*100)/100;
+  const hoje=new Date().toISOString().slice(0,10);
+  const r=id?(DB.cmvRegistros||[]).find(x=>x.id===id):Object.assign({data:hoje,ei:(last?last.ef:''),compras:'',ef:'',vendas:''},prefill||{});
   modal(`<div class="modal-head"><h3>${id?'Editar contagem':'Nova contagem de CMV'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div class="field"><label>Data da contagem</label><input class="input" id="cr_data" type="date" value="${esc(r.data)}"></div>
     <div class="grid-2">
-      <div class="field"><label>Estoque inicial <span class="hint">R$</span></label><input class="input" id="cr_ei" type="number" step="0.01" value="${r.ei}" oninput="updCmvPrev()"></div>
+      <div class="field"><label>Estoque inicial <span class="hint">R$</span></label><input class="input" id="cr_ei" type="number" step="0.01" value="${r.ei}" oninput="updCmvPrev()">
+        ${last&&!id?`<button type="button" onclick="document.getElementById('cr_ei').value=${(+last.ef||0)};updCmvPrev()" style="font-size:11px;color:var(--navy);margin-top:5px">↩ Usar estoque final anterior (${fmtBRL(+last.ef||0)})</button>`:''}</div>
       <div class="field"><label>Compras do período <span class="hint">R$</span></label><input class="input" id="cr_compras" type="number" step="0.01" value="${r.compras}" oninput="updCmvPrev()"></div>
     </div>
     <div class="grid-2">
-      <div class="field"><label>Estoque final <span class="hint">R$</span></label><input class="input" id="cr_ef" type="number" step="0.01" value="${r.ef}" oninput="updCmvPrev()"></div>
+      <div class="field"><label>Estoque final <span class="hint">R$</span></label><input class="input" id="cr_ef" type="number" step="0.01" value="${r.ef}" oninput="updCmvPrev()">
+        <button type="button" onclick="document.getElementById('cr_ef').value=${estTot};updCmvPrev()" style="font-size:11px;color:var(--navy);margin-top:5px">↓ Usar valor do estoque atual (${fmtBRL(estTot)})</button></div>
       <div class="field"><label>Vendas do período <span class="hint">R$</span></label><input class="input" id="cr_vendas" type="number" step="0.01" value="${r.vendas}" oninput="updCmvPrev()"></div>
     </div>
     <div id="cr_calc"></div>
@@ -1404,6 +1409,8 @@ function estoqueItens(){
     return {ins:i,nome:i.nome,cat:i.cat,uni:i.uni,fornecedor:i.fornecedor||'Sem fornecedor',custo,min,atual,necessidade,valorEstoque,qtdPedir,totalPrevisto,comprar};
   });
 }
+function estoqueValorTotal(){return estoqueItens().reduce((s,x)=>s+x.valorEstoque,0);}
+function lancarCmvDoEstoque(){const v=Math.round(estoqueValorTotal()*100)/100;editCmvReg(null,{ef:v});toast('Estoque atual ('+fmtBRL(v)+') lançado como estoque final — informe compras e vendas');}
 function viewEstoque(){
   const items=estoqueItens();
   const valorTotal=items.reduce((s,x)=>s+x.valorEstoque,0);
@@ -1411,7 +1418,7 @@ function viewEstoque(){
   const totalCompras=comprarList.reduce((s,x)=>s+x.totalPrevisto,0);
   $('#topActions').innerHTML = estoqueTab==='compras'
     ? `<button class="btn btn-gold no-print" onclick="window.print()">🖨️ Imprimir lista</button>`
-    : `<button class="btn btn-ghost no-print" onclick="estoqueTab='compras';viewEstoque()">Ver lista de compras (${comprarList.length})</button>`;
+    : `<button class="btn btn-ghost no-print" onclick="lancarCmvDoEstoque()">↗ Registrar no CMV</button>`;
 
   if(estoqueTab==='contagem'){
     const cats=['Todos',...new Set(items.map(x=>x.cat))];
