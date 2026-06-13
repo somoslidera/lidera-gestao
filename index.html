@@ -210,9 +210,15 @@ th.num{text-align:right}
 
 /* ===== marca Flow + botão de tema ===== */
 .brand .by{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--gold-soft);letter-spacing:0;margin-left:4px}
-.theme-toggle{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
+.theme-toggle{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s;cursor:pointer}
 .theme-toggle:hover{color:var(--gold);border-color:var(--gold-soft)}
 .theme-toggle svg{width:18px;height:18px}
+/* toolbar superior: botões alinhados, sem sobreposição */
+#topActions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+/* toggle de tema ao lado da marca (sidebar navy) */
+.brand-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand .theme-toggle{width:34px;height:34px;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.20);color:rgba(255,255,255,.88)}
+.brand .theme-toggle:hover{color:var(--gold);border-color:var(--gold-soft);background:rgba(255,255,255,.15)}
 
 /* ===== TEMA ESCURO (mantém identidade PLL: navy + dourado) ===== */
 body.dark{
@@ -342,7 +348,10 @@ thead th{letter-spacing:.7px}
 
 <aside class="sidebar" id="sidebar">
   <div class="brand">
-    <div class="wm serif">Flow <span class="by">by Lidera</span></div>
+    <div class="brand-row">
+      <div class="wm serif">Flow <span class="by">by Lidera</span></div>
+      <button id="themeBtn" class="theme-toggle" title="Alternar tema claro/escuro" onclick="toggleTheme()"></button>
+    </div>
   </div>
   <nav class="nav" id="nav">
     <div class="lbl">GESTÃO</div>
@@ -371,7 +380,6 @@ thead th{letter-spacing:.7px}
   <header class="topbar">
     <button class="menu-btn" onclick="toggleSidebar(true)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
     <h1 id="pageTitle">Dashboard</h1>
-    <button id="themeBtn" class="theme-toggle" title="Alternar tema claro/escuro" onclick="toggleTheme()"></button>
     <div id="topActions"></div>
   </header>
   <main class="content" id="view"></main>
@@ -770,13 +778,14 @@ function viewInsumos(){
   <div class="section-head"><div class="pill-filter">${cats.map(c=>`<button class="${c===insumoFiltro?'on':''}" onclick="insumoFiltro='${c}';viewInsumos()">${c}</button>`).join('')}</div>
     <input class="input" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="filtrarLinhas(this,'#insumosTbody')"></div>
   <div class="card">${list.length?`<div class="scroll-x"><table>
-    <thead><tr><th>Insumo</th><th>Tipo</th><th>Categoria</th><th class="num">Compra / Rende</th><th class="num">Custo por unidade</th><th></th></tr></thead>
+    <thead><tr><th>Insumo</th><th>Tipo</th><th>Categoria</th><th>Fornecedor</th><th class="num">Compra / Rende</th><th class="num">Custo por unidade</th><th></th></tr></thead>
     <tbody id="insumosTbody">${filt.sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>{const prep=i.tipo==='preparado';return`
       <tr><td><b>${i.nome}</b>${prep?`<div style="font-size:12px;color:var(--soft)">${(i.comps||[]).length} ingredientes</div>`:''}</td>
       <td>${prep?'<span class="tag tag-gold">Preparado</span>':'<span class="tag tag-navy">Pronto</span>'}</td>
       <td><span class="tag tag-gray">${i.cat}</span></td>
+      <td>${i.fornecedor?`<span style="font-size:12.5px">${esc(i.fornecedor)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
       <td class="num">${prep?`rende ${fmtN(i.rendimento)} ${uSym(i.uni)}`:`${fmtBRL(i.preco)} · ${fmtN(i.qtd,i.qtd%1?2:0)} ${uSym(i.uni)}`}</td>
-      <td class="num">${fmtBRL(custoInsumoBase(i))} <span style="color:var(--soft);font-size:12px">/${bSym(i.uni)}</span></td>
+      <td class="num">${fmtBRL(custoInsumoBase(i)*(TO_BASE[i.uni]||1))} <span style="color:var(--soft);font-size:12px">/${uSym(i.uni)}</span></td>
       <td><div class="row-actions"><button class="icon-btn" onclick="editInsumo('${i.id}')">${icoEdit}</button><button class="icon-btn del" onclick="delInsumo('${i.id}')">${icoTrash}</button></div></td></tr>`;}).join('')}</tbody></table></div>`
   :emptyState('Nenhum insumo cadastrado','Cadastre o que você compra (Pronto) ou produz na casa (Preparado).','editInsumo()')}</div>`;
 }
@@ -838,10 +847,10 @@ function renderInsCompList(){
 function addInsComp(){draftInsComps.push(['',0]);renderInsCompList();updInsPreview();}
 function updInsPreview(){const el=$('#i_preview');if(!el)return;const uni=$('#i_uni').value;
   if(draftInsTipo==='preparado'){let total=0;draftInsComps.forEach(([cid,q])=>{const ins=DB.insumos[cid];if(ins)total+=custoInsumoBase(ins)*(q||0);});
-    const rend=parseFloat($('#i_rend').value)||1;const c=total/((rend||1)*(TO_BASE[uni]||1));
-    el.innerHTML=`Custo da receita: <b>${fmtBRL(total)}</b> · Custo por ${bSym(uni)}: <b style="color:var(--navy)">${fmtBRL(c)}</b>`;
-  }else{const p=parseFloat($('#i_preco').value)||0,q=parseFloat($('#i_qtd').value)||1;const c=p/((q)*(TO_BASE[uni]||1));
-    el.innerHTML=`Preço por ${bSym(uni)}: <b style="color:var(--navy)">${fmtBRL(c)}</b>`;}}
+    const rend=parseFloat($('#i_rend').value)||1;const c=total/(rend||1);
+    el.innerHTML=`Custo da receita: <b>${fmtBRL(total)}</b> · Custo por ${uSym(uni)}: <b style="color:var(--navy)">${fmtBRL(c)}</b>`;
+  }else{const p=parseFloat($('#i_preco').value)||0,q=parseFloat($('#i_qtd').value)||1;const c=p/(q||1);
+    el.innerHTML=`Preço por ${uSym(uni)}: <b style="color:var(--navy)">${fmtBRL(c)}</b>`;}}
 function saveInsumo(id){const nome=$('#i_nome').value.trim();if(!nome)return toast('Informe o nome do insumo');
   const uni=$('#i_uni').value, cat=$('#i_cat').value.trim()||'Mercearia';
   const forn=$('#i_forn')?$('#i_forn').value:'';
@@ -890,10 +899,30 @@ function delForn(id){if(!confirm('Remover este fornecedor?'))return;DB.fin.forne
 
 /* ---- IMPORTAR / MODELO DE INSUMOS (planilha) ---- */
 function baixarTemplateInsumos(){
+  const tem=Object.values(DB.insumos).some(i=>i.tipo!=='preparado');
+  modal(`<div class="modal-head"><h3>Baixar planilha de insumos</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body"><div style="font-size:13.5px;color:var(--muted);margin-bottom:16px">${tem?'Baixe sua lista de insumos para editar e reimportar.':'Baixe um modelo com exemplos para preencher.'} Escolha o formato — o <b>Excel (.xlsx)</b> é o recomendado.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="exportarInsumos('xlsx')">⬇ Excel (.xlsx) · recomendado</button>
+      <button class="btn btn-ghost" onclick="exportarInsumos('csv')">⬇ CSV (.csv)</button>
+    </div></div>`);
+}
+function insumoAOA(){
   const header=['Nome','Categoria','Unidade','Quantidade comprada','Valor pago (R$)'];
-  const ex=[['Peito de frango','Proteínas','kg','1','19,50'],['Leite integral','Laticínios','lt','1','5,20'],['Pão de hambúrguer','Padaria','un','12','14,40']];
-  const csv=[header,...ex].map(r=>r.map(c=>{const s=String(c);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(';')).join('\r\n');
-  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='modelo-insumos.csv';a.click();toast('Modelo baixado — preencha e use Importar');
+  const prontos=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado');
+  const rows=prontos.length?prontos.map(i=>[i.nome,i.cat,uSym(i.uni),i.qtd,i.preco])
+    :[['Peito de frango','Proteínas','kg',1,19.5],['Leite integral','Laticínios','lt',1,5.2],['Pão de hambúrguer','Padaria','un',12,14.4]];
+  return [header,...rows];
+}
+async function exportarInsumos(fmt){const aoa=insumoAOA();
+  if(fmt==='csv'){
+    const csv=aoa.map(r=>r.map(c=>{let s=(typeof c==='number')?String(c).replace('.',','):String(c);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(';')).join('\r\n');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download='insumos.csv';a.click();
+  }else{
+    try{const XLSX=await loadXLSX();const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:26},{wch:16},{wch:10},{wch:18},{wch:16}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Insumos');XLSX.writeFile(wb,'insumos.xlsx');}
+    catch(e){return toast('Não foi possível gerar o Excel. Tente CSV.');}
+  }
+  closeModal();toast('Planilha baixada');
 }
 function loadXLSX(){return new Promise((res,rej)=>{if(window.XLSX)return res(window.XLSX);const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=()=>res(window.XLSX);s.onerror=()=>rej(new Error('xlsx'));document.head.appendChild(s);});}
 function parseCSV(text){text=text.replace(/^﻿/,'');const l0=(text.split('\n')[0]||'');const delim=((l0.match(/;/g)||[]).length>=(l0.match(/,/g)||[]).length)?';':',';
