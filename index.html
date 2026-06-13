@@ -320,6 +320,17 @@ body.dark .alert-green{color:#8FDDBA}
 body.dark .alert-amber{color:#EBC98B}
 body.dark .alert-red{color:#F2A8A1}
 
+/* campos numéricos sem as setinhas (spinner) */
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+
+/* gerenciar categorias */
+.cat-scroll{max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:7px}
+.cat-row{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px}
+.cat-row.cat-pad{background:var(--amber-bg);border-color:var(--gold-soft)}
+.cat-row.cat-pad>span{color:var(--gold);font-weight:600}
+.cat-badge{font-size:9.5px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-left:6px}
+
 /* tabelas e modais: toques finos */
 thead th{letter-spacing:.7px}
 .modal{border-top:4px solid var(--gold)}
@@ -382,11 +393,22 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const $=s=>document.querySelector(s);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
-const UNIDADES=['kg','g','L','ml','un','dz','maço','fatia'];
-const BASE={kg:'g',g:'g',L:'ml',ml:'ml',un:'un',dz:'un',['maço']:'un',fatia:'un'};
-const TO_BASE={kg:1000,g:1,L:1000,ml:1,un:1,dz:12,['maço']:1,fatia:1};
-const CAT_INSUMO=['Proteínas','Laticínios','Grãos','Legumes','Hortifruti','Molhos','Temperos','Óleos','Padaria','Congelados','Bebidas','Mercearia','Embalagens'];
-const CAT_FICHA=['Lanches','Pratos','Entradas','Acompanhamentos','Sobremesas','Bebidas','Preparo (base)'];
+const UNIDADES=['g','ml','un','kg','L'];                       // 5 unidades oficiais
+const BASE={kg:'g',g:'g',L:'ml',ml:'ml',un:'un'};
+const TO_BASE={kg:1000,g:1,L:1000,ml:1,un:1};
+const USYM={g:'gr',ml:'ml',un:'un',kg:'kg',L:'lt'};           // símbolo da unidade de compra
+const BSYM={g:'gr',ml:'ml',un:'un'};                          // símbolo da unidade-base
+const ULABEL={g:'Gramas (gr)',ml:'Mililitros (ml)',un:'Unidade (un)',kg:'Quilogramas (kg)',L:'Litros (lt)'};
+function uSym(u){return USYM[u]||u;}
+function bSym(u){return BSYM[BASE[u]]||BASE[u]||'';}
+const DEF_CAT_INSUMO=['Proteínas','Laticínios','Grãos','Legumes','Hortifruti','Molhos','Temperos','Óleos','Vinhos','Bebidas','Padaria','Congelados','Mercearia','Embalagens'];
+const DEF_CAT_PRATO=['Prato Principal','Entrada','Acompanhamento','Sobremesa','Drinks, Coquetéis e Sucos','Lanches'];
+const CAT_INSUMO=DEF_CAT_INSUMO, CAT_FICHA=DEF_CAT_PRATO;     // aliases (compat.)
+function dbCats(){DB.cats=DB.cats||{insumo:[],prato:[]};DB.cats.insumo=DB.cats.insumo||[];DB.cats.prato=DB.cats.prato||[];return DB.cats;}
+function catList(t){const def=t==='prato'?DEF_CAT_PRATO:DEF_CAT_INSUMO;const cst=dbCats()[t]||[];return [...def,...cst.filter(c=>!def.includes(c))];}
+function isCatPadrao(t,c){return (t==='prato'?DEF_CAT_PRATO:DEF_CAT_INSUMO).includes(c);}
+function catOptions(t,sel){const list=catList(t).slice();if(sel&&!list.includes(sel))list.unshift(sel);return `<option value="">— categoria —</option>`+list.map(c=>`<option ${c===sel?'selected':''}>${esc(c)}</option>`).join('');}
+function fornOptions(sel){const fs=(DB.fin&&DB.fin.fornecedores)||[];const names=fs.map(f=>f.nome).filter(Boolean);if(sel&&!names.includes(sel))names.unshift(sel);return `<option value="">— sem fornecedor —</option>`+names.map(nm=>`<option ${nm===sel?'selected':''}>${esc(nm)}</option>`).join('');}
 
 let DB=load();
 function load(){try{const d=JSON.parse(localStorage.getItem(STORE_KEY));if(d&&d.insumos)return d;}catch(e){}return seed();}
@@ -736,7 +758,10 @@ function ico(k){const m={
 /* ===================== INSUMOS ===================== */
 let insumoFiltro='Todos';
 function viewInsumos(){
-  $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editInsumo()">${icoPlus} Novo insumo</button>`;
+  $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editInsumo()">${icoPlus} Novo insumo</button>`
+    +`<button class="btn btn-ghost" onclick="gerenciarCategorias()">≡ Categorias</button>`
+    +`<button class="btn btn-ghost" onclick="baixarTemplateInsumos()">⬇ Baixar</button>`
+    +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Importar<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarInsumos(this)"></label>`;
   const list=Object.values(DB.insumos);
   const cats=['Todos',...new Set(list.map(i=>i.cat))];
   if(!cats.includes(insumoFiltro))insumoFiltro='Todos';
@@ -750,14 +775,14 @@ function viewInsumos(){
       <tr><td><b>${i.nome}</b>${prep?`<div style="font-size:12px;color:var(--soft)">${(i.comps||[]).length} ingredientes</div>`:''}</td>
       <td>${prep?'<span class="tag tag-gold">Preparado</span>':'<span class="tag tag-navy">Pronto</span>'}</td>
       <td><span class="tag tag-gray">${i.cat}</span></td>
-      <td class="num">${prep?`rende ${fmtN(i.rendimento)} ${i.uni}`:`${fmtBRL(i.preco)} · ${fmtN(i.qtd,i.qtd%1?2:0)} ${i.uni}`}</td>
-      <td class="num">${fmtBRL(custoInsumoBase(i))} <span style="color:var(--soft);font-size:12px">/${BASE[i.uni]}</span></td>
+      <td class="num">${prep?`rende ${fmtN(i.rendimento)} ${uSym(i.uni)}`:`${fmtBRL(i.preco)} · ${fmtN(i.qtd,i.qtd%1?2:0)} ${uSym(i.uni)}`}</td>
+      <td class="num">${fmtBRL(custoInsumoBase(i))} <span style="color:var(--soft);font-size:12px">/${bSym(i.uni)}</span></td>
       <td><div class="row-actions"><button class="icon-btn" onclick="editInsumo('${i.id}')">${icoEdit}</button><button class="icon-btn del" onclick="delInsumo('${i.id}')">${icoTrash}</button></div></td></tr>`;}).join('')}</tbody></table></div>`
   :emptyState('Nenhum insumo cadastrado','Cadastre o que você compra (Pronto) ou produz na casa (Preparado).','editInsumo()')}</div>`;
 }
 let editingInsId=null, draftInsTipo='pronto', draftInsComps=[];
 function editInsumo(id){
-  const i=id?DB.insumos[id]:{nome:'',cat:'',tipo:'pronto',uni:'g',preco:'',qtd:1,rendimento:1000,comps:[]};
+  const i=id?DB.insumos[id]:{nome:'',cat:'',tipo:'pronto',uni:'g',preco:'',qtd:1,rendimento:1000,comps:[],fornecedor:''};
   editingInsId=id||null; draftInsTipo=i.tipo||'pronto'; draftInsComps=JSON.parse(JSON.stringify(i.comps||[]));
   modal(`<div class="modal-head"><h3>${id?'Editar insumo':'Novo insumo'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
@@ -770,20 +795,21 @@ function editInsumo(id){
       <div id="tp_hint" style="font-size:11.5px;color:var(--soft);margin-top:6px"></div>
     </div>
     <div class="grid-2">
-      <div class="field"><label>Categoria</label><input class="input" id="i_cat" value="${(i.cat||'').replace(/"/g,'&quot;')}" placeholder="Proteínas" list="catlist"><datalist id="catlist">${CAT_INSUMO.map(c=>`<option value="${c}">`).join('')}</datalist></div>
-      <div class="field"><label>Unidade base</label><select class="input" id="i_uni" onchange="updInsPreview()">${UNIDADES.map(u=>`<option ${u===i.uni?'selected':''}>${u}</option>`).join('')}</select></div>
+      <div class="field"><label>Categoria</label><select class="input" id="i_cat">${catOptions('insumo',i.cat)}</select></div>
+      <div class="field"><label>Unidade</label><select class="input" id="i_uni" onchange="updUniLabels();updInsPreview()">${UNIDADES.map(u=>`<option value="${u}" ${u===i.uni?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
     </div>
+    <div class="field"><label>Fornecedor <span class="hint">opcional</span></label><select class="input" id="i_forn">${fornOptions(i.fornecedor)}</select></div>
     <div id="pronto_block">
       <div style="border:1px solid var(--gold-soft);background:var(--amber-bg);border-radius:11px;padding:14px;margin-bottom:6px">
         <div style="font-size:12.5px;font-weight:700;color:var(--gold);margin-bottom:10px">Informações da compra <span style="font-weight:400;color:var(--muted)">· calcula o preço automaticamente</span></div>
         <div class="grid-2">
-          <div class="field" style="margin:0"><label>Quantidade comprada</label><input class="input" id="i_qtd" type="number" step="0.001" value="${i.qtd}" oninput="updInsPreview()"></div>
-          <div class="field" style="margin:0"><label>Valor pago <span class="hint">R$</span></label><input class="input" id="i_preco" type="number" step="0.01" value="${i.preco}" oninput="updInsPreview()"></div>
+          <div class="field" style="margin:0"><label>Quantidade comprada <span class="hint">(<span class="u-sym">${uSym(i.uni)}</span>)</span></label><input class="input" id="i_qtd" type="number" step="0.001" value="${i.qtd}" oninput="updInsPreview()" placeholder="Ex.: 100"></div>
+          <div class="field" style="margin:0"><label>Valor pago pela embalagem <span class="hint">R$</span></label><input class="input" id="i_preco" type="number" step="0.01" value="${i.preco}" oninput="updInsPreview()" placeholder="0,00"></div>
         </div>
       </div>
     </div>
     <div id="prep_block">
-      <div class="field"><label>Rendimento da receita <span class="hint">quanto a receita gera, na unidade base</span></label><input class="input" id="i_rend" type="number" step="1" value="${i.rendimento||''}" oninput="updInsPreview()" placeholder="Ex.: 1000"></div>
+      <div class="field"><label>Rendimento da receita <span class="hint">na unidade <span class="u-sym">${uSym(i.uni)}</span></span></label><input class="input" id="i_rend" type="number" step="1" value="${i.rendimento||''}" oninput="updInsPreview()" placeholder="Ex.: 1000"></div>
       <label style="display:block;font-size:13px;font-weight:600;margin:2px 0 10px">Ingredientes</label>
       <div id="insCompList"></div>
       <button type="button" class="btn btn-ghost btn-sm" onclick="addInsComp()" style="margin-top:4px">${icoPlus} Adicionar ingrediente</button>
@@ -791,8 +817,9 @@ function editInsumo(id){
     <div id="i_preview" style="font-size:13px;color:var(--muted);margin-top:12px"></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveInsumo('${id||''}')">Salvar insumo</button></div>`);
-  applyInsTipo(); renderInsCompList(); updInsPreview();
+  applyInsTipo(); renderInsCompList(); updUniLabels(); updInsPreview();
 }
+function updUniLabels(){const s=$('#i_uni');if(!s)return;const sym=uSym(s.value);document.querySelectorAll('.u-sym').forEach(e=>e.textContent=sym);}
 function setInsTipo(t){draftInsTipo=t;$('#tp_pronto').classList.toggle('on',t==='pronto');$('#tp_prep').classList.toggle('on',t==='preparado');applyInsTipo();updInsPreview();}
 function applyInsTipo(){const prep=draftInsTipo==='preparado';
   $('#pronto_block').style.display=prep?'none':'block';$('#prep_block').style.display=prep?'block':'none';
@@ -804,7 +831,7 @@ function renderInsCompList(){
     <div class="comp-row" style="grid-template-columns:1fr 86px 80px 32px">
       <select class="input" onchange="draftInsComps[${idx}][0]=this.value;updInsPreview();renderInsCompList()"><option value="">— insumo —</option>${opts.map(o=>`<option value="${o.id}" ${o.id===row[0]?'selected':''}>${o.nome}${o.tipo==='preparado'?' (prep.)':''}</option>`).join('')}</select>
       <input class="input" type="number" step="0.001" value="${row[1]}" placeholder="qtd" oninput="draftInsComps[${idx}][1]=parseFloat(this.value)||0;updInsPreview()">
-      <div class="ccost">${fmtBRL(ins?custoInsumoBase(ins)*(row[1]||0):0)}<div style="font-size:10px;color:var(--soft)">${ins?BASE[ins.uni]:''}</div></div>
+      <div class="ccost">${fmtBRL(ins?custoInsumoBase(ins)*(row[1]||0):0)}<div style="font-size:10px;color:var(--soft)">${ins?bSym(ins.uni):''}</div></div>
       <button class="mini-del" onclick="draftInsComps.splice(${idx},1);renderInsCompList();updInsPreview()">${icoX}</button>
     </div>`;}).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 10px">Nenhum ingrediente adicionado.</div>`;
 }
@@ -812,22 +839,100 @@ function addInsComp(){draftInsComps.push(['',0]);renderInsCompList();updInsPrevi
 function updInsPreview(){const el=$('#i_preview');if(!el)return;const uni=$('#i_uni').value;
   if(draftInsTipo==='preparado'){let total=0;draftInsComps.forEach(([cid,q])=>{const ins=DB.insumos[cid];if(ins)total+=custoInsumoBase(ins)*(q||0);});
     const rend=parseFloat($('#i_rend').value)||1;const c=total/((rend||1)*(TO_BASE[uni]||1));
-    el.innerHTML=`Custo da receita: <b>${fmtBRL(total)}</b> · Custo por ${BASE[uni]}: <b style="color:var(--navy)">${fmtBRL(c)}</b>`;
+    el.innerHTML=`Custo da receita: <b>${fmtBRL(total)}</b> · Custo por ${bSym(uni)}: <b style="color:var(--navy)">${fmtBRL(c)}</b>`;
   }else{const p=parseFloat($('#i_preco').value)||0,q=parseFloat($('#i_qtd').value)||1;const c=p/((q)*(TO_BASE[uni]||1));
-    el.innerHTML=`Preço por ${BASE[uni]}: <b style="color:var(--navy)">${fmtBRL(c)}</b>`;}}
+    el.innerHTML=`Preço por ${bSym(uni)}: <b style="color:var(--navy)">${fmtBRL(c)}</b>`;}}
 function saveInsumo(id){const nome=$('#i_nome').value.trim();if(!nome)return toast('Informe o nome do insumo');
   const uni=$('#i_uni').value, cat=$('#i_cat').value.trim()||'Mercearia';
+  const forn=$('#i_forn')?$('#i_forn').value:'';
   let obj;
   if(draftInsTipo==='preparado'){const comps=draftInsComps.filter(c=>c[0]&&c[1]>0);
     if(!comps.length)return toast('Adicione ao menos um ingrediente');
-    obj={id:id||uid(),nome,cat,tipo:'preparado',uni,rendimento:parseFloat($('#i_rend').value)||1,comps};
-  }else{obj={id:id||uid(),nome,cat,tipo:'pronto',uni,preco:parseFloat($('#i_preco').value)||0,qtd:parseFloat($('#i_qtd').value)||1};}
+    obj={id:id||uid(),nome,cat,tipo:'preparado',uni,rendimento:parseFloat($('#i_rend').value)||1,comps,fornecedor:forn};
+  }else{obj={id:id||uid(),nome,cat,tipo:'pronto',uni,preco:parseFloat($('#i_preco').value)||0,qtd:parseFloat($('#i_qtd').value)||1,fornecedor:forn};}
   DB.insumos[obj.id]=obj;save();closeModal();viewInsumos();toast(id?'Insumo atualizado':'Insumo adicionado');}
 function delInsumo(id){
   const usadoFicha=Object.values(DB.fichas).some(f=>(f.comps||[]).some(c=>c[0]===id));
   const usadoPrep=Object.values(DB.insumos).some(x=>x.tipo==='preparado'&&(x.comps||[]).some(c=>c[0]===id));
   if((usadoFicha||usadoPrep)&&!confirm('Este insumo é usado em fichas ou preparos. Remover mesmo assim?'))return;
   delete DB.insumos[id];save();viewInsumos();toast('Insumo removido');}
+
+/* ---- GERENCIAR CATEGORIAS (Insumos · Pratos · Fornecedores) ---- */
+let catTab='insumo';
+function gerenciarCategorias(t){catTab=t||catTab||'insumo';dbCats();DB.fin=DB.fin||{};DB.fin.fornecedores=DB.fin.fornecedores||[];
+  const tabs=[['insumo','Insumos'],['prato','Pratos'],['fornecedor','Fornecedores']];
+  let body='';
+  if(catTab==='fornecedor'){
+    const fs=DB.fin.fornecedores;
+    body=`<div style="display:flex;gap:8px;margin-bottom:6px"><input class="input" id="cat_new" placeholder="Novo fornecedor..." onkeydown="if(event.key==='Enter')addCatItem()"><button class="btn btn-primary" style="padding:0 18px" onclick="addCatItem()">${icoPlus}</button></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:13px">Os fornecedores ficam disponíveis ao cadastrar um insumo.</div>
+    <div class="cat-scroll">${fs.length?fs.map(f=>`<div class="cat-row"><span>${esc(f.nome||'(sem nome)')}</span><button class="mini-del" onclick="delForn('${f.id}')">${icoX}</button></div>`).join(''):'<div style="font-size:13px;color:var(--soft);padding:8px 0">Nenhum fornecedor cadastrado.</div>'}</div>`;
+  }else{
+    const list=catList(catTab);
+    body=`<div style="display:flex;gap:8px;margin-bottom:6px"><input class="input" id="cat_new" placeholder="Nova categoria de ${catTab==='prato'?'prato':'insumo'}..." onkeydown="if(event.key==='Enter')addCatItem()"><button class="btn btn-primary" style="padding:0 18px" onclick="addCatItem()">${icoPlus}</button></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:13px">Categorias <b style="color:var(--gold)">douradas</b> são padrão do sistema. As <b>brancas</b> são suas e podem ser removidas.</div>
+    <div class="cat-scroll">${list.map(c=>{const pad=isCatPadrao(catTab,c);const idx=pad?-1:dbCats()[catTab].indexOf(c);return `<div class="cat-row ${pad?'cat-pad':''}"><span>${esc(c)}${pad?'<span class="cat-badge">padrão</span>':''}</span>${pad?'':`<button class="mini-del" onclick="delCatIdx(${idx})">${icoX}</button>`}</div>`;}).join('')}</div>`;
+  }
+  modal(`<div class="modal-head"><h3>Gerenciar categorias</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div class="chan-tabs" style="margin-top:0">${tabs.map(([k,l])=>`<button type="button" class="${catTab===k?'on':''}" onclick="gerenciarCategorias('${k}')">${l}</button>`).join('')}</div>
+    ${body}
+  </div>
+  <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal()">Concluir</button></div>`);
+  setTimeout(()=>{const el=$('#cat_new');if(el)el.focus();},30);
+}
+function addCatItem(){const el=$('#cat_new');if(!el)return;const v=el.value.trim();if(!v)return;
+  if(catTab==='fornecedor'){DB.fin.fornecedores=DB.fin.fornecedores||[];if(DB.fin.fornecedores.some(f=>(f.nome||'').toLowerCase()===v.toLowerCase()))return toast('Fornecedor já existe');DB.fin.fornecedores.push({id:uid(),nome:v,contato:''});}
+  else{dbCats();if(catList(catTab).some(c=>c.toLowerCase()===v.toLowerCase()))return toast('Categoria já existe');DB.cats[catTab].push(v);}
+  save();gerenciarCategorias();}
+function delCatIdx(i){dbCats();if(i>=0)DB.cats[catTab].splice(i,1);save();gerenciarCategorias();}
+function delForn(id){if(!confirm('Remover este fornecedor?'))return;DB.fin.fornecedores=(DB.fin.fornecedores||[]).filter(f=>f.id!==id);save();gerenciarCategorias();}
+
+/* ---- IMPORTAR / MODELO DE INSUMOS (planilha) ---- */
+function baixarTemplateInsumos(){
+  const header=['Nome','Categoria','Unidade','Quantidade comprada','Valor pago (R$)'];
+  const ex=[['Peito de frango','Proteínas','kg','1','19,50'],['Leite integral','Laticínios','lt','1','5,20'],['Pão de hambúrguer','Padaria','un','12','14,40']];
+  const csv=[header,...ex].map(r=>r.map(c=>{const s=String(c);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(';')).join('\r\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='modelo-insumos.csv';a.click();toast('Modelo baixado — preencha e use Importar');
+}
+function loadXLSX(){return new Promise((res,rej)=>{if(window.XLSX)return res(window.XLSX);const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=()=>res(window.XLSX);s.onerror=()=>rej(new Error('xlsx'));document.head.appendChild(s);});}
+function parseCSV(text){text=text.replace(/^﻿/,'');const l0=(text.split('\n')[0]||'');const delim=((l0.match(/;/g)||[]).length>=(l0.match(/,/g)||[]).length)?';':',';
+  const rows=[];let cur=[],val='',q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){val+='"';i++;}else q=false;}else val+=ch;}
+    else{if(ch==='"')q=true;else if(ch===delim){cur.push(val);val='';}else if(ch==='\n'){cur.push(val);rows.push(cur);cur=[];val='';}else if(ch==='\r'){}else val+=ch;}}
+  if(val.length||cur.length){cur.push(val);rows.push(cur);}return rows;}
+function normUni(s){s=(s||'').toString().trim().toLowerCase();const m={g:'g',gr:'g',grama:'g',gramas:'g',kg:'kg',quilo:'kg',quilos:'kg',quilograma:'kg',quilogramas:'kg',ml:'ml',mililitro:'ml',mililitros:'ml',l:'L',lt:'L',litro:'L',litros:'L',un:'un',und:'un',unid:'un',unidade:'un',unidades:'un',pc:'un'};return m[s]||'un';}
+function parseNumBR(s){if(typeof s==='number')return s;s=(s||'').toString().replace(/[^\d.,-]/g,'').trim();if(!s)return 0;
+  if(s.indexOf(',')>=0&&s.indexOf('.')>=0)s=s.replace(/\./g,'').replace(',','.');else if(s.indexOf(',')>=0)s=s.replace(',','.');
+  return parseFloat(s)||0;}
+async function importarInsumos(input){const f=input&&input.files&&input.files[0];if(input)input.value='';if(!f)return;
+  let rows;
+  try{
+    if(/\.xlsx?$/i.test(f.name)){const XLSX=await loadXLSX();const data=new Uint8Array(await f.arrayBuffer());const wb=XLSX.read(data,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});}
+    else{rows=parseCSV(await f.text());}
+  }catch(e){return toast('Não foi possível ler o arquivo. Use o modelo em Baixar.');}
+  aplicarImportInsumos(rows);
+}
+function aplicarImportInsumos(rows){rows=(rows||[]).filter(r=>r&&r.some(c=>(c||'').toString().trim()!==''));
+  if(!rows.length)return toast('Planilha vazia');
+  const head=rows[0].map(c=>(c||'').toString().toLowerCase());
+  const find=(...keys)=>head.findIndex(h=>keys.some(k=>h.indexOf(k)>=0));
+  let iNome=find('nome','insumo','produto'),iCat=find('categ'),iUni=find('unid','und'),iQtd=find('quant','qtd','compra'),iVal=find('valor','pre','custo');
+  let start=1;
+  if(iNome<0){iNome=0;iCat=1;iUni=2;iQtd=3;iVal=4;start=0;}
+  let n=0;
+  for(let r=start;r<rows.length;r++){const row=rows[r]||[];const nome=(row[iNome]||'').toString().trim();if(!nome)continue;
+    const cat=((iCat>=0&&row[iCat])?row[iCat]:'Mercearia').toString().trim()||'Mercearia';
+    const uni=normUni(iUni>=0?row[iUni]:'un');
+    const qtd=parseNumBR(iQtd>=0?row[iQtd]:1)||1;
+    const preco=parseNumBR(iVal>=0?row[iVal]:0);
+    const nid=uid();DB.insumos[nid]={id:nid,nome,cat,tipo:'pronto',uni,qtd,preco,fornecedor:''};
+    if(cat&&!catList('insumo').includes(cat))dbCats().insumo.push(cat);
+    n++;}
+  if(!n)return toast('Nenhuma linha válida encontrada');
+  save();viewInsumos();toast(n+' insumo(s) importado(s)');
+}
 
 /* ===================== FICHAS TÉCNICAS ===================== */
 function viewFichas(){
@@ -856,7 +961,7 @@ function editFicha(id){
     <div id="ftab_custos">
       <div class="grid-2">
         <div class="field"><label>Nome</label><input class="input" id="f_nome" value="${(f.nome||'').replace(/"/g,'&quot;')}" placeholder="Ex.: Burger Clássico"></div>
-        <div class="field"><label>Categoria</label><input class="input" id="f_cat" value="${(f.cat||'').replace(/"/g,'&quot;')}" placeholder="Lanches" list="fcatlist"><datalist id="fcatlist">${CAT_FICHA.map(c=>`<option value="${c}">`).join('')}</datalist></div>
+        <div class="field"><label>Categoria</label><select class="input" id="f_cat">${catOptions('prato',f.cat)}</select></div>
       </div>
       <div class="grid-2">
         <div class="field"><label>Rendimento <span class="hint">porções que a ficha gera</span></label><input class="input" id="f_porcoes" type="number" step="1" value="${f.porcoes||1}" oninput="recalcFicha()"></div>
@@ -899,7 +1004,7 @@ function renderCompList(){
       <div class="ctype ${prep?'ctype-f':'ctype-i'}">${prep?'P':'I'}</div>
       <select class="input" onchange="draftComps[${idx}][0]=this.value;recalcFicha();renderCompList()"><option value="">— insumo —</option>${opts.map(o=>`<option value="${o.id}" ${o.id===row[0]?'selected':''}>${o.nome}${o.tipo==='preparado'?' (preparado)':''}</option>`).join('')}</select>
       <input class="input" type="number" step="0.001" value="${row[1]}" placeholder="qtd" oninput="draftComps[${idx}][1]=parseFloat(this.value)||0;recalcFicha()">
-      <div class="ccost">${fmtBRL(ins?custoInsumoBase(ins)*(row[1]||0):0)}<div style="font-size:10px;color:var(--soft)">${ins?BASE[ins.uni]:''}</div></div>
+      <div class="ccost">${fmtBRL(ins?custoInsumoBase(ins)*(row[1]||0):0)}<div style="font-size:10px;color:var(--soft)">${ins?bSym(ins.uni):''}</div></div>
       <button class="mini-del" onclick="draftComps.splice(${idx},1);renderCompList();recalcFicha()">${icoX}</button>
     </div>`;}).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 10px">Nenhum insumo adicionado.</div>`;
 }
@@ -1589,12 +1694,12 @@ function viewEstoque(){
       <thead><tr><th>Insumo</th><th>Fornecedor</th><th class="num">Custo un.</th><th class="num">Mínimo</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Valor estoque</th><th class="num">Status</th></tr></thead>
       <tbody id="estoqueTbody">${filt.sort((a,b)=>(b.comprar-a.comprar)||a.nome.localeCompare(b.nome)).map(x=>`
         <tr>
-          <td><b>${x.nome}</b><div style="font-size:12px;color:var(--soft)">${x.cat} · ${x.uni}</div></td>
+          <td><b>${x.nome}</b><div style="font-size:12px;color:var(--soft)">${x.cat} · ${uSym(x.uni)}</div></td>
           <td><input class="input" style="min-width:130px" value="${esc(x.ins.fornecedor)}" placeholder="Fornecedor" oninput="DB.insumos['${x.ins.id}'].fornecedor=this.value;finTouch()"></td>
           <td class="num">${fmtBRL(x.custo)}</td>
           <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.min}" oninput="DB.insumos['${x.ins.id}'].estoqueMin=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
           <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.atual}" oninput="DB.insumos['${x.ins.id}'].estoqueAtual=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
-          <td class="num">${x.necessidade?fmtN(x.necessidade,x.necessidade%1?2:0)+' '+x.uni:'—'}</td>
+          <td class="num">${x.necessidade?fmtN(x.necessidade,x.necessidade%1?2:0)+' '+uSym(x.uni):'—'}</td>
           <td class="num">${fmtBRL(x.valorEstoque)}</td>
           <td class="num"><span class="tag ${x.comprar?'tag-red':'tag-green'}">${x.comprar?'COMPRAR':'OK'}</span></td>
         </tr>`).join('')}</tbody>
@@ -1628,7 +1733,7 @@ function viewEstoque(){
         <thead><tr><th>Insumo</th><th class="num">Un.</th><th class="num">Mínimo</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Qtd a pedir</th><th class="num">Custo un.</th><th class="num">Total previsto</th></tr></thead>
         <tbody>${arr.sort((a,b)=>a.nome.localeCompare(b.nome)).map(x=>`
           <tr>
-            <td><b>${x.nome}</b></td><td class="num">${x.uni}</td><td class="num">${fmtN(x.min,x.min%1?2:0)}</td><td class="num">${fmtN(x.atual,x.atual%1?2:0)}</td>
+            <td><b>${x.nome}</b></td><td class="num">${uSym(x.uni)}</td><td class="num">${fmtN(x.min,x.min%1?2:0)}</td><td class="num">${fmtN(x.atual,x.atual%1?2:0)}</td>
             <td class="num">${fmtN(x.necessidade,x.necessidade%1?2:0)}</td>
             <td class="num"><input class="input no-print" type="number" step="0.01" style="width:78px;text-align:right" value="${x.qtdPedir}" oninput="DB.insumos['${x.ins.id}'].qtdPedir=this.value;finTouch()" onchange="viewEstoque()"><span class="print-only">${fmtN(x.qtdPedir,x.qtdPedir%1?2:0)}</span></td>
             <td class="num">${fmtBRL(x.custo)}</td><td class="num"><b>${fmtBRL(x.totalPrevisto)}</b></td>
