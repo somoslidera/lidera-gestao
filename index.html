@@ -1290,8 +1290,16 @@ function viewConta(){
     </div>
     <div class="field" style="max-width:240px"><label>Data de nascimento</label><input class="input" type="date" value="${esc(c.nascimento)}" oninput="DB.conta.nascimento=this.value;finTouch()"></div>
   </div>`;
-  else if(contaTab==='seg')body=`<div class="card card-pad" style="max-width:740px"><div class="ttl">Segurança</div><div class="desc" style="margin-bottom:16px">Senha e autenticação</div>
-    <div class="alert alert-amber">${icoWarn}<div>Este app roda <b>localmente no seu navegador</b> e salva os dados no próprio dispositivo. Não há login nem senha — seus dados ficam só aqui, sem servidor.</div></div></div>`;
+  else if(contaTab==='seg'){
+    if(sb){body=`<div class="card card-pad" style="max-width:740px"><div class="ttl">Segurança</div><div class="desc" style="margin-bottom:16px">Troque sua senha de acesso</div>
+      <div id="sec_msg" style="display:none;font-size:13px;padding:10px 12px;border-radius:10px;margin-bottom:14px"></div>
+      <div class="field" style="max-width:360px"><label>Nova senha</label><input class="input" id="sec_p1" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
+      <div class="field" style="max-width:360px"><label>Confirmar nova senha</label><input class="input" id="sec_p2" type="password" placeholder="Repita a nova senha" autocomplete="new-password" onkeydown="if(event.key==='Enter')trocarSenha()"></div>
+      <button class="btn btn-primary" onclick="trocarSenha()">Atualizar senha</button>
+      <div style="font-size:12px;color:var(--muted);margin-top:14px">Você está conectado${PERFIL&&PERFIL.email?' como <b>'+esc(PERFIL.email)+'</b>':''}. A nova senha passa a valer imediatamente.</div></div>`;}
+    else body=`<div class="card card-pad" style="max-width:740px"><div class="ttl">Segurança</div><div class="desc" style="margin-bottom:16px">Senha e autenticação</div>
+      <div class="alert alert-amber">${icoWarn}<div>Esta cópia está rodando <b>localmente</b>, sem login. A troca de senha está disponível na versão online em <b>flow.somoslidera.com.br</b>.</div></div></div>`;
+  }
   else if(contaTab==='plano')body=`<div class="card card-pad" style="max-width:740px"><div class="ttl">Plano e cobrança</div><div class="desc" style="margin-bottom:16px">Seu plano atual</div>
     <div style="display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:12px;padding:16px 18px">
       <div><div style="font-weight:700;font-family:'Fraunces',serif;font-size:15px">Lidera Gestão · Programa Lucro e Liberdade</div><div style="font-size:12.5px;color:var(--muted);margin-top:2px">Acesso completo a todos os módulos · sem mensalidade</div></div>
@@ -1637,7 +1645,7 @@ function emptyState(t,d,action){return `<div class="empty"><svg viewBox="0 0 24 
 /* ===================== SAAS: AUTH + NUVEM + ADMIN ===================== */
 const SUPA_URL='https://fvcbxorfstqqeewocxkf.supabase.co', SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2J4b3Jmc3RxcWVld29jeGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzM5MjgsImV4cCI6MjA5Njg0OTkyOH0.X9gnZt535F1ASHpUaL24eEZysHHECwzfBwjaR4kVnyw';
 const sb=(window.supabase&&SUPA_URL.indexOf('http')===0)?window.supabase.createClient(SUPA_URL,SUPA_ANON):null;
-let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false;
+let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false;
 function emptyDB(){return {insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};}
 function pushCloud(){if(!CLOUD||!sb||!ORG)return;clearTimeout(window._cloudT);window._cloudT=setTimeout(()=>{sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id).then(()=>{},()=>{});},800);}
 async function chamarFn(nome,body){const s=(await sb.auth.getSession()).data.session;const r=await fetch(SUPA_URL+'/functions/v1/'+nome,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_ANON,'Authorization':'Bearer '+(s?s.access_token:'')},body:JSON.stringify(body||{})});let j={};try{j=await r.json();}catch(e){}return {status:r.status,data:j};}
@@ -1645,6 +1653,7 @@ async function chamarFn(nome,body){const s=(await sb.auth.getSession()).data.ses
 /* ---- BOOT ---- */
 async function bootApp(){
   if(!sb){renderFoot();go('dashboard');return;} // sem backend → modo local (arquivo único)
+  if((location.hash&&location.hash.indexOf('type=recovery')>=0)||RECOVERY){RECOVERY=true;telaNovaSenha();return;} // chegou pelo link de recuperação
   let session=null;try{session=(await sb.auth.getSession()).data.session;}catch(e){}
   if(!session){showLogin();return;}
   await afterAuth();
@@ -1677,7 +1686,8 @@ function showLogin(signup){const b=authBox();b.style.display='flex';
     <div class="field"><label>E-mail</label><input class="input" id="auth_email" type="email" placeholder="voce@restaurante.com"></div>
     <div class="field"><label>Senha</label><input class="input" id="auth_pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')${signup?'doSignup()':'doLogin()'}"></div>
     <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:6px" onclick="${signup?'doSignup()':'doLogin()'}">${signup?'Criar conta':'Entrar'}</button>
-    <div style="text-align:center;font-size:12.5px;color:var(--muted);margin-top:14px">${signup?'Já tem conta? <a onclick="showLogin(false)" style="color:var(--navy);cursor:pointer">Entrar</a>':'É um novo cliente? <a onclick="showLogin(true)" style="color:var(--navy);cursor:pointer">Criar conta</a>'}</div>
+    ${signup?'':'<div style="text-align:center;margin-top:12px"><a onclick="telaEsqueci()" style="color:var(--muted);cursor:pointer;font-size:12.5px">Esqueci minha senha</a></div>'}
+    <div style="text-align:center;font-size:12.5px;color:var(--muted);margin-top:${signup?'14':'8'}px">${signup?'Já tem conta? <a onclick="showLogin(false)" style="color:var(--navy);cursor:pointer">Entrar</a>':'É um novo cliente? <a onclick="showLogin(true)" style="color:var(--navy);cursor:pointer">Criar conta</a>'}</div>
   </div>`;}
 function hideLogin(){const b=document.getElementById('authScreen');if(b)b.style.display='none';}
 function authErr(m){const e=document.getElementById('auth_err');if(e){e.style.display='block';e.textContent=m;}}
@@ -1687,6 +1697,69 @@ async function doSignup(){const email=$('#auth_email').value.trim(),pass=$('#aut
   const {error}=await sb.auth.signUp({email,password:pass});if(error)return authErr(error.message);
   authErr('');telaMensagem('Conta criada!','Sua conta foi criada. Aguarde a liberação do acesso pela Lidera para começar a usar.');}
 async function logout(){if(sb)await sb.auth.signOut();CLOUD=false;ORG=null;PERFIL=null;location.reload();}
+
+/* ---- TROCAR SENHA (logado · Configurações › Segurança) ---- */
+function secMsg(m,kind){const e=document.getElementById('sec_msg');if(!e)return;e.style.display='block';e.textContent=m;
+  if(kind==='green'){e.style.background='var(--green-bg)';e.style.color='var(--green)';}else{e.style.background='var(--red-bg)';e.style.color='var(--red)';}}
+async function trocarSenha(){
+  if(!sb)return;
+  const n1=$('#sec_p1').value, n2=$('#sec_p2').value;
+  if(!n1||n1.length<6)return secMsg('A nova senha precisa de ao menos 6 caracteres.','red');
+  if(n1!==n2)return secMsg('As senhas não coincidem.','red');
+  const btn=event&&event.target;if(btn)btn.disabled=true;
+  const {error}=await sb.auth.updateUser({password:n1});
+  if(btn)btn.disabled=false;
+  if(error)return secMsg(error.message||'Não foi possível atualizar a senha.','red');
+  $('#sec_p1').value='';$('#sec_p2').value='';
+  secMsg('Senha atualizada com sucesso! Use a nova senha no próximo acesso.','green');
+}
+
+/* ---- ESQUECI MINHA SENHA (envia link por e-mail) ---- */
+function telaEsqueci(){const b=authBox();b.style.display='flex';
+  b.innerHTML=`<div class="auth-card">
+    <div class="auth-wm">Flow</div><div class="auth-by">by Lidera</div>
+    <div style="font-size:16px;font-weight:700;font-family:'Fraunces',serif;text-align:center;margin-bottom:4px">Recuperar acesso</div>
+    <div style="font-size:13px;color:var(--muted);text-align:center;line-height:1.5;margin-bottom:18px">Informe seu e-mail e enviaremos um link para você definir uma nova senha.</div>
+    <div id="auth_err" style="display:none;background:var(--red-bg);color:var(--red);font-size:13px;padding:10px 12px;border-radius:10px;margin-bottom:12px"></div>
+    <div id="auth_ok" style="display:none;background:var(--green-bg);color:var(--green);font-size:13px;padding:10px 12px;border-radius:10px;margin-bottom:12px"></div>
+    <div class="field"><label>E-mail</label><input class="input" id="rec_email" type="email" placeholder="voce@restaurante.com" onkeydown="if(event.key==='Enter')doEsqueci()"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:6px" onclick="doEsqueci()">Enviar link de recuperação</button>
+    <div style="text-align:center;font-size:12.5px;color:var(--muted);margin-top:14px"><a onclick="showLogin(false)" style="color:var(--navy);cursor:pointer">← Voltar ao login</a></div>
+  </div>`;}
+async function doEsqueci(){
+  const email=$('#rec_email').value.trim();if(!email)return authErr('Informe seu e-mail.');
+  const redir=location.origin+location.pathname;
+  const btn=event&&event.target;if(btn)btn.disabled=true;
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:redir});
+  if(btn)btn.disabled=false;
+  if(error)return authErr(error.message||'Não foi possível enviar o e-mail.');
+  const ok=document.getElementById('auth_ok'),er=document.getElementById('auth_err');
+  if(er)er.style.display='none';
+  if(ok){ok.style.display='block';ok.innerHTML='Se houver uma conta com esse e-mail, o link de recuperação foi enviado. <b>Verifique sua caixa de entrada e o spam.</b>';}
+}
+
+/* ---- DEFINIR NOVA SENHA (chegou pelo link de recuperação) ---- */
+function telaNovaSenha(){hideAdmin();const b=authBox();b.style.display='flex';
+  b.innerHTML=`<div class="auth-card">
+    <div class="auth-wm">Flow</div><div class="auth-by">by Lidera</div>
+    <div style="font-size:16px;font-weight:700;font-family:'Fraunces',serif;text-align:center;margin-bottom:4px">Definir nova senha</div>
+    <div style="font-size:13px;color:var(--muted);text-align:center;line-height:1.5;margin-bottom:18px">Escolha uma nova senha para sua conta.</div>
+    <div id="auth_err" style="display:none;background:var(--red-bg);color:var(--red);font-size:13px;padding:10px 12px;border-radius:10px;margin-bottom:12px"></div>
+    <div class="field"><label>Nova senha</label><input class="input" id="nv_p1" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
+    <div class="field"><label>Confirmar nova senha</label><input class="input" id="nv_p2" type="password" placeholder="Repita a nova senha" autocomplete="new-password" onkeydown="if(event.key==='Enter')doNovaSenha()"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:6px" onclick="doNovaSenha()">Salvar nova senha</button>
+  </div>`;}
+async function doNovaSenha(){
+  const n1=$('#nv_p1').value,n2=$('#nv_p2').value;
+  if(!n1||n1.length<6)return authErr('A nova senha precisa de ao menos 6 caracteres.');
+  if(n1!==n2)return authErr('As senhas não coincidem.');
+  const btn=event&&event.target;if(btn)btn.disabled=true;
+  const {error}=await sb.auth.updateUser({password:n1});
+  if(btn)btn.disabled=false;
+  if(error)return authErr(error.message||'Não foi possível salvar a senha.');
+  try{history.replaceState(null,'',location.origin+location.pathname);}catch(e){}
+  RECOVERY=false;await afterAuth();toast('Senha redefinida com sucesso!');
+}
 function telaMensagem(t,d){hideAdmin();const b=authBox();b.style.display='flex';b.innerHTML=`<div class="auth-card" style="text-align:center"><div class="auth-wm">Flow</div><div class="auth-by">by Lidera</div><div style="font-size:17px;font-weight:700;margin:10px 0 6px;font-family:'Fraunces',serif">${t}</div><div style="font-size:13.5px;color:var(--muted);line-height:1.5">${d}</div><button class="btn btn-ghost" style="margin-top:18px" onclick="logout()">Sair</button></div>`;}
 
 /* ---- BANNER (admin vendo cliente) ---- */
@@ -1765,6 +1838,7 @@ async function addAtividade(orgId,nome){const titulo=prompt('Título da atividad
   await sb.from('atividades').insert({org_id:orgId,titulo,descricao:desc,status:'aberta'});toast('Atividade criada');closeModal();atividadesCliente(orgId,nome);}
 
 applyTheme((function(){try{return localStorage.getItem('flow_theme')||'light';}catch(e){return 'light';}})());
+if(sb)sb.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY'){RECOVERY=true;telaNovaSenha();}});
 bootApp();
 </script>
 </body>
