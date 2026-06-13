@@ -256,6 +256,75 @@ body.dark .empty svg{opacity:.4}
   table{font-size:12px}
   a[href]:after{content:''}
 }
+/* =====================================================================
+   UX v2 — polimento premium (gradientes navy→dourado, micro-interações)
+   ===================================================================== */
+
+/* fundo com profundidade sutil */
+body{background:radial-gradient(1100px 520px at 85% -10%, rgba(29,53,115,.06), transparent 60%), var(--bg)}
+body.dark{background:radial-gradient(1100px 520px at 85% -10%, rgba(164,138,87,.07), transparent 60%), var(--bg)}
+::selection{background:rgba(164,138,87,.32)}
+
+/* scrollbar discreta e themeada */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#C7CEDC;border-radius:8px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:#AEB8CC;border:2px solid transparent;background-clip:content-box}
+body.dark ::-webkit-scrollbar-thumb{background:#33415F;border:2px solid transparent;background-clip:content-box}
+
+/* sidebar: navy com profundidade + marca em gradiente */
+.sidebar{background:linear-gradient(180deg,#234180 0%,#1D3573 52%,#16294F 100%)}
+.brand .wm{background:linear-gradient(120deg,#FFFFFF 35%,var(--gold-soft));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.brand .by{-webkit-text-fill-color:var(--gold-soft)}
+.nav .lbl{color:rgba(214,190,140,.55)}
+.nav a.active{background:linear-gradient(90deg,rgba(255,255,255,.17),rgba(255,255,255,.05))}
+
+/* topbar com fio dourado */
+.topbar{position:relative}
+.topbar::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(90deg,var(--gold) 0%,rgba(164,138,87,.25) 35%,transparent 70%);pointer-events:none}
+
+/* botões: gradiente + elevação */
+.btn{transition:transform .16s ease, box-shadow .16s ease, background .16s ease, border-color .16s ease}
+.btn:active{transform:translateY(0) scale(.97)}
+.btn-primary{background:linear-gradient(135deg,#2B4C99 0%,#1D3573 100%);box-shadow:0 2px 10px rgba(29,53,115,.28)}
+.btn-primary:hover{background:linear-gradient(135deg,#33549F 0%,#24408A 100%);transform:translateY(-1px);box-shadow:0 6px 16px rgba(29,53,115,.36)}
+.btn-gold{background:linear-gradient(135deg,#C8AE7B 0%,#A48A57 100%);box-shadow:0 2px 10px rgba(164,138,87,.32)}
+.btn-gold:hover{background:linear-gradient(135deg,#CDB484 0%,#94793F 100%);transform:translateY(-1px);box-shadow:0 6px 16px rgba(164,138,87,.4)}
+body.dark .btn-primary{background:linear-gradient(135deg,#54719F 0%,#3A5790 100%)}
+body.dark .btn-primary:hover{background:linear-gradient(135deg,#5F7DAD 0%,#44639E 100%)}
+
+/* KPIs e cards de cliente: vida no hover + filete de valor */
+.kpi,.client-card{transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;position:relative;overflow:hidden}
+.kpi:hover,.client-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--gold-soft)}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--navy),var(--gold));opacity:0;transition:opacity .2s}
+.kpi:hover::after{opacity:1}
+.client-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--navy),var(--gold))}
+
+/* HERO do dashboard: navy premium com brilho dourado */
+.hero-card{background:linear-gradient(135deg,#24417F 0%,#1D3573 55%,#16294F 100%);border:none;color:#fff;position:relative;overflow:hidden}
+.hero-card::after{content:'';position:absolute;top:-60px;right:-40px;width:340px;height:220px;background:radial-gradient(closest-side,rgba(194,168,117,.28),transparent);pointer-events:none}
+.hero-card .hero-sub{font-size:13px;color:rgba(255,255,255,.72)}
+.hero-card .dash-pill{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.18)}
+.hero-card .dash-pill span{color:rgba(255,255,255,.62)}
+.hero-card .dash-pill b{color:#fff}
+body.dark .hero-card{background:linear-gradient(135deg,#22386B 0%,#16244A 60%,#0E1934 100%)}
+@media print{.hero-card{background:#fff!important;color:#15191f!important;border:1px solid #ccc!important}.hero-card .hero-sub{color:#555!important}}
+
+/* tela de login: fundo premium + cartão com assinatura dourada */
+#authScreen{background:radial-gradient(900px 520px at 72% -8%, rgba(194,168,117,.25), transparent 55%), linear-gradient(160deg,#27457f 0%,#1D3573 52%,#101F42 100%)}
+#authScreen .auth-card{border-top:4px solid var(--gold);box-shadow:0 24px 70px rgba(5,12,30,.45)}
+#authScreen .auth-wm{background:linear-gradient(120deg,var(--navy),var(--gold));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+
+/* alertas legíveis no tema escuro */
+body.dark .alert-green{color:#8FDDBA}
+body.dark .alert-amber{color:#EBC98B}
+body.dark .alert-red{color:#F2A8A1}
+
+/* tabelas e modais: toques finos */
+thead th{letter-spacing:.7px}
+.modal{border-top:4px solid var(--gold)}
+.calc-box{background:linear-gradient(135deg,#24417F,#16294F)}
+.cloud-banner{background:linear-gradient(90deg,#A48A57,#8d743f)}
 </style>
 </head>
 <body>
@@ -571,9 +640,9 @@ function viewDashboard(){
 
   $('#view').innerHTML=`
   <!-- Cabeçalho com status + pills -->
-  <div class="card card-pad" style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">
+  <div class="card card-pad hero-card" style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">
     <div style="display:flex;align-items:center;gap:14px">
-      <div><div style="font-size:13px;color:var(--muted)">Painel de Controle · ${hoje}</div>
+      <div><div class="hero-sub">Painel de Controle · ${hoje}</div>
       <div style="font-size:20px;font-weight:700;font-family:'Fraunces',serif;margin-top:2px">Visão geral dos índices financeiros</div></div>
       <span class="tag ${status[1]}" style="font-size:12.5px;padding:5px 12px">● ${status[0]}</span>
     </div>
@@ -1621,7 +1690,7 @@ async function logout(){if(sb)await sb.auth.signOut();CLOUD=false;ORG=null;PERFI
 function telaMensagem(t,d){hideAdmin();const b=authBox();b.style.display='flex';b.innerHTML=`<div class="auth-card" style="text-align:center"><div class="auth-wm">Flow</div><div class="auth-by">by Lidera</div><div style="font-size:17px;font-weight:700;margin:10px 0 6px;font-family:'Fraunces',serif">${t}</div><div style="font-size:13.5px;color:var(--muted);line-height:1.5">${d}</div><button class="btn btn-ghost" style="margin-top:18px" onclick="logout()">Sair</button></div>`;}
 
 /* ---- BANNER (admin vendo cliente) ---- */
-function bannerCloud(){let bn=document.getElementById('cloudBanner');if(ADMIN_MODE){if(!bn){bn=document.createElement('div');bn.id='cloudBanner';bn.className='cloud-banner';document.body.insertBefore(bn,document.body.firstChild);}bn.style.display='flex';bn.innerHTML=`👁️ Você está vendo o cliente: <b style="margin:0 auto 0 4px">${(ORG&&ORG.nome)||''}</b><button onclick="voltarAdmin()">← Voltar ao painel</button>`;}else if(bn){bn.style.display='none';}}
+function bannerCloud(){let bn=document.getElementById('cloudBanner');if(ADMIN_MODE){if(!bn){bn=document.createElement('div');bn.id='cloudBanner';bn.className='cloud-banner';const m=document.querySelector('.main');m.insertBefore(bn,m.firstChild);}bn.style.display='flex';bn.innerHTML=`👁️ Você está vendo o cliente: <b style="margin:0 auto 0 4px">${(ORG&&ORG.nome)||''}</b><button onclick="voltarAdmin()">← Voltar ao painel</button>`;}else if(bn){bn.style.display='none';}}
 
 /* ---- ADMIN ---- */
 function adminBox(){let b=document.getElementById('adminScreen');if(!b){b=document.createElement('div');b.id='adminScreen';b.style.cssText='position:fixed;inset:0;z-index:250;background:var(--bg);overflow:auto';document.body.appendChild(b);}return b;}
