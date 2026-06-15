@@ -908,10 +908,10 @@ function baixarTemplateInsumos(){
     </div></div>`);
 }
 function insumoAOA(){
-  const header=['Nome','Categoria','Unidade','Quantidade comprada','Valor pago (R$)'];
+  const header=['Produto/Insumo','Grupo','Fornecedor','Peso/Conteúdo','Unidade','Valor Embalagem'];
   const prontos=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado');
-  const rows=prontos.length?prontos.map(i=>[i.nome,i.cat,uSym(i.uni),i.qtd,i.preco])
-    :[['Peito de frango','Proteínas','kg',1,19.5],['Leite integral','Laticínios','lt',1,5.2],['Pão de hambúrguer','Padaria','un',12,14.4]];
+  const rows=prontos.length?prontos.map(i=>[i.nome,i.cat,i.fornecedor||'',i.qtd,uSym(i.uni),i.preco])
+    :[['Peito de frango','Proteínas','Distribuidora Central',1,'kg',19.5],['Leite integral','Laticínios','',1,'lt',5.2],['Pão de hambúrguer','Padaria','',12,'un',14.4]];
   return [header,...rows];
 }
 async function exportarInsumos(fmt){const aoa=insumoAOA();
@@ -947,17 +947,20 @@ function aplicarImportInsumos(rows){rows=(rows||[]).filter(r=>r&&r.some(c=>(c||'
   if(!rows.length)return toast('Planilha vazia');
   const head=rows[0].map(c=>(c||'').toString().toLowerCase());
   const find=(...keys)=>head.findIndex(h=>keys.some(k=>h.indexOf(k)>=0));
-  let iNome=find('nome','insumo','produto'),iCat=find('categ'),iUni=find('unid','und'),iQtd=find('quant','qtd','compra'),iVal=find('valor','pre','custo');
+  let iNome=find('produto','insumo','nome'),iCat=find('grupo','categ'),iForn=find('fornec'),iUni=find('unidade','unid','und'),iQtd=find('peso','conteúdo','conteudo','quant','qtd','compra'),iVal=find('embalagem','valor','preç','pre');
   let start=1;
-  if(iNome<0){iNome=0;iCat=1;iUni=2;iQtd=3;iVal=4;start=0;}
+  if(iNome<0){iNome=0;iCat=1;iForn=-1;iUni=2;iQtd=3;iVal=4;start=0;}
+  DB.fin=DB.fin||{};DB.fin.fornecedores=DB.fin.fornecedores||[];
   let n=0;
   for(let r=start;r<rows.length;r++){const row=rows[r]||[];const nome=(row[iNome]||'').toString().trim();if(!nome)continue;
     const cat=((iCat>=0&&row[iCat])?row[iCat]:'Mercearia').toString().trim()||'Mercearia';
+    const forn=(iForn>=0&&row[iForn]?row[iForn]:'').toString().trim();
     const uni=normUni(iUni>=0?row[iUni]:'un');
     const qtd=parseNumBR(iQtd>=0?row[iQtd]:1)||1;
     const preco=parseNumBR(iVal>=0?row[iVal]:0);
-    const nid=uid();DB.insumos[nid]={id:nid,nome,cat,tipo:'pronto',uni,qtd,preco,fornecedor:''};
+    const nid=uid();DB.insumos[nid]={id:nid,nome,cat,tipo:'pronto',uni,qtd,preco,fornecedor:forn};
     if(cat&&!catList('insumo').includes(cat))dbCats().insumo.push(cat);
+    if(forn&&!DB.fin.fornecedores.some(f=>(f.nome||'').toLowerCase()===forn.toLowerCase()))DB.fin.fornecedores.push({id:uid(),nome:forn,contato:''});
     n++;}
   if(!n)return toast('Nenhuma linha válida encontrada');
   save();viewInsumos();toast(n+' insumo(s) importado(s)');
