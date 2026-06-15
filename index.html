@@ -330,6 +330,39 @@ body.dark .alert-red{color:#F2A8A1}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield;appearance:textfield}
 
+/* botão editar dados (rodapé sidebar) */
+.side-edit{display:block;width:100%;text-align:left;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.92);font-size:12.5px;font-weight:600;padding:9px 11px;border-radius:9px;cursor:pointer;margin-bottom:12px;transition:.15s}
+.side-edit:hover{background:rgba(194,168,117,.22);border-color:var(--gold-soft);color:#fff}
+
+/* WIZARD / ANAMNESE */
+#wizScreen{position:fixed;inset:0;z-index:400;display:flex;flex-direction:column;background:radial-gradient(900px 520px at 78% -10%,rgba(194,168,117,.20),transparent 55%),linear-gradient(160deg,#27457f 0%,#1D3573 52%,#101F42 100%);overflow:auto}
+.wiz-top{display:flex;align-items:center;gap:16px;padding:18px 28px;color:#fff}
+.wiz-top .wm{font-family:'Fraunces',serif;font-size:22px;font-weight:600}
+.wiz-top .wm .by{font-family:'Inter',sans-serif;font-size:12px;color:var(--gold-soft);margin-left:4px}
+.wiz-step-lbl{margin-left:auto;font-size:12.5px;color:rgba(255,255,255,.8);font-weight:600;letter-spacing:.4px}
+.wiz-prog{height:5px;background:rgba(255,255,255,.14);margin:0 28px;border-radius:99px;overflow:hidden}
+.wiz-prog>i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#E7D3A8);border-radius:99px;transition:width .3s}
+.wiz-grupo{padding:6px 28px 0;color:var(--gold-soft);font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+.wiz-body{flex:1;display:flex;justify-content:center;align-items:flex-start;padding:18px 28px 30px}
+.wiz-card{width:100%;max-width:920px;background:var(--card);border-radius:18px;box-shadow:0 24px 70px rgba(5,12,30,.45);border-top:4px solid var(--gold);overflow:hidden;display:grid;grid-template-columns:300px 1fr}
+.wiz-ctx{background:linear-gradient(160deg,#24417F,#16294F);color:#fff;padding:26px 24px}
+.wiz-ctx .tag{font-size:11px;letter-spacing:1.5px;color:var(--gold-soft);font-weight:700}
+.wiz-ctx h2{font-family:'Fraunces',serif;font-size:23px;font-weight:600;margin:8px 0 10px;line-height:1.15}
+.wiz-ctx p{font-size:13.5px;color:rgba(255,255,255,.8);line-height:1.55}
+.wiz-resp{padding:26px 26px 22px}
+.wiz-resp .resp-lbl{font-size:11px;letter-spacing:1.4px;color:var(--soft);font-weight:700;text-transform:uppercase;margin-bottom:14px}
+.wiz-foot{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);padding:16px 26px;background:var(--bg)}
+.wiz-foot .spacer{flex:1}
+.wiz-sub{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;position:relative;background:var(--card)}
+.wiz-sub .sub-h{font-size:11px;font-weight:700;letter-spacing:.6px;color:var(--gold);text-transform:uppercase;margin-bottom:10px}
+.wiz-sub .mini-del{position:absolute;top:10px;right:10px}
+.wiz-calc{background:var(--amber-bg);border:1px solid var(--gold-soft);border-radius:10px;padding:10px 12px;font-size:13px;margin-top:6px}
+.wiz-seg{display:flex;gap:8px;flex-wrap:wrap}
+.wiz-seg button{flex:1;min-width:90px;padding:11px 10px;border:1px solid var(--line);border-radius:11px;background:var(--card);font-weight:600;font-size:13px;color:var(--muted);cursor:pointer;transition:.15s}
+.wiz-seg button.on{background:linear-gradient(135deg,#2B4C99,#1D3573);color:#fff;border-color:transparent}
+@media(max-width:720px){.wiz-card{grid-template-columns:1fr}.wiz-ctx{padding:20px}}
+body.dark .wiz-foot{background:#0E1626}
+
 /* gerenciar categorias */
 .cat-scroll{max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:7px}
 .cat-row{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px}
@@ -372,7 +405,10 @@ thead th{letter-spacing:.7px}
     <a data-route="equipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M21 20a6 6 0 0 0-3-5"/></svg>Equipe</a>
     <a data-route="conta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Configurações</a>
   </nav>
-  <div class="side-foot"><b id="footName">Seu Restaurante</b><br/><span id="footStats">—</span></div>
+  <div class="side-foot">
+    <button class="side-edit" onclick="abrirWizard(1)" title="Preencher / editar os dados do negócio">✎ Editar dados do negócio</button>
+    <b id="footName">Seu Restaurante</b><br/><span id="footStats">—</span>
+  </div>
 </aside>
 <div class="backdrop hidden" id="backdrop" onclick="toggleSidebar(false)"></div>
 
@@ -518,7 +554,9 @@ function custoPorKgFicha(ficha){ // custo de 1 Kg do prato pronto
   const kg=pesoFichaKg(ficha), ct=custoFicha(ficha);
   return kg>0? ct/kg : custoProduto(ficha);
 }
-function impostoVarPct(){return DB.fin.regime==='simples'?(DB.fin.aliquota||0):0;}
+function impostoVarPct(){return DB.fin.mei?0:(DB.fin.aliquota||0);}
+function impostoMensal(fat){return DB.fin.mei?(DB.fin.impostoFixo||0):fat*((DB.fin.aliquota||0)/100);}
+function regimeLabel(){if(DB.fin.mei)return 'MEI / DAS';return DB.fin.regime==='presumido'?'Lucro Presumido':DB.fin.regime==='lucroReal'?'Lucro Real':'Simples Nacional';}
 function metricasCanal(ficha,canal){ // canal: 'balcao' | 'ifood'
   const custo=custoProduto(ficha);
   const preco = canal==='ifood' ? (ficha.precoIfood||ficha.precoVenda||0) : (ficha.precoVenda||0);
@@ -543,12 +581,28 @@ function metricasFicha(ficha){ // mistura por canal usando mix iFood global
 }
 function healthFicha(cmv){return cmv<=30?'saudavel':cmv<=35?'atencao':'critico';}
 function fichasVendaveis(){return Object.values(DB.fichas);}
-function folhaTotal(){return (DB.fin.funcionarios||[]).reduce((s,f)=>s+(f.salario||0),0);}
-function proLaboreTotal(){return (DB.fin.socios||[]).reduce((s,x)=>s+(x.proLabore||0),0);}
+function custoFuncionario(f){const base=(f.salario||0)+(f.premio||0);
+  const benef=(f.vt||0)+((f.custoRefeicaoDia||0)*(f.diasTrabalhados||0)*(f.qtdVales||0));
+  const prov=((f.regime||'CLT')==='CLT')?base*((DB.fin.encargoCLT||32)/100):0;
+  return {base,benef,prov,total:base+benef+prov};}
+function folhaTotal(){return (DB.fin.funcionarios||[]).reduce((s,f)=>s+custoFuncionario(f).total,0);}
+function custoSocio(s){return (s.proLabore||0)*(1+((DB.fin.inssSocio||11)/100));}
+function proLaboreTotal(){return (DB.fin.socios||[]).reduce((s,x)=>s+custoSocio(x),0);}
+function custosEstruturais(){const f=DB.fin;let t=0;
+  const im=f.imovel||{};t+=(im.aluguel||0)+((im.iptuAnual||0)/12);
+  const u=f.utilidades||{};t+=(u.energia||0)+(u.agua||0)+(u.internet||0)+(u.telefone||0)+(u.alarme||0)+(u.seguranca||0);
+  const sr=f.servicosRec||{};t+=(sr.dedetizacao||0)+(sr.lixo||0)+(sr.limpeza||0);
+  const op=f.operacionais||{};t+=(op.gas||0)+(op.oleo||0)+(op.descartaveis||0);
+  (f.servicosMensais||[]).forEach(s=>t+=(s.valor||0));
+  (f.equipamentos||[]).forEach(e=>{const anos=(e.vidaUtilAnos||5)||5;t+=(e.valorPago||0)/(anos*12);});
+  const si=f.sistemas||{};t+=(si.software||0)+(si.contabil||0)+(si.aluguelMaquininha||0);
+  (f.veiculos||[]).forEach(v=>t+=(v.parcela||0)+((v.ipvaAnual||0)/12)+((v.seguroAnual||0)/12)+(v.combustivel||0));
+  const mk=f.marketing||{};t+=(mk.agencia||0)+(mk.trafego||0)+((mk.brindeUnit||0)*(mk.brindeQtd||0));
+  return t;}
 function custosFixosTotais(){
   const desp=(DB.fin.custosFixos||[]).reduce((s,d)=>s+(d.valor||0),0);
   const prov=(DB.fin.provisoes||[]).reduce((s,d)=>s+(d.valor||0),0);
-  return desp+folhaTotal()+proLaboreTotal()+prov;
+  return desp+custosEstruturais()+folhaTotal()+proLaboreTotal()+prov;
 }
 function totaisGerais(){
   let receitaEst=0,custoTot=0,vendas=0,recIfoodEst=0,recDiretoEst=0;
@@ -561,10 +615,10 @@ function totaisGerais(){
   const escala=receitaEst>0?faturamento/receitaEst:1;
   const recIfood=recIfoodEst*escala, recDireto=recDiretoEst*escala, cmvRS=custoTot*escala;
   const comissaoRS=recIfood*((DB.fin.comissaoIfood||0)/100);
-  const impostoRS=DB.fin.regime==='simples'?faturamento*((DB.fin.aliquota||0)/100):(DB.fin.impostoFixo||0);
+  const impostoRS=impostoMensal(faturamento);
   const taxaCartaoRS=recDireto*((DB.fin.taxaCartao||0)/100);
   const custosVar=cmvRS+comissaoRS+impostoRS+taxaCartaoRS;
-  const fixosBase=(DB.fin.custosFixos||[]).reduce((s,d)=>s+(d.valor||0),0);
+  const fixosBase=(DB.fin.custosFixos||[]).reduce((s,d)=>s+(d.valor||0),0)+custosEstruturais();
   const provisoesRS=(DB.fin.provisoes||[]).reduce((s,d)=>s+(d.valor||0),0);
   const folha=folhaTotal(), prol=proLaboreTotal();
   const fixos=fixosBase+folha+prol+provisoesRS;
@@ -604,7 +658,22 @@ function go(route){current=route;document.querySelectorAll('#nav a').forEach(a=>
   $('#pageTitle').textContent=ROUTES[route].title;$('#topActions').innerHTML='';ROUTES[route].render();window.scrollTo(0,0);toggleSidebar(false);}
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.route);}));
 function toggleSidebar(open){const sb=$('#sidebar'),bd=$('#backdrop');if(open===undefined)open=!sb.classList.contains('open');sb.classList.toggle('open',open);bd.classList.toggle('hidden',!open);}
-function renderFoot(){const t=totaisGerais();const regs=(DB.cmvRegistros||[]).map(cmvRegCalc).sort((a,b)=>(b.data||'').localeCompare(a.data||''));const real=regs.length?regs[0].pct:null;$('#footStats').textContent=`CMV teó. ${fmtPct(t.cmv)}${real!=null?' · real '+fmtPct(real):''}`;const fn=$('#footName');if(fn)fn.textContent=(DB.conta&&DB.conta.restaurante)||'Seu Restaurante';}
+function normData(){
+  DB.fin=DB.fin||{};const f=DB.fin;
+  if(f.regime==='mei'){f.mei=true;f.regime='simples';}            // migra regime antigo
+  if(f.mei==null)f.mei=false;
+  if(f.regime==null||!['simples','presumido','lucroReal'].includes(f.regime))f.regime='simples';
+  if(f.aliquota==null)f.aliquota=6; if(f.impostoFixo==null)f.impostoFixo=75;
+  if(f.encargoCLT==null)f.encargoCLT=32; if(f.inssSocio==null)f.inssSocio=11;
+  if(f.comissaoIfood==null)f.comissaoIfood=27; if(f.taxaCartao==null)f.taxaCartao=2.5;
+  f.imovel=f.imovel||{}; f.utilidades=f.utilidades||{}; f.servicosRec=f.servicosRec||{}; f.operacionais=f.operacionais||{}; f.sistemas=f.sistemas||{}; f.marketing=f.marketing||{};
+  f.servicosMensais=f.servicosMensais||[]; f.equipamentos=f.equipamentos||[]; f.veiculos=f.veiculos||[]; f.marketplaces=f.marketplaces||[]; f.operadorasCartao=f.operadorasCartao||[]; f.historicoFat=f.historicoFat||[];
+  f.funcionarios=f.funcionarios||[]; f.socios=f.socios||[];
+  (f.funcionarios||[]).forEach(x=>{if(x.regime==null)x.regime='CLT';});
+  DB.conta=DB.conta||{};
+  if(DB.onboardingFeito==null)DB.onboardingFeito=(Object.keys(DB.insumos||{}).length>0||Object.keys(DB.fichas||{}).length>0);
+}
+function renderFoot(){normData();const t=totaisGerais();const regs=(DB.cmvRegistros||[]).map(cmvRegCalc).sort((a,b)=>(b.data||'').localeCompare(a.data||''));const real=regs.length?regs[0].pct:null;$('#footStats').textContent=`CMV teó. ${fmtPct(t.cmv)}${real!=null?' · real '+fmtPct(real):''}`;const fn=$('#footName');if(fn)fn.textContent=(DB.conta&&DB.conta.restaurante)||'Seu Restaurante';}
 const icoMoon=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>`;
 const icoSun=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>`;
 function applyTheme(t){document.body.classList.toggle('dark',t==='dark');try{localStorage.setItem('flow_theme',t);}catch(e){}const b=document.getElementById('themeBtn');if(b)b.innerHTML=t==='dark'?icoSun:icoMoon;const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',t==='dark'?'#0E1626':'#1D3573');}
@@ -1169,7 +1238,7 @@ function viewFaturamento(){
         <tr><td>Faturamento</td><td class="num"><b>${fmtBRL(t.faturamento)}</b></td></tr>
         <tr><td>(–) CMV (insumos + embalagem)</td><td class="num" style="color:var(--red)">${fmtBRL(-t.custoTot)}</td></tr>
         <tr><td>(–) Comissão iFood</td><td class="num" style="color:var(--red)">${fmtBRL(-comissaoIfoodRS)}</td></tr>
-        <tr><td>(–) Impostos ${DB.fin.regime==='simples'?'(Simples '+fmtPct(DB.fin.aliquota)+')':'(MEI fixo)'}</td><td class="num" style="color:var(--red)">${fmtBRL(-(DB.fin.regime==='simples'?t.faturamento*DB.fin.aliquota/100:DB.fin.impostoFixo))}</td></tr>
+        <tr><td>(–) Impostos (${regimeLabel()}${DB.fin.mei?'':' '+fmtPct(DB.fin.aliquota)})</td><td class="num" style="color:var(--red)">${fmtBRL(-impostoMensal(t.faturamento))}</td></tr>
         <tr><td>(–) Custos fixos + pessoal</td><td class="num" style="color:var(--red)">${fmtBRL(-t.fixos)}</td></tr>
         <tr style="border-top:2px solid var(--navy)"><td><b>(=) Lucro líquido</b></td><td class="num"><b style="color:${t.lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(t.lucro)}</b></td></tr>
       </tbody></table>
@@ -1192,7 +1261,7 @@ function viewDRE(){
   const fichas=fichasVendaveis().map(f=>({f,m:metricasFicha(f)}));
   const recIfood=fichas.reduce((s,x)=>s+x.m.ifood.preco*x.f.vendasMes*(DB.fat.mixIfood/100),0);
   const comissao=recIfood*(DB.fin.comissaoIfood/100);
-  const imposto=DB.fin.regime==='simples'?t.faturamento*DB.fin.aliquota/100:DB.fin.impostoFixo;
+  const imposto=impostoMensal(t.faturamento);
   const fixos=t.fixos;
   const lucroBruto=t.faturamento-t.custoTot;
   const lucro=lucroBruto-comissao-imposto-fixos;
@@ -1207,7 +1276,7 @@ function viewDRE(){
         <tr class="total"><td>(=) Lucro bruto</td><td class="num">${fmtBRL(lucroBruto)}</td><td class="num">${fmtPct(pct(lucroBruto))}</td></tr>
         <tr class="grp"><td>(–) Despesas variáveis</td><td class="num"></td><td class="num"></td></tr>
         <tr class="ind"><td>Comissão iFood</td><td class="num">${fmtBRL(comissao)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(comissao))}</td></tr>
-        <tr class="ind"><td>Impostos ${DB.fin.regime==='simples'?'(Simples Nacional)':'(MEI/DAS)'}</td><td class="num">${fmtBRL(imposto)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(imposto))}</td></tr>
+        <tr class="ind"><td>Impostos (${regimeLabel()})</td><td class="num">${fmtBRL(imposto)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(imposto))}</td></tr>
         <tr class="grp"><td>(–) Custos fixos + pessoal</td><td class="num" style="color:var(--red)">${fmtBRL(-fixos)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(fixos))}</td></tr>
         ${(DB.fin.custosFixos||[]).map(x=>`<tr class="ind"><td>${x.nome}</td><td class="num">${fmtBRL(x.valor)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(x.valor))}</td></tr>`).join('')}
         <tr class="ind"><td>Folha (funcionários)</td><td class="num">${fmtBRL(t.folha)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(t.folha))}</td></tr>
@@ -1330,14 +1399,20 @@ function finParam(){
   const fin=DB.fin;
   return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start" class="dash-grid">
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Regime tributário</div><div class="desc">Define o imposto no preço</div></div></div>
+      <div class="section-head"><div><div class="ttl">Regime tributário</div><div class="desc">Define o imposto no preço</div></div><button class="btn btn-ghost btn-sm" onclick="abrirWizard(1)">✎ Editar anamnese</button></div>
       <div class="chan-tabs" style="margin-top:0">
-        <button class="${fin.regime==='simples'?'on':''}" onclick="DB.fin.regime='simples';save();viewFinanceiro()">Simples Nacional</button>
-        <button class="${fin.regime==='mei'?'on':''}" onclick="DB.fin.regime='mei';save();viewFinanceiro()">MEI / DAS (fixo)</button>
+        <button class="${!fin.mei&&fin.regime==='simples'?'on':''}" onclick="DB.fin.mei=false;DB.fin.regime='simples';save();viewFinanceiro()">Simples</button>
+        <button class="${!fin.mei&&fin.regime==='presumido'?'on':''}" onclick="DB.fin.mei=false;DB.fin.regime='presumido';if(!DB.fin.aliquota)DB.fin.aliquota=13.33;save();viewFinanceiro()">Presumido</button>
+        <button class="${!fin.mei&&fin.regime==='lucroReal'?'on':''}" onclick="DB.fin.mei=false;DB.fin.regime='lucroReal';save();viewFinanceiro()">Lucro Real</button>
+        <button class="${fin.mei?'on':''}" onclick="DB.fin.mei=true;save();viewFinanceiro()">MEI</button>
       </div>
-      ${fin.regime==='simples'
-        ?`<div class="field"><label>Alíquota Simples Nacional <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.aliquota}" onchange="DB.fin.aliquota=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`
-        :`<div class="field"><label>Imposto fixo mensal (DAS) <span class="hint">R$</span></label><input class="input" type="number" step="0.01" value="${fin.impostoFixo}" onchange="DB.fin.impostoFixo=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`}
+      ${fin.mei
+        ?`<div class="field"><label>Imposto fixo mensal (DAS) <span class="hint">R$</span></label><input class="input" type="number" step="0.01" value="${fin.impostoFixo}" onchange="DB.fin.impostoFixo=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`
+        :`<div class="field"><label>Alíquota efetiva de impostos <span class="hint">% — confirme com seu contador</span></label><input class="input" type="number" step="0.1" value="${fin.aliquota}" onchange="DB.fin.aliquota=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`}
+      <div class="grid-2">
+        <div class="field"><label>Encargos CLT <span class="hint">% sobre salário</span></label><input class="input" type="number" step="1" value="${fin.encargoCLT!=null?fin.encargoCLT:32}" onchange="DB.fin.encargoCLT=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+        <div class="field"><label>INSS sócio (pró-labore) <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.inssSocio!=null?fin.inssSocio:11}" onchange="DB.fin.inssSocio=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+      </div>
       <div class="grid-2">
         <div class="field"><label>Comissão marketplace <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.comissaoIfood}" onchange="DB.fin.comissaoIfood=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
         <div class="field"><label>Taxa de cartão <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaCartao}" onchange="DB.fin.taxaCartao=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
@@ -1812,6 +1887,7 @@ async function entrarComoCliente(orgId){
   DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();
   CLOUD=true;ADMIN_MODE=false;hideAdmin();bannerCloud();
   renderFoot();go('dashboard');
+  if(!DB.onboardingFeito)setTimeout(()=>abrirWizard(1),350); // anamnese no 1º acesso
 }
 
 /* ---- LOGIN ---- */
@@ -1973,6 +2049,120 @@ async function atividadesCliente(orgId,nome){let ats=[];try{ats=(await sb.from('
   <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal()">Fechar</button></div>`);}
 async function addAtividade(orgId,nome){const titulo=prompt('Título da atividade:');if(!titulo)return;const desc=prompt('Descrição (opcional):')||'';
   await sb.from('atividades').insert({org_id:orgId,titulo,descricao:desc,status:'aberta'});toast('Atividade criada');closeModal();atividadesCliente(orgId,nome);}
+
+/* ===================== ANAMNESE / ONBOARDING (WIZARD) ===================== */
+let wizState={step:1};
+function wzGet(path){const ps=path.split('.');let o=DB;for(const p of ps){if(o==null)return undefined;o=o[p];}return o;}
+function wzSetPath(path,val){const ps=path.split('.');let o=DB;for(let i=0;i<ps.length-1;i++){o[ps[i]]=o[ps[i]]||{};o=o[ps[i]];}o[ps[ps.length-1]]=val;save();}
+function fNum(path,label,hint,recalc){const v=wzGet(path);return `<div class="field"><label>${label}${hint?` <span class="hint">${hint}</span>`:''}</label><input class="input" type="number" step="0.01" value="${(v!=null&&v!=='')?v:''}" placeholder="0,00" oninput="wzSetPath('${path}',parseFloat(this.value)||0)" ${recalc?'onchange="wizRender()"':''}></div>`;}
+function fInt(path,label,hint,recalc){const v=wzGet(path);return `<div class="field"><label>${label}${hint?` <span class="hint">${hint}</span>`:''}</label><input class="input" type="number" step="1" value="${(v!=null&&v!=='')?v:''}" placeholder="0" oninput="wzSetPath('${path}',parseFloat(this.value)||0)" ${recalc?'onchange="wizRender()"':''}></div>`;}
+function fTxt(path,label,hint,ph){const v=wzGet(path);return `<div class="field"><label>${label}${hint?` <span class="hint">${hint}</span>`:''}</label><input class="input" value="${esc(v||'')}" placeholder="${ph||''}" oninput="wzSetPath('${path}',this.value)"></div>`;}
+function fSel(path,label,opts){const v=wzGet(path)||'';return `<div class="field"><label>${label}</label><select class="input" onchange="wzSetPath('${path}',this.value)"><option value="">— selecione —</option>${opts.map(o=>`<option ${o===v?'selected':''}>${o}</option>`).join('')}</select></div>`;}
+function fSeg(path,label,opts){const v=wzGet(path);return `<div class="field"><label>${label}</label><div class="wiz-seg">${opts.map(o=>`<button type="button" class="${String(v)===String(o.v)?'on':''}" onclick="wzSetPath('${path}',${typeof o.v==='string'?`'${o.v}'`:o.v});wizRender()">${o.l}</button>`).join('')}</div></div>`;}
+function fFoto(path,label){const v=wzGet(path);return `<div class="field"><label>${label} <span class="hint">opcional</span></label><div style="display:flex;align-items:center;gap:12px">${v?`<img src="${v}" style="width:54px;height:54px;border-radius:10px;object-fit:cover;border:1px solid var(--line)">`:''}<label class="btn btn-ghost btn-sm" style="cursor:pointer">${v?'Alterar':'Anexar'} foto<input type="file" accept="image/*" style="display:none" onchange="wzFoto('${path}',this)"></label>${v?`<button class="btn btn-ghost btn-sm" onclick="wzSetPath('${path}','');wizRender()">Remover</button>`:''}</div></div>`;}
+function wzFoto(path,input){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const max=128;let w=img.width,h=img.height;const sc=Math.min(1,max/Math.max(w,h));w=Math.round(w*sc);h=Math.round(h*sc);const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);wzSetPath(path,c.toDataURL('image/jpeg',0.8));wizRender();};img.src=r.result;};r.readAsDataURL(f);}
+function wizAdd(arrPath,obj){const a=wzGet(arrPath);a.push(obj);save();wizRender();}
+function wizDel(arrPath,idx){const a=wzGet(arrPath);a.splice(idx,1);save();wizRender();}
+function subBox(title,inner,arrPath,idx){return `<div class="wiz-sub"><div class="sub-h">${title}</div><button class="mini-del" onclick="wizDel('${arrPath}',${idx})">${icoX}</button>${inner}</div>`;}
+
+const WIZ=[
+ {g:'Perfil do Usuário',t:'Seus dados',ctx:'Como devemos te chamar no sistema? Esses dados aparecem no seu painel.',body:()=>
+   fTxt('conta.nome','Seu nome','','Ex.: Guilherme')+fTxt('conta.whatsapp','WhatsApp','','51 99999-9999')+fFoto('conta.foto','Sua foto')},
+ {g:'Identidade e Equipe',t:'Identidade do negócio',ctx:'O básico do seu estabelecimento e o regime tributário — ele muda como calculamos impostos e encargos.',body:()=>
+   fTxt('conta.restaurante','Nome do restaurante','','Ex.: Restaurante Lidera')
+   +fSel('conta.tipoNegocio','Tipo de negócio',['Buffet / por quilo','À la carte','Fast-food','Hamburgueria','Pizzaria','Cafeteria / Padaria','Bar / Petiscaria','Outro'])
+   +fFoto('conta.logo','Logo da empresa')
+   +fSeg('fin.regime','Regime tributário',[{v:'simples',l:'Simples'},{v:'presumido',l:'Presumido'},{v:'lucroReal',l:'Lucro Real'}])
+   +fSeg('fin.mei','É MEI?',[{v:false,l:'Não'},{v:true,l:'Sim'}])
+   +(wzGet('fin.mei')?fNum('fin.impostoFixo','Imposto fixo mensal (DAS)','R$'):fNum('fin.aliquota','Alíquota efetiva de impostos','% — confirme com seu contador'))},
+ {g:'Identidade e Equipe',t:'Sócios e gestão',ctx:'Cadastre os sócios e o pró-labore (valor fiscal que entra como custo fixo). Mostramos o custo real com INSS.',body:()=>{
+   const a=wzGet('fin.socios')||[];return (a.length?a.map((s,i)=>subBox('Sócio '+(i+1),
+     fTxt('fin.socios.'+i+'.nome','Nome')+fTxt('fin.socios.'+i+'.cargo','Cargo','','Ex.: Sócio Proprietário')
+     +fNum('fin.socios.'+i+'.proLabore','Pró-labore (R$)','',true)+fFoto('fin.socios.'+i+'.foto','Foto')
+     +`<div class="wiz-calc">Custo real (com INSS ${fmtPct(DB.fin.inssSocio||11)}): <b>${fmtBRL(custoSocio(s))}</b></div>`,'fin.socios',i)).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum sócio cadastrado.</div>')
+   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.socios',{nome:'',cargo:'',proLabore:0})">${icoPlus} Adicionar sócio</button>`;}},
+ {g:'Identidade e Equipe',t:'Funcionários',ctx:'Cadastre a equipe. Para CLT calculamos o "custo fantasma" (encargos e provisões) automaticamente.',body:()=>{
+   const a=wzGet('fin.funcionarios')||[];return (a.length?a.map((f,i)=>{const c=custoFuncionario(f);return subBox('Funcionário '+(i+1),
+     fTxt('fin.funcionarios.'+i+'.nome','Nome')+fTxt('fin.funcionarios.'+i+'.cargo','Cargo')
+     +fSeg('fin.funcionarios.'+i+'.regime','Regime',[{v:'CLT',l:'CLT'},{v:'PJ',l:'PJ'},{v:'Diarista',l:'Diarista'}])
+     +`<div class="grid-2">`+fNum('fin.funcionarios.'+i+'.salario','Salário base (R$)','',true)+fNum('fin.funcionarios.'+i+'.premio','Prêmio (R$)','',true)+`</div>`
+     +`<div class="grid-2">`+fNum('fin.funcionarios.'+i+'.vt','Vale transporte (R$)','',true)+fInt('fin.funcionarios.'+i+'.diasTrabalhados','Dias trabalhados/mês','',true)+`</div>`
+     +`<div class="grid-2">`+fInt('fin.funcionarios.'+i+'.qtdVales','Qtd vales/dia','',true)+fNum('fin.funcionarios.'+i+'.custoRefeicaoDia','Custo refeição/dia (R$)','',true)+`</div>`
+     +`<div class="wiz-calc">Salário + benefícios: <b>${fmtBRL(c.base+c.benef)}</b> · Encargos (${(f.regime||'CLT')==='CLT'?fmtPct(DB.fin.encargoCLT||32):'0%'}): <b>${fmtBRL(c.prov)}</b> · <b style="color:var(--navy)">Custo total: ${fmtBRL(c.total)}</b></div>`
+     ,'fin.funcionarios',i);}).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum funcionário cadastrado.</div>')
+   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.funcionarios',{nome:'',cargo:'',regime:'CLT',salario:0,premio:0,vt:0,diasTrabalhados:22,qtdVales:0,custoRefeicaoDia:0})">${icoPlus} Adicionar funcionário</button>`;}},
+ {g:'Infraestrutura',t:'Imóvel',ctx:'Custos com o ponto comercial. O IPTU anual é diluído por 12 no custo mensal.',body:()=>
+   fNum('fin.imovel.aluguel','Valor do aluguel (mensal)','R$')+fNum('fin.imovel.iptuAnual','Valor do IPTU (anual)','R$')},
+ {g:'Infraestrutura',t:'Utilidades básicas',ctx:'Custos mensais de operação do ponto.',body:()=>
+   `<div class="grid-2">`+fNum('fin.utilidades.energia','Energia elétrica','R$')+fNum('fin.utilidades.agua','Água / esgoto','R$')+`</div>`
+   +`<div class="grid-2">`+fNum('fin.utilidades.internet','Internet','R$')+fNum('fin.utilidades.telefone','Telefone','R$')+`</div>`
+   +`<div class="grid-2">`+fNum('fin.utilidades.alarme','Alarme','R$')+fNum('fin.utilidades.seguranca','Segurança / ronda','R$')+`</div>`},
+ {g:'Infraestrutura',t:'Serviços recorrentes',ctx:'Sempre informe o valor MENSAL. Se for trimestral/anual, divida pelo período (ex.: anual R$600 → R$50/mês).',body:()=>
+   `<div class="grid-2">`+fNum('fin.servicosRec.dedetizacao','Dedetização','R$')+fNum('fin.servicosRec.lixo','Lixo especial','R$')+`</div>`
+   +fNum('fin.servicosRec.limpeza','Material de limpeza','R$')},
+ {g:'Infraestrutura',t:'Custos operacionais fixos',ctx:'Gás, óleo e descartáveis. Recomendamos tratar como fixo para simplificar a precificação.',body:()=>
+   `<div class="grid-2">`+fNum('fin.operacionais.gas','Gás de cozinha (média)','R$')+fNum('fin.operacionais.oleo','Óleo / gordura (média)','R$')+`</div>`
+   +fNum('fin.operacionais.descartaveis','Descartáveis (média)','R$')},
+ {g:'Infraestrutura',t:'Outros serviços mensais',ctx:'Adicione serviços recorrentes mensais contratados que ainda não foram listados.',body:()=>{
+   const a=wzGet('fin.servicosMensais')||[];return (a.length?a.map((s,i)=>subBox('Serviço '+(i+1),
+     fTxt('fin.servicosMensais.'+i+'.desc','Descrição','','Ex.: Manutenção freezer')+fNum('fin.servicosMensais.'+i+'.valor','Valor mensal','R$'),'fin.servicosMensais',i)).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum serviço.</div>')
+   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.servicosMensais',{desc:'',valor:0})">${icoPlus} Adicionar serviço</button>`;}},
+ {g:'Ativos e Inteligência',t:'Equipamentos (depreciação)',ctx:'Grandes equipamentos. Calculamos a depreciação mensal pela vida útil (padrão 5 anos).',body:()=>{
+   const a=wzGet('fin.equipamentos')||[];return (a.length?a.map((e,i)=>{const anos=(e.vidaUtilAnos||5)||5;const dep=(e.valorPago||0)/(anos*12);return subBox('Equipamento '+(i+1),
+     fTxt('fin.equipamentos.'+i+'.nome','Equipamento','','Ex.: Freezer')
+     +`<div class="grid-2">`+fNum('fin.equipamentos.'+i+'.valorPago','Valor pago (R$)','',true)+fInt('fin.equipamentos.'+i+'.vidaUtilAnos','Vida útil (anos)','',true)+`</div>`
+     +`<div class="wiz-calc">Depreciação mensal: <b>${fmtBRL(dep)}</b></div>`,'fin.equipamentos',i);}).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum equipamento.</div>')
+   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.equipamentos',{nome:'',valorPago:0,vidaUtilAnos:5})">${icoPlus} Adicionar equipamento</button>`;}},
+ {g:'Ativos e Inteligência',t:'Sistemas e administrativo',ctx:'Softwares, serviços contábeis e aluguel de maquininha — custos administrativos mensais.',body:()=>
+   fNum('fin.sistemas.software','Software / sistema (mensal)','R$')+fNum('fin.sistemas.contabil','Serviços contábeis','R$')+fNum('fin.sistemas.aluguelMaquininha','Aluguel maquininha','R$')},
+ {g:'Ativos e Inteligência',t:'Veículos da operação',ctx:'Custos com veículos da empresa. IPVA e seguro anuais são diluídos por 12.',body:()=>{
+   const a=wzGet('fin.veiculos')||[];return (a.length?a.map((v,i)=>subBox('Veículo '+(i+1),
+     fTxt('fin.veiculos.'+i+'.nome','Veículo','','Ex.: Fiorino')
+     +`<div class="grid-2">`+fNum('fin.veiculos.'+i+'.parcela','Parcela / financ. (mensal)','R$')+fNum('fin.veiculos.'+i+'.combustivel','Combustível / manut. (mensal)','R$')+`</div>`
+     +`<div class="grid-2">`+fNum('fin.veiculos.'+i+'.ipvaAnual','IPVA (anual)','R$')+fNum('fin.veiculos.'+i+'.seguroAnual','Seguro (anual)','R$')+`</div>`,'fin.veiculos',i)).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum veículo.</div>')
+   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.veiculos',{nome:'',parcela:0,ipvaAnual:0,seguroAnual:0,combustivel:0})">${icoPlus} Adicionar veículo</button>`;}},
+ {g:'Marketing e Vendas',t:'Estrutura de marketing',ctx:'Investimento fixo mensal em marketing e tráfego.',body:()=>
+   fNum('fin.marketing.agencia','Agência / freelancer','R$')+fNum('fin.marketing.trafego','Investimento em tráfego pago','R$')
+   +fTxt('fin.marketing.plataforma','Plataforma / canal','','Ex.: Meta ADS')
+   +`<div class="grid-2">`+fNum('fin.marketing.brindeUnit','Custo brinde (unit.)','R$')+fInt('fin.marketing.brindeQtd','Qtd brindes/mês')+`</div>`},
+ {g:'Marketing e Vendas',t:'Marketplaces (delivery)',ctx:'Cadastre seus canais de venda por delivery. A comissão e o % das vendas entram na precificação.',body:()=>{
+   const a=wzGet('fin.marketplaces')||[];return (a.length?a.map((m,i)=>subBox('Canal '+(i+1),
+     fTxt('fin.marketplaces.'+i+'.plataforma','Plataforma','','Ex.: iFood')
+     +`<div class="grid-2">`+fNum('fin.marketplaces.'+i+'.mensalidade','Mensalidade fixa','R$')+fNum('fin.marketplaces.'+i+'.comissao','% Comissão','%')+`</div>`
+     +fNum('fin.marketplaces.'+i+'.pctVendas','% das vendas totais','%'),'fin.marketplaces',i)).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum canal.</div>')
+   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.marketplaces',{plataforma:'',mensalidade:0,comissao:27,pctVendas:0})">${icoPlus} Adicionar canal</button>`;}},
+ {g:'Marketing e Vendas',t:'Taxas de cartão',ctx:'Cadastre suas maquininhas e as taxas de débito e crédito.',body:()=>{
+   const a=wzGet('fin.operadorasCartao')||[];return (a.length?a.map((o,i)=>subBox('Operadora '+(i+1),
+     fTxt('fin.operadorasCartao.'+i+'.operadora','Operadora','','Ex.: Stone, Cielo...')
+     +`<div class="grid-2">`+fNum('fin.operadorasCartao.'+i+'.taxaDebito','Taxa débito (%)','%')+fNum('fin.operadorasCartao.'+i+'.taxaCredito','Taxa crédito (%)','%')+`</div>`,'fin.operadorasCartao',i)).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhuma operadora.</div>')
+   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.operadorasCartao',{operadora:'',taxaDebito:0,taxaCredito:0})">${icoPlus} Adicionar operadora</button>`;}},
+ {g:'Marketing e Vendas',t:'Outros custos fixos',ctx:'Adicione qualquer outro custo fixo mensal que não tenha sido listado.',body:()=>{
+   const a=wzGet('fin.custosFixos')||[];return (a.length?a.map((c,i)=>subBox('Custo '+(i+1),
+     fTxt('fin.custosFixos.'+i+'.nome','Descrição','','Ex.: Manutenção predial')+fNum('fin.custosFixos.'+i+'.valor','Valor mensal','R$'),'fin.custosFixos',i)).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum custo extra.</div>')
+   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.custosFixos',{nome:'',grupo:'Outros',valor:0})">${icoPlus} Adicionar custo</button>`;}},
+ {g:'Marketing e Vendas',t:'Histórico de faturamento',ctx:'Preencha o faturamento bruto dos últimos meses. Recomendamos no mínimo 3 meses.',body:()=>{
+   const a=wzGet('fin.historicoFat')||[];return (a.length?a.map((h,i)=>subBox('Mês '+(i+1),
+     `<div class="grid-2">`+fTxt('fin.historicoFat.'+i+'.mesAno','Mês/Ano','','Ex.: 05/2026')+fNum('fin.historicoFat.'+i+'.valor','Faturamento','R$')+`</div>`,'fin.historicoFat',i)).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum mês informado.</div>')
+   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.historicoFat',{mesAno:'',valor:0})">${icoPlus} Adicionar mês</button>`;}},
+];
+function abrirWizard(step){normData();wizState.step=step||wizState.step||1;let w=document.getElementById('wizScreen');if(!w){w=document.createElement('div');w.id='wizScreen';document.body.appendChild(w);}w.style.display='flex';wizRender();}
+function fecharWizard(){const w=document.getElementById('wizScreen');if(w)w.style.display='none';}
+function wizNav(d){const n=wizState.step+d;if(n<1)return;if(n>WIZ.length)return wizFinish();wizState.step=n;wizRender();window.scrollTo(0,0);}
+function wizSalvarFechar(){save();fecharWizard();toast('Dados salvos');}
+function wizSync(){const f=DB.fin;
+  if((f.marketplaces||[]).length){f.comissaoIfood=f.marketplaces[0].comissao||f.comissaoIfood;const mix=f.marketplaces.reduce((s,m)=>s+(m.pctVendas||0),0);DB.fat.mixIfood=Math.min(100,mix);}
+  const ops=(f.operadorasCartao||[]).filter(o=>o.taxaCredito);if(ops.length)f.taxaCartao=ops.reduce((s,o)=>s+(o.taxaCredito||0),0)/ops.length;
+  const hist=(f.historicoFat||[]).filter(h=>h.valor>0);if(hist.length&&!(DB.fat.lancado>0))DB.fat.lancado=hist[hist.length-1].valor;}
+function wizFinish(){wizSync();DB.onboardingFeito=true;save();fecharWizard();toast('Onboarding concluído! 🎉');go('dashboard');}
+function wizRender(){const w=document.getElementById('wizScreen');if(!w)return;const i=wizState.step,step=WIZ[i-1];const pct=Math.round(i/WIZ.length*100);
+  w.innerHTML=`<div class="wiz-top"><div class="wm serif">Flow <span class="by">by Lidera</span></div><div class="wiz-step-lbl">Passo ${i} de ${WIZ.length}</div></div>
+  <div class="wiz-prog"><i style="width:${pct}%"></i></div>
+  <div class="wiz-grupo">${step.g}</div>
+  <div class="wiz-body"><div class="wiz-card">
+    <div class="wiz-ctx"><div class="tag">CONTEXTO</div><h2>${step.t}</h2><p>${step.ctx}</p></div>
+    <div class="wiz-resp"><div class="resp-lbl">Sua resposta</div>${step.body()}</div>
+  </div></div>
+  <div class="wiz-foot">${i>1?`<button class="btn btn-ghost" onclick="wizNav(-1)">← Voltar</button>`:''}<div class="spacer"></div><button class="btn btn-ghost" onclick="wizSalvarFechar()">Salvar e fechar</button><button class="btn btn-primary" onclick="wizNav(1)">${i===WIZ.length?'Concluir ✓':'Continuar →'}</button></div>`;}
 
 applyTheme((function(){try{return localStorage.getItem('flow_theme')||'light';}catch(e){return 'light';}})());
 if(sb)sb.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY'){RECOVERY=true;telaNovaSenha();}});
