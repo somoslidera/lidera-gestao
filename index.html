@@ -1277,15 +1277,42 @@ function editFaturamento(){
 function saveFaturamento(){DB.fat.lancado=moneyVal('ft_lan');DB.fat.mixIfood=clamp(parseFloat($('#ft_mix').value)||0,0,100);save();closeModal();viewFaturamento();toast('Faturamento atualizado');}
 
 /* ===================== DRE ===================== */
+function dreCustosDetalhe(){
+  const f=DB.fin||{}; const g=[];
+  const pessoal=[];
+  (f.funcionarios||[]).forEach(x=>pessoal.push([`${x.nome||'Funcionário'}${x.cargo?' · '+x.cargo:''}`,custoFuncionario(x).total]));
+  (f.socios||[]).forEach(x=>pessoal.push([`${x.nome||'Sócio'} · pró-labore`,custoSocio(x)]));
+  if(pessoal.length)g.push(['Pessoal e sócios',pessoal]);
+  const infra=[];const im=f.imovel||{};
+  if(im.aluguel)infra.push(['Aluguel',im.aluguel]); if(im.iptuAnual)infra.push(['IPTU (1/12)',im.iptuAnual/12]);
+  const u=f.utilidades||{};[['Energia elétrica',u.energia],['Água / esgoto',u.agua],['Internet',u.internet],['Telefone',u.telefone],['Alarme',u.alarme],['Segurança / ronda',u.seguranca]].forEach(([n,v])=>{if(v)infra.push([n,v]);});
+  const sr=f.servicosRec||{};[['Dedetização',sr.dedetizacao],['Lixo especial',sr.lixo],['Material de limpeza',sr.limpeza]].forEach(([n,v])=>{if(v)infra.push([n,v]);});
+  const op=f.operacionais||{};[['Gás de cozinha',op.gas],['Óleo / gordura',op.oleo],['Descartáveis',op.descartaveis]].forEach(([n,v])=>{if(v)infra.push([n,v]);});
+  (f.servicosMensais||[]).forEach(s=>{if(s.valor)infra.push([s.desc||'Serviço',s.valor]);});
+  if(infra.length)g.push(['Infraestrutura',infra]);
+  const ativos=[];
+  (f.equipamentos||[]).forEach(e=>{const dep=(e.valorPago||0)/(((e.vidaUtilAnos||5)||5)*12);if(dep)ativos.push([`${e.nome||'Equipamento'} · depreciação`,dep]);});
+  const si=f.sistemas||{};[['Software / sistema',si.software],['Serviços contábeis',si.contabil],['Aluguel maquininha',si.aluguelMaquininha]].forEach(([n,v])=>{if(v)ativos.push([n,v]);});
+  (f.veiculos||[]).forEach(v=>{const m=(v.parcela||0)+((v.ipvaAnual||0)/12)+((v.seguroAnual||0)/12)+(v.combustivel||0);if(m)ativos.push([v.nome||'Veículo',m]);});
+  if(ativos.length)g.push(['Ativos e veículos',ativos]);
+  const mk=f.marketing||{};const market=[];
+  if(mk.agencia)market.push(['Agência / freelancer',mk.agencia]);
+  (mk.canais||[]).forEach(c=>{if(c.valor)market.push([c.nome||'Canal de mídia',c.valor]);});
+  const brindes=(mk.brindeUnit||0)*(mk.brindeQtd||0);if(brindes)market.push(['Brindes',brindes]);
+  if(market.length)g.push(['Marketing e vendas',market]);
+  const outros=[];
+  (f.custosFixos||[]).forEach(x=>{if(x.valor)outros.push([x.nome||'Custo fixo',x.valor]);});
+  (f.provisoes||[]).forEach(x=>{if(x.valor)outros.push([x.nome||'Provisão',x.valor]);});
+  if(outros.length)g.push(['Outros custos e provisões',outros]);
+  return g;
+}
 function viewDRE(){
   const t=totaisGerais();
-  const fichas=fichasVendaveis().map(f=>({f,m:metricasFicha(f)}));
-  const recIfood=fichas.reduce((s,x)=>s+x.m.ifood.preco*x.f.vendasMes*(DB.fat.mixIfood/100),0);
-  const comissao=recIfood*(DB.fin.comissaoIfood/100);
-  const imposto=impostoMensal(t.faturamento);
+  const comissao=t.comissaoRS;
+  const imposto=t.impostoRS;
   const fixos=t.fixos;
   const lucroBruto=t.faturamento-t.custoTot;
-  const lucro=lucroBruto-comissao-imposto-fixos;
+  const lucro=t.lucro;
   const pct=v=>t.faturamento?v/t.faturamento*100:0;
   const barC=v=>v>=15?'var(--green)':v>=0?'var(--amber)':'var(--red)';
   $('#view').innerHTML=`
@@ -1296,13 +1323,11 @@ function viewDRE(){
         <tr><td>(–) CMV (insumos + embalagem)</td><td class="num" style="color:var(--red)">${fmtBRL(-t.custoTot)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(t.custoTot))}</td></tr>
         <tr class="total"><td>(=) Lucro bruto</td><td class="num">${fmtBRL(lucroBruto)}</td><td class="num">${fmtPct(pct(lucroBruto))}</td></tr>
         <tr class="grp"><td>(–) Despesas variáveis</td><td class="num"></td><td class="num"></td></tr>
-        <tr class="ind"><td>Comissão iFood</td><td class="num">${fmtBRL(comissao)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(comissao))}</td></tr>
+        <tr class="ind"><td>Comissão marketplace</td><td class="num">${fmtBRL(t.comissaoRS)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(t.comissaoRS))}</td></tr>
+        <tr class="ind"><td>Taxa de cartão</td><td class="num">${fmtBRL(t.taxaCartaoRS)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(t.taxaCartaoRS))}</td></tr>
         <tr class="ind"><td>Impostos (${regimeLabel()})</td><td class="num">${fmtBRL(imposto)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(imposto))}</td></tr>
         <tr class="grp"><td>(–) Custos fixos + pessoal</td><td class="num" style="color:var(--red)">${fmtBRL(-fixos)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(fixos))}</td></tr>
-        ${(DB.fin.custosFixos||[]).map(x=>`<tr class="ind"><td>${x.nome}</td><td class="num">${fmtBRL(x.valor)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(x.valor))}</td></tr>`).join('')}
-        <tr class="ind"><td>Folha (funcionários)</td><td class="num">${fmtBRL(t.folha)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(t.folha))}</td></tr>
-        <tr class="ind"><td>Pró-labore (sócios)</td><td class="num">${fmtBRL(t.prol)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(t.prol))}</td></tr>
-        <tr class="ind"><td>Provisões</td><td class="num">${fmtBRL(t.provisoesRS)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(t.provisoesRS))}</td></tr>
+        ${dreCustosDetalhe().map(([grupo,itens])=>`<tr><td colspan="3" style="font-size:10.5px;letter-spacing:.6px;color:var(--gold);text-transform:uppercase;font-weight:700;padding:9px 0 2px">${grupo}</td></tr>`+itens.map(([n,v])=>`<tr class="ind"><td>${n}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(v))}</td></tr>`).join('')).join('')}
         <tr class="total"><td>(=) Resultado líquido</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(lucro)}</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtPct(pct(lucro))}</td></tr>
       </tbody></table>
     </div>
