@@ -620,15 +620,15 @@ function custosFixosTotais(){
   return desp+custosEstruturais()+folhaTotal()+proLaboreTotal()+prov;
 }
 function totaisGerais(){
-  let receitaEst=0,custoTot=0,vendas=0,recIfoodEst=0,recDiretoEst=0;
-  const mix=(DB.fat.mixIfood||0)/100;
+  // vendasMes das fichas alimenta SÓ a Engenharia de Menu e a proporção (CMV teórico).
+  // O faturamento vem EXCLUSIVAMENTE do que é lançado no Financeiro (DB.fat.lancado).
+  let receitaEst=0,custoTot=0,vendas=0;
   fichasVendaveis().forEach(f=>{const m=metricasFicha(f);
-    receitaEst+=m.receita; custoTot+=m.custo*m.vendas; vendas+=m.vendas;
-    recIfoodEst+=m.ifood.preco*f.vendasMes*mix;
-    recDiretoEst+=m.balcao.preco*f.vendasMes*(1-mix);});
-  const faturamento=DB.fat.lancado>0?DB.fat.lancado:receitaEst;
-  const escala=receitaEst>0?faturamento/receitaEst:1;
-  const recIfood=recIfoodEst*escala, recDireto=recDiretoEst*escala, cmvRS=custoTot*escala;
+    receitaEst+=m.receita; custoTot+=m.custo*m.vendas; vendas+=m.vendas;});
+  const mix=(DB.fat.mixIfood||0)/100;
+  const faturamento=DB.fat.lancado||0;                          // só faturamento lançado
+  const cmvPct=receitaEst>0?(custoTot/receitaEst):0;            // CMV teórico (proporção do cardápio)
+  const recIfood=faturamento*mix, recDireto=faturamento*(1-mix), cmvRS=faturamento*cmvPct;
   const comissaoRS=recIfood*((DB.fin.comissaoIfood||0)/100);
   const impostoRS=impostoMensal(faturamento);
   const taxaCartaoRS=recDireto*((DB.fin.taxaCartao||0)/100);
@@ -639,7 +639,7 @@ function totaisGerais(){
   const fixos=fixosBase+folha+prol+provisoesRS;
   const mcRS=faturamento-custosVar;
   const mcPctMed=faturamento?mcRS/faturamento*100:0;
-  const cmv=faturamento?cmvRS/faturamento*100:0;
+  const cmv=cmvPct*100;                                        // CMV teórico do cardápio (independe do faturamento)
   const ticket=vendas?faturamento/vendas:0;
   const lucro=mcRS-fixos;
   const dinheiroMesa=comissaoRS+taxaCartaoRS;
@@ -689,6 +689,7 @@ function normData(){
   f.servicosMensais=f.servicosMensais||[]; f.equipamentos=f.equipamentos||[]; f.veiculos=f.veiculos||[]; f.marketplaces=f.marketplaces||[]; f.operadorasCartao=f.operadorasCartao||[]; f.historicoFat=f.historicoFat||[];
   f.funcionarios=f.funcionarios||[]; f.socios=f.socios||[];
   (f.funcionarios||[]).forEach(x=>{if(x.regime==null)x.regime='CLT';});
+  (f.socios||[]).forEach(s=>{if(s.proLaboreDeclarado==null)s.proLaboreDeclarado=s.proLabore||0;});
   DB.conta=DB.conta||{};
   if(DB.onboardingFeito==null)DB.onboardingFeito=(Object.keys(DB.insumos||{}).length>0||Object.keys(DB.fichas||{}).length>0);
 }
@@ -774,10 +775,10 @@ function viewDashboard(){
   <!-- Faturamento + Ponto de equilíbrio -->
   <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px" class="dash-grid">
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Faturamento</div><div class="desc">${DB.fat.lancado>0?'Lançado no mês':'Estimado pelas fichas e vendas'}</div></div></div>
+      <div class="section-head"><div><div class="ttl">Faturamento</div><div class="desc">${DB.fat.lancado>0?'Lançado no Financeiro':'Lance suas vendas no Financeiro'}</div></div></div>
       <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
         <div class="be-num" style="font-size:34px;color:var(--navy)">${fmtBRL(t.faturamento)}</div>
-        <div class="tag tag-green" style="margin-bottom:8px">${t.vendas} pedidos/mês</div>
+        ${DB.fat.lancado>0?'':'<a class="tag tag-gold" style="margin-bottom:8px;cursor:pointer" onclick="go(\'faturamento\')">Lançar faturamento →</a>'}
       </div>
       <div class="grid-2" style="margin-top:18px">
         <div style="border:1px solid var(--line);border-radius:12px;padding:14px">
@@ -1096,7 +1097,7 @@ function editFicha(id){
         <div class="grid-3">
           <div class="field" style="margin:0"><label>Preço balcão <span class="hint">R$</span></label><input class="input" id="f_preco" type="number" step="0.01" value="${f.precoVenda}" oninput="recalcFicha()"></div>
           <div class="field" style="margin:0"><label>Preço iFood <span class="hint">R$</span></label><input class="input" id="f_precoIf" type="number" step="0.01" value="${f.precoIfood}" oninput="recalcFicha()"></div>
-          <div class="field" style="margin:0"><label>Vendas/mês</label><input class="input" id="f_vendas" type="number" value="${f.vendasMes}"></div>
+          <div class="field" style="margin:0"><label>Vendas/mês <span class="hint">só para a Engenharia de Menu — não entra no faturamento</span></label><input class="input" id="f_vendas" type="number" value="${f.vendasMes}"></div>
         </div>
       </div>
       <div id="f_calc"></div>
@@ -1239,7 +1240,7 @@ function viewFaturamento(){
   const diaEqTxt=!isFinite(t.diaEq)?'—':t.diaEq>30?'> 30 dias':'dia '+Math.ceil(t.diaEq);
   $('#view').innerHTML=`
   <div class="kpi-grid">
-    <div class="kpi"><div class="ic ic-navy">${ico('cash')}</div><div class="k-lbl">Faturamento ${DB.fat.lancado>0?'lançado':'estimado'}</div><div class="k-val">${fmtBRL(t.faturamento)}</div><div class="k-sub trend-up">${t.vendas} pratos/mês</div></div>
+    <div class="kpi"><div class="ic ic-navy">${ico('cash')}</div><div class="k-lbl">Faturamento ${DB.fat.lancado>0?'lançado':'(lance no Financeiro)'}</div><div class="k-val">${fmtBRL(t.faturamento)}</div><div class="k-sub">${t.vendas} pratos/mês na engenharia</div></div>
     <div class="kpi"><div class="ic ic-gold">${ico('mc')}</div><div class="k-lbl">Ticket médio</div><div class="k-val">${fmtBRL(t.ticket)}</div><div class="k-sub">por pedido</div></div>
     <div class="kpi"><div class="ic ic-${DB.fat.mixIfood>=50?'red':'navy'}">${ico('cmv')}</div><div class="k-lbl">Dependência iFood</div><div class="k-val">${fmtPct(DB.fat.mixIfood)}</div><div class="k-sub ${DB.fat.mixIfood>=50?'trend-down':''}">do faturamento</div></div>
     <div class="kpi"><div class="ic ${isFinite(t.diaEq)&&t.diaEq<=30?'ic-green':'ic-amber'}">${ico('profit')}</div><div class="k-lbl">Ponto de equilíbrio</div><div class="k-val">${diaEqTxt}</div><div class="k-sub">${isFinite(t.faturamentoEq)?fmtBRL(t.faturamentoEq):'—'}</div></div>
@@ -1267,7 +1268,7 @@ function viewFaturamento(){
 function editFaturamento(){
   modal(`<div class="modal-head"><h3>Lançar faturamento</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div class="field"><label>Faturamento do mês <span class="hint">0 = usar estimativa das fichas</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="ft_lan" inputmode="numeric" value="${fmtMoneyInput(DB.fat.lancado||0)}" oninput="moneyMask(this)"></div></div>
+    <div class="field"><label>Faturamento bruto do mês <span class="hint">total de vendas realizadas</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="ft_lan" inputmode="numeric" value="${fmtMoneyInput(DB.fat.lancado||0)}" oninput="moneyMask(this)"></div></div>
     <div class="field"><label>% do faturamento via iFood <span class="hint">mix de canal</span></label><input class="input" id="ft_mix" type="number" step="1" value="${DB.fat.mixIfood}"></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveFaturamento()">Salvar</button></div>`);
@@ -1392,7 +1393,7 @@ function finVisao(t){
   </div>
   <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:20px" class="dash-grid">
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Resultado do mês</div><div class="desc">Estimado pelas fichas e parâmetros</div></div></div>
+      <div class="section-head"><div><div class="ttl">Resultado do mês</div><div class="desc">Sobre o faturamento lançado e os parâmetros</div></div></div>
       <table><tbody>
         <tr><td>Receita bruta</td><td class="num"><b>${fmtBRL(t.faturamento)}</b></td></tr>
         <tr><td>Receita líquida <span style="color:var(--soft);font-size:12px">(− impostos, comissões e taxas)</span></td><td class="num">${fmtBRL(recLiq)}</td></tr>
