@@ -907,7 +907,7 @@ let insumoFiltro='Todos';
 function viewInsumos(){
   $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editInsumo()">${icoPlus} Novo insumo</button>`
     +`<button class="btn btn-ghost" onclick="gerenciarCategorias()">≡ Categorias</button>`
-    +`<button class="btn btn-ghost" onclick="baixarTemplateInsumos()">⬇ Baixar</button>`
+    +`<button class="btn btn-ghost" onclick="baixarTemplateInsumos()">⬇ Baixar modelo</button>`
     +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Importar<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarInsumos(this)"></label>`;
   const list=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado'); // preparados ficam só nas Fichas Técnicas
   const cats=['Todos',...new Set(list.map(i=>i.cat))];
@@ -1039,29 +1039,39 @@ function delForn(id){if(!confirm('Remover este fornecedor?'))return;DB.fin.forne
 /* ---- IMPORTAR / MODELO DE INSUMOS (planilha) ---- */
 function baixarTemplateInsumos(){
   const tem=Object.values(DB.insumos).some(i=>i.tipo!=='preparado');
-  modal(`<div class="modal-head"><h3>Baixar planilha de insumos</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
-  <div class="modal-body"><div style="font-size:13.5px;color:var(--muted);margin-bottom:16px">${tem?'Baixe sua lista de insumos para editar e reimportar.':'Baixe um modelo com exemplos para preencher.'} Escolha o formato — o <b>Excel (.xlsx)</b> é o recomendado.</div>
+  modal(`<div class="modal-head"><h3>Baixar planilha</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:13.5px;font-weight:700;margin-bottom:4px">📋 Modelo padrão para importar</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:11px">Planilha com o cabeçalho correto e exemplos. Preencha e use <b>Importar</b>. Categorias e fornecedores que não existirem são <b>criados automaticamente</b>.</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="exportarInsumos('xlsx')">⬇ Excel (.xlsx) · recomendado</button>
-      <button class="btn btn-ghost" onclick="exportarInsumos('csv')">⬇ CSV (.csv)</button>
-    </div></div>`);
+      <button class="btn btn-primary" onclick="exportarInsumos('modelo','xlsx')">⬇ Excel (.xlsx)</button>
+      <button class="btn btn-ghost" onclick="exportarInsumos('modelo','csv')">⬇ CSV (.csv)</button>
+    </div>
+    ${tem?`<div style="border-top:1px solid var(--line);margin-top:18px;padding-top:16px">
+      <div style="font-size:13.5px;font-weight:700;margin-bottom:4px">⬇ Meus insumos atuais</div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:11px">Baixe sua lista já cadastrada para editar e reimportar.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="exportarInsumos('dados','xlsx')">⬇ Excel (.xlsx)</button>
+        <button class="btn btn-ghost" onclick="exportarInsumos('dados','csv')">⬇ CSV (.csv)</button>
+      </div></div>`:''}
+  </div>`);
 }
-function insumoAOA(){
+function insumoAOA(modo){
   const header=['Produto/Insumo','Grupo','Fornecedor','Peso/Conteúdo','Unidade','Valor Embalagem'];
+  const exemplos=[['Peito de frango','Proteínas','Distribuidora Central',1,'kg',19.5],['Leite integral','Laticínios','Importadora Sul',1,'lt',5.2],['Pão de hambúrguer','Padaria','Padaria Central',12,'un',14.4]];
+  if(modo==='modelo')return [header,...exemplos];
   const prontos=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado');
-  const rows=prontos.length?prontos.map(i=>[i.nome,i.cat,i.fornecedor||'',i.qtd,uSym(i.uni),i.preco])
-    :[['Peito de frango','Proteínas','Distribuidora Central',1,'kg',19.5],['Leite integral','Laticínios','',1,'lt',5.2],['Pão de hambúrguer','Padaria','',12,'un',14.4]];
-  return [header,...rows];
+  return [header,...(prontos.length?prontos.map(i=>[i.nome,i.cat,i.fornecedor||'',i.qtd,uSym(i.uni),i.preco]):exemplos)];
 }
-async function exportarInsumos(fmt){const aoa=insumoAOA();
+async function exportarInsumos(modo,fmt){const aoa=insumoAOA(modo);const arq=modo==='modelo'?'modelo-insumos':'meus-insumos';
   if(fmt==='csv'){
     const csv=aoa.map(r=>r.map(c=>{let s=(typeof c==='number')?String(c).replace('.',','):String(c);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(';')).join('\r\n');
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download='insumos.csv';a.click();
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download=arq+'.csv';a.click();
   }else{
-    try{const XLSX=await loadXLSX();const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:26},{wch:16},{wch:10},{wch:18},{wch:16}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Insumos');XLSX.writeFile(wb,'insumos.xlsx');}
+    try{const XLSX=await loadXLSX();const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:26},{wch:16},{wch:14},{wch:16},{wch:10},{wch:16}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Insumos');XLSX.writeFile(wb,arq+'.xlsx');}
     catch(e){return toast('Não foi possível gerar o Excel. Tente CSV.');}
   }
-  closeModal();toast('Planilha baixada');
+  closeModal();toast(modo==='modelo'?'Modelo baixado':'Insumos exportados');
 }
 function loadXLSX(){return new Promise((res,rej)=>{if(window.XLSX)return res(window.XLSX);const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=()=>res(window.XLSX);s.onerror=()=>rej(new Error('xlsx'));document.head.appendChild(s);});}
 function parseCSV(text){text=text.replace(/^﻿/,'');const l0=(text.split('\n')[0]||'');const delim=((l0.match(/;/g)||[]).length>=(l0.match(/,/g)||[]).length)?';':',';
