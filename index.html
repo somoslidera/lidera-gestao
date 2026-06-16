@@ -909,7 +909,7 @@ function viewInsumos(){
     +`<button class="btn btn-ghost" onclick="gerenciarCategorias()">≡ Categorias</button>`
     +`<button class="btn btn-ghost" onclick="baixarTemplateInsumos()">⬇ Baixar</button>`
     +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Importar<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarInsumos(this)"></label>`;
-  const list=Object.values(DB.insumos);
+  const list=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado'); // preparados ficam só nas Fichas Técnicas
   const cats=['Todos',...new Set(list.map(i=>i.cat))];
   if(!cats.includes(insumoFiltro))insumoFiltro='Todos';
   const filt=insumoFiltro==='Todos'?list:list.filter(i=>i.cat===insumoFiltro);
@@ -917,16 +917,16 @@ function viewInsumos(){
   <div class="section-head"><div class="pill-filter">${cats.map(c=>`<button class="${c===insumoFiltro?'on':''}" onclick="insumoFiltro='${c}';viewInsumos()">${c}</button>`).join('')}</div>
     <input class="input" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="filtrarLinhas(this,'#insumosTbody')"></div>
   <div class="card">${list.length?`<div class="scroll-x"><table>
-    <thead><tr><th>Insumo</th><th>Tipo</th><th>Categoria</th><th>Fornecedor</th><th class="num">Compra / Rende</th><th class="num">Custo por unidade</th><th></th></tr></thead>
-    <tbody id="insumosTbody">${filt.sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>{const prep=i.tipo==='preparado';return`
-      <tr><td><b>${i.nome}</b>${prep?`<div style="font-size:12px;color:var(--soft)">${(i.comps||[]).length} ingredientes</div>`:''}</td>
-      <td>${prep?'<span class="tag tag-gold">Preparado</span>':'<span class="tag tag-navy">Pronto</span>'}</td>
+    <thead><tr><th>Insumo</th><th>Categoria</th><th>Fornecedor</th><th class="num">Valor</th><th class="num">Quantidade</th><th class="num">Custo por unidade</th><th></th></tr></thead>
+    <tbody id="insumosTbody">${filt.sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>`
+      <tr><td><b>${i.nome}</b></td>
       <td><span class="tag tag-gray">${i.cat}</span></td>
       <td>${i.fornecedor?`<span style="font-size:12.5px">${esc(i.fornecedor)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
-      <td class="num">${prep?`rende ${fmtN(i.rendimento)} ${uSym(i.uni)}`:`${fmtBRL(i.preco)} · ${fmtN(i.qtd,i.qtd%1?2:0)} ${uSym(i.uni)}`}</td>
+      <td class="num">${fmtBRL(i.preco)}</td>
+      <td class="num">${fmtN(i.qtd,i.qtd%1?2:0)} ${uSym(i.uni)}</td>
       <td class="num">${fmtBRL(custoInsumoBase(i)*(TO_BASE[i.uni]||1))} <span style="color:var(--soft);font-size:12px">/${uSym(i.uni)}</span></td>
-      <td><div class="row-actions"><button class="icon-btn" onclick="editInsumo('${i.id}')">${icoEdit}</button><button class="icon-btn del" onclick="delInsumo('${i.id}')">${icoTrash}</button></div></td></tr>`;}).join('')}</tbody></table></div>`
-  :emptyState('Nenhum insumo cadastrado','Cadastre o que você compra (Pronto) ou produz na casa (Preparado).','editInsumo()')}</div>`;
+      <td><div class="row-actions"><button class="icon-btn" onclick="editInsumo('${i.id}')">${icoEdit}</button><button class="icon-btn del" onclick="delInsumo('${i.id}')">${icoTrash}</button></div></td></tr>`).join('')}</tbody></table></div>`
+  :emptyState('Nenhum insumo cadastrado','Cadastre os insumos que você compra. Os preparados ficam nas Fichas Técnicas.','editInsumo()')}</div>`;
 }
 let editingInsId=null, draftInsTipo='pronto', draftInsComps=[];
 function editInsumo(id){
