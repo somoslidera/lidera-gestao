@@ -1084,21 +1084,21 @@ let fichaFiltro='Todas';
 function viewFichas(){
   $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editFicha()">${icoPlus} Nova ficha</button>`
     +`<button class="btn btn-ghost" onclick="simularPreco()">${ico('mc')} Simular preço</button>`
-    +`<button class="btn btn-ghost" onclick="novaModular()">${icoPlus} Nova modular</button>`
+    +`<button class="btn btn-ghost" onclick="novoPreparado()">${icoPlus} Novo preparado</button>`
     +`<button class="btn btn-ghost" onclick="gerenciarCategorias('prato')">≡ Categorias</button>`
     +`<button class="btn btn-ghost" onclick="baixarModeloFichas()">⬇ Baixar modelo</button>`
     +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Importar<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarFichas(this)"></label>`;
   const fichas=Object.values(DB.fichas);
   const preparados=Object.values(DB.insumos).filter(i=>i.tipo==='preparado');
   const cats=['Todas',...new Set(fichas.map(f=>f.cat).filter(Boolean))];
-  if(preparados.length)cats.push('Modular');
+  if(preparados.length)cats.push('Preparado');
   if(!cats.includes(fichaFiltro))fichaFiltro='Todas';
   const T=totaisGerais();const fixosPct=T.fixosPct||0;
-  const fichasFilt=(fichaFiltro==='Todas'||fichaFiltro==='Modular')?fichas:fichas.filter(f=>f.cat===fichaFiltro);
+  const fichasFilt=(fichaFiltro==='Todas'||fichaFiltro==='Preparado')?fichas:fichas.filter(f=>f.cat===fichaFiltro);
   let cards='';
-  if(fichaFiltro!=='Modular')cards+=fichasFilt.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(f=>fichaCard(f,fixosPct)).join('');
-  if(fichaFiltro==='Todas'||fichaFiltro==='Modular')cards+=preparados.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(p=>modularCard(p)).join('');
-  const temAlgo=(fichaFiltro==='Modular'?preparados.length:fichasFilt.length+(fichaFiltro==='Todas'?preparados.length:0));
+  if(fichaFiltro!=='Preparado')cards+=fichasFilt.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(f=>fichaCard(f,fixosPct)).join('');
+  if(fichaFiltro==='Todas'||fichaFiltro==='Preparado')cards+=preparados.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(p=>preparadoCard(p)).join('');
+  const temAlgo=(fichaFiltro==='Preparado'?preparados.length:fichasFilt.length+(fichaFiltro==='Todas'?preparados.length:0));
   $('#view').innerHTML=`
   <div class="section-head"><div class="pill-filter">${cats.map(c=>`<button class="${c===fichaFiltro?'on':''}" onclick="fichaFiltro='${c}';viewFichas()">${c}</button>`).join('')}</div>
     <input class="input" style="max-width:260px" placeholder="🔎 Buscar ficha por nome..." oninput="filtrarCards(this,'#fgrid')"></div>
@@ -1128,14 +1128,15 @@ function fichaCard(f,fixosPct){
     <div class="frow"><span class="l">Lucro Líq.(%)</span><b style="color:${cor(lucroPct)}">${fmtPct(lucroPct)} / ${fmtBRL(lucroRS)}</b></div>
   </div>`;
 }
-function modularCard(p){
+function preparadoCard(p){
   const custoTotal=custoInsumoBase(p)*((p.rendimento||1)*(TO_BASE[p.uni]||1)), custoUnit=custoInsumoBase(p);
   return `<div class="fcard" data-nome="${esc(p.nome)}">
     <div class="fcard-top"><div class="fcard-ic" style="background:rgba(29,53,115,.12);color:var(--navy)">${icoFicha}</div>
-      <div style="min-width:0"><div class="fcard-nm">${esc(p.nome)}</div><div class="fcard-sub">Componente modular · ${esc(p.cat||'—')}</div></div>
-      <span class="fcard-badge tag-navy">Modular</span></div>
+      <div style="min-width:0"><div class="fcard-nm">${esc(p.nome)}</div><div class="fcard-sub">Preparado · ${esc(p.cat||'—')}</div></div>
+      <span class="fcard-badge tag-navy">Preparado</span></div>
     <div class="fcard-acts"><span>${(p.comps||[]).length} ingredientes</span>
       <button onclick="delInsumo('${p.id}')">${icoTrash} Excluir</button>
+      <button onclick="duplicarPreparado('${p.id}')">${icoCopy} Duplicar</button>
       <a class="edit" onclick="editInsumo('${p.id}')">Editar ↗</a></div>
     <div class="frow"><span class="l">Custo da receita</span><b>${fmtBRL(custoTotal)}</b></div>
     <div class="frow div"><span class="l">Rendimento</span><b>${fmtN(p.rendimento)} ${uSym(p.uni)}</b></div>
@@ -1145,7 +1146,8 @@ function modularCard(p){
 }
 function duplicarFicha(id){const f=DB.fichas[id];if(!f)return;const c=JSON.parse(JSON.stringify(f));c.id=uid();c.nome=f.nome+' (cópia)';c.criada=hoje();DB.fichas[c.id]=c;save();viewFichas();toast('Ficha duplicada');}
 function filtrarCards(input,sel){const q=(input.value||'').toLowerCase();document.querySelectorAll(sel+' > [data-nome]').forEach(el=>{el.style.display=(el.dataset.nome||'').toLowerCase().includes(q)?'':'none';});}
-function novaModular(){editInsumo();setInsTipo('preparado');}
+function novoPreparado(){editInsumo();setInsTipo('preparado');}
+function duplicarPreparado(id){const p=DB.insumos[id];if(!p)return;const c=JSON.parse(JSON.stringify(p));c.id=uid();c.nome=p.nome+' (cópia)';DB.insumos[c.id]=c;save();viewFichas();toast('Preparado duplicado');}
 /* ---- SIMULAR PREÇO ---- */
 function simularPreco(){
   const T=totaisGerais();const fixosPct=Math.round((T.fixosPct||0)*10)/10;const imp=impostoVarPct();
