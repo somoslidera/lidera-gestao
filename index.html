@@ -917,9 +917,10 @@ function viewInsumos(){
   <div class="section-head"><div class="pill-filter">${cats.map(c=>`<button class="${c===insumoFiltro?'on':''}" onclick="insumoFiltro='${c}';viewInsumos()">${c}</button>`).join('')}</div>
     <input class="input" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="filtrarLinhas(this,'#insumosTbody')"></div>
   <div class="card">${list.length?`<div class="scroll-x"><table>
-    <thead><tr><th>Insumo</th><th>Categoria</th><th>Fornecedor</th><th class="num">Valor</th><th class="num">Quantidade</th><th class="num">Custo por unidade</th><th></th></tr></thead>
+    <thead><tr><th class="num" title="Participa da contagem de estoque">Estoque</th><th>Insumo</th><th>Categoria</th><th>Fornecedor</th><th class="num">Valor</th><th class="num">Quantidade</th><th class="num">Custo por unidade</th><th></th></tr></thead>
     <tbody id="insumosTbody">${filt.sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>`
-      <tr><td><b>${i.nome}</b></td>
+      <tr><td class="num"><input type="checkbox" ${i.noEstoque!==false?'checked':''} title="Incluir na contagem de estoque" onclick="DB.insumos['${i.id}'].noEstoque=this.checked;save()" style="width:17px;height:17px;cursor:pointer;accent-color:var(--navy)"></td>
+      <td><b>${i.nome}</b></td>
       <td><span class="tag tag-gray">${i.cat}</span></td>
       <td>${i.fornecedor?`<span style="font-size:12.5px">${esc(i.fornecedor)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
       <td class="num">${fmtBRL(i.preco)}</td>
@@ -1058,10 +1059,9 @@ function baixarTemplateInsumos(){
 }
 function insumoAOA(modo){
   const header=['Produto/Insumo','Grupo','Fornecedor','Peso/Conteúdo','Unidade','Valor Embalagem'];
-  const exemplos=[['Peito de frango','Proteínas','Distribuidora Central',1,'kg',19.5],['Leite integral','Laticínios','Importadora Sul',1,'lt',5.2],['Pão de hambúrguer','Padaria','Padaria Central',12,'un',14.4]];
-  if(modo==='modelo')return [header,...exemplos];
+  if(modo==='modelo')return [header];   // modelo em branco — só o cabeçalho
   const prontos=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado');
-  return [header,...(prontos.length?prontos.map(i=>[i.nome,i.cat,i.fornecedor||'',i.qtd,uSym(i.uni),i.preco]):exemplos)];
+  return [header,...prontos.map(i=>[i.nome,i.cat,i.fornecedor||'',i.qtd,uSym(i.uni),i.preco])];
 }
 async function exportarInsumos(modo,fmt){const aoa=insumoAOA(modo);const arq=modo==='modelo'?'modelo-insumos':'meus-insumos';
   if(fmt==='csv'){
@@ -2092,7 +2092,7 @@ function delCmvReg(id){if(!confirm('Remover esta contagem?'))return;DB.cmvRegist
 let estoqueTab='contagem', estoqueFiltro='Todos';
 function custoUnitCompra(ins){return ins.qtd?ins.preco/ins.qtd:0;} // custo por unidade de compra
 function estoqueItens(){
-  return Object.values(DB.insumos).filter(i=>i.tipo!=='preparado').map(i=>{
+  return Object.values(DB.insumos).filter(i=>i.tipo!=='preparado'&&i.noEstoque!==false).map(i=>{
     const custo=custoUnitCompra(i);
     const min=+i.estoqueMin||0, atual=+i.estoqueAtual||0;
     const necessidade=Math.max(0,min-atual);
