@@ -372,6 +372,26 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 @media(max-width:720px){.wiz-card{grid-template-columns:1fr}.wiz-ctx{padding:20px}}
 body.dark .wiz-foot{background:#0E1626}
 
+/* cards de fichas técnicas */
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+.fcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 18px 16px;transition:.15s}
+.fcard:hover{border-color:var(--gold-soft);box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+.fcard-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.fcard-ic{width:38px;height:38px;border-radius:10px;background:var(--amber-bg);color:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.fcard-ic svg{width:20px;height:20px}
+.fcard-nm{font-weight:700;font-size:15px;line-height:1.15}
+.fcard-sub{font-size:11.5px;color:var(--soft);margin-top:3px}
+.fcard-badge{margin-left:auto;font-size:12px;font-weight:700;padding:3px 9px;border-radius:8px;flex-shrink:0}
+.fcard-acts{display:flex;align-items:center;gap:14px;font-size:12px;color:var(--muted);padding:9px 0;border-bottom:1px solid var(--line);margin-bottom:9px;flex-wrap:wrap}
+.fcard-acts button,.fcard-acts a{color:var(--muted);background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:0}
+.fcard-acts svg{width:13px;height:13px}
+.fcard-acts button:hover,.fcard-acts a:hover{color:var(--gold)}
+.fcard-acts .edit{margin-left:auto;color:var(--navy);font-weight:600}
+body.dark .fcard-acts .edit{color:#9DB4E8}
+.frow{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+.frow .l{color:var(--muted)}
+.frow.div{border-top:1px solid var(--line);margin-top:6px;padding-top:9px}
+
 /* gerenciar categorias */
 .cat-scroll{max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:7px}
 .cat-row{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px}
@@ -1057,18 +1077,144 @@ function aplicarImportInsumos(rows){rows=(rows||[]).filter(r=>r&&r.some(c=>(c||'
 }
 
 /* ===================== FICHAS TÉCNICAS ===================== */
+const icoFicha=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>`;
+const icoCopy=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`;
+function hoje(){try{return new Date().toLocaleDateString('pt-BR');}catch(e){return '';}}
+let fichaFiltro='Todas';
 function viewFichas(){
-  $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editFicha()">${icoPlus} Nova ficha</button>`;
-  const list=Object.values(DB.fichas);
-  $('#view').innerHTML=`<div class="card">${list.length?`<div class="scroll-x"><table>
-    <thead><tr><th>Prato</th><th>Categoria</th><th class="num">Custo</th><th class="num">Preço balcão</th><th class="num">CMV</th><th class="num">MC balcão</th><th class="num">MC iFood</th><th></th></tr></thead>
-    <tbody>${list.sort((a,b)=>a.nome.localeCompare(b.nome)).map(f=>{const m=metricasFicha(f);return`
-      <tr><td><b>${f.nome}</b><div style="font-size:12px;color:var(--soft)">${f.comps.length} insumos${f.tempoPreparo?` · ${f.tempoPreparo}min`:''}${(f.modoPreparo||[]).length?` · ${f.modoPreparo.length} passos`:''}</div></td>
-      <td><span class="tag tag-gray">${f.cat}</span></td><td class="num">${fmtBRL(m.custo)}</td><td class="num"><b>${fmtBRL(m.balcao.preco)}</b></td>
-      <td class="num"><span class="tag ${m.balcao.cmv<=30?'tag-green':m.balcao.cmv<=35?'tag-amber':'tag-red'}">${fmtPct(m.balcao.cmv)}</span></td>
-      <td class="num">${fmtBRL(m.balcao.mc)}</td><td class="num" style="color:${m.ifood.mc<0?'var(--red)':'inherit'}">${fmtBRL(m.ifood.mc)}</td>
-      <td><div class="row-actions"><button class="icon-btn" onclick="editFicha('${f.id}')">${icoEdit}</button><button class="icon-btn del" onclick="delFicha('${f.id}')">${icoTrash}</button></div></td></tr>`;}).join('')}</tbody></table></div>`
-  :emptyState('Nenhuma ficha técnica','Monte seus pratos a partir dos insumos.','editFicha()')}</div>`;
+  $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editFicha()">${icoPlus} Nova ficha</button>`
+    +`<button class="btn btn-ghost" onclick="simularPreco()">${ico('mc')} Simular preço</button>`
+    +`<button class="btn btn-ghost" onclick="novaModular()">${icoPlus} Nova modular</button>`
+    +`<button class="btn btn-ghost" onclick="gerenciarCategorias('prato')">≡ Categorias</button>`
+    +`<button class="btn btn-ghost" onclick="baixarModeloFichas()">⬇ Baixar modelo</button>`
+    +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Importar<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarFichas(this)"></label>`;
+  const fichas=Object.values(DB.fichas);
+  const preparados=Object.values(DB.insumos).filter(i=>i.tipo==='preparado');
+  const cats=['Todas',...new Set(fichas.map(f=>f.cat).filter(Boolean))];
+  if(preparados.length)cats.push('Modular');
+  if(!cats.includes(fichaFiltro))fichaFiltro='Todas';
+  const T=totaisGerais();const fixosPct=T.fixosPct||0;
+  const fichasFilt=(fichaFiltro==='Todas'||fichaFiltro==='Modular')?fichas:fichas.filter(f=>f.cat===fichaFiltro);
+  let cards='';
+  if(fichaFiltro!=='Modular')cards+=fichasFilt.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(f=>fichaCard(f,fixosPct)).join('');
+  if(fichaFiltro==='Todas'||fichaFiltro==='Modular')cards+=preparados.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(p=>modularCard(p)).join('');
+  const temAlgo=(fichaFiltro==='Modular'?preparados.length:fichasFilt.length+(fichaFiltro==='Todas'?preparados.length:0));
+  $('#view').innerHTML=`
+  <div class="section-head"><div class="pill-filter">${cats.map(c=>`<button class="${c===fichaFiltro?'on':''}" onclick="fichaFiltro='${c}';viewFichas()">${c}</button>`).join('')}</div>
+    <input class="input" style="max-width:260px" placeholder="🔎 Buscar ficha por nome..." oninput="filtrarCards(this,'#fgrid')"></div>
+  ${temAlgo?`<div class="fgrid" id="fgrid">${cards}</div>`:emptyState('Nenhuma ficha técnica','Monte seus pratos a partir dos insumos.','editFicha()')}`;
+}
+function fichaCard(f,fixosPct){
+  const m=metricasFicha(f);
+  const insumos=custoFicha(f)/(f.porcoes||1), emb=f.custoEmbalagem||0, custo=insumos+emb;
+  const preco=m.balcao.preco, mcPct=m.balcao.mcPct, mcRS=m.balcao.mc;
+  const lucroPct=mcPct-fixosPct, lucroRS=preco*lucroPct/100;
+  const peso=pesoFichaKg(f)*1000;
+  const rend=peso>0?`${fmtN(peso)}gr`:`${fmtN(f.porcoes||1)} porç${(f.porcoes||1)>1?'ões':'ão'}`;
+  const cor=v=>v>=15?'var(--green)':v>=0?'var(--amber)':'var(--red)';
+  const badge=preco>0?`<span class="fcard-badge ${lucroPct>=15?'tag-green':lucroPct>=0?'tag-amber':'tag-red'}">${fmtPct(lucroPct)}</span>`:`<span class="fcard-badge tag-amber">sem preço</span>`;
+  return `<div class="fcard" data-nome="${esc(f.nome)}">
+    <div class="fcard-top"><div class="fcard-ic">${icoFicha}</div>
+      <div style="min-width:0"><div class="fcard-nm">${esc(f.nome)}</div><div class="fcard-sub">${esc(f.cat||'—')}${f.criada?' · criada '+f.criada:''}</div></div>${badge}</div>
+    <div class="fcard-acts"><span>${(f.comps||[]).length} insumos</span>
+      <button onclick="delFicha('${f.id}')">${icoTrash} Excluir</button>
+      <button onclick="duplicarFicha('${f.id}')">${icoCopy} Duplicar</button>
+      <a class="edit" onclick="editFicha('${f.id}')">Editar ↗</a></div>
+    <div class="frow"><span class="l">Insumos</span><b>${fmtBRL(insumos)}</b></div>
+    <div class="frow"><span class="l">Embalagem</span><b>${fmtBRL(emb)}</b></div>
+    <div class="frow div"><span class="l">Rendimento</span><b>${rend}</b></div>
+    <div class="frow"><span class="l">Custo</span><b>${fmtBRL(custo)}</b></div>
+    <div class="frow"><span class="l">MC(%)</span><b style="color:${cor(mcPct)}">${fmtPct(mcPct)} / ${fmtBRL(mcRS)}</b></div>
+    <div class="frow"><span class="l">Lucro Líq.(%)</span><b style="color:${cor(lucroPct)}">${fmtPct(lucroPct)} / ${fmtBRL(lucroRS)}</b></div>
+  </div>`;
+}
+function modularCard(p){
+  const custoTotal=custoInsumoBase(p)*((p.rendimento||1)*(TO_BASE[p.uni]||1)), custoUnit=custoInsumoBase(p);
+  return `<div class="fcard" data-nome="${esc(p.nome)}">
+    <div class="fcard-top"><div class="fcard-ic" style="background:rgba(29,53,115,.12);color:var(--navy)">${icoFicha}</div>
+      <div style="min-width:0"><div class="fcard-nm">${esc(p.nome)}</div><div class="fcard-sub">Componente modular · ${esc(p.cat||'—')}</div></div>
+      <span class="fcard-badge tag-navy">Modular</span></div>
+    <div class="fcard-acts"><span>${(p.comps||[]).length} ingredientes</span>
+      <button onclick="delInsumo('${p.id}')">${icoTrash} Excluir</button>
+      <a class="edit" onclick="editInsumo('${p.id}')">Editar ↗</a></div>
+    <div class="frow"><span class="l">Custo da receita</span><b>${fmtBRL(custoTotal)}</b></div>
+    <div class="frow div"><span class="l">Rendimento</span><b>${fmtN(p.rendimento)} ${uSym(p.uni)}</b></div>
+    <div class="frow"><span class="l">Custo por ${bSym(p.uni)}</span><b>${fmtBRL(custoUnit)}</b></div>
+    <div style="font-size:11.5px;color:var(--soft);margin-top:8px">Usado como ingrediente nas fichas.</div>
+  </div>`;
+}
+function duplicarFicha(id){const f=DB.fichas[id];if(!f)return;const c=JSON.parse(JSON.stringify(f));c.id=uid();c.nome=f.nome+' (cópia)';c.criada=hoje();DB.fichas[c.id]=c;save();viewFichas();toast('Ficha duplicada');}
+function filtrarCards(input,sel){const q=(input.value||'').toLowerCase();document.querySelectorAll(sel+' > [data-nome]').forEach(el=>{el.style.display=(el.dataset.nome||'').toLowerCase().includes(q)?'':'none';});}
+function novaModular(){editInsumo();setInsTipo('preparado');}
+/* ---- SIMULAR PREÇO ---- */
+function simularPreco(){
+  const T=totaisGerais();const fixosPct=Math.round((T.fixosPct||0)*10)/10;const imp=impostoVarPct();
+  modal(`<div class="modal-head"><h3>Simular preço</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div class="field"><label>Partir de uma ficha <span class="hint">opcional — preenche o custo</span></label>
+      <select class="input" onchange="if(this.value){document.getElementById('sim_custo').value=fmtMoneyInput(custoProduto(DB.fichas[this.value]));simRecalc();}">
+        <option value="">— custo manual —</option>${Object.values(DB.fichas).sort((a,b)=>a.nome.localeCompare(b.nome)).map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('')}</select></div>
+    <div class="grid-2">
+      <div class="field"><label>Custo do produto</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="sim_custo" inputmode="numeric" value="0,00" oninput="moneyMask(this);simRecalc()"></div></div>
+      <div class="field"><label>Margem de contribuição desejada <span class="hint">%</span></label><input class="input" id="sim_margem" type="number" step="1" value="60" oninput="simRecalc()"></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>Imposto <span class="hint">%</span></label><input class="input" id="sim_imp" type="number" step="0.1" value="${imp}" oninput="simRecalc()"></div>
+      <div class="field"><label>Custo fixo rateado <span class="hint">%</span></label><input class="input" id="sim_fix" type="number" step="0.1" value="${fixosPct}" oninput="simRecalc()"></div>
+    </div>
+    <div id="sim_out" style="margin-top:6px"></div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal()">Fechar</button></div>`);
+  simRecalc();
+}
+function simRecalc(){
+  const custo=moneyVal('sim_custo'),margem=parseFloat($('#sim_margem').value)||0,imp=parseFloat($('#sim_imp').value)||0,fix=parseFloat($('#sim_fix').value)||0;
+  const denom=1-(margem/100)-(imp/100);const preco=denom>0?custo/denom:0;
+  const cmvPct=preco?custo/preco*100:0;const mcRS=preco-custo-preco*imp/100;const mcPct=preco?mcRS/preco*100:0;
+  const lucroPct=mcPct-fix,lucroRS=preco*lucroPct/100;
+  const el=$('#sim_out');if(!el)return;
+  el.innerHTML=`<div class="wiz-calc" style="margin:0">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Preço de venda sugerido</div>
+    <div style="font-size:28px;font-weight:700;color:var(--navy);font-family:'Fraunces',serif">${preco>0?fmtBRL(preco):'—'}</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:13px">
+      <span>CMV <b>${fmtPct(cmvPct)}</b></span>
+      <span>MC <b style="color:var(--green)">${fmtPct(mcPct)} · ${fmtBRL(mcRS)}</b></span>
+      <span>Lucro líq. <b style="color:${lucroPct>=0?'var(--green)':'var(--red)'}">${fmtPct(lucroPct)} · ${fmtBRL(lucroRS)}</b></span>
+    </div></div>`;
+}
+/* ---- BAIXAR / IMPORTAR FICHAS ---- */
+function fichaAOA(){
+  const header=['Prato','Categoria','Rendimento (porções)','Custo embalagem','Preço balcão','Preço iFood'];
+  const arr=Object.values(DB.fichas);
+  const rows=arr.length?arr.map(f=>[f.nome,f.cat,f.porcoes||1,f.custoEmbalagem||0,f.precoVenda||0,f.precoIfood||0])
+    :[['Arroz com Frango','Prato Principal',1,1,18,22],['Kibe','Prato Principal',1,0,8,10]];
+  return [header,...rows];
+}
+function baixarModeloFichas(){
+  modal(`<div class="modal-head"><h3>Baixar planilha de fichas</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body"><div style="font-size:13.5px;color:var(--muted);margin-bottom:16px">Baixe suas fichas (preços e categorias — sem os ingredientes) para editar e reimportar. Excel (.xlsx) é o recomendado.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" onclick="exportFichas('xlsx')">⬇ Excel (.xlsx)</button><button class="btn btn-ghost" onclick="exportFichas('csv')">⬇ CSV (.csv)</button></div></div>`);
+}
+async function exportFichas(fmt){const aoa=fichaAOA();
+  if(fmt==='csv'){const csv=aoa.map(r=>r.map(c=>{let s=(typeof c==='number')?String(c).replace('.',','):String(c);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(';')).join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download='fichas.csv';a.click();}
+  else{try{const X=await loadXLSX();const ws=X.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:26},{wch:18},{wch:18},{wch:16},{wch:14},{wch:14}];const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Fichas');X.writeFile(wb,'fichas.xlsx');}catch(e){return toast('Não foi possível gerar o Excel. Tente CSV.');}}
+  closeModal();toast('Planilha baixada');
+}
+async function importarFichas(input){const f=input&&input.files&&input.files[0];if(input)input.value='';if(!f)return;
+  let rows;try{if(/\.xlsx?$/i.test(f.name)){const X=await loadXLSX();const wb=X.read(new Uint8Array(await f.arrayBuffer()),{type:'array'});rows=X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});}else rows=parseCSV(await f.text());}catch(e){return toast('Não foi possível ler o arquivo. Use o modelo em Baixar.');}
+  aplicarImportFichas(rows);
+}
+function aplicarImportFichas(rows){rows=(rows||[]).filter(r=>r&&r.some(c=>(c||'').toString().trim()!==''));if(!rows.length)return toast('Planilha vazia');
+  const head=rows[0].map(c=>(c||'').toString().toLowerCase());const find=(...k)=>head.findIndex(h=>k.some(x=>h.indexOf(x)>=0));
+  let iN=find('prato','ficha','nome','produto'),iC=find('categ','grupo'),iR=find('rendim','porç','porc'),iE=find('embal'),iB=find('balc','venda','preç','preco'),iI=find('ifood','delivery');
+  let start=1;if(iN<0){iN=0;iC=1;iR=2;iE=3;iB=4;iI=5;start=0;}
+  let n=0;
+  for(let r=start;r<rows.length;r++){const row=rows[r]||[];const nome=(row[iN]||'').toString().trim();if(!nome)continue;
+    const cat=((iC>=0&&row[iC])?row[iC]:'Prato Principal').toString().trim()||'Prato Principal';
+    const nid=uid();DB.fichas[nid]={id:nid,nome,cat,porcoes:parseNumBR(iR>=0?row[iR]:1)||1,custoEmbalagem:parseNumBR(iE>=0?row[iE]:0),precoVenda:parseNumBR(iB>=0?row[iB]:0),precoIfood:parseNumBR(iI>=0?row[iI]:0),vendasMes:0,tempoPreparo:0,utensilios:'',modoPreparo:[],padraoFinalizacao:'',foto:'',comps:[],criada:hoje()};
+    if(cat&&!catList('prato').includes(cat))dbCats().prato.push(cat);
+    n++;}
+  if(!n)return toast('Nenhuma linha válida encontrada');save();viewFichas();toast(n+' ficha(s) importada(s) — adicione os ingredientes');
 }
 let draftComps=[],draftModo=[];
 function editFicha(id){
@@ -1168,7 +1314,8 @@ function saveFicha(id){const nome=$('#f_nome').value.trim();if(!nome)return toas
     porcoes:parseFloat($('#f_porcoes').value)||1,custoEmbalagem:parseFloat($('#f_emb').value)||0,
     precoVenda:parseFloat($('#f_preco').value)||0,precoIfood:parseFloat($('#f_precoIf').value)||0,
     vendasMes:parseInt($('#f_vendas').value)||0,tempoPreparo:parseFloat($('#f_tempo')?.value)||0,
-    utensilios:$('#f_utens')?.value||'',modoPreparo:draftModo.filter(s=>(s||'').trim()),padraoFinalizacao:$('#f_final')?.value||'',comps};
+    utensilios:$('#f_utens')?.value||'',modoPreparo:draftModo.filter(s=>(s||'').trim()),padraoFinalizacao:$('#f_final')?.value||'',comps,
+    criada:(id&&DB.fichas[id]&&DB.fichas[id].criada)||hoje()};
   DB.fichas[obj.id]=obj;save();closeModal();viewFichas();toast(id?'Ficha atualizada':'Ficha criada');}
 function delFicha(id){if(!confirm('Remover esta ficha?'))return;delete DB.fichas[id];save();viewFichas();toast('Ficha removida');}
 
