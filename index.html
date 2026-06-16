@@ -385,6 +385,20 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 @media(max-width:720px){.wiz-card{grid-template-columns:1fr}.wiz-ctx{padding:20px}}
 body.dark .wiz-foot{background:#0E1626}
 
+/* folha de contagem de estoque (impressão) */
+#printArea{display:none}
+@media print{
+  body.print-contagem .sidebar,body.print-contagem .main,body.print-contagem #modalRoot,body.print-contagem #toastRoot{display:none!important}
+  body.print-contagem #printArea{display:block!important}
+  #printArea{color:#000}
+  #printArea table{width:100%;border-collapse:collapse}
+  #printArea th,#printArea td{border:1px solid #999;padding:7px 9px;font-size:12.5px;text-align:left}
+  #printArea thead th{background:#eee}
+  #printArea .cat-h td{background:#f2f2f2;font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.5px}
+  #printArea .blank{height:28px}
+  #printArea tr{page-break-inside:avoid}
+}
+
 /* cabeçalho de tabela clicável (ordenação) */
 .th-sort{cursor:pointer;user-select:none;white-space:nowrap}
 .th-sort:hover{color:var(--gold)}
@@ -2117,6 +2131,28 @@ function estoqueItens(){
 }
 function estoqueValorTotal(){return estoqueItens().reduce((s,x)=>s+x.valorEstoque,0);}
 function lancarCmvDoEstoque(){const v=Math.round(estoqueValorTotal()*100)/100;editCmvReg(null,{ef:v});toast('Estoque atual ('+fmtBRL(v)+') lançado como estoque final — informe compras e vendas');}
+function imprimirContagem(){
+  const items=estoqueItens().slice().sort((a,b)=>(a.cat||'').localeCompare(b.cat||'')||a.nome.localeCompare(b.nome));
+  if(!items.length)return toast('Nenhum insumo marcado para contagem');
+  const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';
+  let rows='',lastCat=null;
+  items.forEach(x=>{if(x.cat!==lastCat){lastCat=x.cat;rows+=`<tr class="cat-h"><td colspan="3">${esc(x.cat||'Sem categoria')}</td></tr>`;}
+    rows+=`<tr><td>${esc(x.nome)}</td><td style="text-align:center">${uSym(x.uni)}</td><td class="blank"></td></tr>`;});
+  let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
+  pa.innerHTML=`<div style="padding:26px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:6px">
+      <div><div style="font-size:20px;font-weight:700">${esc(rest)}</div><div style="font-size:14px">Folha de Contagem de Estoque</div></div>
+      <div style="font-size:12px;text-align:right;line-height:2">Data: ____/____/______<br>Responsável: ____________________</div>
+    </div>
+    <div style="font-size:11px;color:#444;margin-bottom:12px">Anote a quantidade contada de cada item. Depois, registre no app em <b>Estoque &gt; Atual</b>.</div>
+    <table><thead><tr><th>Insumo</th><th style="width:70px;text-align:center">Unid.</th><th style="width:170px">Contagem</th></tr></thead><tbody>${rows}</tbody></table>
+  </div>`;
+  document.body.classList.add('print-contagem');
+  const fim=()=>{document.body.classList.remove('print-contagem');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
+  window.addEventListener('afterprint',fim);
+  window.print();
+  setTimeout(fim,1500);
+}
 function viewEstoque(){
   const items=estoqueItens();
   const valorTotal=items.reduce((s,x)=>s+x.valorEstoque,0);
@@ -2124,7 +2160,7 @@ function viewEstoque(){
   const totalCompras=comprarList.reduce((s,x)=>s+x.totalPrevisto,0);
   $('#topActions').innerHTML = estoqueTab==='compras'
     ? `<button class="btn btn-gold no-print" onclick="window.print()">🖨️ Imprimir lista</button>`
-    : `<button class="btn btn-ghost no-print" onclick="lancarCmvDoEstoque()">↗ Registrar no CMV</button>`;
+    : `<button class="btn btn-gold no-print" onclick="imprimirContagem()">🖨️ Imprimir folha de contagem</button><button class="btn btn-ghost no-print" onclick="lancarCmvDoEstoque()">↗ Registrar no CMV</button>`;
 
   if(estoqueTab==='contagem'){
     const cats=['Todos',...new Set(items.map(x=>x.cat))];
