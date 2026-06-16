@@ -62,12 +62,18 @@ input,select{font-family:inherit}
 .section-head .desc{font-size:13px;color:var(--muted);margin-top:2px}
 
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow)}
-.kpi .ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:13px}
-.kpi .ic svg{width:19px;height:19px}
-.kpi .k-lbl{font-size:12.5px;color:var(--muted);font-weight:500}
-.kpi .k-val{font-size:25px;font-weight:700;letter-spacing:-.6px;margin-top:4px;font-family:'Fraunces',serif}
-.kpi .k-sub{font-size:12px;margin-top:6px;display:flex;align-items:center;gap:5px;font-weight:600}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+.kpi .ic{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;margin-bottom:11px}
+.kpi .ic svg{width:20px;height:20px}
+.kpi .k-lbl{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.2px;text-transform:uppercase}
+.kpi .k-val{font-size:24px;font-weight:700;letter-spacing:-.6px;margin-top:2px;font-family:'Fraunces',serif;line-height:1.05}
+.kpi .k-sub{font-size:11.5px;margin-top:4px;display:flex;align-items:center;gap:5px;font-weight:600;color:var(--soft)}
+/* com ícone: layout horizontal (ícone à esquerda) — melhor uso da largura, menos espaço vazio */
+.kpi:has(.ic){display:grid;grid-template-columns:44px 1fr;column-gap:15px;align-items:center;padding:15px 18px}
+.kpi:has(.ic) .ic{grid-column:1;grid-row:1 / 4;align-self:center;margin-bottom:0}
+.kpi:has(.ic) .k-lbl{grid-column:2;grid-row:1}
+.kpi:has(.ic) .k-val{grid-column:2;grid-row:2;margin:1px 0}
+.kpi:has(.ic) .k-sub{grid-column:2;grid-row:3;margin-top:2px}
 .trend-up{color:var(--green)}.trend-down{color:var(--red)}
 .ic-navy{background:var(--blue-bg);color:var(--navy)}.ic-gold{background:var(--amber-bg);color:var(--amber)}
 .ic-green{background:var(--green-bg);color:var(--green)}.ic-red{background:var(--red-bg);color:var(--red)}
@@ -1505,7 +1511,7 @@ function viewFaturamento(){
   const diaEqTxt=!isFinite(t.diaEq)?'—':t.diaEq>30?'> 30 dias':'dia '+Math.ceil(t.diaEq);
   $('#view').innerHTML=`
   <div class="kpi-grid">
-    <div class="kpi"><div class="ic ic-navy">${ico('cash')}</div><div class="k-lbl">Faturamento ${DB.fat.lancado>0?'lançado':'(lance no Financeiro)'}</div><div class="k-val">${fmtBRL(t.faturamento)}</div><div class="k-sub">${t.vendas} pratos/mês na engenharia</div></div>
+    <div class="kpi"><div class="ic ic-navy">${ico('cash')}</div><div class="k-lbl">Faturamento${DB.fat.lancado>0?' lançado':''}</div><div class="k-val">${fmtBRL(t.faturamento)}</div><div class="k-sub">${t.vendas} pratos/mês na engenharia</div></div>
     <div class="kpi"><div class="ic ic-gold">${ico('mc')}</div><div class="k-lbl">Ticket médio</div><div class="k-val">${fmtBRL(t.ticket)}</div><div class="k-sub">por pedido</div></div>
     <div class="kpi"><div class="ic ic-${DB.fat.mixIfood>=50?'red':'navy'}">${ico('cmv')}</div><div class="k-lbl">Dependência iFood</div><div class="k-val">${fmtPct(DB.fat.mixIfood)}</div><div class="k-sub ${DB.fat.mixIfood>=50?'trend-down':''}">do faturamento</div></div>
     <div class="kpi"><div class="ic ${isFinite(t.diaEq)&&t.diaEq<=30?'ic-green':'ic-amber'}">${ico('profit')}</div><div class="k-lbl">Ponto de equilíbrio</div><div class="k-val">${diaEqTxt}</div><div class="k-sub">${isFinite(t.faturamentoEq)?fmtBRL(t.faturamentoEq):'—'}</div></div>
@@ -2112,10 +2118,12 @@ function viewEstoque(){
     <div class="section-head no-print"><div class="pill-filter">${cats.map(c=>`<button class="${c===estoqueFiltro?'on':''}" onclick="estoqueFiltro='${c.replace(/'/g,"\\'")}';viewEstoque()">${c}</button>`).join('')}</div>
       <input class="input" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="filtrarLinhas(this,'#estoqueTbody')"></div>
     <div class="card"><div class="scroll-x"><table>
-      <thead><tr><th>Insumo</th><th>Fornecedor</th><th class="num">Custo un.</th><th class="num">Mínimo</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Valor estoque</th><th class="num">Status</th></tr></thead>
+      <thead><tr><th>Insumo</th><th>Categoria</th><th class="num">Unid.</th><th>Fornecedor</th><th class="num">Custo un.</th><th class="num">Mínimo</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Valor estoque</th><th class="num">Status</th></tr></thead>
       <tbody id="estoqueTbody">${filt.sort((a,b)=>(b.comprar-a.comprar)||a.nome.localeCompare(b.nome)).map(x=>`
         <tr>
-          <td><b>${x.nome}</b><div style="font-size:12px;color:var(--soft)">${x.cat} · ${uSym(x.uni)}</div></td>
+          <td><b>${x.nome}</b></td>
+          <td><span class="tag tag-gray">${x.cat}</span></td>
+          <td class="num">${uSym(x.uni)}</td>
           <td><input class="input" style="min-width:130px" value="${esc(x.ins.fornecedor)}" placeholder="Fornecedor" oninput="DB.insumos['${x.ins.id}'].fornecedor=this.value;finTouch()"></td>
           <td class="num">${fmtBRL(x.custo)}</td>
           <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.min}" oninput="DB.insumos['${x.ins.id}'].estoqueMin=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
@@ -2124,7 +2132,7 @@ function viewEstoque(){
           <td class="num">${fmtBRL(x.valorEstoque)}</td>
           <td class="num"><span class="tag ${x.comprar?'tag-red':'tag-green'}">${x.comprar?'COMPRAR':'OK'}</span></td>
         </tr>`).join('')}</tbody>
-      <tfoot><tr style="border-top:2px solid var(--navy);font-weight:700"><td colspan="6" style="padding:12px 13px">Valor total em estoque</td><td class="num" style="padding:12px 13px">${fmtBRL(valorTotal)}</td><td></td></tr></tfoot>
+      <tfoot><tr style="border-top:2px solid var(--navy);font-weight:700"><td colspan="8" style="padding:12px 13px">Valor total em estoque</td><td class="num" style="padding:12px 13px">${fmtBRL(valorTotal)}</td><td></td></tr></tfoot>
     </table></div></div>`;
     return;
   }
