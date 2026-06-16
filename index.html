@@ -385,18 +385,21 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 @media(max-width:720px){.wiz-card{grid-template-columns:1fr}.wiz-ctx{padding:20px}}
 body.dark .wiz-foot{background:#0E1626}
 
-/* folha de contagem de estoque (impressão) */
+/* folha de contagem de estoque (impressão em 2 colunas) */
 #printArea{display:none}
 @media print{
+  @page{margin:10mm}
   body.print-contagem .sidebar,body.print-contagem .main,body.print-contagem #modalRoot,body.print-contagem #toastRoot{display:none!important}
   body.print-contagem #printArea{display:block!important}
-  #printArea{color:#000}
-  #printArea table{width:100%;border-collapse:collapse}
-  #printArea th,#printArea td{border:1px solid #999;padding:7px 9px;font-size:12.5px;text-align:left}
-  #printArea thead th{background:#eee}
-  #printArea .cat-h td{background:#f2f2f2;font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.5px}
-  #printArea .blank{height:28px}
-  #printArea tr{page-break-inside:avoid}
+  #printArea{color:#000;font-family:'Inter',sans-serif}
+  #printArea .ct-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding-bottom:6px}
+  #printArea .ct-note{font-size:10.5px;color:#444;margin:6px 0 9px}
+  #printArea .count-cols{column-count:2;column-gap:22px}
+  #printArea .cg{font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.4px;background:#eee;padding:3px 6px;margin:7px 0 2px;break-inside:avoid;break-after:avoid}
+  #printArea .ci{display:flex;align-items:center;gap:8px;border-bottom:1px solid #ccc;padding:4px 2px;break-inside:avoid;font-size:12px}
+  #printArea .ci-n{flex:1}
+  #printArea .ci-u{width:30px;text-align:right;color:#666;font-size:10.5px}
+  #printArea .ci-b{width:58px;height:18px;border:1px solid #999;border-radius:3px;flex-shrink:0}
 }
 
 /* cabeçalho de tabela clicável (ordenação) */
@@ -2135,18 +2138,16 @@ function imprimirContagem(){
   const items=estoqueItens().slice().sort((a,b)=>(a.cat||'').localeCompare(b.cat||'')||a.nome.localeCompare(b.nome));
   if(!items.length)return toast('Nenhum insumo marcado para contagem');
   const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';
-  let rows='',lastCat=null;
-  items.forEach(x=>{if(x.cat!==lastCat){lastCat=x.cat;rows+=`<tr class="cat-h"><td colspan="3">${esc(x.cat||'Sem categoria')}</td></tr>`;}
-    rows+=`<tr><td>${esc(x.nome)}</td><td style="text-align:center">${uSym(x.uni)}</td><td class="blank"></td></tr>`;});
+  let body='',lastCat=null;
+  items.forEach(x=>{if(x.cat!==lastCat){lastCat=x.cat;body+=`<div class="cg">${esc(x.cat||'Sem categoria')}</div>`;}
+    body+=`<div class="ci"><span class="ci-n">${esc(x.nome)}</span><span class="ci-u">${uSym(x.uni)}</span><span class="ci-b"></span></div>`;});
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
-  pa.innerHTML=`<div style="padding:26px">
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:6px">
-      <div><div style="font-size:20px;font-weight:700">${esc(rest)}</div><div style="font-size:14px">Folha de Contagem de Estoque</div></div>
-      <div style="font-size:12px;text-align:right;line-height:2">Data: ____/____/______<br>Responsável: ____________________</div>
+  pa.innerHTML=`<div class="ct-head">
+      <div><div style="font-size:19px;font-weight:700">${esc(rest)}</div><div style="font-size:13px">Folha de Contagem de Estoque</div></div>
+      <div style="font-size:11.5px;text-align:right;line-height:1.9">Data: ____/____/______<br>Responsável: __________________</div>
     </div>
-    <div style="font-size:11px;color:#444;margin-bottom:12px">Anote a quantidade contada de cada item. Depois, registre no app em <b>Estoque &gt; Atual</b>.</div>
-    <table><thead><tr><th>Insumo</th><th style="width:70px;text-align:center">Unid.</th><th style="width:170px">Contagem</th></tr></thead><tbody>${rows}</tbody></table>
-  </div>`;
+    <div class="ct-note">Anote a quantidade contada de cada item. Depois, registre no app em <b>Estoque &gt; Atual</b>.</div>
+    <div class="count-cols">${body}</div>`;
   document.body.classList.add('print-contagem');
   const fim=()=>{document.body.classList.remove('print-contagem');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);
