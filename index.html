@@ -1356,7 +1356,7 @@ function editFicha(id){
       </div>
       <div class="grid-2">
         <div class="field"><label>Rendimento <span class="hint">porções que a ficha gera</span></label><input class="input" id="f_porcoes" type="number" step="1" value="${f.porcoes||1}" oninput="recalcFicha()"></div>
-        <div class="field"><label>Custo embalagem <span class="hint">R$/porção</span></label><input class="input" id="f_emb" type="number" step="0.01" value="${f.custoEmbalagem}" oninput="recalcFicha()"></div>
+        <div class="field"><label>Custo embalagem <span class="hint">R$/porção</span></label><input class="input" id="f_emb" type="number" step="0.01" value="${f.custoEmbalagem||''}" placeholder="0,00" oninput="recalcFicha()"></div>
       </div>
       <label style="display:block;font-size:13px;font-weight:600;margin:6px 0 10px">Insumos</label>
       <div id="compList"></div>
@@ -1365,16 +1365,16 @@ function editFicha(id){
         <div style="font-size:12.5px;font-weight:700;margin-bottom:3px">Integração com Engenharia de Menu</div>
         <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">Preencha para classificar o prato na matriz e calcular a margem por canal.</div>
         <div class="grid-3">
-          <div class="field" style="margin:0"><label>Preço balcão <span class="hint">R$</span></label><input class="input" id="f_preco" type="number" step="0.01" value="${f.precoVenda}" oninput="recalcFicha()"></div>
-          <div class="field" style="margin:0"><label>Preço iFood <span class="hint">R$</span></label><input class="input" id="f_precoIf" type="number" step="0.01" value="${f.precoIfood}" oninput="recalcFicha()"></div>
-          <div class="field" style="margin:0"><label>Vendas/mês <span class="hint">só para a Engenharia de Menu — não entra no faturamento</span></label><input class="input" id="f_vendas" type="number" value="${f.vendasMes}"></div>
+          <div class="field" style="margin:0"><label>Preço balcão <span class="hint">R$</span></label><input class="input" id="f_preco" type="number" step="0.01" value="${f.precoVenda||''}" placeholder="0,00" oninput="recalcFicha()"></div>
+          <div class="field" style="margin:0"><label>Preço iFood <span class="hint">R$</span></label><input class="input" id="f_precoIf" type="number" step="0.01" value="${f.precoIfood||''}" placeholder="0,00" oninput="recalcFicha()"></div>
+          <div class="field" style="margin:0"><label>Vendas/mês <span class="hint">só para a Engenharia de Menu — não entra no faturamento</span></label><input class="input" id="f_vendas" type="number" value="${f.vendasMes||''}" placeholder="0"></div>
         </div>
       </div>
       <div id="f_calc"></div>
     </div>
     <div id="ftab_op" style="display:none">
       <div class="grid-2">
-        <div class="field"><label>Tempo de preparo <span class="hint">min</span></label><input class="input" id="f_tempo" type="number" value="${f.tempoPreparo}"></div>
+        <div class="field"><label>Tempo de preparo <span class="hint">min</span></label><input class="input" id="f_tempo" type="number" value="${f.tempoPreparo||''}" placeholder="0"></div>
         <div class="field"><label>Utensílios necessários</label><input class="input" id="f_utens" value="${(f.utensilios||'').replace(/"/g,'&quot;')}" placeholder="Ex.: Faca, tábua, chapa"></div>
       </div>
       <label style="display:block;font-size:13px;font-weight:600;margin:6px 0 10px">Modo de preparo e montagem <span class="hint" style="font-weight:400">passo a passo</span></label>
@@ -1540,7 +1540,7 @@ function editFaturamento(){
   modal(`<div class="modal-head"><h3>Lançar faturamento</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div class="field"><label>Faturamento bruto do mês <span class="hint">total de vendas realizadas</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="ft_lan" inputmode="numeric" value="${fmtMoneyInput(DB.fat.lancado||0)}" oninput="moneyMask(this)"></div></div>
-    <div class="field"><label>% do faturamento via iFood <span class="hint">mix de canal</span></label><input class="input" id="ft_mix" type="number" step="1" value="${DB.fat.mixIfood}"></div>
+    <div class="field"><label>% do faturamento via iFood <span class="hint">mix de canal</span></label><input class="input" id="ft_mix" type="number" step="1" value="${DB.fat.mixIfood||''}" placeholder="0"></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveFaturamento()">Salvar</button></div>`);
 }
@@ -1576,6 +1576,8 @@ function dreCustosDetalhe(){
   if(outros.length)g.push(['Outros custos e provisões',outros]);
   return g;
 }
+const dreCollapsed=new Set();
+function dreToggle(g){if(dreCollapsed.has(g))dreCollapsed.delete(g);else dreCollapsed.add(g);viewDRE();}
 function viewDRE(){
   const t=totaisGerais();
   const comissao=t.comissaoRS;
@@ -1597,7 +1599,9 @@ function viewDRE(){
         <tr class="ind"><td>Taxa de cartão</td><td class="num">${fmtBRL(t.taxaCartaoRS)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(t.taxaCartaoRS))}</td></tr>
         <tr class="ind"><td>Impostos (${regimeLabel()})</td><td class="num">${fmtBRL(imposto)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(imposto))}</td></tr>
         <tr class="grp"><td>(–) Custos fixos + pessoal</td><td class="num" style="color:var(--red)">${fmtBRL(-fixos)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(fixos))}</td></tr>
-        ${dreCustosDetalhe().map(([grupo,itens])=>`<tr><td colspan="3" style="font-size:10.5px;letter-spacing:.6px;color:var(--gold);text-transform:uppercase;font-weight:700;padding:9px 0 2px">${grupo}</td></tr>`+itens.map(([n,v])=>`<tr class="ind"><td>${n}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(v))}</td></tr>`).join('')).join('')}
+        ${dreCustosDetalhe().map(([grupo,itens])=>{const subtot=itens.reduce((s,[,v])=>s+v,0);const col=dreCollapsed.has(grupo);
+          return `<tr class="dre-cat" onclick="dreToggle('${grupo.replace(/'/g,"\\'")}')" style="cursor:pointer"><td style="font-size:10.5px;letter-spacing:.6px;color:var(--gold);text-transform:uppercase;font-weight:700;padding:9px 13px 5px"><span style="display:inline-block;width:12px;color:var(--muted)">${col?'▸':'▾'}</span> ${grupo}</td><td class="num" style="font-weight:700">${fmtBRL(subtot)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(subtot))}</td></tr>`
+          +(col?'':itens.map(([n,v])=>`<tr class="ind"><td>${n}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(v))}</td></tr>`).join(''));}).join('')}
         <tr class="total"><td>(=) Resultado líquido</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(lucro)}</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtPct(pct(lucro))}</td></tr>
       </tbody></table>
     </div>
@@ -1636,7 +1640,7 @@ function finList(key,cols){
       if(c.type==='select')return `<select class="input" onchange="DB.fin['${key}'][${i}]['${c.f}']=this.value;save()">${c.opts.map(o=>`<option ${row[c.f]===o?'selected':''}>${o}</option>`).join('')}</select>`;
       if(c.type==='check')return `<button class="icon-btn" onclick="DB.fin['${key}'][${i}]['${c.f}']=!DB.fin['${key}'][${i}]['${c.f}'];save();viewFinanceiro()" title="${c.ph||''}" style="${row[c.f]?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${row[c.f]?'✓':'○'}</button>`;
       if(c.type==='money')return `<div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(row[c.f]||0)}" oninput="DB.fin['${key}'][${i}]['${c.f}']=moneyMask(this);finTouch()"></div>`;
-      return `<input class="input" ${c.type==='num'?'type="number" step="0.01"':c.type==='date'?'type="date"':''} value="${c.type==='num'?(row[c.f]||0):((row[c.f]==null?'':row[c.f]).toString().replace(/"/g,'&quot;'))}" placeholder="${c.ph||''}" oninput="DB.fin['${key}'][${i}]['${c.f}']=${c.type==='num'?'parseFloat(this.value)||0':'this.value'};finTouch()">`;
+      return `<input class="input" ${c.type==='num'?'type="number" step="0.01"':c.type==='date'?'type="date"':''} value="${c.type==='num'?(row[c.f]||''):((row[c.f]==null?'':row[c.f]).toString().replace(/"/g,'&quot;'))}" placeholder="${c.ph||(c.type==='num'?'0':'')}" oninput="DB.fin['${key}'][${i}]['${c.f}']=${c.type==='num'?'parseFloat(this.value)||0':'this.value'};finTouch()">`;
     }).join('')}
     <button class="mini-del" onclick="DB.fin['${key}'].splice(${i},1);save();viewFinanceiro()">${icoX}</button></div>`).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhum registro.</div>`}
   <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:6px">${icoPlus} Adicionar</button>`;
@@ -2044,14 +2048,14 @@ function editCmvReg(id,prefill){
   <div class="modal-body">
     <div class="field"><label>Data da contagem</label><input class="input" id="cr_data" type="date" value="${esc(r.data)}"></div>
     <div class="grid-2">
-      <div class="field"><label>Estoque inicial <span class="hint">R$</span></label><input class="input" id="cr_ei" type="number" step="0.01" value="${r.ei}" oninput="updCmvPrev()">
+      <div class="field"><label>Estoque inicial <span class="hint">R$</span></label><input class="input" id="cr_ei" type="number" step="0.01" value="${r.ei||''}" placeholder="0,00" oninput="updCmvPrev()">
         ${last&&!id?`<button type="button" onclick="document.getElementById('cr_ei').value=${(+last.ef||0)};updCmvPrev()" style="font-size:11px;color:var(--navy);margin-top:5px">↩ Usar estoque final anterior (${fmtBRL(+last.ef||0)})</button>`:''}</div>
-      <div class="field"><label>Compras do período <span class="hint">R$</span></label><input class="input" id="cr_compras" type="number" step="0.01" value="${r.compras}" oninput="updCmvPrev()"></div>
+      <div class="field"><label>Compras do período <span class="hint">R$</span></label><input class="input" id="cr_compras" type="number" step="0.01" value="${r.compras||''}" placeholder="0,00" oninput="updCmvPrev()"></div>
     </div>
     <div class="grid-2">
-      <div class="field"><label>Estoque final <span class="hint">R$</span></label><input class="input" id="cr_ef" type="number" step="0.01" value="${r.ef}" oninput="updCmvPrev()">
+      <div class="field"><label>Estoque final <span class="hint">R$</span></label><input class="input" id="cr_ef" type="number" step="0.01" value="${r.ef||''}" placeholder="0,00" oninput="updCmvPrev()">
         <button type="button" onclick="document.getElementById('cr_ef').value=${estTot};updCmvPrev()" style="font-size:11px;color:var(--navy);margin-top:5px">↓ Usar valor do estoque atual (${fmtBRL(estTot)})</button></div>
-      <div class="field"><label>Vendas do período <span class="hint">R$</span></label><input class="input" id="cr_vendas" type="number" step="0.01" value="${r.vendas}" oninput="updCmvPrev()"></div>
+      <div class="field"><label>Vendas do período <span class="hint">R$</span></label><input class="input" id="cr_vendas" type="number" step="0.01" value="${r.vendas||''}" placeholder="0,00" oninput="updCmvPrev()"></div>
     </div>
     <div id="cr_calc"></div>
   </div>
@@ -2118,16 +2122,16 @@ function viewEstoque(){
     <div class="section-head no-print"><div class="pill-filter">${cats.map(c=>`<button class="${c===estoqueFiltro?'on':''}" onclick="estoqueFiltro='${c.replace(/'/g,"\\'")}';viewEstoque()">${c}</button>`).join('')}</div>
       <input class="input" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="filtrarLinhas(this,'#estoqueTbody')"></div>
     <div class="card"><div class="scroll-x"><table>
-      <thead><tr><th>Insumo</th><th>Categoria</th><th class="num">Unid.</th><th>Fornecedor</th><th class="num">Custo un.</th><th class="num">Mínimo</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Valor estoque</th><th class="num">Status</th></tr></thead>
+      <thead><tr><th>Insumo</th><th>Categoria</th><th>Fornecedor</th><th class="num">Custo un.</th><th class="num">Unid.</th><th class="num">Mínimo</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Valor estoque</th><th class="num">Status</th></tr></thead>
       <tbody id="estoqueTbody">${filt.sort((a,b)=>(b.comprar-a.comprar)||a.nome.localeCompare(b.nome)).map(x=>`
         <tr>
           <td><b>${x.nome}</b></td>
           <td><span class="tag tag-gray">${x.cat}</span></td>
-          <td class="num">${uSym(x.uni)}</td>
           <td><input class="input" style="min-width:130px" value="${esc(x.ins.fornecedor)}" placeholder="Fornecedor" oninput="DB.insumos['${x.ins.id}'].fornecedor=this.value;finTouch()"></td>
           <td class="num">${fmtBRL(x.custo)}</td>
-          <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.min}" oninput="DB.insumos['${x.ins.id}'].estoqueMin=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
-          <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.atual}" oninput="DB.insumos['${x.ins.id}'].estoqueAtual=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
+          <td class="num">${uSym(x.uni)}</td>
+          <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.min||''}" placeholder="0" oninput="DB.insumos['${x.ins.id}'].estoqueMin=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
+          <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.atual||''}" placeholder="0" oninput="DB.insumos['${x.ins.id}'].estoqueAtual=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
           <td class="num">${x.necessidade?fmtN(x.necessidade,x.necessidade%1?2:0)+' '+uSym(x.uni):'—'}</td>
           <td class="num">${fmtBRL(x.valorEstoque)}</td>
           <td class="num"><span class="tag ${x.comprar?'tag-red':'tag-green'}">${x.comprar?'COMPRAR':'OK'}</span></td>
