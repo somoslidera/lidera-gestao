@@ -1795,23 +1795,58 @@ function finParam(){
 }
 
 /* ===================== EQUIPE ===================== */
+const ACESSOS=[['dashboard','Dashboard'],['insumos','Insumos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['buffet','Mapa do Buffet'],['faturamento','Faturamento'],['dre','DRE'],['financeiro','Financeiro'],['mapa','Mapa do Caminho'],['equipe','Equipe'],['conta','Configurações']];
+const NIVEIS={
+  admin:{label:'Administrador',desc:'Acesso total a tudo',perms:ACESSOS.map(a=>a[0])},
+  gerente:{label:'Gerente',desc:'Operação + indicadores (sem equipe/config)',perms:['dashboard','insumos','fichas','estoque','engenharia','cmv','buffet','faturamento','dre','mapa']},
+  operador:{label:'Operador',desc:'Só operação do dia a dia',perms:['insumos','fichas','estoque','cmv','buffet']},
+  personalizado:{label:'Personalizado',desc:'Você escolhe cada acesso',perms:[]}
+};
+function normMembro(m){if(!m.nivel)m.nivel='gerente';if(!Array.isArray(m.permissoes))m.permissoes=(NIVEIS[m.nivel]||NIVEIS.gerente).perms.slice();return m;}
 function viewEquipe(){
-  DB.equipe=DB.equipe||[];
-  $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="DB.equipe.push({id:uid(),nome:'',email:'',senha:''});save();viewEquipe()">${icoPlus} Novo acesso</button>`;
+  DB.equipe=(DB.equipe||[]).map(normMembro);
+  $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="addMembro()">${icoPlus} Adicionar membro</button>`;
   const arr=DB.equipe;
-  $('#view').innerHTML=`<div class="card card-pad" style="max-width:900px">
-    <div class="section-head"><div><div class="ttl">Membros da equipe</div><div class="desc">Acessos para seus gerentes preencherem fichas e gerenciar vendas. Sem limite de acessos.</div></div></div>
+  $('#view').innerHTML=`<div class="card card-pad" style="max-width:920px">
+    <div class="section-head"><div><div class="ttl">Membros da equipe</div><div class="desc">Crie acessos para a equipe e escolha o nível de acesso de cada um. Sem limite de membros.</div></div></div>
     ${arr.length?`<div class="scroll-x"><table>
-      <thead><tr><th>Nome</th><th>E-mail de login</th><th>Senha provisória</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>E-mail de login</th><th>Nível de acesso</th><th class="num">Áreas</th><th></th></tr></thead>
       <tbody>${arr.map((m,i)=>`<tr>
-        <td><input class="input" value="${esc(m.nome)}" placeholder="Nome do gerente" oninput="DB.equipe[${i}].nome=this.value;finTouch()"></td>
-        <td><input class="input" value="${esc(m.email)}" placeholder="gerente@restaurante.com" oninput="DB.equipe[${i}].email=this.value;finTouch()"></td>
-        <td><input class="input" value="${esc(m.senha)}" placeholder="senha provisória" oninput="DB.equipe[${i}].senha=this.value;finTouch()"></td>
-        <td><div class="row-actions"><button class="icon-btn del" onclick="DB.equipe.splice(${i},1);save();viewEquipe()">${icoTrash}</button></div></td></tr>`).join('')}</tbody></table></div>`
-    :emptyState('Nenhum acesso cadastrado','Crie acessos para seus gerentes operarem o sistema.',"DB.equipe.push({id:uid(),nome:'',email:'',senha:''});save();viewEquipe()")}
-    <div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px;font-size:13px;color:var(--muted)">${arr.length} acesso(s) ativo(s)</div>
+        <td><b>${esc(m.nome)||'<span style="color:var(--soft)">Sem nome</span>'}</b></td>
+        <td>${esc(m.email)||'<span style="color:var(--soft)">—</span>'}</td>
+        <td><span class="tag ${m.nivel==='admin'?'tag-navy':m.nivel==='personalizado'?'tag-gold':'tag-gray'}">${NIVEIS[m.nivel].label}</span></td>
+        <td class="num">${m.nivel==='admin'?'Todas':m.permissoes.length+' de '+ACESSOS.length}</td>
+        <td><div class="row-actions"><button class="icon-btn" onclick="editMembro('${m.id}')">${icoEdit}</button><button class="icon-btn del" onclick="if(confirm('Remover este membro?')){DB.equipe=DB.equipe.filter(x=>x.id!=='${m.id}');save();viewEquipe();}">${icoTrash}</button></div></td></tr>`).join('')}</tbody></table></div>`
+    :emptyState('Nenhum membro cadastrado','Crie acessos para sua equipe operar o sistema.','addMembro()')}
+    <div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px;font-size:12.5px;color:var(--muted)">${arr.length} membro(s) · o nível define quais áreas cada um acessa.</div>
   </div>`;
 }
+function addMembro(){const m={id:uid(),nome:'',email:'',senha:'',nivel:'gerente',permissoes:NIVEIS.gerente.perms.slice()};DB.equipe=DB.equipe||[];DB.equipe.push(m);save();editMembro(m.id);}
+let editMembroId=null;
+function editMembro(id){editMembroId=id;const m=normMembro(DB.equipe.find(x=>x.id===id));if(!m)return;
+  modal(`<div class="modal-head"><h3>Membro da equipe</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div class="grid-2">
+      <div class="field"><label>Nome</label><input class="input" id="mb_nome" value="${esc(m.nome)}" placeholder="Nome do membro"></div>
+      <div class="field"><label>E-mail de login</label><input class="input" id="mb_email" type="email" value="${esc(m.email)}" placeholder="membro@restaurante.com"></div>
+    </div>
+    <div class="field"><label>Senha provisória</label><input class="input" id="mb_senha" value="${esc(m.senha)}" placeholder="defina uma senha"></div>
+    <div class="field"><label>Nível de acesso</label>
+      <select class="input" id="mb_nivel" onchange="membroSetNivel(this.value)">${Object.entries(NIVEIS).map(([k,v])=>`<option value="${k}" ${m.nivel===k?'selected':''}>${v.label} — ${v.desc}</option>`).join('')}</select></div>
+    <div style="font-size:12px;font-weight:600;color:var(--muted);margin:6px 0 8px">Áreas que este membro pode acessar</div>
+    <div id="mb_perms" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px">${ACESSOS.map(([k,l])=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" data-perm="${k}" ${m.permissoes.includes(k)?'checked':''} onchange="membroTogglePerm()" style="width:16px;height:16px;accent-color:var(--navy)"> ${l}</label>`).join('')}</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveMembro()">Salvar membro</button></div>`);
+}
+function membroSetNivel(nivel){const checks=document.querySelectorAll('#mb_perms input[data-perm]');const perms=(NIVEIS[nivel]||{perms:[]}).perms;
+  if(nivel!=='personalizado')checks.forEach(c=>c.checked=perms.includes(c.dataset.perm));}
+function membroTogglePerm(){const sel=document.getElementById('mb_nivel');if(sel)sel.value='personalizado';}
+function saveMembro(){const m=DB.equipe.find(x=>x.id===editMembroId);if(!m)return;
+  m.nome=$('#mb_nome').value.trim();m.email=$('#mb_email').value.trim();m.senha=$('#mb_senha').value;
+  m.nivel=$('#mb_nivel').value;
+  m.permissoes=[...document.querySelectorAll('#mb_perms input[data-perm]:checked')].map(c=>c.dataset.perm);
+  if(m.nivel==='admin')m.permissoes=NIVEIS.admin.perms.slice();
+  save();closeModal();viewEquipe();toast('Membro salvo');}
 
 /* ===================== MAPA DO CAMINHO ===================== */
 function ringSVG(pct){const r=34,c=2*Math.PI*r,off=c*(1-clamp(pct,0,100)/100);
