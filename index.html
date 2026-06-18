@@ -739,7 +739,8 @@ const ROUTES={
   conta:{title:'Configurações',render:viewConta},
 };
 let current='dashboard';
-function go(route){current=route;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.route===route));
+function go(route){if(MEMBRO_PERMS&&!MEMBRO_PERMS.includes(route))route=MEMBRO_PERMS[0]||route; // membro só acessa áreas liberadas
+  current=route;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.route===route));
   $('#pageTitle').textContent=ROUTES[route].title;$('#topActions').innerHTML='';ROUTES[route].render();window.scrollTo(0,0);toggleSidebar(false);}
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.route);}));
 function toggleSidebar(open){const sb=$('#sidebar'),bd=$('#backdrop');if(open===undefined)open=!sb.classList.contains('open');sb.classList.toggle('open',open);bd.classList.toggle('hidden',!open);}
@@ -1816,7 +1817,7 @@ function viewEquipe(){
         <td>${esc(m.email)||'<span style="color:var(--soft)">—</span>'}</td>
         <td><span class="tag ${m.nivel==='admin'?'tag-navy':m.nivel==='personalizado'?'tag-gold':'tag-gray'}">${NIVEIS[m.nivel].label}</span></td>
         <td class="num">${m.nivel==='admin'?'Todas':m.permissoes.length+' de '+ACESSOS.length}</td>
-        <td><div class="row-actions"><button class="icon-btn" onclick="editMembro('${m.id}')">${icoEdit}</button><button class="icon-btn del" onclick="if(confirm('Remover este membro?')){DB.equipe=DB.equipe.filter(x=>x.id!=='${m.id}');save();viewEquipe();}">${icoTrash}</button></div></td></tr>`).join('')}</tbody></table></div>`
+        <td><div class="row-actions"><button class="icon-btn" onclick="editMembro('${m.id}')">${icoEdit}</button><button class="icon-btn del" onclick="removerMembro('${m.id}')">${icoTrash}</button></div></td></tr>`).join('')}</tbody></table></div>`
     :emptyState('Nenhum membro cadastrado','Crie acessos para sua equipe operar o sistema.','addMembro()')}
     <div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px;font-size:12.5px;color:var(--muted)">${arr.length} membro(s) · o nível define quais áreas cada um acessa.</div>
   </div>`;
@@ -1841,12 +1842,27 @@ function editMembro(id){editMembroId=id;const m=normMembro(DB.equipe.find(x=>x.i
 function membroSetNivel(nivel){const checks=document.querySelectorAll('#mb_perms input[data-perm]');const perms=(NIVEIS[nivel]||{perms:[]}).perms;
   if(nivel!=='personalizado')checks.forEach(c=>c.checked=perms.includes(c.dataset.perm));}
 function membroTogglePerm(){const sel=document.getElementById('mb_nivel');if(sel)sel.value='personalizado';}
-function saveMembro(){const m=DB.equipe.find(x=>x.id===editMembroId);if(!m)return;
-  m.nome=$('#mb_nome').value.trim();m.email=$('#mb_email').value.trim();m.senha=$('#mb_senha').value;
-  m.nivel=$('#mb_nivel').value;
+async function saveMembro(){const m=DB.equipe.find(x=>x.id===editMembroId);if(!m)return;
+  const nome=$('#mb_nome').value.trim(),email=$('#mb_email').value.trim().toLowerCase(),senha=$('#mb_senha').value;
+  m.nome=nome;m.email=email;m.senha=senha;m.nivel=$('#mb_nivel').value;
   m.permissoes=[...document.querySelectorAll('#mb_perms input[data-perm]:checked')].map(c=>c.dataset.perm);
   if(m.nivel==='admin')m.permissoes=NIVEIS.admin.perms.slice();
-  save();closeModal();viewEquipe();toast('Membro salvo');}
+  const btn=document.querySelector('.modal-foot .btn-primary');
+  // cria a conta de login real na 1ª vez (precisa estar na nuvem)
+  if(sb&&CLOUD&&!m.authId){
+    if(!email||senha.length<6){return toast('Informe e-mail e senha de ao menos 6 caracteres para criar o acesso');}
+    if(btn){btn.disabled=true;btn.textContent='Criando acesso...';}
+    let res;try{res=await chamarFn('criar-membro',{acao:'criar',email,senha,nome});}catch(e){res={data:{error:e.message}};}
+    if(btn){btn.disabled=false;btn.textContent='Salvar membro';}
+    if(!res.data||!res.data.ok)return toast(res.data&&res.data.error||'Não foi possível criar o acesso');
+    m.authId=res.data.authId;m.criado=true;
+    save();closeModal();viewEquipe();toast('Acesso criado! O membro já entra com o e-mail e a senha.');return;
+  }
+  save();closeModal();viewEquipe();toast('Membro atualizado');}
+async function removerMembro(id){const m=DB.equipe.find(x=>x.id===id);if(!m)return;
+  if(!confirm('Remover este membro? O acesso dele será desativado.'))return;
+  if(sb&&CLOUD&&m.authId){try{await chamarFn('criar-membro',{acao:'remover',authId:m.authId});}catch(e){}}
+  DB.equipe=DB.equipe.filter(x=>x.id!==id);save();viewEquipe();toast('Membro removido');}
 
 /* ===================== MAPA DO CAMINHO ===================== */
 function ringSVG(pct){const r=34,c=2*Math.PI*r,off=c*(1-clamp(pct,0,100)/100);
@@ -2277,7 +2293,7 @@ function emptyState(t,d,action){return `<div class="empty"><svg viewBox="0 0 24 
 /* ===================== SAAS: AUTH + NUVEM + ADMIN ===================== */
 const SUPA_URL='https://fvcbxorfstqqeewocxkf.supabase.co', SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2J4b3Jmc3RxcWVld29jeGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzM5MjgsImV4cCI6MjA5Njg0OTkyOH0.X9gnZt535F1ASHpUaL24eEZysHHECwzfBwjaR4kVnyw';
 const sb=(window.supabase&&SUPA_URL.indexOf('http')===0)?window.supabase.createClient(SUPA_URL,SUPA_ANON):null;
-let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false;
+let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false, MEMBRO_PERMS=null;
 function emptyDB(){return {insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};}
 function pushCloud(){if(!CLOUD||!sb||!ORG)return;clearTimeout(window._cloudT);window._cloudT=setTimeout(()=>{sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id).then(()=>{},()=>{});},800);}
 async function chamarFn(nome,body){const s=(await sb.auth.getSession()).data.session;const r=await fetch(SUPA_URL+'/functions/v1/'+nome,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_ANON,'Authorization':'Bearer '+(s?s.access_token:'')},body:JSON.stringify(body||{})});let j={};try{j=await r.json();}catch(e){}return {status:r.status,data:j};}
@@ -2292,22 +2308,35 @@ async function bootApp(){
 }
 async function afterAuth(){
   hideLogin();
-  let uid;try{uid=(await sb.auth.getUser()).data.user.id;}catch(e){showLogin();return;}
+  let user;try{user=(await sb.auth.getUser()).data.user;}catch(e){showLogin();return;}
+  const uid=user.id, email=(user.email||'').toLowerCase();
   let perfil=null;try{perfil=(await sb.from('perfis').select('*').eq('id',uid).single()).data;}catch(e){}
   PERFIL=perfil||{papel:'cliente',org_id:null};
-  if(PERFIL.papel==='admin'){showAdmin();}
-  else{await entrarComoCliente(PERFIL.org_id);}
+  if(PERFIL.papel==='admin'){MEMBRO_PERMS=null;showAdmin();}
+  else{await entrarComoCliente(PERFIL.org_id,email);}
 }
-async function entrarComoCliente(orgId){
+async function entrarComoCliente(orgId,email){
   if(!orgId){telaMensagem('Conta sem restaurante vinculado','Sua conta foi criada, mas ainda não está liberada por um administrador. Aguarde a liberação.');return;}
   let org=null;try{org=(await sb.from('organizacoes').select('*').eq('id',orgId).single()).data;}catch(e){}
   if(!org){telaMensagem('Acesso indisponível','Não foi possível carregar seu restaurante. Tente novamente mais tarde.');return;}
   ORG=org;
   if(org.status==='suspenso'){telaMensagem('Acesso suspenso','Seu acesso está temporariamente suspenso. Fale com a Lidera para reativar.');return;}
   DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();
-  CLOUD=true;ADMIN_MODE=false;hideAdmin();bannerCloud();
-  renderFoot();go('dashboard');
-  if(!DB.onboardingFeito)setTimeout(()=>abrirWizard(1),350); // anamnese no 1º acesso
+  CLOUD=true;ADMIN_MODE=false;hideAdmin();
+  // É um MEMBRO da equipe (não o dono)? Aplica o nível de acesso.
+  MEMBRO_PERMS=null;
+  const membro=email?(DB.equipe||[]).find(x=>(x.email||'').toLowerCase()===email):null;
+  if(membro){
+    MEMBRO_PERMS=(membro.permissoes||[]).slice();
+    if(!MEMBRO_PERMS.length){telaMensagem('Acesso não configurado','Seu acesso ainda não tem áreas liberadas. Fale com o responsável pela conta.');return;}
+  }
+  bannerCloud();renderFoot();
+  if(MEMBRO_PERMS){aplicarAcessoMembro();go(MEMBRO_PERMS[0]);}
+  else{go('dashboard');if(!DB.onboardingFeito)setTimeout(()=>abrirWizard(1),350);}
+}
+function aplicarAcessoMembro(){
+  document.querySelectorAll('#nav a[data-route]').forEach(a=>{a.style.display=(MEMBRO_PERMS&&MEMBRO_PERMS.includes(a.dataset.route))?'':'none';});
+  const se=document.querySelector('.side-edit');if(se)se.style.display=(MEMBRO_PERMS&&MEMBRO_PERMS.includes('conta'))?'':'none';
 }
 
 /* ---- LOGIN ---- */
@@ -2460,7 +2489,8 @@ async function novoCliente(){
 async function vincularPerfil(perfilId,orgId){if(!orgId)return;await sb.from('perfis').update({org_id:orgId}).eq('id',perfilId);toast('Cliente vinculado');showAdmin();}
 async function toggleStatus(orgId,status){const novo=status==='suspenso'?'ativo':'suspenso';await sb.from('organizacoes').update({status:novo}).eq('id',orgId);toast(novo==='ativo'?'Acesso reativado':'Acesso suspenso');showAdmin();}
 async function abrirCliente(orgId){let org=null;try{org=(await sb.from('organizacoes').select('*').eq('id',orgId).single()).data;}catch(e){}if(!org)return toast('Erro ao abrir');
-  ORG=org;DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();CLOUD=true;ADMIN_MODE=true;hideAdmin();bannerCloud();renderFoot();go('dashboard');}
+  ORG=org;DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();CLOUD=true;ADMIN_MODE=true;MEMBRO_PERMS=null;hideAdmin();bannerCloud();renderFoot();
+  document.querySelectorAll('#nav a[data-route]').forEach(a=>a.style.display='');go('dashboard');}
 function voltarAdmin(){CLOUD=false;ADMIN_MODE=false;ORG=null;const bn=document.getElementById('cloudBanner');if(bn)bn.style.display='none';showAdmin();}
 async function atividadesCliente(orgId,nome){let ats=[];try{ats=(await sb.from('atividades').select('*').eq('org_id',orgId).order('criada_em',{ascending:false})).data||[];}catch(e){}
   modal(`<div class="modal-head"><h3>Atividades — ${nome}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
