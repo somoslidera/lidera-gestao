@@ -2470,14 +2470,29 @@ async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin(
       </div>
     </div>`;}).join(''):`<div style="color:var(--muted)">Nenhum cliente ainda. Crie o primeiro com “Novo cliente”.</div>`;
 }
-async function novoCliente(){
-  const nome=prompt('Nome do restaurante/cliente:');if(!nome)return;
-  const email=(prompt('E-mail de login do cliente:')||'').trim();if(!email)return;
-  const resp=prompt('Responsável (opcional):')||'';
-  toast('Criando cliente…');
+function novoCliente(){
+  modal(`<div class="modal-head"><h3>Novo cliente</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div id="nc_err" style="display:none;background:var(--red-bg);color:var(--red);font-size:13px;padding:10px 12px;border-radius:10px;margin-bottom:12px"></div>
+    <div class="field"><label>Nome do restaurante</label><input class="input" id="nc_nome" placeholder="Ex.: Restaurante Lidera"></div>
+    <div class="field"><label>E-mail de login do cliente</label><input class="input" id="nc_email" type="email" placeholder="cliente@restaurante.com"></div>
+    <div class="field"><label>Responsável <span class="hint">opcional</span></label><input class="input" id="nc_resp" placeholder="Nome do responsável"></div>
+    <div style="font-size:12px;color:var(--soft)">Uma senha provisória será gerada — o cliente entra com o e-mail e essa senha.</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="doNovoCliente()">Criar cliente</button></div>`);
+  setTimeout(()=>{const e=$('#nc_nome');if(e)e.focus();},40);
+}
+async function doNovoCliente(){
+  const nome=$('#nc_nome').value.trim(),email=$('#nc_email').value.trim().toLowerCase(),resp=$('#nc_resp').value.trim();
+  const err=$('#nc_err');const showErr=m=>{if(err){err.style.display='block';err.textContent=m;}};
+  if(!nome)return showErr('Informe o nome do restaurante.');
+  if(!email||!/.+@.+\..+/.test(email))return showErr('Informe um e-mail válido para o login.');
+  const btn=document.querySelector('.modal-foot .btn-primary');if(btn){btn.disabled=true;btn.textContent='Criando…';}
   let res;try{res=await chamarFn('criar-cliente',{nome,responsavel:resp,email});}catch(e){res={data:{error:e.message}};}
+  if(btn){btn.disabled=false;btn.textContent='Criar cliente';}
   const data=res&&res.data;
-  if(!data||data.error){return toast('Erro: '+((data&&data.error)||'falha ao criar'));}
+  if(!data||data.error){const raw=(data&&data.error)||'falha ao criar';
+    return showErr(/registered|exists|já está|already/i.test(raw)?'Esse e-mail já está em uso por outra conta. Use um e-mail diferente para este cliente.':('Não foi possível criar: '+raw));}
   modal(`<div class="modal-head"><h3>Cliente criado ✓</h3><button class="x" onclick="closeModal();showAdmin()">${icoX}</button></div>
   <div class="modal-body">
     <div style="font-size:13.5px;color:var(--muted);margin-bottom:14px">Repasse estas credenciais ao cliente. Ele pode trocar a senha depois, em Configurações.</div>
