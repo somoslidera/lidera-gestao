@@ -1852,7 +1852,7 @@ async function saveMembro(){const m=DB.equipe.find(x=>x.id===editMembroId);if(!m
   if(sb&&CLOUD&&!m.authId){
     if(!email||senha.length<6){return toast('Informe e-mail e senha de ao menos 6 caracteres para criar o acesso');}
     if(btn){btn.disabled=true;btn.textContent='Criando acesso...';}
-    let res;try{res=await chamarFn('criar-membro',{acao:'criar',email,senha,nome});}catch(e){res={data:{error:e.message}};}
+    let res;try{res=await chamarFn('criar-membro',{acao:'criar',email,senha,nome,orgId:(ORG&&ORG.id)});}catch(e){res={data:{error:e.message}};}
     if(btn){btn.disabled=false;btn.textContent='Salvar membro';}
     if(!res.data||!res.data.ok)return toast(res.data&&res.data.error||'Não foi possível criar o acesso');
     m.authId=res.data.authId;m.criado=true;
@@ -1861,7 +1861,7 @@ async function saveMembro(){const m=DB.equipe.find(x=>x.id===editMembroId);if(!m
   save();closeModal();viewEquipe();toast('Membro atualizado');}
 async function removerMembro(id){const m=DB.equipe.find(x=>x.id===id);if(!m)return;
   if(!confirm('Remover este membro? O acesso dele será desativado.'))return;
-  if(sb&&CLOUD&&m.authId){try{await chamarFn('criar-membro',{acao:'remover',authId:m.authId});}catch(e){}}
+  if(sb&&CLOUD&&m.authId){try{await chamarFn('criar-membro',{acao:'remover',authId:m.authId,orgId:(ORG&&ORG.id)});}catch(e){}}
   DB.equipe=DB.equipe.filter(x=>x.id!==id);save();viewEquipe();toast('Membro removido');}
 
 /* ===================== MAPA DO CAMINHO ===================== */
