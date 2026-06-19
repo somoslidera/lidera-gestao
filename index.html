@@ -2428,6 +2428,7 @@ function telaMensagem(t,d){hideAdmin();const b=authBox();b.style.display='flex';
 function bannerCloud(){let bn=document.getElementById('cloudBanner');if(ADMIN_MODE){if(!bn){bn=document.createElement('div');bn.id='cloudBanner';bn.className='cloud-banner';const m=document.querySelector('.main');m.insertBefore(bn,m.firstChild);}bn.style.display='flex';bn.innerHTML=`👁️ Você está vendo o cliente: <b style="margin:0 auto 0 4px">${(ORG&&ORG.nome)||''}</b><button onclick="voltarAdmin()">← Voltar ao painel</button>`;}else if(bn){bn.style.display='none';}}
 
 /* ---- ADMIN ---- */
+let adminTab='ativos';
 function adminBox(){let b=document.getElementById('adminScreen');if(!b){b=document.createElement('div');b.id='adminScreen';b.style.cssText='position:fixed;inset:0;z-index:250;background:var(--bg);overflow:auto';document.body.appendChild(b);}return b;}
 function hideAdmin(){const b=document.getElementById('adminScreen');if(b)b.style.display='none';}
 function withDB(d,fn){const bak=DB;DB=d;try{return fn();}finally{DB=bak;}}
@@ -2439,37 +2440,58 @@ async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin(
     <div style="display:flex;gap:10px"><button class="btn btn-primary" onclick="novoCliente()">${icoPlus} Novo cliente</button><button class="btn btn-ghost" onclick="logout()">Sair</button></div></div>
     <div id="admin_kpis" style="margin:18px 0"></div>
     <div id="admin_pend"></div>
-    <div class="ttl" style="margin:18px 0 12px">Clientes</div>
+    <div id="admin_tabs" style="margin:18px 0 12px"></div>
     <div id="admin_list" class="admin-grid"><div style="color:var(--muted)">Carregando…</div></div></div>`;
   let orgs=[],pend=[];
   try{orgs=(await sb.from('organizacoes').select('*').order('criado_em',{ascending:false})).data||[];}catch(e){}
   try{pend=(await sb.from('perfis').select('*').eq('papel','cliente').is('org_id',null)).data||[];}catch(e){}
-  const ativos=orgs.filter(o=>o.status!=='suspenso').length;
-  const fatTot=orgs.reduce((s,o)=>s+kpisDe(o.dados).fat,0);
+  const arqd=o=>!!(o.dados&&o.dados._arquivado);
+  const arquivados=orgs.filter(arqd), ativosArr=orgs.filter(o=>!arqd(o));
+  const ativos=ativosArr.filter(o=>o.status!=='suspenso').length;
+  const fatTot=ativosArr.reduce((s,o)=>s+kpisDe(o.dados).fat,0);
   $('#admin_kpis').innerHTML=`<div class="kpi-grid" style="margin:0">
-    <div class="kpi"><div class="k-lbl">Clientes</div><div class="k-val">${orgs.length}</div><div class="k-sub" style="color:var(--soft)">${ativos} ativos</div></div>
-    <div class="kpi"><div class="k-lbl">Faturamento somado</div><div class="k-val" style="font-size:21px">${fmtBRL(fatTot)}</div><div class="k-sub" style="color:var(--soft)">de todos os clientes</div></div>
+    <div class="kpi"><div class="k-lbl">Clientes</div><div class="k-val">${ativosArr.length}</div><div class="k-sub" style="color:var(--soft)">${ativos} ativos</div></div>
+    <div class="kpi"><div class="k-lbl">Faturamento somado</div><div class="k-val" style="font-size:21px">${fmtBRL(fatTot)}</div><div class="k-sub" style="color:var(--soft)">dos clientes ativos</div></div>
     <div class="kpi"><div class="k-lbl">Aguardando vínculo</div><div class="k-val" style="color:${pend.length?'var(--amber)':'var(--green)'}">${pend.length}</div><div class="k-sub" style="color:var(--soft)">novos cadastros</div></div>
-    <div class="kpi"><div class="k-lbl">Suspensos</div><div class="k-val">${orgs.filter(o=>o.status==='suspenso').length}</div><div class="k-sub" style="color:var(--soft)">acesso bloqueado</div></div></div>`;
+    <div class="kpi"><div class="k-lbl">Arquivados</div><div class="k-val">${arquivados.length}</div><div class="k-sub" style="color:var(--soft)">fora de uso</div></div></div>`;
+  $('#admin_tabs').innerHTML=`<div class="pill-filter"><button class="${adminTab!=='arquivados'?'on':''}" onclick="adminTab='ativos';showAdmin()">Clientes (${ativosArr.length})</button><button class="${adminTab==='arquivados'?'on':''}" onclick="adminTab='arquivados';showAdmin()">📦 Arquivados (${arquivados.length})</button></div>`;
   $('#admin_pend').innerHTML=pend.length?`<div class="card card-pad" style="border-color:var(--amber)"><div class="ttl" style="margin-bottom:8px">⏳ Novos cadastros aguardando liberação</div>
     ${pend.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${p.email||'(sem e-mail)'}</b></div>
       <select class="input" style="max-width:260px" onchange="vincularPerfil('${p.id}',this.value)"><option value="">Vincular a um restaurante…</option>${orgs.map(o=>`<option value="${o.id}">${o.nome}</option>`).join('')}</select></div>`).join('')}</div>`:'';
-  $('#admin_list').innerHTML=orgs.length?orgs.map(o=>{const k=kpisDe(o.dados);const susp=o.status==='suspenso';return`
-    <div class="client-card">
+  const lista=adminTab==='arquivados'?arquivados:ativosArr;
+  $('#admin_list').innerHTML=lista.length?lista.map(o=>{const k=kpisDe(o.dados);const susp=o.status==='suspenso';const arq=adminTab==='arquivados';const nm=(o.nome||'').replace(/'/g,'');return`
+    <div class="client-card"${arq?' style="opacity:.85"':''}>
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700;font-size:15px">${o.nome}</div><div style="font-size:12px;color:var(--soft)">${o.responsavel||''}</div></div>
-        <span class="tag ${susp?'tag-red':o.status==='teste'?'tag-amber':'tag-green'}">${o.status}</span></div>
+        <span class="tag ${arq?'tag-gray':susp?'tag-red':o.status==='teste'?'tag-amber':'tag-green'}">${arq?'arquivado':o.status}</span></div>
       <div style="display:flex;gap:14px;margin:14px 0;font-size:12.5px">
         <div><div style="color:var(--soft);font-size:11px">FATURAMENTO</div><b>${fmtBRL(k.fat)}</b></div>
         <div><div style="color:var(--soft);font-size:11px">CMV</div><b>${k.real!=null?fmtPct(k.real):fmtPct(k.cmv)}</b></div>
         <div><div style="color:var(--soft);font-size:11px">FICHAS</div><b>${k.nf}</b></div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${arq?`
+        <button class="btn btn-ghost btn-sm" onclick="abrirCliente('${o.id}')">Abrir app</button>
+        <button class="btn btn-primary btn-sm" onclick="arquivarCliente('${o.id}',false)">↩ Restaurar</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirCliente('${o.id}','${nm}')">${icoTrash} Excluir</button>`
+        :`
         <button class="btn btn-primary btn-sm" onclick="abrirCliente('${o.id}')">Abrir app</button>
-        <button class="btn btn-ghost btn-sm" onclick="atividadesCliente('${o.id}','${(o.nome||'').replace(/'/g,'')}')">Atividades</button>
+        <button class="btn btn-ghost btn-sm" onclick="atividadesCliente('${o.id}','${nm}')">Atividades</button>
         <button class="btn btn-ghost btn-sm" onclick="toggleStatus('${o.id}','${o.status}')">${susp?'Reativar':'Suspender'}</button>
+        <button class="btn btn-ghost btn-sm" onclick="arquivarCliente('${o.id}',true)">📦 Arquivar</button>`}
       </div>
-    </div>`;}).join(''):`<div style="color:var(--muted)">Nenhum cliente ainda. Crie o primeiro com “Novo cliente”.</div>`;
+    </div>`;}).join(''):`<div style="color:var(--muted)">${adminTab==='arquivados'?'Nenhum cliente arquivado.':'Nenhum cliente ativo. Crie o primeiro com “Novo cliente”.'}</div>`;
 }
+async function arquivarCliente(orgId,arq){
+  try{const o=(await sb.from('organizacoes').select('dados').eq('id',orgId).single()).data;const dados=(o&&o.dados)||{};dados._arquivado=!!arq;
+    await sb.from('organizacoes').update({dados}).eq('id',orgId);}catch(e){return toast('Erro ao '+(arq?'arquivar':'restaurar'));}
+  toast(arq?'Cliente arquivado':'Cliente restaurado');showAdmin();}
+async function excluirCliente(orgId,nome){
+  if(!confirm('EXCLUIR definitivamente "'+nome+'"?\n\nIsso remove o restaurante, todos os dados e os acessos vinculados. NÃO pode ser desfeito.\n\nDica: se só quer parar de usar, use Arquivar.'))return;
+  if(!confirm('Tem certeza? Esta ação é irreversível.'))return;
+  try{const ps=(await sb.from('perfis').select('id').eq('org_id',orgId)).data||[];
+    for(const p of ps){try{await chamarFn('criar-membro',{acao:'remover',authId:p.id});}catch(e){}}
+    await sb.from('organizacoes').delete().eq('id',orgId);}catch(e){return toast('Erro ao excluir');}
+  toast('Cliente excluído');showAdmin();}
 function novoCliente(){
   modal(`<div class="modal-head"><h3>Novo cliente</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
