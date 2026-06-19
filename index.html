@@ -402,6 +402,76 @@ body.dark .wiz-foot{background:#0E1626}
   #printArea .ci-b{width:58px;height:18px;border:1px solid #999;border-radius:3px;flex-shrink:0}
 }
 
+/* ===== Ficha técnica — modal em 2 painéis ===== */
+.modal.fichamodal{max-width:1020px}
+.ficha-split{display:flex;align-items:stretch;min-height:560px}
+.fx-left{width:38%;border-right:1px solid var(--line);display:flex;flex-direction:column;background:#FAFBFC}
+body.dark .fx-left{background:#121B30}
+.fx-right{width:62%;display:flex;flex-direction:column;min-width:0}
+.fx-left-body{padding:22px 20px;overflow-y:auto;flex:1;max-height:78vh;display:flex;flex-direction:column}
+.fx-right-body{padding:6px 26px 22px;overflow-y:auto;flex:1;max-height:68vh}
+.fx-head{padding:22px 26px 6px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.fx-head h3{font-size:21px;font-weight:700;font-family:'Fraunces',serif;line-height:1.15}
+.fx-head .x{width:34px;height:34px;border-radius:9px;color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.fx-head .x:hover{background:#F0F1F5;color:var(--ink)}
+body.dark .fx-head .x:hover{background:#222F4E}
+.fx-foot{padding:14px 26px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px;background:#FAFBFC;border-radius:0 0 16px 0}
+body.dark .fx-foot{background:#121B30}
+.fx-sublabel{font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--soft);font-weight:700}
+.ins-results{margin:6px 0 4px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.ins-results div{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--line)}
+.ins-results div:last-child{border-bottom:0}
+.ins-results div:hover{background:var(--navy);color:#fff}
+.ins-card{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:9px 11px;margin-bottom:8px;background:var(--card)}
+.ins-card .pen{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--soft);flex-shrink:0;cursor:pointer}
+.ins-card .pen:hover{color:var(--navy);border-color:var(--navy)}
+.ins-card .info{flex:1;min-width:0}
+.ins-card .info b{font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ins-card .info .sub{font-size:11.5px;color:var(--soft);display:flex;align-items:center;gap:5px;margin-top:2px}
+.ins-card .info .sub .cst{color:var(--green);font-weight:600}
+.ins-card .qy{width:58px;padding:6px 8px!important;text-align:center;font-size:12.5px!important}
+.ins-rm{color:var(--red);font-size:12px;font-weight:600;background:var(--red-bg);border-radius:8px;padding:7px 11px;cursor:pointer;flex-shrink:0}
+body.dark .ins-rm{background:rgba(210,72,63,.16)}
+.ins-add{margin-top:auto;display:flex;align-items:center;gap:13px;border-top:1px solid var(--line);padding:16px 2px 2px;cursor:pointer}
+.ins-add:hover .plus{border-color:var(--navy);color:var(--navy)}
+.ins-add .plus{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--soft);flex-shrink:0}
+.ins-add b{font-size:13.5px;display:block}
+.ins-add small{font-size:11.5px;color:var(--soft)}
+.novo-insumo{border-top:1px solid var(--line);margin-top:14px;padding-top:14px}
+.foto-drop{border:1.5px dashed var(--line);border-radius:14px;min-height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--soft);cursor:pointer;text-align:center;overflow:hidden;font-size:13px}
+.foto-drop img{width:100%;height:240px;object-fit:cover}
+.mc-line{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);margin-top:12px;padding-top:11px;font-size:13px}
+.mc-line .mc-v{font-weight:700}
+.fx-g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:760px){.ficha-split{flex-direction:column}.fx-left,.fx-right{width:100%}.fx-left{border-right:0;border-bottom:1px solid var(--line)}.fx-g2{grid-template-columns:1fr}}
+
+/* ===== Impressão da ficha técnica ===== */
+@media print{
+  body.print-ficha .sidebar,body.print-ficha .main,body.print-ficha #modalRoot,body.print-ficha #toastRoot{display:none!important}
+  body.print-ficha #printArea{display:block!important}
+  #printArea .fp{color:#000;font-family:'Inter',sans-serif;border:1.5px solid #000}
+  #printArea .fp-title{font-weight:800;font-size:15px;padding:8px 12px;border-bottom:1.5px solid #000}
+  #printArea .fp-meta{font-size:11px;padding:6px 12px;border-bottom:1.5px solid #000;display:flex;flex-wrap:wrap;gap:4px 18px}
+  #printArea .fp-sec{font-weight:800;font-size:11px;text-transform:uppercase;text-align:center;background:#eaeaea;padding:5px;border-bottom:1px solid #000;border-top:1px solid #000;letter-spacing:.4px}
+  #printArea .fp-row{display:flex;border-bottom:1.5px solid #000}
+  #printArea .fp-foto{width:200px;flex-shrink:0;border-right:1px solid #000;display:flex;align-items:center;justify-content:center;color:#666;font-size:11px;font-weight:700;text-align:center;min-height:120px}
+  #printArea .fp-foto img{width:100%;height:100%;max-height:170px;object-fit:cover}
+  #printArea .fp-ing{flex:1}
+  #printArea table.fp-tb{width:100%;border-collapse:collapse}
+  #printArea table.fp-tb th{font-size:10.5px;text-transform:none;text-align:left;background:#f3f3f3;border:1px solid #999;padding:4px 7px;color:#000;letter-spacing:0}
+  #printArea table.fp-tb td{font-size:11px;border:1px solid #999;padding:4px 7px;color:#000}
+  #printArea .fp-steps{padding:7px 14px;font-size:11.5px}
+  #printArea .fp-steps div{padding:2px 0}
+  #printArea .fp-final{padding:7px 14px;font-size:11.5px;min-height:34px}
+  #printArea .fp-final.empty{color:#777;font-style:italic}
+  #printArea .fp-onb{display:flex}
+  #printArea .fp-onb .ob{flex:1;border-right:1px solid #000;padding:8px 6px 22px;text-align:center}
+  #printArea .fp-onb .ob:last-child{border-right:0}
+  #printArea .fp-onb .ob b{font-size:10px;display:block}
+  #printArea .fp-onb .ob small{font-size:9px;color:#444;display:block;margin-top:2px}
+  #printArea .fp-onb .ob .ln{border-top:1px solid #000;width:60%;margin:14px auto 0}
+}
+
 /* cabeçalho de tabela clicável (ordenação) */
 .th-sort{cursor:pointer;user-select:none;white-space:nowrap}
 .th-sort:hover{color:var(--gold)}
@@ -1380,107 +1450,211 @@ function aplicarImportFichas(rows){rows=(rows||[]).filter(r=>r&&r.some(c=>(c||''
   if(!n)return toast('Nenhuma linha válida encontrada');save();viewFichas();toast(n+' ficha(s) importada(s) — adicione os ingredientes');
 }
 let draftComps=[],draftModo=[];
+let draftFoto='', draftFichaId='';
 function editFicha(id){
-  const f=id?DB.fichas[id]:{nome:'',cat:'',porcoes:1,tempoPreparo:'',custoEmbalagem:'',precoVenda:'',precoIfood:'',vendasMes:0,utensilios:'',modoPreparo:[],padraoFinalizacao:'',comps:[]};
+  const f=id?DB.fichas[id]:{nome:'',cat:'',porcoes:1,rendGramas:'',tempoPreparo:'',custoEmbalagem:'',precoVenda:'',precoIfood:'',vendasMes:0,utensilios:'',modoPreparo:[],padraoFinalizacao:'',foto:'',comps:[]};
   draftComps=JSON.parse(JSON.stringify(f.comps||[])); draftModo=JSON.parse(JSON.stringify(f.modoPreparo||[]));
-  modal(`<div class="modal-head"><h3>${id?'Editar ficha técnica':'Nova ficha técnica'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
-  <div class="modal-body">
-    <div class="chan-tabs" style="margin-top:0">
-      <button type="button" id="ftab_c" class="on" onclick="fichaTab('c')">Custos &amp; Insumos</button>
-      <button type="button" id="ftab_o" onclick="fichaTab('o')">Operacional</button>
-    </div>
-    <div id="ftab_custos">
-      <div class="grid-2">
-        <div class="field"><label>Nome</label><input class="input" id="f_nome" value="${(f.nome||'').replace(/"/g,'&quot;')}" placeholder="Ex.: Burger Clássico"></div>
-        <div class="field"><label>Categoria</label><select class="input" id="f_cat">${catOptions('prato',f.cat)}</select></div>
-      </div>
-      <div class="grid-2">
-        <div class="field"><label>Rendimento <span class="hint">porções que a ficha gera</span></label><input class="input" id="f_porcoes" type="number" step="1" value="${f.porcoes||1}" oninput="recalcFicha()"></div>
-        <div class="field"><label>Custo embalagem <span class="hint">R$/porção</span></label><input class="input" id="f_emb" type="number" step="0.01" value="${f.custoEmbalagem||''}" placeholder="0,00" oninput="recalcFicha()"></div>
-      </div>
-      <label style="display:block;font-size:13px;font-weight:600;margin:6px 0 10px">Insumos</label>
-      <div id="compList"></div>
-      <button type="button" class="btn btn-ghost btn-sm" onclick="addComp()" style="margin-top:4px">${icoPlus} Adicionar insumo</button>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:16px">
-        <div style="font-size:12.5px;font-weight:700;margin-bottom:3px">Integração com Engenharia de Menu</div>
-        <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">Preencha para classificar o prato na matriz e calcular a margem por canal.</div>
-        <div class="grid-3">
-          <div class="field" style="margin:0"><label>Preço balcão <span class="hint">R$</span></label><input class="input" id="f_preco" type="number" step="0.01" value="${f.precoVenda||''}" placeholder="0,00" oninput="recalcFicha()"></div>
-          <div class="field" style="margin:0"><label>Preço iFood <span class="hint">R$</span></label><input class="input" id="f_precoIf" type="number" step="0.01" value="${f.precoIfood||''}" placeholder="0,00" oninput="recalcFicha()"></div>
-          <div class="field" style="margin:0"><label>Vendas/mês <span class="hint">só para a Engenharia de Menu — não entra no faturamento</span></label><input class="input" id="f_vendas" type="number" value="${f.vendasMes||''}" placeholder="0"></div>
+  draftFoto=f.foto||''; draftFichaId=id||'';
+  modal(`<div class="ficha-split">
+    <div class="fx-left">
+      <div class="fx-left-body">
+        <div id="fx_left_custos" style="display:flex;flex-direction:column;flex:1"></div>
+        <div id="fx_left_op" style="display:none;flex:1">
+          <div class="fx-sublabel" style="margin-bottom:10px">Foto do prato pronto</div>
+          <div class="foto-drop" id="f_foto_area" onclick="document.getElementById('f_foto_in').click()"></div>
+          <input type="file" id="f_foto_in" accept="image/*" style="display:none" onchange="fichaFoto(this)">
+          <div class="fx-sublabel" style="margin:18px 0 8px">Padrão de finalização e saída</div>
+          <textarea class="input" id="f_final" rows="7" placeholder="Descreva como o prato deve ser finalizado e montado para o serviço...">${(f.padraoFinalizacao||'').replace(/</g,'&lt;')}</textarea>
         </div>
       </div>
-      <div id="f_calc"></div>
     </div>
-    <div id="ftab_op" style="display:none">
-      <div class="grid-2">
-        <div class="field"><label>Tempo de preparo <span class="hint">min</span></label><input class="input" id="f_tempo" type="number" value="${f.tempoPreparo||''}" placeholder="0"></div>
-        <div class="field"><label>Utensílios necessários</label><input class="input" id="f_utens" value="${(f.utensilios||'').replace(/"/g,'&quot;')}" placeholder="Ex.: Faca, tábua, chapa"></div>
+    <div class="fx-right">
+      <div class="fx-head"><h3>${id?'Editar Ficha Técnica':'Nova Ficha Técnica'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+      <div class="chan-tabs" style="margin:6px 26px 4px">
+        <button type="button" id="ftab_c" class="on" onclick="fichaTab('c')">Custos &amp; Insumos</button>
+        <button type="button" id="ftab_o" onclick="fichaTab('o')">Operacional</button>
       </div>
-      <label style="display:block;font-size:13px;font-weight:600;margin:6px 0 10px">Modo de preparo e montagem <span class="hint" style="font-weight:400">passo a passo</span></label>
-      <div id="modoList"></div>
-      <button type="button" class="btn btn-ghost btn-sm" onclick="addModo()" style="margin-top:4px">${icoPlus} Adicionar passo</button>
-      <div class="field" style="margin-top:16px"><label>Padrão de finalização e saída</label><textarea class="input" id="f_final" rows="3" placeholder="Como o prato deve ser finalizado e montado para o serviço...">${(f.padraoFinalizacao||'').replace(/</g,'&lt;')}</textarea></div>
+      <div class="fx-right-body">
+        <div id="ftab_custos">
+          <div class="field"><label>Nome</label><input class="input" id="f_nome" value="${(f.nome||'').replace(/"/g,'&quot;')}" placeholder="Ex.: Arroz com Frango"></div>
+          <div class="field"><label>Categoria</label><select class="input" id="f_cat">${catOptions('prato',f.cat)}</select></div>
+          <div class="fx-g2">
+            <div class="field"><label>Rendimento <span class="hint">gr</span></label><input class="input" id="f_rend" type="number" step="1" value="${f.rendGramas||''}" placeholder="0"></div>
+            <div class="field"><label>Custo embalagem</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="f_emb" inputmode="numeric" value="${fmtMoneyInput(f.custoEmbalagem||0)}" oninput="moneyMask(this);recalcFicha()"></div></div>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:6px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:3px">Integração com Engenharia de Menu</div>
+            <div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">Preencha para classificar o prato automaticamente na Matriz de Preço.</div>
+            <div class="fx-g2">
+              <div class="field" style="margin:0"><label>Preço de venda praticado</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="f_preco" inputmode="numeric" value="${fmtMoneyInput(f.precoVenda||0)}" oninput="moneyMask(this);recalcFicha()"></div></div>
+              <div class="field" style="margin:0"><label>Média de vendas / mês</label><input class="input" id="f_vendas" type="number" value="${f.vendasMes||''}" placeholder="0"></div>
+            </div>
+            <div class="field" style="margin:12px 0 0"><label>Preço no iFood <span class="hint">opcional</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="f_precoIf" inputmode="numeric" value="${fmtMoneyInput(f.precoIfood||0)}" oninput="moneyMask(this);recalcFicha()"></div></div>
+            <div class="mc-line"><span style="color:var(--muted)">Margem de Contribuição</span><span class="mc-v" id="f_mc">—</span></div>
+          </div>
+          <div id="f_calc"></div>
+        </div>
+        <div id="ftab_op" style="display:none">
+          <div class="fx-g2">
+            <div class="field"><label>Tempo de preparo <span class="hint">min</span></label><input class="input" id="f_tempo" type="number" value="${f.tempoPreparo||''}" placeholder="Ex.: 45 min"></div>
+            <div class="field"><label>Utensílios necessários</label><input class="input" id="f_utens" value="${(f.utensilios||'').replace(/"/g,'&quot;')}" placeholder="Ex.: Faca, Tábua, Panela de Pressão"></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 10px">
+            <span class="fx-sublabel">Modo de preparo e montagem (passo a passo)</span>
+            <a onclick="addModo()" style="color:var(--gold);font-weight:700;font-size:13px;cursor:pointer">+ Adicionar passo</a>
+          </div>
+          <div id="modoList"></div>
+        </div>
+      </div>
+      <div class="fx-foot">
+        <button class="btn btn-ghost" onclick="closeModal()" style="color:var(--gold);border:0;background:transparent;padding-left:0">Cancelar</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost" onclick="imprimirFicha()">🖨️ Imprimir</button>
+        ${id?`<button class="btn btn-ghost" style="color:var(--red);border-color:var(--red)" onclick="delFicha('${id}')">Excluir</button>`:''}
+        <button class="btn btn-gold" onclick="saveFicha('${id||''}')">${id?'Atualizar Ficha':'Criar Ficha'}</button>
+      </div>
     </div>
-  </div>
-  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveFicha('${id||''}')">Salvar ficha</button></div>`,true);
-  renderCompList();renderModoList();recalcFicha();
+  </div>`,true);
+  const mc=document.querySelector('#modalRoot .modal');if(mc)mc.classList.add('fichamodal');
+  renderInsumosPanel();renderModoList();renderFichaFoto();recalcFicha();
 }
-function fichaTab(t){$('#ftab_c').classList.toggle('on',t==='c');$('#ftab_o').classList.toggle('on',t==='o');$('#ftab_custos').style.display=t==='c'?'block':'none';$('#ftab_op').style.display=t==='o'?'block':'none';}
-function renderCompList(){
-  const opts=Object.values(DB.insumos).sort((a,b)=>a.nome.localeCompare(b.nome));
-  const el=$('#compList');if(!el)return;
-  el.innerHTML=draftComps.length?draftComps.map((row,idx)=>{const ins=DB.insumos[row[0]];const prep=ins&&ins.tipo==='preparado';
-    return `<div class="comp-row" style="grid-template-columns:24px 1fr 86px 80px 32px">
-      <div class="ctype ${prep?'ctype-f':'ctype-i'}">${prep?'P':'I'}</div>
-      <select class="input" onchange="draftComps[${idx}][0]=this.value;recalcFicha();renderCompList()"><option value="">— insumo —</option>${opts.map(o=>`<option value="${o.id}" ${o.id===row[0]?'selected':''}>${o.nome}${o.tipo==='preparado'?' (preparado)':''}</option>`).join('')}</select>
-      <input class="input" type="number" step="0.001" value="${row[1]}" placeholder="qtd" oninput="draftComps[${idx}][1]=parseFloat(this.value)||0;recalcFicha()">
-      <div class="ccost">${fmtBRL(ins?custoInsumoBase(ins)*(row[1]||0):0)}<div style="font-size:10px;color:var(--soft)">${ins?bSym(ins.uni):''}</div></div>
-      <button class="mini-del" onclick="draftComps.splice(${idx},1);renderCompList();recalcFicha()">${icoX}</button>
-    </div>`;}).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 10px">Nenhum insumo adicionado.</div>`;
+function fichaTab(t){
+  $('#ftab_c').classList.toggle('on',t==='c');$('#ftab_o').classList.toggle('on',t==='o');
+  $('#ftab_custos').style.display=t==='c'?'block':'none';$('#ftab_op').style.display=t==='o'?'block':'none';
+  $('#fx_left_custos').style.display=t==='c'?'flex':'none';$('#fx_left_op').style.display=t==='o'?'block':'none';
 }
-function addComp(){draftComps.push(['',0]);renderCompList();recalcFicha();}
+function renderFichaFoto(){const a=$('#f_foto_area');if(!a)return;
+  a.innerHTML=draftFoto?`<img src="${draftFoto}">`:`<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg><div>Toque para adicionar foto</div>`;
+}
+function fichaFoto(input){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{const img=new Image();img.onload=()=>{const max=640;let w=img.width,h=img.height;const sc=Math.min(1,max/Math.max(w,h));w=Math.round(w*sc);h=Math.round(h*sc);const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);draftFoto=c.toDataURL('image/jpeg',0.82);renderFichaFoto();};img.src=r.result;};
+  r.readAsDataURL(f);}
+function renderInsumosPanel(){const el=$('#fx_left_custos');if(!el)return;
+  const cards=draftComps.map((row,idx)=>{const ins=DB.insumos[row[0]];if(!ins)return '';
+    return `<div class="ins-card">
+      <div class="pen" onclick="document.getElementById('f_qy${idx}').focus()">${icoEdit||'✎'}</div>
+      <div class="info"><b>${esc(ins.nome)}</b><div class="sub">Qtd: <input class="input qy" id="f_qy${idx}" type="number" step="0.001" value="${row[1]}" oninput="draftComps[${idx}][1]=parseFloat(this.value)||0;recalcFicha();renderInsumosPanel.cost(${idx})">${bSym(ins.uni)} • <span class="cst" id="f_cst${idx}">${fmtBRL(custoInsumoBase(ins)*(row[1]||0))}</span></div></div>
+      <div class="ins-rm" onclick="draftComps.splice(${idx},1);renderInsumosPanel();recalcFicha()">Remover</div>
+    </div>`;}).join('');
+  el.innerHTML=`
+    <div class="fx-sublabel" style="margin-bottom:8px">Insumos</div>
+    <input class="input" id="f_ins_search" placeholder="Encontrar Insumos" oninput="fichaInsumoSearch()" autocomplete="off">
+    <div id="f_ins_results"></div>
+    <div class="fx-sublabel" style="margin:14px 0 8px;color:var(--soft)">Insumos Adicionados</div>
+    <div id="f_ins_cards">${cards||`<div style="font-size:12.5px;color:var(--soft);padding:4px 0 8px">Nenhum insumo adicionado ainda.</div>`}</div>
+    <div class="ins-add" onclick="toggleNovoInsumo()">
+      <div class="plus">${icoPlus}</div>
+      <div><b>Adicionar Insumo</b><small>Cadastre um novo insumo</small></div>
+    </div>
+    <div id="f_novo_box"></div>`;
+}
+renderInsumosPanel.cost=function(idx){const ins=DB.insumos[draftComps[idx]&&draftComps[idx][0]];const c=$('#f_cst'+idx);if(c&&ins)c.textContent=fmtBRL(custoInsumoBase(ins)*(draftComps[idx][1]||0));};
+function fichaInsumoSearch(){const q=($('#f_ins_search').value||'').trim().toLowerCase();const box=$('#f_ins_results');if(!box)return;
+  if(!q){box.innerHTML='';return;}
+  const usados=new Set(draftComps.map(c=>c[0]));
+  const ms=Object.values(DB.insumos).filter(i=>!usados.has(i.id)&&(i.nome||'').toLowerCase().includes(q)).sort((a,b)=>a.nome.localeCompare(b.nome)).slice(0,8);
+  box.innerHTML=ms.length?`<div class="ins-results">${ms.map(i=>`<div onclick="addCompById('${i.id}')">${esc(i.nome)}${i.tipo==='preparado'?' (preparado)':''} <span style="float:right;color:var(--soft)">${fmtBRL(custoInsumoBase(i))}/${bSym(i.uni)}</span></div>`).join('')}</div>`
+    :`<div style="font-size:12px;color:var(--soft);padding:6px 2px">Nenhum insumo encontrado. Use “Adicionar Insumo” para cadastrar.</div>`;
+}
+function addCompById(id){const ins=DB.insumos[id];if(!ins)return;const b=BASE[ins.uni];const def=(b==='g'||b==='ml')?100:1;
+  draftComps.push([id,def]);const s=$('#f_ins_search');if(s)s.value='';const r=$('#f_ins_results');if(r)r.innerHTML='';renderInsumosPanel();recalcFicha();}
+function toggleNovoInsumo(){const box=$('#f_novo_box');if(!box)return;
+  if(box.innerHTML){box.innerHTML='';return;}
+  box.innerHTML=`<div class="novo-insumo">
+    <div class="fx-sublabel" style="margin-bottom:10px;color:var(--ink)">Novo Insumo</div>
+    <div class="field" style="margin-bottom:10px"><input class="input" id="ni_nome" placeholder="Nome"></div>
+    <div class="field" style="margin-bottom:10px"><select class="input" id="ni_cat">${catOptions('insumo','')}</select></div>
+    <div class="field" style="margin-bottom:10px"><label>Quantidade</label><input class="input" id="ni_qtd" type="number" step="0.001" placeholder="0"></div>
+    <div class="fx-g2">
+      <div class="field" style="margin:0"><label>Unidade</label><select class="input" id="ni_uni">${UNIDADES.map(u=>`<option value="${u}">${u}</option>`).join('')}</select></div>
+      <div class="field" style="margin:0"><label>Preço por un.</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="ni_preco" inputmode="numeric" value="" placeholder="0,00" oninput="moneyMask(this)"></div></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn btn-ghost btn-sm" style="flex:1;color:var(--gold);border:0;background:transparent" onclick="toggleNovoInsumo()">Cancelar</button>
+      <button class="btn btn-gold btn-sm" style="flex:1" onclick="salvarNovoInsumoFicha()">Adicionar</button>
+    </div>
+  </div>`;
+}
+function salvarNovoInsumoFicha(){const nome=($('#ni_nome').value||'').trim();if(!nome)return toast('Informe o nome do insumo');
+  const ins={id:uid(),nome,cat:$('#ni_cat').value.trim()||(DEF_CAT_INSUMO[0]||'Insumos'),tipo:'pronto',
+    uni:$('#ni_uni').value,qtd:parseFloat($('#ni_qtd').value)||1,preco:moneyVal('ni_preco'),noEstoque:true};
+  DB.insumos[ins.id]=ins;save();
+  const b=BASE[ins.uni];const def=(b==='g'||b==='ml')?100:1;
+  draftComps.push([ins.id,def]);renderInsumosPanel();recalcFicha();toast('Insumo cadastrado e adicionado');
+}
 function renderModoList(){const el=$('#modoList');if(!el)return;
-  el.innerHTML=draftModo.length?draftModo.map((s,idx)=>`<div class="comp-row" style="grid-template-columns:24px 1fr 32px">
+  el.innerHTML=draftModo.length?draftModo.map((s,idx)=>`<div class="comp-row" style="grid-template-columns:30px 1fr 32px">
     <div class="ctype ctype-i">${idx+1}</div>
     <input class="input" value="${(s||'').replace(/"/g,'&quot;')}" placeholder="Descreva o passo ${idx+1}..." oninput="draftModo[${idx}]=this.value">
     <button class="mini-del" onclick="draftModo.splice(${idx},1);renderModoList()">${icoX}</button></div>`).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 10px">Nenhum passo adicionado.</div>`;
 }
 function addModo(){draftModo.push('');renderModoList();}
+function fichaCustoAtual(){let bruto=0;draftComps.forEach(([cid,q])=>{const ins=DB.insumos[cid];if(ins)bruto+=custoInsumoBase(ins)*(q||0);});return bruto+(moneyVal('f_emb')||0);}
 function recalcFicha(){
-  const por=parseFloat($('#f_porcoes')?.value)||1;
-  let bruto=0;draftComps.forEach(([cid,q])=>{const ins=DB.insumos[cid];if(ins)bruto+=custoInsumoBase(ins)*(q||0);});
-  const emb=parseFloat($('#f_emb')?.value)||0;
-  const custo=bruto/(por||1)+emb;
-  const preco=parseFloat($('#f_preco')?.value)||0;
-  const precoIf=parseFloat($('#f_precoIf')?.value)||preco;
+  const custo=fichaCustoAtual();
+  const preco=moneyVal('f_preco')||0;
+  const precoIf=moneyVal('f_precoIf')||preco;
   const impPct=impostoVarPct(), comIf=DB.fin.comissaoIfood||0;
   const mcB=preco-custo-preco*(impPct/100);
   const mcI=precoIf-custo-precoIf*((comIf+impPct)/100);
   const cmv=preco?custo/preco*100:0;
   const sug=DB.cmvAlvo?custo/(DB.cmvAlvo/100):0;
-  const cc=v=>v<=30?'#9ee5c2':v<=35?'#f0cd8a':'#f3a39c';
+  const cc=v=>v<=30?'#1E9E6A':v<=35?'#C9892A':'#D2483F';
+  const mcEl=$('#f_mc');if(mcEl)mcEl.innerHTML=preco?`<span style="color:${mcB<0?'var(--red)':'var(--green)'}">${fmtBRL(mcB)} (${fmtPct(preco?mcB/preco*100:0)})</span>`:'—';
   const box=$('#f_calc');if(!box)return;
-  box.innerHTML=`<div class="calc-box">
+  box.innerHTML=`<div class="calc-box" style="margin-top:14px">
     <div class="line"><span>Custo insumos + embalagem (CMV R$)</span><b>${fmtBRL(custo)}</b></div>
     <div class="line"><span>CMV %</span><b style="color:${cc(cmv)}">${fmtPct(cmv)}</b></div>
-    <div class="line"><span>Preço sugerido p/ CMV ${fmtPct(DB.cmvAlvo)}</span><b style="color:#C2A875">${fmtBRL(sug)}</b></div>
-    <div class="line big" style="margin-top:6px"><span>MC no balcão (preço ${fmtBRL(preco)})</span><b style="color:${mcB<0?'#f3a39c':'#9ee5c2'}">${fmtBRL(mcB)}</b></div>
-    <div class="line"><span style="font-size:11.5px">após imposto ${fmtPct(impPct)}</span><b style="font-size:11.5px">${fmtPct(preco?mcB/preco*100:0)}</b></div>
-    <div class="line big"><span>MC no iFood (preço ${fmtBRL(precoIf)})</span><b style="color:${mcI<0?'#f3a39c':'#9ee5c2'}">${fmtBRL(mcI)}</b></div>
+    <div class="line"><span>Preço sugerido p/ CMV ${fmtPct(DB.cmvAlvo)}</span><b style="color:var(--gold-soft)">${fmtBRL(sug)}</b></div>
+    <div class="line big" style="margin-top:6px"><span>MC no balcão (preço ${fmtBRL(preco)})</span><b style="color:${mcB<0?'var(--red)':'var(--green)'}">${fmtBRL(mcB)}</b></div>
+    <div class="line big"><span>MC no iFood (preço ${fmtBRL(precoIf)})</span><b style="color:${mcI<0?'var(--red)':'var(--green)'}">${fmtBRL(mcI)}</b></div>
     <div class="line"><span style="font-size:11.5px">após comissão ${fmtPct(comIf)} + imposto ${fmtPct(impPct)}</span><b style="font-size:11.5px">${fmtPct(precoIf?mcI/precoIf*100:0)}</b></div>
   </div>`;
 }
-function saveFicha(id){const nome=$('#f_nome').value.trim();if(!nome)return toast('Informe o nome');
-  const comps=draftComps.filter(c=>c[0]&&c[1]>0);
-  const obj={id:id||uid(),nome,cat:$('#f_cat').value.trim()||'Pratos',
-    porcoes:parseFloat($('#f_porcoes').value)||1,custoEmbalagem:parseFloat($('#f_emb').value)||0,
-    precoVenda:parseFloat($('#f_preco').value)||0,precoIfood:parseFloat($('#f_precoIf').value)||0,
+function coletarFichaForm(id){const nome=($('#f_nome').value||'').trim();
+  return {id:id||uid(),nome,cat:$('#f_cat').value.trim()||'Pratos',
+    porcoes:1,rendGramas:parseFloat($('#f_rend').value)||0,custoEmbalagem:moneyVal('f_emb')||0,
+    precoVenda:moneyVal('f_preco')||0,precoIfood:moneyVal('f_precoIf')||0,
     vendasMes:parseInt($('#f_vendas').value)||0,tempoPreparo:parseFloat($('#f_tempo')?.value)||0,
-    utensilios:$('#f_utens')?.value||'',modoPreparo:draftModo.filter(s=>(s||'').trim()),padraoFinalizacao:$('#f_final')?.value||'',comps,
-    criada:(id&&DB.fichas[id]&&DB.fichas[id].criada)||hoje()};
+    utensilios:$('#f_utens')?.value||'',modoPreparo:draftModo.filter(s=>(s||'').trim()),
+    padraoFinalizacao:$('#f_final')?.value||'',foto:draftFoto||'',comps:draftComps.filter(c=>c[0]&&c[1]>0),
+    criada:(id&&DB.fichas[id]&&DB.fichas[id].criada)||hoje()};}
+function saveFicha(id){if(!($('#f_nome').value||'').trim())return toast('Informe o nome');
+  const obj=coletarFichaForm(id);
   DB.fichas[obj.id]=obj;save();closeModal();viewFichas();toast(id?'Ficha atualizada':'Ficha criada');}
-function delFicha(id){if(!confirm('Remover esta ficha?'))return;delete DB.fichas[id];save();viewFichas();toast('Ficha removida');}
+function delFicha(id){if(!confirm('Remover esta ficha?'))return;delete DB.fichas[id];save();closeModal();viewFichas();toast('Ficha removida');}
+const ONB_ETAPAS=[['1. TEÓRICA','Leitura e Entendimento'],['2. SHADOWING','Observação da Execução'],['3. PRÁTICA','Execução Assistida'],['4. VALIDAÇÃO','Aprovação Chef'],['5. AUTONOMIA','Liberado p/ Produção']];
+function imprimirFicha(){
+  const f=$('#f_nome')?coletarFichaForm(draftFichaId):(draftFichaId?DB.fichas[draftFichaId]:null);
+  if(!f||!f.nome)return toast('Informe o nome da ficha antes de imprimir');
+  const custo=$('#f_nome')?fichaCustoAtual():(custoFicha(f)+(f.custoEmbalagem||0));
+  const ings=(f.comps||[]).map(([cid,q])=>{const ins=DB.insumos[cid];if(!ins)return '';
+    const fc=ins.fc||ins.fatorCorrecao||1;const u=bSym(ins.uni);
+    return `<tr><td>${esc(ins.nome)}</td><td>${(q||0)} ${u}</td><td>${fc.toFixed(2)}</td><td>${(Math.round((q||0)*fc*1000)/1000)} ${u}</td></tr>`;}).join('');
+  const passos=(f.modoPreparo||[]).filter(s=>(s||'').trim());
+  let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
+  pa.innerHTML=`<div class="fp">
+    <div class="fp-title">FICHA TÉCNICA – ${esc((f.nome||'').toUpperCase())}</div>
+    <div class="fp-meta"><span><b>Categoria:</b> ${esc(f.cat||'—')}</span><span><b>Preparo:</b> ${f.tempoPreparo?f.tempoPreparo+' min':'—'}</span><span><b>Rendimento:</b> ${f.rendGramas?f.rendGramas+' gr':'—'}</span><span><b>Custo:</b> ${fmtBRL(custo)}</span><span><b>Utensílios:</b> ${esc(f.utensilios||'—')}</span></div>
+    <div class="fp-row">
+      <div class="fp-foto">${f.foto?`<img src="${f.foto}">`:'FOTO DO PRATO'}</div>
+      <div class="fp-ing">
+        <div class="fp-sec" style="border-top:0">Ingredientes e Porcionamento</div>
+        <table class="fp-tb"><thead><tr><th>Ingrediente</th><th>Qtd (PL)</th><th>FC</th><th>Qtd (PB)</th></tr></thead>
+        <tbody>${ings||'<tr><td colspan="4" style="color:#777">Nenhum insumo cadastrado.</td></tr>'}</tbody></table>
+      </div>
+    </div>
+    <div class="fp-sec">Modo de Preparo e Montagem</div>
+    <div class="fp-steps">${passos.length?passos.map((s,i)=>`<div><b>${i+1}.</b> ${esc(s)}</div>`).join(''):'<div style="color:#777">Sem etapas cadastradas.</div>'}</div>
+    <div class="fp-sec">Padrão de Finalização e Saída</div>
+    <div class="fp-final ${f.padraoFinalizacao?'':'empty'}">${f.padraoFinalizacao?esc(f.padraoFinalizacao):'Sem instruções de finalização.'}</div>
+    <div class="fp-sec">Etapas do Onboarding (Treinamento)</div>
+    <div class="fp-onb">${ONB_ETAPAS.map(([t,s])=>`<div class="ob"><b>${t}</b><small>${s}</small><div class="ln"></div></div>`).join('')}</div>
+  </div>`;
+  document.body.classList.add('print-ficha');
+  const fim=()=>{document.body.classList.remove('print-ficha');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
+  window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);
+}
 
 /* ===================== ENGENHARIA DE MENU ===================== */
 function classificar(){
