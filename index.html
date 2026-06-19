@@ -476,6 +476,11 @@ body.dark .ins-rm{background:rgba(210,72,63,.16)}
 
 /* cabeçalho de tabela clicável (ordenação) */
 .th-sort{cursor:pointer;user-select:none;white-space:nowrap}
+.cat-chip{display:inline-flex;align-items:center;gap:5px;background:#EEF0F4;border-radius:8px;padding:4px 6px 4px 10px;font-size:12.5px;color:var(--ink)}
+body.dark .cat-chip{background:#222F4E}
+.cat-chip button{display:inline-flex;width:16px;height:16px;border-radius:5px;align-items:center;justify-content:center;color:var(--soft)}
+.cat-chip button:hover{background:var(--red-bg);color:var(--red)}
+.cat-chip svg{width:11px;height:11px}
 .th-sort:hover{color:var(--gold)}
 
 /* cards de fichas técnicas */
@@ -768,7 +773,9 @@ function totaisGerais(){
   fichasVendaveis().forEach(f=>{const m=metricasFicha(f);
     receitaEst+=m.receita; custoTot+=m.custo*m.vendas; vendas+=m.vendas;});
   const mix=(DB.fat.mixIfood||0)/100;
-  const faturamento=DB.fat.lancado||0;                          // só faturamento lançado
+  // faturamento real: soma das Receitas lançadas no mês corrente (Financeiro › Lançamentos); fallback p/ valor manual
+  const recReal=(DB.lancamentos||[]).filter(l=>ymOf(l.data)===ymOf(hojeISO())&&grupoTipo(l.grupo)==='receita').reduce((s,l)=>s+(l.valor||0),0);
+  const faturamento=recReal>0?recReal:(DB.fat.lancado||0);
   const cmvPct=receitaEst>0?(custoTot/receitaEst):0;            // CMV teórico (proporção do cardápio)
   const recIfood=faturamento*mix, recDireto=faturamento*(1-mix), cmvRS=faturamento*cmvPct;
   const comissaoRS=recIfood*((DB.fin.comissaoIfood||0)/100);
@@ -835,6 +842,10 @@ function normData(){
   (f.socios||[]).forEach(s=>{if(s.proLaboreDeclarado==null)s.proLaboreDeclarado=s.proLabore||0;});
   DB.conta=DB.conta||{};
   DB.modulares=DB.modulares||{};
+  // Lançamentos financeiros + categorias (DRE / Fluxo de Caixa)
+  if(!DB.categorias||!Object.keys(DB.categorias).length){DB.categorias={};DRE_DEFAULT.forEach(([g,tipo,subs])=>{DB.categorias[g]={tipo,subs:subs.slice()};});}
+  DB.lancamentos=DB.lancamentos||[];
+  DB.formasPagamento=(DB.formasPagamento&&DB.formasPagamento.length)?DB.formasPagamento:FORMAS_DEFAULT.slice();
   if(DB.onboardingFeito==null)DB.onboardingFeito=(Object.keys(DB.insumos||{}).length>0||Object.keys(DB.fichas||{}).length>0);
 }
 function renderFoot(){normData();const fn=$('#footName');if(fn)fn.textContent=(DB.conta&&DB.conta.restaurante)||'Seu Restaurante';}
@@ -1816,32 +1827,64 @@ function dreCustosDetalhe(){
   if(outros.length)g.push(['Outros custos e provisões',outros]);
   return g;
 }
+/* ===== Categorias + Lançamentos (DRE / Fluxo de Caixa baseados em movimentos reais) ===== */
+const DRE_DEFAULT=[
+ ['Receita','receita',['PIX','Cartão de Crédito','Cartão de Débito','Cartão Alimentação','Dinheiro','Voucher','Ifood','Outras Receitas']],
+ ['CMV','despesa',['Entrada de Produtos','Açougue','Frutos do Mar','Ceasa e Sacolão','Mercado','Bebidas','Embalagens','Produtos Extras','Frios e Laticínios','Doces']],
+ ['Mão-de-Obra','despesa',['Salários','Pró-labore','Free (Diária)','Vale / Adiantamento','Taxa de Serviço']],
+ ['Encargos Sociais','despesa',['Férias + 1/3','FGTS','Rescisões','13º Salário','INSS']],
+ ['Benefícios','despesa',['Plano de Saúde','Vale-Transporte','Outros Benefícios']],
+ ['Impostos','despesa',['Simples Nacional','DARF','SEFAZ','Outros Impostos']],
+ ['Despesas Prediais','despesa',['Aluguel','Estacionamento','IPTU','Manutenção Predial','Câmara Fria']],
+ ['Terceiros','despesa',['Limpeza / Higiene','Motoboy / Delivery','Contabilidade','Informática / TI','Outras Consultorias']],
+ ['Utilidades','despesa',['Energia Elétrica','Água / Esgoto','Telefonia / Internet','Gás']],
+ ['Publicidade','despesa',['Publicidade e Propaganda','Marketing Digital']],
+ ['Materiais','despesa',['Material de Escritório','Material de Limpeza','Material de Expediente','Material de Cozinha','Material de Salão']],
+ ['Despesas Gerais','despesa',['Manutenção Geral','Associações / Sindicatos','Despesas Diversas','Investimentos','Treinamentos']],
+ ['Despesas Financeiras','despesa',['Tarifas Bancárias','Taxas de Cartões','Royalties / Franquia','Empréstimos / Juros','Outras Despesas Fin.']]
+];
+const FORMAS_DEFAULT=['PIX','Crédito','Débito','Dinheiro','Boleto','Voucher','Cartão Alimentação','Transferência'];
+function hojeISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function ymOf(d){return (d||'').slice(0,7);}
+function fmtDataBR(iso){if(!iso)return '—';const p=iso.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:iso;}
+function ymLabel(ym){const p=(ym||'').split('-');return p.length===2?`${MESES_PT[(+p[1])-1]||''} / ${p[0]}`:ym;}
+let lancYM=null;
+function curYM(){return lancYM||ymOf(hojeISO());}
+function grupoTipo(g){const c=DB.categorias&&DB.categorias[g];return c?c.tipo:'despesa';}
+function lancMes(ym){return (DB.lancamentos||[]).filter(l=>ymOf(l.data)===ym);}
+function dreLanc(ym){
+  const receita={},despesa={};let recTot=0,despTot=0;
+  lancMes(ym).forEach(l=>{const tipo=grupoTipo(l.grupo),bag=tipo==='receita'?receita:despesa,sub=l.sub||'(sem subcategoria)';
+    bag[l.grupo]=bag[l.grupo]||{};bag[l.grupo][sub]=(bag[l.grupo][sub]||0)+(l.valor||0);
+    if(tipo==='receita')recTot+=l.valor||0;else despTot+=l.valor||0;});
+  return {receita,despesa,recTot,despTot,resultado:recTot-despTot};
+}
 const dreCollapsed=new Set();
 function dreToggle(g){if(dreCollapsed.has(g))dreCollapsed.delete(g);else dreCollapsed.add(g);viewDRE();}
 function viewDRE(){
-  const t=totaisGerais();
-  const comissao=t.comissaoRS;
-  const imposto=t.impostoRS;
-  const fixos=t.fixos;
-  const lucroBruto=t.faturamento-t.custoTot;
-  const lucro=t.lucro;
-  const pct=v=>t.faturamento?v/t.faturamento*100:0;
+  const ym=curYM(), d=dreLanc(ym), rec=d.recTot;
+  const pct=v=>rec?v/rec*100:0;
+  const cmvRS=Object.values(d.despesa['CMV']||{}).reduce((a,b)=>a+b,0);
+  const cmvPct=pct(cmvRS), alvo=DB.cmvAlvo||30;
+  const cmvStatus=cmvPct<=alvo?['CMV excelente','var(--green)']:cmvPct<=alvo+5?['dentro do aceitável','var(--muted)']:['acima da meta','var(--red)'];
+  const ordered=Object.keys(DB.categorias).filter(g=>d.despesa[g]);
+  const recGrupos=Object.keys(d.receita);
+  const lucro=d.resultado;
   const barC=v=>v>=15?'var(--green)':v>=0?'var(--amber)':'var(--red)';
+  const temLanc=lancMes(ym).length>0;
   $('#view').innerHTML=`
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+    <div style="font-size:13px;color:var(--muted)">Período: <b style="color:var(--ink);text-transform:capitalize">${ymLabel(ym)}</b> · alimentado pelos <b>Lançamentos</b> do Financeiro</div>
+    <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewDRE()"></div>
+  ${!temLanc?`<div class="card card-pad">${emptyState('Sem lançamentos neste mês','Registre receitas e despesas em Financeiro › Lançamentos para gerar o DRE.','go(&#39;financeiro&#39;)')}</div>`:`
   <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:20px" class="dash-grid">
-    <div class="card"><div class="card-pad" style="padding-bottom:6px"><div class="ttl">Demonstrativo de Resultado</div><div class="desc">Período corrente · canais, comissões e impostos</div></div>
+    <div class="card"><div class="card-pad" style="padding-bottom:6px"><div class="ttl">Demonstrativo de Resultado (DRE)</div><div class="desc">Resultado real do mês — receitas e despesas lançadas</div></div>
       <table class="dre-table"><tbody>
-        <tr class="grp"><td>Receita de vendas</td><td class="num">${fmtBRL(t.faturamento)}</td><td class="num" style="color:var(--soft)">100%</td></tr>
-        <tr><td>(–) CMV (insumos + embalagem)</td><td class="num" style="color:var(--red)">${fmtBRL(-t.custoTot)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(t.custoTot))}</td></tr>
-        <tr class="total"><td>(=) Lucro bruto</td><td class="num">${fmtBRL(lucroBruto)}</td><td class="num">${fmtPct(pct(lucroBruto))}</td></tr>
-        <tr class="grp"><td>(–) Despesas variáveis</td><td class="num"></td><td class="num"></td></tr>
-        <tr class="ind"><td>Comissão marketplace</td><td class="num">${fmtBRL(t.comissaoRS)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(t.comissaoRS))}</td></tr>
-        <tr class="ind"><td>Taxa de cartão</td><td class="num">${fmtBRL(t.taxaCartaoRS)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(t.taxaCartaoRS))}</td></tr>
-        <tr class="ind"><td>Impostos (${regimeLabel()})</td><td class="num">${fmtBRL(imposto)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(imposto))}</td></tr>
-        <tr class="grp"><td>(–) Custos fixos + pessoal</td><td class="num" style="color:var(--red)">${fmtBRL(-fixos)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(fixos))}</td></tr>
-        ${dreCustosDetalhe().map(([grupo,itens])=>{const subtot=itens.reduce((s,[,v])=>s+v,0);const col=dreCollapsed.has(grupo);
-          return `<tr class="dre-cat" onclick="dreToggle('${grupo.replace(/'/g,"\\'")}')" style="cursor:pointer"><td style="font-size:10.5px;letter-spacing:.6px;color:var(--gold);text-transform:uppercase;font-weight:700;padding:9px 13px 5px"><span style="display:inline-block;width:12px;color:var(--muted)">${col?'▸':'▾'}</span> ${grupo}</td><td class="num" style="font-weight:700">${fmtBRL(subtot)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(subtot))}</td></tr>`
-          +(col?'':itens.map(([n,v])=>`<tr class="ind"><td>${n}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(v))}</td></tr>`).join(''));}).join('')}
+        <tr class="grp"><td>Receita Bruta</td><td class="num">${fmtBRL(rec)}</td><td class="num" style="color:var(--soft)">100%</td></tr>
+        ${recGrupos.map(g=>Object.entries(d.receita[g]).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(v))}</td></tr>`).join('')).join('')}
+        ${ordered.map(g=>{const subs=d.despesa[g];const subtot=Object.values(subs).reduce((a,b)=>a+b,0);const col=dreCollapsed.has(g);
+          return `<tr class="dre-cat" onclick="dreToggle('${g.replace(/'/g,"\\'")}')" style="cursor:pointer"><td style="font-size:10.5px;letter-spacing:.6px;color:var(--gold);text-transform:uppercase;font-weight:700;padding:9px 13px 5px"><span style="display:inline-block;width:12px;color:var(--muted)">${col?'▸':'▾'}</span> ${g}</td><td class="num" style="font-weight:700;color:var(--red)">${fmtBRL(-subtot)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(subtot))}</td></tr>`
+          +(col?'':Object.entries(subs).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num" style="color:var(--red)">${fmtBRL(-v)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(v))}</td></tr>`).join(''));}).join('')}
         <tr class="total"><td>(=) Resultado líquido</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(lucro)}</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtPct(pct(lucro))}</td></tr>
       </tbody></table>
     </div>
@@ -1850,15 +1893,98 @@ function viewDRE(){
         <div class="k-val" style="color:${lucro>=0?'var(--green)':'var(--red)'};font-size:34px">${fmtPct(pct(lucro))}</div>
         <div class="bar"><i style="width:${clamp(pct(lucro),2,100)}%;background:${barC(pct(lucro))}"></i></div>
         <div style="font-size:12.5px;color:var(--muted);margin-top:10px">${lucro>=0?'Operação no azul. ':'Resultado negativo. '}Referência em food service: 10–15%.</div></div>
+      <div class="card card-pad" style="margin-bottom:16px"><div class="k-lbl">CMV real</div>
+        <div class="k-val" style="color:${cmvPct<=alvo?'var(--green)':cmvPct<=alvo+5?'var(--amber)':'var(--red)'};font-size:34px">${fmtPct(cmvPct)}</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:6px">Meta (CMV alvo): ${fmtPct(alvo)} · <b style="color:${cmvStatus[1]}">${cmvStatus[0]}</b></div></div>
       <div class="card card-pad"><div class="ttl" style="margin-bottom:14px">Composição da receita</div>
-        ${[['CMV',pct(t.custoTot),'var(--red)'],['Comissões',pct(comissao),'var(--gold)'],['Impostos',pct(imposto),'var(--amber)'],['Custos fixos',pct(fixos),'var(--navy)'],['Lucro',pct(lucro),'var(--green)']].map(([n,v,c])=>`<div style="margin-bottom:13px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${n}</span><b>${fmtPct(v)}</b></div><div class="bar"><i style="width:${clamp(v,0,100)}%;background:${c}"></i></div></div>`).join('')}
+        ${ordered.map(g=>{const v=pct(Object.values(d.despesa[g]).reduce((a,b)=>a+b,0));return `<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${g}</span><b>${fmtPct(v)}</b></div><div class="bar"><i style="width:${clamp(v,0,100)}%;background:var(--gold)"></i></div></div>`;}).join('')}
+        <div style="margin-top:4px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>Resultado</span><b>${fmtPct(pct(lucro))}</b></div><div class="bar"><i style="width:${clamp(pct(lucro),0,100)}%;background:var(--green)"></i></div></div>
       </div>
     </div>
+  </div>`}`;
+}
+/* ----- Lançamentos ----- */
+function lancSubRefresh(){const g=$('#lc_grupo');const s=$('#lc_sub');if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=(c?c.subs:[]).map(x=>`<option>${esc(x)}</option>`).join('');}
+function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast('Informe o valor');
+  DB.lancamentos.push({id:uid(),data:$('#lc_data').value||hojeISO(),grupo:$('#lc_grupo').value,sub:$('#lc_sub').value||'',descricao:($('#lc_desc').value||'').trim(),valor,forma:$('#lc_forma').value||''});
+  if(ymOf($('#lc_data').value)!==curYM())lancYM=ymOf($('#lc_data').value);
+  save();viewFinanceiro();toast('Lançamento registrado');}
+function delLancamento(id){DB.lancamentos=DB.lancamentos.filter(l=>l.id!==id);save();viewFinanceiro();}
+function finLancamentos(){
+  const ym=curYM(); const d=dreLanc(ym);
+  const ls=lancMes(ym).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||'')||0);
+  const grupos=Object.keys(DB.categorias);
+  const subsG0=DB.categorias[grupos[0]]?DB.categorias[grupos[0]].subs:[];
+  return `<div class="card card-pad" style="max-width:1000px">
+    <div class="section-head"><div><div class="ttl">Lançamentos</div><div class="desc">Receitas e despesas — alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div>
+      <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px">
+      <div class="field" style="margin:0;flex:0 0 140px"><label>Data</label><input type="date" class="input" id="lc_data" value="${hojeISO()}"></div>
+      <div class="field" style="margin:0;flex:1 1 150px"><label>Grupo</label><select class="input" id="lc_grupo" onchange="lancSubRefresh()">${grupos.map(g=>`<option>${esc(g)}</option>`).join('')}</select></div>
+      <div class="field" style="margin:0;flex:1 1 160px"><label>Subcategoria</label><select class="input" id="lc_sub">${subsG0.map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
+      <div class="field" style="margin:0;flex:2 1 200px"><label>Descrição</label><input class="input" id="lc_desc" placeholder="Fornecedor, nº NF, referência..."></div>
+      <div class="field" style="margin:0;flex:0 0 130px"><label>Valor</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="lc_valor" inputmode="numeric" placeholder="0,00" oninput="moneyMask(this)"></div></div>
+      <div class="field" style="margin:0;flex:1 1 130px"><label>Forma</label><select class="input" id="lc_forma">${(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
+      <button class="btn btn-primary btn-sm" style="flex:0 0 auto;height:40px" onclick="addLancamento()">${icoPlus} Lançar</button>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div class="dash-pill"><span>Receitas</span><b style="color:var(--green)">${fmtBRL(d.recTot)}</b></div>
+      <div class="dash-pill"><span>Despesas</span><b style="color:var(--red)">${fmtBRL(d.despTot)}</b></div>
+      <div class="dash-pill"><span>Resultado</span><b style="color:${d.resultado>=0?'var(--green)':'var(--red)'}">${fmtBRL(d.resultado)}</b></div>
+    </div>
+    <div class="scroll-x"><table><thead><tr><th>Data</th><th>Grupo</th><th>Subcategoria</th><th>Descrição</th><th>Forma</th><th class="num">Valor</th><th></th></tr></thead>
+    <tbody>${ls.length?ls.map(l=>{const rec=grupoTipo(l.grupo)==='receita';return `<tr>
+      <td>${fmtDataBR(l.data)}</td><td>${esc(l.grupo)}</td><td>${esc(l.sub||'—')}</td><td>${esc(l.descricao||'—')}</td><td style="color:var(--soft)">${esc(l.forma||'—')}</td>
+      <td class="num" style="color:${rec?'var(--green)':'var(--red)'};font-weight:600">${rec?'+':'−'} ${fmtBRL(l.valor)}</td>
+      <td class="num"><button class="mini-del" onclick="delLancamento('${l.id}')">${icoX}</button></td></tr>`;}).join(''):`<tr><td colspan="7" style="color:var(--soft);text-align:center;padding:14px">Nenhum lançamento neste mês. Use o formulário acima.</td></tr>`}</tbody></table></div>
+  </div>`;
+}
+/* ----- Fluxo de Caixa ----- */
+function finFluxo(){
+  const ym=curYM(); const ls=lancMes(ym);
+  const dias={};
+  ls.forEach(l=>{const rec=grupoTipo(l.grupo)==='receita';dias[l.data]=dias[l.data]||{ent:0,sai:0};if(rec)dias[l.data].ent+=l.valor||0;else dias[l.data].sai+=l.valor||0;});
+  const datas=Object.keys(dias).sort();
+  let acc=0;
+  const rows=datas.map(dt=>{const x=dias[dt];const sd=x.ent-x.sai;acc+=sd;return `<tr><td>${fmtDataBR(dt)}</td><td class="num" style="color:var(--green)">${fmtBRL(x.ent)}</td><td class="num" style="color:var(--red)">${fmtBRL(x.sai)}</td><td class="num" style="color:${sd>=0?'var(--green)':'var(--red)'}">${fmtBRL(sd)}</td><td class="num" style="font-weight:700;color:${acc>=0?'var(--green)':'var(--red)'}">${fmtBRL(acc)}</td></tr>`;}).join('');
+  const totEnt=datas.reduce((s,dt)=>s+dias[dt].ent,0), totSai=datas.reduce((s,dt)=>s+dias[dt].sai,0);
+  return `<div class="card card-pad" style="max-width:880px">
+    <div class="section-head"><div><div class="ttl">Fluxo de Caixa</div><div class="desc">Entradas e saídas por dia · saldo acumulado do mês</div></div>
+      <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()"></div>
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div class="dash-pill"><span>Entradas</span><b style="color:var(--green)">${fmtBRL(totEnt)}</b></div>
+      <div class="dash-pill"><span>Saídas</span><b style="color:var(--red)">${fmtBRL(totSai)}</b></div>
+      <div class="dash-pill"><span>Saldo do mês</span><b style="color:${totEnt-totSai>=0?'var(--green)':'var(--red)'}">${fmtBRL(totEnt-totSai)}</b></div>
+    </div>
+    <div class="scroll-x"><table><thead><tr><th>Dia</th><th class="num">Entradas</th><th class="num">Saídas</th><th class="num">Saldo do dia</th><th class="num">Acumulado</th></tr></thead>
+    <tbody>${rows||`<tr><td colspan="5" style="color:var(--soft);text-align:center;padding:14px">Nenhum lançamento neste mês.</td></tr>`}</tbody></table></div>
+  </div>`;
+}
+/* ----- Gerenciar categorias ----- */
+function catAddSub(g){const v=prompt('Nova subcategoria em "'+g+'":');if(!v)return;const s=v.trim();if(!s)return;DB.categorias[g].subs.push(s);save();viewFinanceiro();}
+function catDelSub(g,i){DB.categorias[g].subs.splice(i,1);save();viewFinanceiro();}
+function catAddGrupo(){const v=prompt('Nome do novo grupo:');if(!v)return;const g=v.trim();if(!g||DB.categorias[g])return toast(DB.categorias[g]?'Grupo já existe':'Nome inválido');
+  const tipo=confirm('Este grupo é de RECEITA?\n\nOK = Receita (+)   ·   Cancelar = Despesa (−)')?'receita':'despesa';
+  DB.categorias[g]={tipo,subs:[]};save();viewFinanceiro();}
+function catDelGrupo(g){if(!confirm('Excluir o grupo "'+g+'" e suas subcategorias? Os lançamentos antigos continuam, mas sem grupo cadastrado.'))return;delete DB.categorias[g];save();viewFinanceiro();}
+function finCategorias(){
+  const grupos=Object.keys(DB.categorias);
+  return `<div class="card card-pad" style="max-width:880px">
+    <div class="section-head"><div><div class="ttl">Categorias</div><div class="desc">Grupos e subcategorias dos lançamentos — já vêm padrão e você pode personalizar</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="catAddGrupo()">${icoPlus} Novo grupo</button></div>
+    ${grupos.map(g=>{const c=DB.categorias[g];return `<div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <b style="flex:1">${esc(g)} <span class="tag ${c.tipo==='receita'?'tag-green':'tag-gray'}" style="margin-left:4px">${c.tipo==='receita'?'Receita (+)':'Despesa (−)'}</span></b>
+        <button class="btn btn-ghost btn-sm" onclick="catAddSub('${g.replace(/'/g,"\\'")}')">${icoPlus} Subcategoria</button>
+        <button class="mini-del" onclick="catDelGrupo('${g.replace(/'/g,"\\'")}')">${icoX}</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${c.subs.map((s,i)=>`<span class="cat-chip">${esc(s)}<button onclick="catDelSub('${g.replace(/'/g,"\\'")}',${i})">${icoX}</button></span>`).join('')||'<span style="font-size:12px;color:var(--soft)">Nenhuma subcategoria.</span>'}</div>
+    </div>`;}).join('')}
   </div>`;
 }
 
 /* ===================== FINANCEIRO ===================== */
-let finTab='visao';
+let finTab='lanc';
 const FIN_TEMPLATES={
   contasPagar:()=>({id:uid(),descricao:'',categoria:'',vencimento:'',valor:0,pago:false}),
   contasReceber:()=>({id:uid(),descricao:'',categoria:'',vencimento:'',valor:0,recebido:false}),
@@ -1887,9 +2013,12 @@ function finList(key,cols){
 }
 function viewFinanceiro(){
   const t=totaisGerais();
-  const tabs=[['visao','Visão Geral'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['func','Funcionários'],['socios','Sócios'],['meios','Meios de Pagamento'],['forn','Fornecedores'],['param','Parâmetros']];
+  const tabs=[['lanc','Lançamentos'],['fluxo','Fluxo de Caixa'],['categorias','Categorias'],['visao','Visão Geral'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['func','Funcionários'],['socios','Sócios'],['meios','Meios de Pagamento'],['forn','Fornecedores'],['param','Parâmetros']];
   let body='';
-  if(finTab==='visao')body=finVisao(t);
+  if(finTab==='lanc')body=finLancamentos();
+  else if(finTab==='fluxo')body=finFluxo();
+  else if(finTab==='categorias')body=finCategorias();
+  else if(finTab==='visao')body=finVisao(t);
   else if(finTab==='pagar')body=finCard('Contas a Pagar','Lançamentos a vencer e pagos',
     finList('contasPagar',[{f:'descricao',ph:'Descrição',w:'1.4fr'},{f:'categoria',ph:'Categoria',w:'1fr'},{f:'vencimento',type:'date',w:'150px'},{f:'valor',type:'money',w:'110px'},{f:'pago',type:'check',ph:'Pago?',w:'34px'}]),
     `Total em aberto: <b>${fmtBRL((DB.fin.contasPagar||[]).filter(x=>!x.pago).reduce((s,x)=>s+x.valor,0))}</b>`);
