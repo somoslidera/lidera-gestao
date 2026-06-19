@@ -1087,18 +1087,20 @@ function renderInsCompList(){
   el.innerHTML=draftInsComps.length?draftInsComps.map((row,idx)=>{const ins=DB.insumos[row[0]];return`
     <div class="comp-row" style="grid-template-columns:1fr 86px 80px 32px">
       <select class="input" onchange="draftInsComps[${idx}][0]=this.value;updInsPreview();renderInsCompList()"><option value="">— insumo —</option>${opts.map(o=>`<option value="${o.id}" ${o.id===row[0]?'selected':''}>${o.nome}${o.tipo==='preparado'?' (prep.)':''}</option>`).join('')}</select>
-      <input class="input" type="number" step="0.001" value="${row[1]}" placeholder="qtd" oninput="draftInsComps[${idx}][1]=parseFloat(this.value)||0;updInsPreview()">
-      <div class="ccost">${fmtBRL(ins?custoInsumoBase(ins)*(row[1]||0):0)}<div style="font-size:10px;color:var(--soft)">${ins?bSym(ins.uni):''}</div></div>
+      <input class="input" type="number" step="0.001" value="${row[1]}" placeholder="qtd" oninput="draftInsComps[${idx}][1]=parseFloat(this.value)||0;insCompCost(${idx});updInsPreview()">
+      <div class="ccost"><span id="ic_cst${idx}">${fmtBRL(ins?custoInsumoBase(ins)*(row[1]||0):0)}</span><div style="font-size:10px;color:var(--soft)">${ins?bSym(ins.uni):''}</div></div>
       <button class="mini-del" onclick="draftInsComps.splice(${idx},1);renderInsCompList();updInsPreview()">${icoX}</button>
     </div>`;}).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 10px">Nenhum ingrediente adicionado.</div>`;
 }
+function insCompCost(idx){const r=draftInsComps[idx];const ins=r&&DB.insumos[r[0]];const el=$('#ic_cst'+idx);if(el)el.textContent=fmtBRL(ins?custoInsumoBase(ins)*(r[1]||0):0);}
 function addInsComp(){draftInsComps.push(['',0]);renderInsCompList();updInsPreview();}
+function fmtBRLp(v){return v>0&&v<0.1?'R$ '+(+v).toFixed(4).replace('.',','):fmtBRL(v);}
 function updInsPreview(){const el=$('#i_preview');if(!el)return;const uni=$('#i_uni').value;
   if(draftInsTipo==='preparado'){let total=0;draftInsComps.forEach(([cid,q])=>{const ins=DB.insumos[cid];if(ins)total+=custoInsumoBase(ins)*(q||0);});
     const rend=parseFloat($('#i_rend').value)||1;const c=total/(rend||1);
-    el.innerHTML=`Custo da receita: <b>${fmtBRL(total)}</b> · Custo por ${uSym(uni)}: <b style="color:var(--navy)">${fmtBRL(c)}</b>`;
+    el.innerHTML=`Custo da receita: <b>${fmtBRL(total)}</b> · Custo por ${uSym(uni)}: <b style="color:var(--navy)">${fmtBRLp(c)}</b>`;
   }else{const p=moneyVal('i_preco'),q=parseFloat($('#i_qtd').value)||1;const c=p/(q||1);
-    el.innerHTML=`Preço por ${uSym(uni)}: <b style="color:var(--navy)">${fmtBRL(c)}</b>`;}}
+    el.innerHTML=`Preço por ${uSym(uni)}: <b style="color:var(--navy)">${fmtBRLp(c)}</b>`;}}
 function saveInsumo(id){const nome=$('#i_nome').value.trim();if(!nome)return toast('Informe o nome do insumo');
   const uni=$('#i_uni').value, cat=$('#i_cat').value.trim()||'Mercearia';
   const forn=$('#i_forn')?$('#i_forn').value:'';
