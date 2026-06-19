@@ -2475,32 +2475,26 @@ function novoCliente(){
   <div class="modal-body">
     <div id="nc_err" style="display:none;background:var(--red-bg);color:var(--red);font-size:13px;padding:10px 12px;border-radius:10px;margin-bottom:12px"></div>
     <div class="field"><label>Nome do restaurante</label><input class="input" id="nc_nome" placeholder="Ex.: Restaurante Lidera"></div>
-    <div class="field"><label>E-mail de login do cliente</label><input class="input" id="nc_email" type="email" placeholder="cliente@restaurante.com"></div>
-    <div class="field"><label>Responsável <span class="hint">opcional</span></label><input class="input" id="nc_resp" placeholder="Nome do responsável"></div>
-    <div style="font-size:12px;color:var(--soft)">Uma senha provisória será gerada — o cliente entra com o e-mail e essa senha.</div>
+    <div class="field"><label>Responsável</label><input class="input" id="nc_resp" placeholder="Nome do responsável"></div>
+    <div style="font-size:12px;color:var(--soft)">O acesso (login) você cria depois, em <b>Abrir app › Equipe › Adicionar membro</b>.</div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="doNovoCliente()">Criar cliente</button></div>`);
   setTimeout(()=>{const e=$('#nc_nome');if(e)e.focus();},40);
 }
 async function doNovoCliente(){
-  const nome=$('#nc_nome').value.trim(),email=$('#nc_email').value.trim().toLowerCase(),resp=$('#nc_resp').value.trim();
+  const nome=$('#nc_nome').value.trim(),resp=$('#nc_resp').value.trim();
   const err=$('#nc_err');const showErr=m=>{if(err){err.style.display='block';err.textContent=m;}};
   if(!nome)return showErr('Informe o nome do restaurante.');
-  if(!email||!/.+@.+\..+/.test(email))return showErr('Informe um e-mail válido para o login.');
   const btn=document.querySelector('.modal-foot .btn-primary');if(btn){btn.disabled=true;btn.textContent='Criando…';}
-  let res;try{res=await chamarFn('criar-cliente',{nome,responsavel:resp,email});}catch(e){res={data:{error:e.message}};}
+  let res;try{res=await sb.from('organizacoes').insert({nome,responsavel:resp,status:'ativo',dados:{}}).select('id').single();}catch(e){res={error:e};}
   if(btn){btn.disabled=false;btn.textContent='Criar cliente';}
-  const data=res&&res.data;
-  if(!data||data.error){const raw=(data&&data.error)||'falha ao criar';
-    return showErr(/registered|exists|já está|already/i.test(raw)?'Esse e-mail já está em uso por outra conta. Use um e-mail diferente para este cliente.':('Não foi possível criar: '+raw));}
+  if(res.error)return showErr('Não foi possível criar: '+(res.error.message||res.error));
+  const novoId=res.data&&res.data.id;
   modal(`<div class="modal-head"><h3>Cliente criado ✓</h3><button class="x" onclick="closeModal();showAdmin()">${icoX}</button></div>
   <div class="modal-body">
-    <div style="font-size:13.5px;color:var(--muted);margin-bottom:14px">Repasse estas credenciais ao cliente. Ele pode trocar a senha depois, em Configurações.</div>
-    <div class="field"><label>Login (e-mail)</label><input class="input" value="${data.email}" readonly onclick="this.select()"></div>
-    <div class="field"><label>Senha provisória</label><input class="input" value="${data.senha}" readonly onclick="this.select()"></div>
-    <div style="font-size:12px;color:var(--soft)">Link de acesso: ${location.origin}${location.pathname}</div>
+    <div style="font-size:13.5px;color:var(--muted);margin-bottom:14px"><b>${esc(nome)}</b> foi criado. Para dar acesso, abra o restaurante e crie o login do responsável em <b>Equipe › Adicionar membro</b> (nível Administrador).</div>
   </div>
-  <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal();showAdmin()">Concluir</button></div>`);}
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal();showAdmin()">Concluir</button>${novoId?`<button class="btn btn-primary" onclick="closeModal();abrirCliente('${novoId}')">Abrir e configurar acesso</button>`:''}</div>`);}
 async function vincularPerfil(perfilId,orgId){if(!orgId)return;await sb.from('perfis').update({org_id:orgId}).eq('id',perfilId);toast('Cliente vinculado');showAdmin();}
 async function toggleStatus(orgId,status){const novo=status==='suspenso'?'ativo':'suspenso';await sb.from('organizacoes').update({status:novo}).eq('id',orgId);toast(novo==='ativo'?'Acesso reativado':'Acesso suspenso');showAdmin();}
 async function abrirCliente(orgId){let org=null;try{org=(await sb.from('organizacoes').select('*').eq('id',orgId).single()).data;}catch(e){}if(!org)return toast('Erro ao abrir');
