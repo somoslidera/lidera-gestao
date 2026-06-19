@@ -2476,8 +2476,7 @@ async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin(
         :`
         <button class="btn btn-primary btn-sm" onclick="abrirCliente('${o.id}')">Abrir app</button>
         <button class="btn btn-ghost btn-sm" onclick="atividadesCliente('${o.id}','${nm}')">Atividades</button>
-        <button class="btn btn-ghost btn-sm" onclick="toggleStatus('${o.id}','${o.status}')">${susp?'Reativar':'Suspender'}</button>
-        <button class="btn btn-ghost btn-sm" onclick="arquivarCliente('${o.id}',true)">📦 Arquivar</button>`}
+        <button class="btn btn-ghost btn-sm" onclick="arquivarCliente('${o.id}',true)">Arquivar</button>`}
       </div>
     </div>`;}).join(''):`<div style="color:var(--muted)">${adminTab==='arquivados'?'Nenhum cliente arquivado.':'Nenhum cliente ativo. Crie o primeiro com “Novo cliente”.'}</div>`;
 }
