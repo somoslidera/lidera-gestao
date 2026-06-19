@@ -1071,9 +1071,15 @@ function editInsumo(id){
   applyInsTipo(); renderInsCompList(); updUniLabels(); updInsPreview();
 }
 function updUniLabels(){const s=$('#i_uni');if(!s)return;const sym=uSym(s.value);document.querySelectorAll('.u-sym').forEach(e=>e.textContent=sym);}
-function setInsTipo(t){draftInsTipo=t;$('#tp_pronto').classList.toggle('on',t==='pronto');$('#tp_prep').classList.toggle('on',t==='preparado');applyInsTipo();updInsPreview();}
+function updUniOptions(){const s=$('#i_uni');if(!s)return;const cur=s.value;
+  // preparado: rendimento sempre em unidade-base (gr/ml/un) — evita confusão de escala (kg/lt)
+  const list=draftInsTipo==='preparado'?UNIDADES.filter(u=>BASE[u]===u):UNIDADES;
+  let val=cur; if(draftInsTipo==='preparado'&&!list.includes(cur))val=BASE[cur]||'g';
+  s.innerHTML=list.map(u=>`<option value="${u}" ${u===val?'selected':''}>${ULABEL[u]}</option>`).join('');}
+function setInsTipo(t){draftInsTipo=t;$('#tp_pronto').classList.toggle('on',t==='pronto');$('#tp_prep').classList.toggle('on',t==='preparado');applyInsTipo();updUniLabels();updInsPreview();}
 function applyInsTipo(){const prep=draftInsTipo==='preparado';
   $('#pronto_block').style.display=prep?'none':'block';$('#prep_block').style.display=prep?'block':'none';
+  updUniOptions();
   $('#tp_hint').textContent=prep?'Produzido na casa. Ex.: molho da casa, blend de hambúrguer.':'Vem pronto do fornecedor. Ex.: mussarela, farinha de trigo.';}
 function renderInsCompList(){
   const opts=Object.values(DB.insumos).filter(x=>x.id!==editingInsId).sort((a,b)=>a.nome.localeCompare(b.nome));
@@ -1254,7 +1260,7 @@ function viewFichas(){
 function fichaCard(f,fixosPct){
   const m=metricasFicha(f);
   const insumos=custoFicha(f)/(f.porcoes||1), emb=f.custoEmbalagem||0, custo=insumos+emb;
-  const preco=m.balcao.preco, precoIf=m.ifood.preco, cmv=m.balcao.cmv;
+  const preco=m.balcao.preco, cmv=m.balcao.cmv;
   const peso=pesoFichaKg(f)*1000;
   const rend=peso>0?`${fmtN(peso)}gr`:`${fmtN(f.porcoes||1)} porç${(f.porcoes||1)>1?'ões':'ão'}`;
   const badge=preco>0?`<span class="fcard-badge ${cmv<=30?'tag-green':cmv<=35?'tag-amber':'tag-red'}">CMV ${fmtPct(cmv)}</span>`:`<span class="fcard-badge tag-amber">sem preço</span>`;
@@ -1270,7 +1276,6 @@ function fichaCard(f,fixosPct){
     <div class="frow div"><span class="l">Rendimento</span><b>${rend}</b></div>
     <div class="frow"><span class="l">Custo</span><b>${fmtBRL(custo)}</b></div>
     <div class="frow"><span class="l">Valor de Venda</span><b>${preco>0?fmtBRL(preco):'—'}</b></div>
-    <div class="frow"><span class="l">Valor de venda no iFood</span><b>${precoIf>0?fmtBRL(precoIf):'—'}</b></div>
   </div>`;
 }
 function preparadoCard(p){
