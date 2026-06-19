@@ -1495,6 +1495,7 @@ function editFicha(id){
             </div>
             <div class="field" style="margin:12px 0 0"><label>Preço no iFood <span class="hint">opcional</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="f_precoIf" inputmode="numeric" value="${fmtMoneyInput(f.precoIfood||0)}" oninput="moneyMask(this);recalcFicha()"></div></div>
             <div class="mc-line"><span style="color:var(--muted)">CMV (%)</span><span class="mc-v" id="f_mc">—</span></div>
+            <div class="mc-line" style="border-top:0;margin-top:0;padding-top:4px"><span style="color:var(--muted)">CMV (%) iFood</span><span class="mc-v" id="f_mcIf">—</span></div>
           </div>
           <div id="f_calc"></div>
         </div>
@@ -1627,9 +1628,11 @@ function recalcFicha(){
   const mcB=preco-custo-preco*(impPct/100);
   const mcI=precoIf-custo-precoIf*((comIf+impPct)/100);
   const cmv=preco?custo/preco*100:0;
+  const cmvIf=precoIf?custo/precoIf*100:0;
   const sug=DB.cmvAlvo?custo/(DB.cmvAlvo/100):0;
   const cc=v=>v<=30?'#1E9E6A':v<=35?'#C9892A':'#D2483F';
   const mcEl=$('#f_mc');if(mcEl)mcEl.innerHTML=preco?`<span style="color:${cc(cmv)}">${fmtPct(cmv)}</span>`:'—';
+  const mcIfEl=$('#f_mcIf');if(mcIfEl)mcIfEl.innerHTML=precoIf?`<span style="color:${cc(cmvIf)}">${fmtPct(cmvIf)}</span>`:'—';
   const box=$('#f_calc');if(!box)return;
   box.innerHTML=`<div class="calc-box" style="margin-top:14px">
     <div class="line"><span>Custo insumos + embalagem (CMV R$)</span><b>${fmtBRL(custo)}</b></div>
@@ -2651,7 +2654,7 @@ async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin(
     <div class="kpi"><div class="k-lbl">Faturamento somado</div><div class="k-val" style="font-size:21px">${fmtBRL(fatTot)}</div><div class="k-sub" style="color:var(--soft)">dos clientes ativos</div></div>
     <div class="kpi"><div class="k-lbl">Aguardando vínculo</div><div class="k-val" style="color:${pend.length?'var(--amber)':'var(--green)'}">${pend.length}</div><div class="k-sub" style="color:var(--soft)">novos cadastros</div></div>
     <div class="kpi"><div class="k-lbl">Arquivados</div><div class="k-val">${arquivados.length}</div><div class="k-sub" style="color:var(--soft)">fora de uso</div></div></div>`;
-  $('#admin_tabs').innerHTML=`<div class="pill-filter"><button class="${adminTab!=='arquivados'?'on':''}" onclick="adminTab='ativos';showAdmin()">Clientes (${ativosArr.length})</button><button class="${adminTab==='arquivados'?'on':''}" onclick="adminTab='arquivados';showAdmin()">📦 Arquivados (${arquivados.length})</button></div>`;
+  $('#admin_tabs').innerHTML=`<div class="pill-filter"><button class="${adminTab!=='arquivados'?'on':''}" onclick="adminTab='ativos';showAdmin()">Clientes (${ativosArr.length})</button><button class="${adminTab==='arquivados'?'on':''}" onclick="adminTab='arquivados';showAdmin()">Arquivados (${arquivados.length})</button></div>`;
   $('#admin_pend').innerHTML=pend.length?`<div class="card card-pad" style="border-color:var(--amber)"><div class="ttl" style="margin-bottom:8px">⏳ Novos cadastros aguardando liberação</div>
     ${pend.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${p.email||'(sem e-mail)'}</b></div>
       <select class="input" style="max-width:260px" onchange="vincularPerfil('${p.id}',this.value)"><option value="">Vincular a um restaurante…</option>${orgs.map(o=>`<option value="${o.id}">${o.nome}</option>`).join('')}</select></div>`).join('')}</div>`:'';
