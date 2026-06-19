@@ -1033,7 +1033,7 @@ function viewInsumos(){
 }
 let editingInsId=null, draftInsTipo='pronto', draftInsComps=[];
 function editInsumo(id){
-  const i=id?DB.insumos[id]:{nome:'',cat:'',tipo:'pronto',uni:'g',preco:'',qtd:1,rendimento:1000,comps:[],fornecedor:''};
+  const i=id?DB.insumos[id]:{nome:'',cat:'',tipo:'pronto',uni:'g',preco:'',qtd:'',rendimento:'',comps:[],fornecedor:''};
   editingInsId=id||null; draftInsTipo=i.tipo||'pronto'; draftInsComps=JSON.parse(JSON.stringify(i.comps||[]));
   modal(`<div class="modal-head"><h3>${id?'Editar insumo':'Novo insumo'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
@@ -1072,10 +1072,7 @@ function editInsumo(id){
 }
 function updUniLabels(){const s=$('#i_uni');if(!s)return;const sym=uSym(s.value);document.querySelectorAll('.u-sym').forEach(e=>e.textContent=sym);}
 function updUniOptions(){const s=$('#i_uni');if(!s)return;const cur=s.value;
-  // preparado: rendimento sempre em unidade-base (gr/ml/un) — evita confusão de escala (kg/lt)
-  const list=draftInsTipo==='preparado'?UNIDADES.filter(u=>BASE[u]===u):UNIDADES;
-  let val=cur; if(draftInsTipo==='preparado'&&!list.includes(cur))val=BASE[cur]||'g';
-  s.innerHTML=list.map(u=>`<option value="${u}" ${u===val?'selected':''}>${ULABEL[u]}</option>`).join('');}
+  s.innerHTML=UNIDADES.map(u=>`<option value="${u}" ${u===cur?'selected':''}>${ULABEL[u]}</option>`).join('');}
 function setInsTipo(t){draftInsTipo=t;$('#tp_pronto').classList.toggle('on',t==='pronto');$('#tp_prep').classList.toggle('on',t==='preparado');applyInsTipo();updUniLabels();updInsPreview();}
 function applyInsTipo(){const prep=draftInsTipo==='preparado';
   $('#pronto_block').style.display=prep?'none':'block';$('#prep_block').style.display=prep?'block':'none';
@@ -1087,7 +1084,7 @@ function renderInsCompList(){
   el.innerHTML=draftInsComps.length?draftInsComps.map((row,idx)=>{const ins=DB.insumos[row[0]];return`
     <div class="comp-row" style="grid-template-columns:1fr 86px 80px 32px">
       <select class="input" onchange="draftInsComps[${idx}][0]=this.value;updInsPreview();renderInsCompList()"><option value="">— insumo —</option>${opts.map(o=>`<option value="${o.id}" ${o.id===row[0]?'selected':''}>${o.nome}${o.tipo==='preparado'?' (prep.)':''}</option>`).join('')}</select>
-      <input class="input" type="number" step="0.001" value="${row[1]}" placeholder="qtd" oninput="draftInsComps[${idx}][1]=parseFloat(this.value)||0;insCompCost(${idx});updInsPreview()">
+      <input class="input" type="number" step="0.001" value="${row[1]||''}" placeholder="qtd" oninput="draftInsComps[${idx}][1]=parseFloat(this.value)||0;insCompCost(${idx});updInsPreview()">
       <div class="ccost"><span id="ic_cst${idx}">${fmtBRL(ins?custoInsumoBase(ins)*(row[1]||0):0)}</span><div style="font-size:10px;color:var(--soft)">${ins?bSym(ins.uni):''}</div></div>
       <button class="mini-del" onclick="draftInsComps.splice(${idx},1);renderInsCompList();updInsPreview()">${icoX}</button>
     </div>`;}).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 10px">Nenhum ingrediente adicionado.</div>`;
