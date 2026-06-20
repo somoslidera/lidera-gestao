@@ -846,6 +846,9 @@ function normData(){
   if(!DB.categorias||!Object.keys(DB.categorias).length){DB.categorias={};DRE_DEFAULT.forEach(([g,tipo,subs])=>{DB.categorias[g]={tipo,subs:subs.slice()};});}
   DB.lancamentos=DB.lancamentos||[];
   DB.formasPagamento=(DB.formasPagamento&&DB.formasPagamento.length)?DB.formasPagamento:FORMAS_DEFAULT.slice();
+  // migra contas a pagar/receber p/ grupo+subcategoria (lançamento automático ao pagar/receber)
+  (f.contasPagar||[]).forEach(c=>{if(c.grupo==null){c.grupo='Despesas Gerais';c.sub=c.categoria||((DB.categorias['Despesas Gerais']||{subs:[]}).subs[0]||'');}});
+  (f.contasReceber||[]).forEach(c=>{if(c.grupo==null){c.grupo='Receita';c.sub=c.categoria||'Outras Receitas';}});
   if(DB.onboardingFeito==null)DB.onboardingFeito=(Object.keys(DB.insumos||{}).length>0||Object.keys(DB.fichas||{}).length>0);
 }
 function renderFoot(){normData();const fn=$('#footName');if(fn)fn.textContent=(DB.conta&&DB.conta.restaurante)||'Seu Restaurante';}
@@ -1986,8 +1989,8 @@ function finCategorias(){
 /* ===================== FINANCEIRO ===================== */
 let finTab='lanc';
 const FIN_TEMPLATES={
-  contasPagar:()=>({id:uid(),descricao:'',categoria:'',vencimento:'',valor:0,pago:false}),
-  contasReceber:()=>({id:uid(),descricao:'',categoria:'',vencimento:'',valor:0,recebido:false}),
+  contasPagar:()=>({id:uid(),descricao:'',grupo:'Despesas Gerais',sub:((DB.categorias&&DB.categorias['Despesas Gerais'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,pago:false}),
+  contasReceber:()=>({id:uid(),descricao:'',grupo:'Receita',sub:((DB.categorias&&DB.categorias['Receita'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,recebido:false}),
   funcionarios:()=>({id:uid(),nome:'',cargo:'',salario:0}),
   socios:()=>({id:uid(),nome:'',proLabore:0}),
   meiosPagamento:()=>({id:uid(),nome:'',tipo:'Crédito',taxa:0}),
@@ -2019,11 +2022,11 @@ function viewFinanceiro(){
   else if(finTab==='fluxo')body=finFluxo();
   else if(finTab==='categorias')body=finCategorias();
   else if(finTab==='visao')body=finVisao(t);
-  else if(finTab==='pagar')body=finCard('Contas a Pagar','Lançamentos a vencer e pagos',
-    finList('contasPagar',[{f:'descricao',ph:'Descrição',w:'1.4fr'},{f:'categoria',ph:'Categoria',w:'1fr'},{f:'vencimento',type:'date',w:'150px'},{f:'valor',type:'money',w:'110px'},{f:'pago',type:'check',ph:'Pago?',w:'34px'}]),
+  else if(finTab==='pagar')body=finCard('Contas a Pagar','Despesas a vencer — marque “Pago” e o valor lança no DRE/Fluxo',
+    finContas('contasPagar'),
     `Total em aberto: <b>${fmtBRL((DB.fin.contasPagar||[]).filter(x=>!x.pago).reduce((s,x)=>s+x.valor,0))}</b>`);
-  else if(finTab==='receber')body=finCard('Contas a Receber','Valores a receber',
-    finList('contasReceber',[{f:'descricao',ph:'Descrição',w:'1.4fr'},{f:'categoria',ph:'Categoria',w:'1fr'},{f:'vencimento',type:'date',w:'150px'},{f:'valor',type:'money',w:'110px'},{f:'recebido',type:'check',ph:'Recebido?',w:'34px'}]),
+  else if(finTab==='receber')body=finCard('Contas a Receber','Valores a receber — marque “Recebido” e o valor lança no DRE/Fluxo',
+    finContas('contasReceber'),
     `Total a receber: <b>${fmtBRL((DB.fin.contasReceber||[]).filter(x=>!x.recebido).reduce((s,x)=>s+x.valor,0))}</b>`);
   else if(finTab==='func')body=finCard('Funcionários','Folha de pagamento (CLT)',
     finList('funcionarios',[{f:'nome',ph:'Nome',w:'1.4fr'},{f:'cargo',ph:'Cargo',w:'1fr'},{f:'salario',type:'money',w:'120px'}]),
@@ -2044,6 +2047,38 @@ function finCard(ttl,desc,inner,foot){
     <div class="section-head"><div><div class="ttl">${ttl}</div><div class="desc">${desc}</div></div></div>
     ${inner}
     ${foot?`<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px;font-size:14px;text-align:right">${foot}</div>`:''}</div>`;
+}
+function syncContaLanc(key,conta){
+  // cria/atualiza/remove o lançamento automático espelhando a conta paga/recebida
+  DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromConta!==conta.id);
+  const ativo=key==='contasPagar'?conta.pago:conta.recebido;
+  if(ativo&&(conta.valor||0)>0){
+    DB.lancamentos.push({id:uid(),fromConta:conta.id,data:conta.vencimento||hojeISO(),
+      grupo:conta.grupo||(key==='contasPagar'?'Despesas Gerais':'Receita'),sub:conta.sub||'',
+      descricao:conta.descricao||'',valor:conta.valor||0,forma:''});
+  }
+}
+function contaToggle(key,i){const row=DB.fin[key][i];const cf=key==='contasPagar'?'pago':'recebido';
+  row[cf]=!row[cf];syncContaLanc(key,row);save();viewFinanceiro();
+  if(row[cf])toast(key==='contasPagar'?'Pago — lançado no DRE e Fluxo':'Recebido — lançado no DRE e Fluxo');}
+function contaSetGrupo(key,i,g){const row=DB.fin[key][i];row.grupo=g;const subs=(DB.categorias[g]||{subs:[]}).subs;if(!subs.includes(row.sub))row.sub=subs[0]||'';
+  if(row[key==='contasPagar'?'pago':'recebido'])syncContaLanc(key,row);save();viewFinanceiro();}
+function contaResync(key,i){const row=DB.fin[key][i];if(row[key==='contasPagar'?'pago':'recebido'])syncContaLanc(key,row);finTouch();}
+function finContas(key){
+  const arr=DB.fin[key]||[];const isPagar=key==='contasPagar';const cf=isPagar?'pago':'recebido';
+  const grupos=Object.keys(DB.categorias);
+  return `${arr.length?arr.map((row,i)=>{const subs=(DB.categorias[row.grupo]||{subs:[]}).subs;return `
+    <div class="comp-row" style="grid-template-columns:1.4fr 1fr 1fr 140px 120px 96px 30px;align-items:center">
+      <input class="input" value="${(row.descricao||'').replace(/"/g,'&quot;')}" placeholder="Descrição" oninput="DB.fin.${key}[${i}].descricao=this.value;contaResync('${key}',${i})">
+      <select class="input" onchange="contaSetGrupo('${key}',${i},this.value)">${grupos.map(g=>`<option ${g===row.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
+      <select class="input" onchange="DB.fin.${key}[${i}].sub=this.value;contaResync('${key}',${i})">${subs.map(s=>`<option ${s===row.sub?'selected':''}>${esc(s)}</option>`).join('')||'<option value="">—</option>'}</select>
+      <input type="date" class="input" value="${row.vencimento||''}" onchange="DB.fin.${key}[${i}].vencimento=this.value;contaResync('${key}',${i})">
+      <div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(row.valor||0)}" oninput="DB.fin.${key}[${i}].valor=moneyMask(this);contaResync('${key}',${i})"></div>
+      <button class="icon-btn" onclick="contaToggle('${key}',${i})" title="${isPagar?'Marcar como pago':'Marcar como recebido'}" style="white-space:nowrap;width:auto;padding:0 8px;${row[cf]?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${row[cf]?'✓ '+(isPagar?'Pago':'Receb.'):'○ '+(isPagar?'Pagar':'Receber')}</button>
+      <button class="mini-del" onclick="DB.lancamentos=DB.lancamentos.filter(l=>l.fromConta!=='${row.id}');DB.fin.${key}.splice(${i},1);save();viewFinanceiro()">${icoX}</button>
+    </div>`;}).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhum registro.</div>`}
+    <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:6px">${icoPlus} Adicionar</button>
+    <div style="font-size:11.5px;color:var(--soft);margin-top:8px">Ao marcar <b>${isPagar?'Pago':'Recebido'}</b>, o valor entra automaticamente no DRE e no Fluxo de Caixa.</div>`;
 }
 function finVisao(t){
   const saldoConta=(DB.fin.contasBancarias||[]).reduce((s,x)=>s+(x.saldo||0),0);
