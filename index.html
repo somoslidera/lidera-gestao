@@ -1969,11 +1969,35 @@ function finFluxo(){
   </div>`;
 }
 /* ----- Gerenciar categorias ----- */
-function catAddSub(g){const v=prompt('Nova subcategoria em "'+g+'":');if(!v)return;const s=v.trim();if(!s)return;DB.categorias[g].subs.push(s);save();viewFinanceiro();}
+let catSubTarget='',ngTipoSel='despesa';
+function catAddSub(g){catSubTarget=g;
+  modal(`<div class="modal-head"><h3>Nova subcategoria</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body"><div class="field"><label>Subcategoria em “${esc(g)}”</label><input class="input" id="ns_nome" placeholder="Ex.: Gás de cozinha" onkeydown="if(event.key==='Enter')saveNovoSub()"></div></div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveNovoSub()">Adicionar</button></div>`);
+  setTimeout(()=>{const el=$('#ns_nome');if(el)el.focus();},60);}
+function saveNovoSub(){const v=($('#ns_nome').value||'').trim();if(!v)return toast('Informe o nome');const g=catSubTarget;if(!DB.categorias[g])return closeModal();
+  if(DB.categorias[g].subs.includes(v))return toast('Essa subcategoria já existe');
+  DB.categorias[g].subs.push(v);save();closeModal();viewFinanceiro();toast('Subcategoria adicionada');}
+function ngTipo(t){ngTipoSel=t;$('#ng_desp').classList.toggle('on',t==='despesa');$('#ng_rec').classList.toggle('on',t==='receita');}
 function catDelSub(g,i){DB.categorias[g].subs.splice(i,1);save();viewFinanceiro();}
-function catAddGrupo(){const v=prompt('Nome do novo grupo:');if(!v)return;const g=v.trim();if(!g||DB.categorias[g])return toast(DB.categorias[g]?'Grupo já existe':'Nome inválido');
-  const tipo=confirm('Este grupo é de RECEITA?\n\nOK = Receita (+)   ·   Cancelar = Despesa (−)')?'receita':'despesa';
-  DB.categorias[g]={tipo,subs:[]};save();viewFinanceiro();}
+function catAddGrupo(){ngTipoSel='despesa';
+  modal(`<div class="modal-head"><h3>Novo grupo</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div class="field"><label>Nome do grupo</label><input class="input" id="ng_nome" placeholder="Ex.: Despesas com Delivery"></div>
+    <div class="field"><label>Tipo do grupo</label>
+      <div class="chan-tabs" style="margin-top:0">
+        <button type="button" id="ng_desp" class="on" onclick="ngTipo('despesa')">Despesa (−)</button>
+        <button type="button" id="ng_rec" onclick="ngTipo('receita')">Receita (+)</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--soft);margin-top:6px">Despesa entra como saída no DRE/Fluxo; Receita como entrada.</div>
+    </div>
+    <div class="field"><label>Subcategorias <span class="hint">opcional — separe por vírgula</span></label><input class="input" id="ng_subs" placeholder="Ex.: iFood, Rappi, 99Food"></div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveNovoGrupo()">Criar grupo</button></div>`);
+  setTimeout(()=>{const el=$('#ng_nome');if(el)el.focus();},60);}
+function saveNovoGrupo(){const g=($('#ng_nome').value||'').trim();if(!g)return toast('Informe o nome do grupo');if(DB.categorias[g])return toast('Já existe um grupo com esse nome');
+  const subs=($('#ng_subs').value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  DB.categorias[g]={tipo:ngTipoSel,subs};save();closeModal();viewFinanceiro();toast('Grupo criado');}
 function catDelGrupo(g){if(!confirm('Excluir o grupo "'+g+'" e suas subcategorias? Os lançamentos antigos continuam, mas sem grupo cadastrado.'))return;delete DB.categorias[g];save();viewFinanceiro();}
 function finCategorias(){
   const grupos=Object.keys(DB.categorias);
@@ -2023,18 +2047,13 @@ function viewFinanceiro(){
   const t=totaisGerais();
   const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['func','Funcionários'],['socios','Sócios'],['meios','Meios de Pagamento'],['forn','Fornecedores'],['param','Parâmetros']];
   let body='';
-  if(finTab==='pagar'&&gerarRecorrentesMes(curYM()))save();
   if(finTab==='lanc')body=finLancamentos();
   else if(finTab==='fluxo')body=finFluxo();
   else if(finTab==='categorias')body=finCategorias();
   else if(finTab==='custosfixos')body=finCustosFixos();
   else if(finTab==='visao')body=finVisao(t);
-  else if(finTab==='pagar')body=finCard('Contas a Pagar','Despesas a vencer — marque “Pago” e o valor lança no DRE/Fluxo',
-    finContas('contasPagar'),
-    `Total em aberto: <b>${fmtBRL((DB.fin.contasPagar||[]).filter(x=>!x.pago).reduce((s,x)=>s+x.valor,0))}</b>`);
-  else if(finTab==='receber')body=finCard('Contas a Receber','Valores a receber — marque “Recebido” e o valor lança no DRE/Fluxo',
-    finContas('contasReceber'),
-    `Total a receber: <b>${fmtBRL((DB.fin.contasReceber||[]).filter(x=>!x.recebido).reduce((s,x)=>s+x.valor,0))}</b>`);
+  else if(finTab==='pagar')body=finContas('contasPagar');
+  else if(finTab==='receber')body=finContas('contasReceber');
   else if(finTab==='func')body=finCard('Funcionários','Folha de pagamento (CLT)',
     finList('funcionarios',[{f:'nome',ph:'Nome',w:'1.4fr'},{f:'cargo',ph:'Cargo',w:'1fr'},{f:'salario',type:'money',w:'120px'},{f:'diaVenc',type:'num',ph:'Dia venc.',w:'90px'}]),
     `Folha base: <b>${fmtBRL(folhaTotal())}</b>`);
@@ -2072,20 +2091,36 @@ function contaSetGrupo(key,i,g){const row=DB.fin[key][i];row.grupo=g;const subs=
   if(row[key==='contasPagar'?'pago':'recebido'])syncContaLanc(key,row);save();viewFinanceiro();}
 function contaResync(key,i){const row=DB.fin[key][i];if(row[key==='contasPagar'?'pago':'recebido'])syncContaLanc(key,row);finTouch();}
 function finContas(key){
-  const arr=DB.fin[key]||[];const isPagar=key==='contasPagar';const cf=isPagar?'pago':'recebido';
-  const grupos=Object.keys(DB.categorias);
-  return `${arr.length?arr.map((row,i)=>{const subs=(DB.categorias[row.grupo]||{subs:[]}).subs;return `
-    <div class="comp-row" style="grid-template-columns:1.4fr 1fr 1fr 140px 120px 96px 30px;align-items:center">
+  const isPagar=key==='contasPagar';const cf=isPagar?'pago':'recebido';const fLabel=isPagar?'Pago':'Recebido';
+  const ym=curYM();
+  if(isPagar&&gerarRecorrentesMes(ym))save();
+  const all=DB.fin[key]||[];const grupos=Object.keys(DB.categorias);
+  const noMes=all.filter(c=>!c.vencimento||ymOf(c.vencimento)===ym);
+  const total=noMes.reduce((s,c)=>s+(c.valor||0),0);
+  const aberto=noMes.filter(c=>!c[cf]).reduce((s,c)=>s+(c.valor||0),0);
+  const feito=noMes.filter(c=>c[cf]).reduce((s,c)=>s+(c.valor||0),0);
+  const linhas=all.map((row,i)=>{if(row.vencimento&&ymOf(row.vencimento)!==ym)return '';const subs=(DB.categorias[row.grupo]||{subs:[]}).subs;return `
+    <div class="comp-row" style="grid-template-columns:1.4fr 1fr 1fr 140px 120px 104px 30px;align-items:center">
       <input class="input" value="${(row.descricao||'').replace(/"/g,'&quot;')}" placeholder="Descrição" oninput="DB.fin.${key}[${i}].descricao=this.value;contaResync('${key}',${i})">
       <select class="input" onchange="contaSetGrupo('${key}',${i},this.value)">${grupos.map(g=>`<option ${g===row.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
       <select class="input" onchange="DB.fin.${key}[${i}].sub=this.value;contaResync('${key}',${i})">${subs.map(s=>`<option ${s===row.sub?'selected':''}>${esc(s)}</option>`).join('')||'<option value="">—</option>'}</select>
-      <input type="date" class="input" value="${row.vencimento||''}" onchange="DB.fin.${key}[${i}].vencimento=this.value;contaResync('${key}',${i})">
-      <div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(row.valor||0)}" oninput="DB.fin.${key}[${i}].valor=moneyMask(this);contaResync('${key}',${i})"></div>
-      <button class="icon-btn" onclick="contaToggle('${key}',${i})" title="${isPagar?'Marcar como pago':'Marcar como recebido'}" style="white-space:nowrap;width:auto;padding:0 8px;${row[cf]?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${row[cf]?'✓ '+(isPagar?'Pago':'Receb.'):'○ '+(isPagar?'Pagar':'Receber')}</button>
+      <input type="date" class="input" value="${row.vencimento||''}" onchange="DB.fin.${key}[${i}].vencimento=this.value;contaResync('${key}',${i});viewFinanceiro()">
+      <div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(row.valor||0)}" oninput="DB.fin.${key}[${i}].valor=moneyMask(this);contaResync('${key}',${i})" onblur="viewFinanceiro()"></div>
+      <button class="icon-btn" onclick="contaToggle('${key}',${i})" title="Marcar como ${fLabel.toLowerCase()}" style="white-space:nowrap;width:auto;padding:0 10px;${row[cf]?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${row[cf]?'✓ ':'○ '}${fLabel}</button>
       <button class="mini-del" onclick="DB.lancamentos=DB.lancamentos.filter(l=>l.fromConta!=='${row.id}');DB.fin.${key}.splice(${i},1);save();viewFinanceiro()">${icoX}</button>
-    </div>`;}).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhum registro.</div>`}
-    <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:6px">${icoPlus} Adicionar</button>
-    <div style="font-size:11.5px;color:var(--soft);margin-top:8px">Ao marcar <b>${isPagar?'Pago':'Recebido'}</b>, o valor entra automaticamente no DRE e no Fluxo de Caixa.</div>`;
+    </div>`;}).join('');
+  return `<div class="card card-pad" style="max-width:1010px">
+    <div class="section-head"><div><div class="ttl">${isPagar?'Contas a Pagar':'Contas a Receber'}</div><div class="desc">Marque “${fLabel}” e o valor lança automaticamente no DRE e no Fluxo de Caixa</div></div>
+      <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()"></div>
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <div class="dash-pill"><span>Total do mês</span><b>${fmtBRL(total)}</b></div>
+      <div class="dash-pill"><span>${isPagar?'A pagar (em aberto)':'A receber (em aberto)'}</span><b style="color:${isPagar?'var(--red)':'var(--amber)'}">${fmtBRL(aberto)}</b></div>
+      <div class="dash-pill"><span>${fLabel}</span><b style="color:var(--green)">${fmtBRL(feito)}</b></div>
+    </div>
+    ${linhas||`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhuma conta neste mês.</div>`}
+    <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:8px">${icoPlus} Adicionar</button>
+    <div style="font-size:11.5px;color:var(--soft);margin-top:8px">As contas em aberto já somam acima — ao marcar <b>${fLabel}</b>, o valor entra no DRE e no Fluxo de Caixa.</div>
+  </div>`;
 }
 function pad2(n){return String(n).padStart(2,'0');}
 function gerarRecorrentesMes(ym){
