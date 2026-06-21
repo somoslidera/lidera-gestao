@@ -1992,7 +1992,7 @@ function finCategorias(){
 }
 
 /* ===================== FINANCEIRO ===================== */
-let finTab='lanc';
+let finTab='visao';
 const FIN_TEMPLATES={
   contasPagar:()=>({id:uid(),descricao:'',grupo:'Despesas Gerais',sub:((DB.categorias&&DB.categorias['Despesas Gerais'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,pago:false}),
   contasReceber:()=>({id:uid(),descricao:'',grupo:'Receita',sub:((DB.categorias&&DB.categorias['Receita'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,recebido:false}),
@@ -2021,12 +2021,13 @@ function finList(key,cols){
 }
 function viewFinanceiro(){
   const t=totaisGerais();
-  const tabs=[['lanc','Lançamentos'],['fluxo','Fluxo de Caixa'],['categorias','Categorias'],['visao','Visão Geral'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['func','Funcionários'],['socios','Sócios'],['meios','Meios de Pagamento'],['forn','Fornecedores'],['param','Parâmetros']];
+  const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['func','Funcionários'],['socios','Sócios'],['meios','Meios de Pagamento'],['forn','Fornecedores'],['param','Parâmetros']];
   let body='';
   if(finTab==='pagar'&&gerarRecorrentesMes(curYM()))save();
   if(finTab==='lanc')body=finLancamentos();
   else if(finTab==='fluxo')body=finFluxo();
   else if(finTab==='categorias')body=finCategorias();
+  else if(finTab==='custosfixos')body=finCustosFixos();
   else if(finTab==='visao')body=finVisao(t);
   else if(finTab==='pagar')body=finCard('Contas a Pagar','Despesas a vencer — marque “Pago” e o valor lança no DRE/Fluxo',
     finContas('contasPagar'),
@@ -2154,9 +2155,19 @@ function finVisao(t){
     </div>
   </div>`;
 }
+function finCustosFixos(){
+  return `<div class="card card-pad" style="max-width:980px">
+    <div class="section-head"><div><div class="ttl">Custos fixos mensais (recorrentes)</div><div class="desc">Aluguel, energia, etc. — com dia de vencimento aparecem todo mês em Contas a Pagar</div></div></div>
+    <div class="comp-row" style="grid-template-columns:1.3fr 1fr 1fr 72px 110px 30px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 0 4px"><span>Nome</span><span>Grupo</span><span>Subcategoria</span><span>Dia venc.</span><span>Valor previsto</span><span></span></div>
+    ${finRecorrentes()}
+    <div style="margin-top:18px"><div class="ttl" style="font-size:13px;margin-bottom:8px">Provisões a reservar / mês</div>
+      ${finList('provisoes',[{f:'nome',ph:'Nome',w:'1.5fr'},{f:'valor',type:'money',w:'120px'}])}</div>
+    <div style="border-top:1px solid var(--line);margin-top:16px;padding-top:12px;display:flex;justify-content:space-between;font-size:14px"><b>Total fixo + pessoal</b><b style="font-family:'Fraunces',serif">${fmtBRL(custosFixosTotais())}</b></div>
+  </div>`;
+}
 function finParam(){
   const fin=DB.fin;
-  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start" class="dash-grid">
+  return `<div style="max-width:560px">
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">Regime tributário</div><div class="desc">Define o imposto no preço</div></div><button class="btn btn-ghost btn-sm" onclick="abrirWizard(1)">✎ Editar anamnese</button></div>
       <div class="chan-tabs" style="margin-top:0">
@@ -2182,14 +2193,6 @@ function finParam(){
       <div class="field"><label>CMV alvo <span class="hint">% meta</span></label><input class="input" type="number" step="0.5" value="${DB.cmvAlvo}" onchange="DB.cmvAlvo=parseFloat(this.value)||30;save();viewFinanceiro()"></div>
       <div style="margin-top:8px"><div class="ttl" style="font-size:13px;margin-bottom:8px">Contas bancárias</div>
         ${finList('contasBancarias',[{f:'nome',ph:'Conta',w:'1.4fr'},{f:'saldo',type:'money',w:'130px'}])}</div>
-    </div>
-    <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Custos fixos mensais (recorrentes)</div><div class="desc">Aluguel, energia, etc. — com dia de vencimento aparecem todo mês em Contas a Pagar</div></div></div>
-      <div class="comp-row" style="grid-template-columns:1.3fr 1fr 1fr 72px 110px 30px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 0 4px"><span>Nome</span><span>Grupo</span><span>Subcategoria</span><span>Dia venc.</span><span>Valor previsto</span><span></span></div>
-      ${finRecorrentes()}
-      <div style="margin-top:18px"><div class="ttl" style="font-size:13px;margin-bottom:8px">Provisões a reservar / mês</div>
-        ${finList('provisoes',[{f:'nome',ph:'Nome',w:'1.5fr'},{f:'valor',type:'money',w:'120px'}])}</div>
-      <div style="border-top:1px solid var(--line);margin-top:16px;padding-top:12px;display:flex;justify-content:space-between;font-size:14px"><b>Total fixo + pessoal</b><b style="font-family:'Fraunces',serif">${fmtBRL(custosFixosTotais())}</b></div>
     </div>
   </div>`;
 }
