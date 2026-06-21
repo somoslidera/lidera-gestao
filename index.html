@@ -738,7 +738,12 @@ function metricasFicha(ficha){ // mistura por canal usando mix iFood global
     receita:precoBlend*vendas, mcTotal:mcBlend*vendas,
     health: healthFicha(b.cmv)};
 }
-function healthFicha(cmv){return cmv<=30?'saudavel':cmv<=35?'atencao':'critico';}
+// Classificação do CMV — limiar "excelente" = CMV alvo dos Parâmetros (padrão 30%); crítico acima de 35%
+function cmvAlvoRef(){return DB.cmvAlvo||30;}
+function cmvUpRef(){return Math.max(35,cmvAlvoRef());}
+function cmvClasse(v){const a=cmvAlvoRef();return v<=a?'excelente':(v<=cmvUpRef()?'atencao':'critico');}
+function cmvCorRef(v){const c=cmvClasse(v);return c==='excelente'?'var(--green)':c==='atencao'?'var(--amber)':'var(--red)';}
+function healthFicha(cmv){const c=cmvClasse(cmv);return c==='excelente'?'saudavel':c;}
 function fichasVendaveis(){return Object.values(DB.fichas);}
 function custoFuncionario(f){const base=(f.salario||0)+(f.premio||0);
   const benef=(f.vt||0)+((f.custoRefeicaoDia||0)*(f.diasTrabalhados||0)*(f.qtdVales||0));
@@ -899,7 +904,7 @@ function viewDashboard(){
   const cmvRealUlt=cmvRegs.length?cmvRegs[0].pct:null;
   const cmvGap=cmvRealUlt!=null?cmvRealUlt-cmvTeorico:null;
   const cmvHeadVal=cmvRealUlt!=null?cmvRealUlt:cmvTeorico;
-  const cmvCorTh=v=>v<=30?'var(--green)':v<=35?'var(--amber)':'var(--red)';
+  const cmvCorTh=cmvCorRef;
   // status geral
   const status = t.lucro<0?['Atenção','tag-red','var(--red)']:t.margemLiq>=10?['Lucrativo','tag-green','var(--green)']:['Estável','tag-amber','var(--amber)'];
   const hoje=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
@@ -1281,7 +1286,7 @@ function fichaCard(f,fixosPct){
   const preco=m.balcao.preco, cmv=m.balcao.cmv;
   const peso=pesoFichaKg(f)*1000;
   const rend=peso>0?`${fmtN(peso)}gr`:`${fmtN(f.porcoes||1)} porç${(f.porcoes||1)>1?'ões':'ão'}`;
-  const badge=preco>0?`<span class="fcard-badge ${cmv<=30?'tag-green':cmv<=35?'tag-amber':'tag-red'}">CMV ${fmtPct(cmv)}</span>`:`<span class="fcard-badge tag-amber">sem preço</span>`;
+  const cmvCls=cmvClasse(cmv);const badge=preco>0?`<span class="fcard-badge ${cmvCls==='excelente'?'tag-green':cmvCls==='atencao'?'tag-amber':'tag-red'}">CMV ${fmtPct(cmv)}</span>`:`<span class="fcard-badge tag-amber">sem preço</span>`;
   return `<div class="fcard" data-nome="${esc(f.nome)}">
     <div class="fcard-top"><div class="fcard-ic">${icoFicha}</div>
       <div style="min-width:0"><div class="fcard-nm">${esc(f.nome)}</div><div class="fcard-sub">${esc(f.cat||'—')}${f.criada?' · criada '+f.criada:''}</div></div>${badge}</div>
@@ -1649,7 +1654,7 @@ function recalcFicha(){
   const cmv=preco?custo/preco*100:0;
   const cmvIf=precoIf?custo/precoIf*100:0;
   const sug=DB.cmvAlvo?custo/(DB.cmvAlvo/100):0;
-  const cc=v=>v<=30?'#1E9E6A':v<=35?'#C9892A':'#D2483F';
+  const cc=cmvCorRef;
   const mcEl=$('#f_mc');if(mcEl)mcEl.innerHTML=preco?`<span style="color:${cc(cmv)}">${fmtPct(cmv)}</span>`:'—';
   const mcIfEl=$('#f_mcIf');if(mcIfEl)mcIfEl.innerHTML=precoIf?`<span style="color:${cc(cmvIf)}">${fmtPct(cmvIf)}</span>`:'—';
   const box=$('#f_calc');if(!box)return;
@@ -1874,7 +1879,7 @@ function viewDRE(){
   const pct=v=>rec?v/rec*100:0;
   const cmvRS=Object.values(d.despesa['CMV']||{}).reduce((a,b)=>a+b,0);
   const cmvPct=pct(cmvRS), alvo=DB.cmvAlvo||30;
-  const cmvStatus=cmvPct<=alvo?['CMV excelente','var(--green)']:cmvPct<=alvo+5?['dentro do aceitável','var(--muted)']:['acima da meta','var(--red)'];
+  const cmvCls=cmvClasse(cmvPct);const cmvStatus=cmvCls==='excelente'?['CMV excelente','var(--green)']:cmvCls==='atencao'?['dentro do aceitável','var(--amber)']:['acima da meta','var(--red)'];
   const ordered=Object.keys(DB.categorias).filter(g=>d.despesa[g]);
   const recGrupos=Object.keys(d.receita);
   const lucro=d.resultado;
@@ -1902,7 +1907,7 @@ function viewDRE(){
         <div class="bar"><i style="width:${clamp(pct(lucro),2,100)}%;background:${barC(pct(lucro))}"></i></div>
         <div style="font-size:12.5px;color:var(--muted);margin-top:10px">${lucro>=0?'Operação no azul. ':'Resultado negativo. '}Referência em food service: 10–15%.</div></div>
       <div class="card card-pad" style="margin-bottom:16px"><div class="k-lbl">CMV real</div>
-        <div class="k-val" style="color:${cmvPct<=alvo?'var(--green)':cmvPct<=alvo+5?'var(--amber)':'var(--red)'};font-size:34px">${fmtPct(cmvPct)}</div>
+        <div class="k-val" style="color:${cmvCorRef(cmvPct)};font-size:34px">${fmtPct(cmvPct)}</div>
         <div style="font-size:12.5px;color:var(--muted);margin-top:6px">Meta (CMV alvo): ${fmtPct(alvo)} · <b style="color:${cmvStatus[1]}">${cmvStatus[0]}</b></div></div>
       <div class="card card-pad"><div class="ttl" style="margin-bottom:14px">Composição da receita</div>
         ${ordered.map(g=>{const v=pct(Object.values(d.despesa[g]).reduce((a,b)=>a+b,0));return `<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${g}</span><b>${fmtPct(v)}</b></div><div class="bar"><i style="width:${clamp(v,0,100)}%;background:var(--gold)"></i></div></div>`;}).join('')}
@@ -2497,7 +2502,7 @@ function buffetCubaUp(){const d=buffetDrag;window.removeEventListener('pointermo
 const MESES_PT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 function semanaISO(iso){const p=(iso||'').split('-');if(p.length<3)return'';const dt=new Date(Date.UTC(+p[0],+p[1]-1,+p[2]));const day=(dt.getUTCDay()+6)%7;dt.setUTCDate(dt.getUTCDate()-day+3);const ft=new Date(Date.UTC(dt.getUTCFullYear(),0,4));const fd=(ft.getUTCDay()+6)%7;ft.setUTCDate(ft.getUTCDate()-fd+3);return 1+Math.round((dt-ft)/(7*24*3600*1000));}
 function fmtDataBR(iso){const p=(iso||'').split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:'—';}
-function cmvRegCalc(r){const ei=+r.ei||0,co=+r.compras||0,ef=+r.ef||0,ve=+r.vendas||0;const cmvRS=ei+co-ef;const pct=ve?cmvRS/ve*100:0;const cls=pct<28?'Excelente':pct<=35?'Aceitável':'Crítico';return {...r,ei,co,ef,ve,cmvRS,pct,cls};}
+function cmvRegCalc(r){const ei=+r.ei||0,co=+r.compras||0,ef=+r.ef||0,ve=+r.vendas||0;const cmvRS=ei+co-ef;const pct=ve?cmvRS/ve*100:0;const cls=pct<=cmvAlvoRef()?'Excelente':pct<=cmvUpRef()?'Aceitável':'Crítico';return {...r,ei,co,ef,ve,cmvRS,pct,cls};}
 function cmvCls(cls){return cls==='Excelente'?'tag-green':cls==='Aceitável'?'tag-amber':'tag-red';}
 function cmvClsCor(cls){return cls==='Excelente'?'var(--green)':cls==='Aceitável'?'var(--amber)':'var(--red)';}
 let cmvAno='todos';
@@ -2519,7 +2524,7 @@ function viewCMV(){
   const byM={};filt.forEach(r=>{const k=(r.data||'').slice(0,7);if(!k)return;(byM[k]=byM[k]||[]).push(r);});
   const meses=Object.keys(byM).sort().reverse().map(k=>{const arr=byM[k].slice().sort((a,b)=>(a.data||'').localeCompare(b.data||''));
     const ei=arr[0].ei, ef=arr[arr.length-1].ef, co=arr.reduce((s,r)=>s+r.co,0), ve=arr.reduce((s,r)=>s+r.ve,0);
-    const pct=ve?(ei+co-ef)/ve*100:0;const cls=pct<28?'Excelente':pct<=35?'Aceitável':'Crítico';
+    const pct=ve?(ei+co-ef)/ve*100:0;const cls=pct<=cmvAlvoRef()?'Excelente':pct<=cmvUpRef()?'Aceitável':'Crítico';
     const [y,m]=k.split('-');return {label:`${MESES_PT[+m-1]}/${y}`,ei,co,ef,ve,pct,cls,n:arr.length};});
 
   $('#view').innerHTML=`
@@ -2540,9 +2545,9 @@ function viewCMV(){
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">Classificação</div></div></div>
       <div class="legend">
-        <div class="li"><div class="sw" style="background:var(--green)"></div><div><b>Excelente <span style="float:right;color:var(--muted)">${filt.filter(r=>r.cls==='Excelente').length}</span></b><small>CMV abaixo de 28%</small></div></div>
-        <div class="li"><div class="sw" style="background:var(--amber)"></div><div><b>Aceitável <span style="float:right;color:var(--muted)">${filt.filter(r=>r.cls==='Aceitável').length}</span></b><small>CMV entre 28% e 35%</small></div></div>
-        <div class="li"><div class="sw" style="background:var(--red)"></div><div><b>Crítico <span style="float:right;color:var(--muted)">${filt.filter(r=>r.cls==='Crítico').length}</span></b><small>CMV acima de 35%</small></div></div>
+        <div class="li"><div class="sw" style="background:var(--green)"></div><div><b>Excelente <span style="float:right;color:var(--muted)">${filt.filter(r=>r.cls==='Excelente').length}</span></b><small>CMV até ${fmtPct(cmvAlvoRef())} (CMV alvo)</small></div></div>
+        <div class="li"><div class="sw" style="background:var(--amber)"></div><div><b>Aceitável <span style="float:right;color:var(--muted)">${filt.filter(r=>r.cls==='Aceitável').length}</span></b><small>CMV entre ${fmtPct(cmvAlvoRef())} e ${fmtPct(cmvUpRef())}</small></div></div>
+        <div class="li"><div class="sw" style="background:var(--red)"></div><div><b>Crítico <span style="float:right;color:var(--muted)">${filt.filter(r=>r.cls==='Crítico').length}</span></b><small>CMV acima de ${fmtPct(cmvUpRef())}</small></div></div>
       </div>
     </div>
   </div>
@@ -2591,7 +2596,7 @@ function editCmvReg(id,prefill){
 }
 function updCmvPrev(){const el=$('#cr_calc');if(!el)return;
   const ei=parseFloat($('#cr_ei').value)||0,co=parseFloat($('#cr_compras').value)||0,ef=parseFloat($('#cr_ef').value)||0,ve=parseFloat($('#cr_vendas').value)||0;
-  const cmvRS=ei+co-ef, pct=ve?cmvRS/ve*100:0, cls=pct<28?'Excelente':pct<=35?'Aceitável':'Crítico';
+  const cmvRS=ei+co-ef, pct=ve?cmvRS/ve*100:0, cls=pct<=cmvAlvoRef()?'Excelente':pct<=cmvUpRef()?'Aceitável':'Crítico';
   const cc=cls==='Excelente'?'#9ee5c2':cls==='Aceitável'?'#f0cd8a':'#f3a39c';
   el.innerHTML=`<div class="calc-box">
     <div class="line"><span>CMV (R$) = EI + Compras − EF</span><b>${fmtBRL(cmvRS)}</b></div>
