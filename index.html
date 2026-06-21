@@ -2100,7 +2100,7 @@ function finContas(key){
   const aberto=noMes.filter(c=>!c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const feito=noMes.filter(c=>c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const linhas=all.map((row,i)=>{if(row.vencimento&&ymOf(row.vencimento)!==ym)return '';const subs=(DB.categorias[row.grupo]||{subs:[]}).subs;return `
-    <div class="comp-row" style="grid-template-columns:1.4fr 1fr 1fr 140px 120px 104px 30px;align-items:center">
+    <div class="comp-row" style="grid-template-columns:1fr 1.5fr 1.5fr 132px 118px 100px 28px;align-items:center">
       <input class="input" value="${(row.descricao||'').replace(/"/g,'&quot;')}" placeholder="Descrição" oninput="DB.fin.${key}[${i}].descricao=this.value;contaResync('${key}',${i})">
       <select class="input" onchange="contaSetGrupo('${key}',${i},this.value)">${grupos.map(g=>`<option ${g===row.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
       <select class="input" onchange="DB.fin.${key}[${i}].sub=this.value;contaResync('${key}',${i})">${subs.map(s=>`<option ${s===row.sub?'selected':''}>${esc(s)}</option>`).join('')||'<option value="">—</option>'}</select>
