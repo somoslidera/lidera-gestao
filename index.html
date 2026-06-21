@@ -474,6 +474,22 @@ body.dark .ins-rm{background:rgba(210,72,63,.16)}
   #printArea .fp-onb .ob .ln{border-top:1px solid #000;width:60%;margin:14px auto 0}
 }
 
+/* ===== Impressão da planilha de desperdícios ===== */
+@media print{
+  body.print-desp .sidebar,body.print-desp .main,body.print-desp #modalRoot,body.print-desp #toastRoot{display:none!important}
+  body.print-desp #printArea{display:block!important;padding:10mm}
+  #printArea .dp{color:#000;font-family:'Inter',sans-serif}
+  #printArea .dp-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding-bottom:8px}
+  #printArea .dp-t{font-size:18px;font-weight:800;letter-spacing:.5px}
+  #printArea .dp-r{font-size:13px;color:#333;margin-top:2px}
+  #printArea .dp-meta{font-size:11.5px;text-align:right;line-height:1.9}
+  #printArea .dp-note{font-size:10.5px;color:#444;margin:7px 0 10px}
+  #printArea table.dp-tb{width:100%;border-collapse:collapse}
+  #printArea table.dp-tb th{font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;background:#eee;border:1px solid #000;padding:6px 5px;text-align:left;color:#000}
+  #printArea table.dp-tb td{border:1px solid #999;height:30px;padding:2px 5px}
+  #printArea .dp-foot{margin-top:10px;font-size:9.5px;color:#888;text-align:right}
+}
+
 /* cabeçalho de tabela clicável (ordenação) */
 .th-sort{cursor:pointer;user-select:none;white-space:nowrap}
 .cat-chip{display:inline-flex;align-items:center;gap:5px;background:#EEF0F4;border-radius:8px;padding:4px 6px 4px 10px;font-size:12.5px;color:var(--ink)}
@@ -550,6 +566,7 @@ thead th{letter-spacing:.7px}
     <div class="lbl">INTELIGÊNCIA</div>
     <a data-route="engenharia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/></svg>Engenharia de Menu</a>
     <a data-route="cmv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h18v4H3zM3 10h18v10H3z"/><path d="M7 14h4M7 17h7"/></svg>Controle de CMV</a>
+    <a data-route="desperdicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>Desperdícios</a>
     <a data-route="buffet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h18M5 11a7 7 0 0 1 14 0M4 13v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1M8 19h8"/></svg>Mapa do Buffet</a>
     <a data-route="faturamento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg>Faturamento</a>
     <a data-route="dre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>DRE</a>
@@ -814,6 +831,7 @@ const ROUTES={
   estoque:{title:'Estoque & Compras',render:viewEstoque},
   engenharia:{title:'Engenharia de Menu',render:viewEngenharia},
   cmv:{title:'Controle de CMV',render:viewCMV},
+  desperdicio:{title:'Controle de Desperdícios',render:viewDesperdicio},
   buffet:{title:'Mapa do Buffet',render:viewBuffet},
   faturamento:{title:'Faturamento',render:viewFaturamento},
   dre:{title:'DRE',render:viewDRE},
@@ -850,6 +868,7 @@ function normData(){
   // Lançamentos financeiros + categorias (DRE / Fluxo de Caixa)
   if(!DB.categorias||!Object.keys(DB.categorias).length){DB.categorias={};DRE_DEFAULT.forEach(([g,tipo,subs])=>{DB.categorias[g]={tipo,subs:subs.slice()};});}
   DB.lancamentos=DB.lancamentos||[];
+  DB.desperdicios=DB.desperdicios||[];
   DB.formasPagamento=(DB.formasPagamento&&DB.formasPagamento.length)?DB.formasPagamento:FORMAS_DEFAULT.slice();
   // migra contas a pagar/receber p/ grupo+subcategoria (lançamento automático ao pagar/receber)
   (f.contasPagar||[]).forEach(c=>{if(c.grupo==null){c.grupo='Despesas Gerais';c.sub=c.categoria||((DB.categorias['Despesas Gerais']||{subs:[]}).subs[0]||'');}});
@@ -898,6 +917,7 @@ function viewDashboard(){
   const semPreco=fichas.filter(x=>x.f.precoVenda<=0);
   const diaEqTxt=!isFinite(t.diaEq)?'—':t.diaEq>30?'+30':Math.ceil(t.diaEq);
   const recLiquida=t.faturamento-t.impostoRS-t.comissaoRS-t.taxaCartaoRS;
+  const despMes=(DB.desperdicios||[]).filter(d=>ymOf(d.data)===ymOf(hojeISO())).reduce((s,d)=>s+(d.custoTotal||0),0);
   // CMV: teórico (fichas) × real (contagem)
   const cmvTeorico=t.cmv;
   const cmvRegs=(DB.cmvRegistros||[]).map(cmvRegCalc).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
@@ -937,6 +957,7 @@ function viewDashboard(){
       <div class="dash-pill"><span>Rec. Líquida</span><b>${fmtBRL(recLiquida)}</b></div>
       <div class="dash-pill"><span>${cmvRealUlt!=null?'CMV Real':'CMV'}</span><b style="color:${cmvCorTh(cmvHeadVal)}">${fmtPct(cmvHeadVal)}</b></div>
       <div class="dash-pill"><span>Ticket</span><b>${fmtBRL(t.ticket)}</b></div>
+      <div class="dash-pill" style="cursor:pointer" onclick="go('desperdicio')"><span>Desperdício/mês</span><b style="color:${despMes>0?'var(--red)':'var(--ink)'}">${fmtBRL(despMes)}</b></div>
     </div>
   </div>
 
@@ -2238,11 +2259,11 @@ function finParam(){
 }
 
 /* ===================== EQUIPE ===================== */
-const ACESSOS=[['dashboard','Dashboard'],['insumos','Insumos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['buffet','Mapa do Buffet'],['faturamento','Faturamento'],['dre','DRE'],['financeiro','Financeiro'],['mapa','Mapa do Caminho'],['equipe','Equipe'],['conta','Configurações']];
+const ACESSOS=[['dashboard','Dashboard'],['insumos','Insumos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['faturamento','Faturamento'],['dre','DRE'],['financeiro','Financeiro'],['mapa','Mapa do Caminho'],['equipe','Equipe'],['conta','Configurações']];
 const NIVEIS={
   admin:{label:'Administrador',desc:'Acesso total a tudo',perms:ACESSOS.map(a=>a[0])},
-  gerente:{label:'Gerente',desc:'Operação + indicadores (sem equipe/config)',perms:['dashboard','insumos','fichas','estoque','engenharia','cmv','buffet','faturamento','dre','mapa']},
-  operador:{label:'Operador',desc:'Só operação do dia a dia',perms:['insumos','fichas','estoque','cmv','buffet']},
+  gerente:{label:'Gerente',desc:'Operação + indicadores (sem equipe/config)',perms:['dashboard','insumos','fichas','estoque','engenharia','cmv','desperdicio','buffet','faturamento','dre','mapa']},
+  operador:{label:'Operador',desc:'Só operação do dia a dia',perms:['insumos','fichas','estoque','cmv','desperdicio','buffet']},
   personalizado:{label:'Personalizado',desc:'Você escolhe cada acesso',perms:[]}
 };
 function normMembro(m){if(!m.nivel)m.nivel='gerente';if(!Array.isArray(m.permissoes))m.permissoes=(NIVEIS[m.nivel]||NIVEIS.gerente).perms.slice();return m;}
@@ -2505,6 +2526,83 @@ function fmtDataBR(iso){const p=(iso||'').split('-');return p.length===3?`${p[2]
 function cmvRegCalc(r){const ei=+r.ei||0,co=+r.compras||0,ef=+r.ef||0,ve=+r.vendas||0;const cmvRS=ei+co-ef;const pct=ve?cmvRS/ve*100:0;const cls=pct<=cmvAlvoRef()?'Excelente':pct<=cmvUpRef()?'Aceitável':'Crítico';return {...r,ei,co,ef,ve,cmvRS,pct,cls};}
 function cmvCls(cls){return cls==='Excelente'?'tag-green':cls==='Aceitável'?'tag-amber':'tag-red';}
 function cmvClsCor(cls){return cls==='Excelente'?'var(--green)':cls==='Aceitável'?'var(--amber)':'var(--red)';}
+
+/* ===================== CONTROLE DE DESPERDÍCIOS ===================== */
+const DESP_MOTIVOS=['Validade / vencimento','Deterioração','Queima / cozimento','Quebra / acidente','Sobra de produção','Erro de preparo','Devolução de cliente','Outros'];
+let despYM=null;
+function despCurYM(){return despYM||ymOf(hojeISO());}
+function custoKgInsumo(ins){const b=BASE[ins.uni];return b==='un'?custoInsumoBase(ins):custoInsumoBase(ins)*1000;}
+function custoKgItem(tipo,id){if(tipo==='ficha'){const f=DB.fichas[id];return f?custoPorKgFicha(f):0;}const i=DB.insumos[id];return i?custoKgInsumo(i):0;}
+function despItens(){const g={Insumos:[],Preparados:[],'Fichas Técnicas':[]};
+  Object.values(DB.insumos||{}).sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(i=>{(i.tipo==='preparado'?g.Preparados:g.Insumos).push({tipo:'insumo',id:i.id,nome:i.nome});});
+  Object.values(DB.fichas||{}).sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(f=>g['Fichas Técnicas'].push({tipo:'ficha',id:f.id,nome:f.nome}));
+  return g;}
+function despNome(tipo,id){if(tipo==='ficha')return (DB.fichas[id]||{}).nome||'—';const i=DB.insumos[id]||{};return (i.nome||'—')+(i.tipo==='preparado'?' (preparado)':'');}
+function despFill(){const v=($('#desp_item').value||'').split('|');const cu=v[0]&&v[1]?custoKgItem(v[0],v[1]):0;
+  const peso=parseFloat($('#desp_peso').value)||0;
+  const cuEl=$('#desp_cu');if(cuEl)cuEl.textContent=fmtBRLp(cu);
+  const ctEl=$('#desp_ct');if(ctEl)ctEl.textContent=fmtBRL(cu*peso);}
+function addDesperdicio(){const v=($('#desp_item').value||'').split('|');if(!v[0]||!v[1])return toast('Selecione o produto/insumo');
+  const peso=parseFloat($('#desp_peso').value)||0;if(peso<=0)return toast('Informe o peso/quantidade');
+  const cu=custoKgItem(v[0],v[1]);
+  DB.desperdicios=DB.desperdicios||[];
+  DB.desperdicios.push({id:uid(),data:$('#desp_data').value||hojeISO(),tipo:v[0],refId:v[1],nome:despNome(v[0],v[1]),peso,custoUnit:cu,custoTotal:cu*peso,motivo:$('#desp_motivo').value||'',responsavel:($('#desp_resp').value||'').trim(),acao:($('#desp_acao').value||'').trim()});
+  if(ymOf($('#desp_data').value)!==despCurYM())despYM=ymOf($('#desp_data').value);
+  save();viewDesperdicio();toast('Desperdício registrado');}
+function delDesperdicio(id){DB.desperdicios=(DB.desperdicios||[]).filter(d=>d.id!==id);save();viewDesperdicio();}
+function viewDesperdicio(){
+  $('#topActions').innerHTML=`<button class="btn btn-ghost" onclick="imprimirDesperdicio()">🖨️ Imprimir planilha</button>`;
+  const ym=despCurYM();
+  const regs=(DB.desperdicios||[]).filter(d=>ymOf(d.data)===ym).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  const total=regs.reduce((s,d)=>s+(d.custoTotal||0),0);
+  const pesoTot=regs.reduce((s,d)=>s+(d.peso||0),0);
+  const porMotivo={};regs.forEach(d=>porMotivo[d.motivo||'—']=(porMotivo[d.motivo||'—']||0)+(d.custoTotal||0));
+  const topMotivo=Object.entries(porMotivo).sort((a,b)=>b[1]-a[1])[0];
+  const g=despItens();
+  const optsHTML=`<option value="">— selecione —</option>`+Object.keys(g).filter(k=>g[k].length).map(k=>`<optgroup label="${k}">${g[k].map(it=>`<option value="${it.tipo}|${it.id}">${esc(it.nome)}</option>`).join('')}</optgroup>`).join('');
+  $('#view').innerHTML=`
+  <div class="kpi-grid" style="margin-bottom:18px">
+    <div class="kpi"><div class="ic ic-red">${icoTrash}</div><div class="k-lbl">Desperdício no mês</div><div class="k-val" style="color:var(--red)">${fmtBRL(total)}</div><div class="k-sub" style="color:var(--soft)">${regs.length} registro(s)</div></div>
+    <div class="kpi"><div class="k-lbl">Peso perdido</div><div class="k-val">${fmtN(pesoTot,2)} kg</div><div class="k-sub" style="color:var(--soft)">no mês</div></div>
+    <div class="kpi"><div class="k-lbl">Maior causa</div><div class="k-val" style="font-size:18px">${topMotivo?esc(topMotivo[0]):'—'}</div><div class="k-sub" style="color:var(--soft)">${topMotivo?fmtBRL(topMotivo[1]):''}</div></div>
+    <div class="kpi"><div class="k-lbl">Período</div><div class="k-val" style="font-size:18px;text-transform:capitalize">${ymLabel(ym)}</div><div class="k-sub"><input type="month" class="input" style="height:30px;padding:2px 8px;font-size:12px" value="${ym}" onchange="despYM=this.value;viewDesperdicio()"></div></div>
+  </div>
+  <div class="card card-pad">
+    <div class="section-head"><div><div class="ttl">Registrar desperdício</div><div class="desc">O custo unitário e o total são calculados automaticamente da sua base de insumos/fichas</div></div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px">
+      <div class="field" style="margin:0;flex:0 0 138px"><label>Data</label><input type="date" class="input" id="desp_data" value="${hojeISO()}"></div>
+      <div class="field" style="margin:0;flex:2 1 220px"><label>Produto / Insumo</label><select class="input" id="desp_item" onchange="despFill()">${optsHTML}</select></div>
+      <div class="field" style="margin:0;flex:0 0 100px"><label>Peso (kg)</label><input class="input" id="desp_peso" type="number" step="0.001" placeholder="0,000" oninput="despFill()"></div>
+      <div class="field" style="margin:0;flex:0 0 110px"><label>Custo unit.</label><div class="input" style="display:flex;align-items:center;color:var(--muted)" id="desp_cu">R$ 0,00</div></div>
+      <div class="field" style="margin:0;flex:0 0 110px"><label>Custo total</label><div class="input" style="display:flex;align-items:center;font-weight:700" id="desp_ct">R$ 0,00</div></div>
+      <div class="field" style="margin:0;flex:1 1 160px"><label>Motivo da perda</label><select class="input" id="desp_motivo">${DESP_MOTIVOS.map(m=>`<option>${m}</option>`).join('')}</select></div>
+      <div class="field" style="margin:0;flex:1 1 140px"><label>Responsável</label><input class="input" id="desp_resp" placeholder="Nome"></div>
+      <div class="field" style="margin:0;flex:2 1 180px"><label>Ação corretiva</label><input class="input" id="desp_acao" placeholder="O que fazer p/ evitar"></div>
+      <button class="btn btn-primary btn-sm" style="height:40px" onclick="addDesperdicio()">${icoPlus} Registrar</button>
+    </div>
+    <div class="scroll-x"><table><thead><tr><th>Data</th><th>Produto / Insumo</th><th class="num">Peso (kg)</th><th class="num">Custo unit.</th><th class="num">Custo total</th><th>Motivo</th><th>Responsável</th><th>Ação corretiva</th><th></th></tr></thead>
+    <tbody>${regs.length?regs.map(d=>`<tr>
+      <td>${fmtDataBR(d.data)}</td><td>${esc(d.nome||'—')}</td><td class="num">${fmtN(d.peso,3)}</td><td class="num">${fmtBRLp(d.custoUnit||0)}</td>
+      <td class="num" style="color:var(--red);font-weight:600">${fmtBRL(d.custoTotal||0)}</td><td>${esc(d.motivo||'—')}</td><td>${esc(d.responsavel||'—')}</td><td>${esc(d.acao||'—')}</td>
+      <td class="num"><button class="mini-del" onclick="delDesperdicio('${d.id}')">${icoX}</button></td></tr>`).join(''):`<tr><td colspan="9" style="color:var(--soft);text-align:center;padding:14px">Nenhum desperdício registrado neste mês.</td></tr>`}</tbody>
+    <tfoot>${regs.length?`<tr><td colspan="4" style="text-align:right;font-weight:600;border-top:2px solid var(--navy)">Total do mês</td><td class="num" style="font-weight:700;color:var(--red);border-top:2px solid var(--navy)">${fmtBRL(total)}</td><td colspan="4" style="border-top:2px solid var(--navy)"></td></tr>`:''}</tfoot></table></div>
+  </div>`;
+}
+function imprimirDesperdicio(){
+  const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';
+  let rows='';for(let i=0;i<16;i++)rows+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+  let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
+  pa.innerHTML=`<div class="dp">
+    <div class="dp-head"><div><div class="dp-t">CONTROLE DE DESPERDÍCIOS</div><div class="dp-r">${esc(rest)}</div></div>
+      <div class="dp-meta">Mês: ____ / ______<br>Responsável turno: ____________________</div></div>
+    <div class="dp-note">Preencha a cada perda. Pese o item, anote o motivo e a ação tomada. Depois registre no app em <b>Desperdícios</b>.</div>
+    <table class="dp-tb"><thead><tr><th>Data</th><th>Produto / Insumo</th><th>Peso (kg)</th><th>Custo Unit. (R$)</th><th>Custo Total (R$)</th><th>Motivo da Perda</th><th>Responsável</th><th>Ação Corretiva</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="dp-foot">Lidera · Flow — controle de desperdícios</div>
+  </div>`;
+  document.body.classList.add('print-desp');
+  const fim=()=>{document.body.classList.remove('print-desp');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
+  window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);
+}
 let cmvAno='todos';
 function viewCMV(){
   $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editCmvReg()">${icoPlus} Nova contagem</button>`;
