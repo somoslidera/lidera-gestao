@@ -1349,7 +1349,7 @@ function fichaCard(f,fixosPct){
   const insumos=custoFicha(f)/(f.porcoes||1), emb=f.custoEmbalagem||0, custo=insumos+emb;
   const preco=m.balcao.preco, cmv=m.balcao.cmv;
   const peso=pesoFichaKg(f)*1000;
-  const rend=peso>0?`${fmtN(peso)}gr`:`${fmtN(f.porcoes||1)} porç${(f.porcoes||1)>1?'ões':'ão'}`;
+  const rend=(f.rendGramas>0)?`${nNum(f.rendGramas)} ${uSym(f.rendUni||'g')}`:(peso>0?`${fmtN(peso)}gr`:`${fmtN(f.porcoes||1)} porç${(f.porcoes||1)>1?'ões':'ão'}`);
   const cmvCls=cmvClasse(cmv);const badge=preco>0?`<span class="fcard-badge ${cmvCls==='excelente'?'tag-green':cmvCls==='atencao'?'tag-amber':'tag-red'}">CMV ${fmtPct(cmv)}</span>`:`<span class="fcard-badge tag-amber">sem preço</span>`;
   return `<div class="fcard" data-nome="${esc(f.nome)}">
     <div class="fcard-top"><div class="fcard-ic">${icoFicha}</div>
