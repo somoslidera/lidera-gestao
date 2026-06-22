@@ -1992,7 +1992,11 @@ function finLancamentos(){
   const formas=DB.formasPagamento||[];
   return `<div class="card card-pad" style="max-width:1000px">
     <div class="section-head"><div><div class="ttl">Lançamentos</div><div class="desc">Receitas e despesas — alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div>
-      <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="month" class="input" style="max-width:160px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()">
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆ Importar<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarLancamentos(this)"></label>
+        <button class="btn btn-ghost btn-sm" onclick="modeloLancModal()">⬇ Modelo</button>
+      </div></div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px">
       <div class="field" style="margin:0;flex:0 0 140px"><label>Data</label><input type="date" class="input" id="lc_data" value="${hojeISO()}"></div>
       <div class="field" style="margin:0;flex:1 1 150px"><label>Grupo</label><select class="input" id="lc_grupo" onchange="lancSubRefresh()">${grupos.map(g=>`<option>${esc(g)}</option>`).join('')}</select></div>
@@ -2039,11 +2043,7 @@ function finFluxo(){
   const totEnt=datas.reduce((s,dt)=>s+dias[dt].ent,0), totSai=datas.reduce((s,dt)=>s+dias[dt].sai,0);
   return `<div class="card card-pad" style="max-width:880px">
     <div class="section-head"><div><div class="ttl">Fluxo de Caixa</div><div class="desc">Entradas e saídas por dia · saldo acumulado do mês</div></div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input type="month" class="input" style="max-width:160px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()">
-        <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆ Importar<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarFluxo(this)"></label>
-        <button class="btn btn-ghost btn-sm" onclick="modeloFluxoModal()">⬇ Modelo</button>
-      </div></div>
+      <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()"></div>
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
       <div class="dash-pill"><span>Entradas</span><b style="color:var(--green)">${fmtBRL(totEnt)}</b></div>
       <div class="dash-pill"><span>Saídas</span><b style="color:var(--red)">${fmtBRL(totSai)}</b></div>
@@ -2058,37 +2058,38 @@ function parseDataISO(v){if(v==null||v==='')return '';
   const s=v.toString().trim();let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
   m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);if(m){let y=m[3];if(y.length===2)y='20'+y;return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;}
   return '';}
-function fluxoModeloAOA(){return [['Data','Grupo','Subcategoria','Descrição','Valor'],
-  ['01/05/2026','Receita','PIX','Vendas do dia',1500],
-  ['01/05/2026','Receita','Cartão de Crédito','Vendas cartão',3200],
-  ['01/05/2026','CMV','Açougue','Carnes',-320.5],
-  ['05/05/2026','Despesas Prediais','Aluguel','Aluguel maio',-4200],
-  ['10/05/2026','Utilidades','Energia Elétrica','Conta de luz',-680]];}
-async function baixarModeloFluxo(fmt){const aoa=fluxoModeloAOA();
-  if(fmt==='csv'){const csv=aoa.map(r=>r.map(c=>{let s=(typeof c==='number')?String(c).replace('.',','):String(c);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(';')).join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download='modelo-fluxo-de-caixa.csv';a.click();}
-  else{try{const X=await loadXLSX();const ws=X.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:12},{wch:20},{wch:18},{wch:26},{wch:12}];const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Fluxo de Caixa');X.writeFile(wb,'modelo-fluxo-de-caixa.xlsx');}catch(e){toast('Não foi possível gerar o Excel. Tente CSV.');}}
+function lancModeloAOA(){return [['Data','Grupo','Subcategoria','Descrição','Valor','Forma de Pagamento'],
+  ['01/05/2026','Receita','PIX','Vendas do dia',1500,'PIX'],
+  ['01/05/2026','Receita','Cartão de Crédito','Vendas cartão',3200,'Crédito'],
+  ['01/05/2026','CMV','Açougue','Carnes',-320.5,'Boleto'],
+  ['05/05/2026','Despesas Prediais','Aluguel','Aluguel maio',-4200,'Transferência'],
+  ['10/05/2026','Utilidades','Energia Elétrica','Conta de luz',-680,'Débito']];}
+async function baixarModeloLanc(fmt){const aoa=lancModeloAOA();
+  if(fmt==='csv'){const csv=aoa.map(r=>r.map(c=>{let s=(typeof c==='number')?String(c).replace('.',','):String(c);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(';')).join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download='modelo-lancamentos.csv';a.click();}
+  else{try{const X=await loadXLSX();const ws=X.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:12},{wch:20},{wch:18},{wch:26},{wch:12},{wch:18}];const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Lançamentos');X.writeFile(wb,'modelo-lancamentos.xlsx');}catch(e){toast('Não foi possível gerar o Excel. Tente CSV.');}}
   closeModal();}
-function modeloFluxoModal(){
-  modal(`<div class="modal-head"><h3>Modelo · Fluxo de Caixa</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+function modeloLancModal(){
+  modal(`<div class="modal-head"><h3>Modelo · Lançamentos</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Baixe a planilha, preencha e importe em <b>Fluxo de Caixa › Importar</b>. Colunas: <b>Data · Grupo · Subcategoria · Descrição · Valor</b>.</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Baixe a planilha, preencha e importe em <b>Lançamentos › Importar</b>. Colunas: <b>Data · Grupo · Subcategoria · Descrição · Valor · Forma de Pagamento</b>.</div>
     <div class="alert alert-amber" style="margin-bottom:14px">${icoWarn}<div><b>Sinal do valor:</b> receitas com valor <b>positivo</b> e despesas com valor <b>negativo</b> (ex.: Aluguel = −4200). Os grupos que não existirem ainda são criados automaticamente.</div></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" onclick="baixarModeloFluxo('xlsx')">⬇ Excel (.xlsx)</button><button class="btn btn-ghost" onclick="baixarModeloFluxo('csv')">⬇ CSV (.csv)</button></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" onclick="baixarModeloLanc('xlsx')">⬇ Excel (.xlsx)</button><button class="btn btn-ghost" onclick="baixarModeloLanc('csv')">⬇ CSV (.csv)</button></div>
   </div>`);
 }
-async function importarFluxo(input){const f=input&&input.files&&input.files[0];if(input)input.value='';if(!f)return;
+async function importarLancamentos(input){const f=input&&input.files&&input.files[0];if(input)input.value='';if(!f)return;
   let rows;try{if(/\.xlsx?$/i.test(f.name)){const X=await loadXLSX();const wb=X.read(new Uint8Array(await f.arrayBuffer()),{type:'array'});rows=X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});}else rows=parseCSV(await f.text());}catch(e){return toast('Não foi possível ler o arquivo. Use o modelo em “Modelo”.');}
   if(!rows||!rows.length)return toast('Planilha vazia');
-  let start=0;const h0=(rows[0]||[]).join(' ').toLowerCase();if(/data|grupo|valor|subcategoria|descri/.test(h0))start=1;
+  let start=0;const h0=(rows[0]||[]).join(' ').toLowerCase();if(/data|grupo|valor|subcategoria|descri|forma/.test(h0))start=1;
   DB.lancamentos=DB.lancamentos||[];DB.categorias=DB.categorias||{};
   let add=0,novos=0,ult='';
   for(let r=start;r<rows.length;r++){const row=rows[r]||[];
-    const grupo=(row[1]==null?'':row[1]).toString().trim(),sub=(row[2]==null?'':row[2]).toString().trim(),desc=(row[3]==null?'':row[3]).toString().trim();
+    const grupo=(row[1]==null?'':row[1]).toString().trim(),sub=(row[2]==null?'':row[2]).toString().trim(),desc=(row[3]==null?'':row[3]).toString().trim(),forma=(row[5]==null?'':row[5]).toString().trim();
     const data=parseDataISO(row[0]);const val=parseNumBR(row[4]);
     if(!data||!grupo||!val)continue;
     if(!DB.categorias[grupo]){DB.categorias[grupo]={tipo:val>=0?'receita':'despesa',subs:sub?[sub]:[]};novos++;}
     else if(sub&&!DB.categorias[grupo].subs.includes(sub))DB.categorias[grupo].subs.push(sub);
-    DB.lancamentos.push({id:uid(),data,grupo,sub,descricao:desc,valor:Math.abs(val),forma:'',importado:true});add++;ult=ymOf(data);
+    if(forma&&!(DB.formasPagamento||[]).includes(forma)){DB.formasPagamento=DB.formasPagamento||[];DB.formasPagamento.push(forma);}
+    DB.lancamentos.push({id:uid(),data,grupo,sub,descricao:desc,valor:Math.abs(val),forma,importado:true});add++;ult=ymOf(data);
   }
   if(add&&ult)lancYM=ult;
   save();viewFinanceiro();
