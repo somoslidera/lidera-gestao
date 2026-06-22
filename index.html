@@ -640,6 +640,11 @@ function fornOptions(sel){const fs=(DB.fin&&DB.fin.fornecedores)||[];const names
 let DB=load();
 function load(){try{const d=JSON.parse(localStorage.getItem(STORE_KEY));if(d&&d.insumos)return d;}catch(e){}return seed();}
 function save(){if(typeof CLOUD!=='undefined'&&CLOUD){pushCloud();renderFoot();return;}try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){if(window.toast)toast('Não foi possível salvar (armazenamento cheio ou bloqueado)');}renderFoot();}
+async function saveNow(){clearTimeout(window._cloudT);renderFoot();
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){}
+  if(typeof CLOUD!=='undefined'&&CLOUD&&typeof sb!=='undefined'&&sb&&typeof ORG!=='undefined'&&ORG){
+    try{const {error}=await sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id);return !error;}catch(e){return false;}}
+  return true;}
 function seed(){
   const i={};
   const mk=(nome,cat,uni,valorPago,qtd)=>{const id=uid();i[id]={id,nome,cat,tipo:'pronto',uni,preco:valorPago,qtd};return id;};
@@ -2026,7 +2031,7 @@ function finLancamentos(){
         <th></th><th></th>
       </tr></thead>
     <tbody>${ls.length?ls.map(l=>{const rec=grupoTipo(l.grupo)==='receita';return `<tr>
-      <td>${fmtDataBR(l.data)}</td><td>${esc(l.grupo)}</td><td>${esc(l.sub||'—')}</td><td>${esc(l.descricao||'—')}${l.fromConta?' <span class="tag tag-gray" style="font-size:9.5px">conta</span>':l.importado?' <span class="tag tag-gray" style="font-size:9.5px">import</span>':''}</td><td style="color:var(--soft)">${esc(l.forma||'—')}</td>
+      <td>${fmtDataBR(l.data)}</td><td>${esc(l.grupo)}</td><td>${esc(l.sub||'—')}</td><td>${esc(l.descricao||'—')}</td><td style="color:var(--soft)">${esc(l.forma||'—')}</td>
       <td class="num" style="color:${rec?'var(--green)':'var(--red)'};font-weight:600;white-space:nowrap">${rec?'+':'−'} ${fmtBRL(l.valor)}</td>
       <td class="num"><div style="display:inline-flex;gap:6px"><button class="icon-btn" title="Editar" onclick="editLancamento('${l.id}')">${icoEdit}</button><button class="icon-btn" title="Excluir" style="color:var(--red)" onclick="delLancamento('${l.id}')">${icoX}</button></div></td></tr>`;}).join(''):`<tr><td colspan="7" style="color:var(--soft);text-align:center;padding:14px">${ativo?'Nenhum lançamento com esse filtro.':'Nenhum lançamento neste mês. Use o formulário acima.'}</td></tr>`}</tbody>
     ${ativo&&ls.length?`<tfoot><tr><td colspan="5" style="text-align:right;font-weight:600;border-top:2px solid var(--navy)">Total filtrado</td><td class="num" style="font-weight:700;color:${filtTot>=0?'var(--green)':'var(--red)'};border-top:2px solid var(--navy)">${fmtBRL(filtTot)}</td><td style="border-top:2px solid var(--navy)"></td></tr></tfoot>`:''}</table></div>
@@ -2076,24 +2081,34 @@ function modeloLancModal(){
     <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" onclick="baixarModeloLanc('xlsx')">⬇ Excel (.xlsx)</button><button class="btn btn-ghost" onclick="baixarModeloLanc('csv')">⬇ CSV (.csv)</button></div>
   </div>`);
 }
+function normHdr(s){return (s==null?'':s).toString().trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+function colIdx(header,cands){for(let i=0;i<header.length;i++){const h=normHdr(header[i]);if(cands.some(c=>h===c||h.includes(c)))return i;}return -1;}
 async function importarLancamentos(input){const f=input&&input.files&&input.files[0];if(input)input.value='';if(!f)return;
   let rows;try{if(/\.xlsx?$/i.test(f.name)){const X=await loadXLSX();const wb=X.read(new Uint8Array(await f.arrayBuffer()),{type:'array'});rows=X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});}else rows=parseCSV(await f.text());}catch(e){return toast('Não foi possível ler o arquivo. Use o modelo em “Modelo”.');}
-  if(!rows||!rows.length)return toast('Planilha vazia');
-  let start=0;const h0=(rows[0]||[]).join(' ').toLowerCase();if(/data|grupo|valor|subcategoria|descri|forma/.test(h0))start=1;
-  DB.lancamentos=DB.lancamentos||[];DB.categorias=DB.categorias||{};
+  rows=(rows||[]).filter(r=>Array.isArray(r)&&r.some(c=>(c==null?'':c).toString().trim()!==''));
+  if(!rows.length)return toast('Planilha vazia');
+  // mapeia colunas pelo cabeçalho (aceita qualquer ordem); senão usa posição padrão
+  const header=rows[0]||[];const temHdr=/data|grupo|valor|descri|forma|subcateg|categoria/.test(normHdr(header.join(' ')));
+  let M;
+  if(temHdr){M={data:colIdx(header,['data']),grupo:colIdx(header,['grupo']),sub:colIdx(header,['subcategoria','subcateg','categoria']),desc:colIdx(header,['descricao','descri','historico','observ']),valor:colIdx(header,['valor','valor (r$)','total']),forma:colIdx(header,['forma','pagamento','meio'])};}
+  else M={data:0,grupo:1,sub:2,desc:3,valor:4,forma:5};
+  if(M.data<0)M.data=0;if(M.grupo<0)M.grupo=1;if(M.valor<0)M.valor=4;
+  const cell=(row,i)=>i>=0&&row[i]!=null?row[i].toString().trim():'';
+  DB.lancamentos=DB.lancamentos||[];DB.categorias=DB.categorias||{};DB.formasPagamento=DB.formasPagamento||[];
   let add=0,novos=0,ult='';
-  for(let r=start;r<rows.length;r++){const row=rows[r]||[];
-    const grupo=(row[1]==null?'':row[1]).toString().trim(),sub=(row[2]==null?'':row[2]).toString().trim(),desc=(row[3]==null?'':row[3]).toString().trim(),forma=(row[5]==null?'':row[5]).toString().trim();
-    const data=parseDataISO(row[0]);const val=parseNumBR(row[4]);
+  for(let r=temHdr?1:0;r<rows.length;r++){const row=rows[r]||[];
+    const grupo=cell(row,M.grupo),sub=cell(row,M.sub),desc=cell(row,M.desc),forma=cell(row,M.forma);
+    const data=parseDataISO(M.data>=0?row[M.data]:'');const val=parseNumBR(M.valor>=0?row[M.valor]:'');
     if(!data||!grupo||!val)continue;
     if(!DB.categorias[grupo]){DB.categorias[grupo]={tipo:val>=0?'receita':'despesa',subs:sub?[sub]:[]};novos++;}
     else if(sub&&!DB.categorias[grupo].subs.includes(sub))DB.categorias[grupo].subs.push(sub);
-    if(forma&&!(DB.formasPagamento||[]).includes(forma)){DB.formasPagamento=DB.formasPagamento||[];DB.formasPagamento.push(forma);}
+    if(forma&&!DB.formasPagamento.includes(forma))DB.formasPagamento.push(forma);
     DB.lancamentos.push({id:uid(),data,grupo,sub,descricao:desc,valor:Math.abs(val),forma,importado:true});add++;ult=ymOf(data);
   }
-  if(add&&ult)lancYM=ult;
-  save();viewFinanceiro();
-  toast(add?`${add} lançamento(s) importado(s)`+(novos?` · ${novos} grupo(s) novo(s)`:''):'Nenhuma linha válida (confira Data, Grupo e Valor)');
+  if(!add)return toast('Nenhuma linha válida (confira Data, Grupo e Valor)');
+  if(ult)lancYM=ult;
+  const ok=await saveNow();viewFinanceiro();
+  toast(ok?`${add} lançamento(s) importado(s)`+(novos?` · ${novos} grupo(s) novo(s)`:''):'Importado, mas houve falha ao salvar. Verifique a conexão e importe novamente.');
 }
 /* ----- Gerenciar categorias ----- */
 let catSubTarget='',ngTipoSel='despesa';
