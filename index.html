@@ -478,16 +478,21 @@ body.dark .ins-rm{background:rgba(210,72,63,.16)}
 @media print{
   body.print-desp .sidebar,body.print-desp .main,body.print-desp #modalRoot,body.print-desp #toastRoot{display:none!important}
   body.print-desp #printArea{display:block!important;padding:10mm}
-  #printArea .dp{color:#000;font-family:'Inter',sans-serif}
-  #printArea .dp-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding-bottom:8px}
-  #printArea .dp-t{font-size:18px;font-weight:800;letter-spacing:.5px}
-  #printArea .dp-r{font-size:13px;color:#333;margin-top:2px}
-  #printArea .dp-meta{font-size:11.5px;text-align:right;line-height:1.9}
-  #printArea .dp-note{font-size:10.5px;color:#444;margin:7px 0 10px}
+  #printArea .dp{color:#15233f;font-family:'Inter',sans-serif;border:1px solid #d7dbe5;border-radius:8px;overflow:hidden}
+  #printArea .dp *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printArea .dp-bar{background:#1D3573;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+  #printArea .dp-t{font-size:19px;font-weight:800;font-family:'Fraunces',Georgia,serif;letter-spacing:.3px}
+  #printArea .dp-sub{font-size:8.5px;letter-spacing:2.5px;color:#C2A875;margin-top:3px;font-weight:600}
+  #printArea .dp-rest{font-size:13px;font-weight:600;text-align:right;max-width:240px}
+  #printArea .dp-gold{height:3px;background:#A48A57}
+  #printArea .dp-meta{display:flex;flex-wrap:wrap;gap:8px 26px;font-size:11px;padding:10px 18px;border-bottom:1px solid #e3e6ee}
+  #printArea .dp-note{font-size:10px;color:#5a6577;padding:8px 18px;background:#f6f7fa}
   #printArea table.dp-tb{width:100%;border-collapse:collapse}
-  #printArea table.dp-tb th{font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;background:#eee;border:1px solid #000;padding:6px 5px;text-align:left;color:#000}
-  #printArea table.dp-tb td{border:1px solid #999;height:30px;padding:2px 5px}
-  #printArea .dp-foot{margin-top:10px;font-size:9.5px;color:#888;text-align:right}
+  #printArea table.dp-tb th{font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;background:#1D3573;color:#fff;border:1px solid #1D3573;padding:7px 6px;text-align:left}
+  #printArea table.dp-tb td{border:1px solid #cfd4e0;height:30px;padding:2px 6px}
+  #printArea table.dp-tb tbody tr:nth-child(even) td{background:#f4f6fa}
+  #printArea .dp-legend{font-size:9px;color:#5a6577;padding:8px 18px;border-top:1px solid #e3e6ee}
+  #printArea .dp-foot{display:flex;justify-content:space-between;font-size:10px;color:#15233f;padding:9px 18px;border-top:2px solid #1D3573;font-weight:600}
 }
 
 /* cabeçalho de tabela clicável (ordenação) */
@@ -869,6 +874,7 @@ function normData(){
   if(!DB.categorias||!Object.keys(DB.categorias).length){DB.categorias={};DRE_DEFAULT.forEach(([g,tipo,subs])=>{DB.categorias[g]={tipo,subs:subs.slice()};});}
   DB.lancamentos=DB.lancamentos||[];
   DB.desperdicios=DB.desperdicios||[];
+  DB.despMotivos=(DB.despMotivos&&DB.despMotivos.length)?DB.despMotivos:DESP_MOTIVOS.slice();
   DB.formasPagamento=(DB.formasPagamento&&DB.formasPagamento.length)?DB.formasPagamento:FORMAS_DEFAULT.slice();
   // migra contas a pagar/receber p/ grupo+subcategoria (lançamento automático ao pagar/receber)
   (f.contasPagar||[]).forEach(c=>{if(c.grupo==null){c.grupo='Despesas Gerais';c.sub=c.categoria||((DB.categorias['Despesas Gerais']||{subs:[]}).subs[0]||'');}});
@@ -2529,75 +2535,117 @@ function cmvClsCor(cls){return cls==='Excelente'?'var(--green)':cls==='Aceitáve
 
 /* ===================== CONTROLE DE DESPERDÍCIOS ===================== */
 const DESP_MOTIVOS=['Validade / vencimento','Deterioração','Queima / cozimento','Quebra / acidente','Sobra de produção','Erro de preparo','Devolução de cliente','Outros'];
-let despYM=null;
+let despYM=null, draftDesp=[], despSel=null;
 function despCurYM(){return despYM||ymOf(hojeISO());}
-function custoKgInsumo(ins){const b=BASE[ins.uni];return b==='un'?custoInsumoBase(ins):custoInsumoBase(ins)*1000;}
-function custoKgItem(tipo,id){if(tipo==='ficha'){const f=DB.fichas[id];return f?custoPorKgFicha(f):0;}const i=DB.insumos[id];return i?custoKgInsumo(i):0;}
-function despItens(){const g={Insumos:[],Preparados:[],'Fichas Técnicas':[]};
-  Object.values(DB.insumos||{}).sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(i=>{(i.tipo==='preparado'?g.Preparados:g.Insumos).push({tipo:'insumo',id:i.id,nome:i.nome});});
-  Object.values(DB.fichas||{}).sort((a,b)=>a.nome.localeCompare(b.nome)).forEach(f=>g['Fichas Técnicas'].push({tipo:'ficha',id:f.id,nome:f.nome}));
-  return g;}
+function despUnitItem(tipo,id){if(tipo==='ficha'){const f=DB.fichas[id];return {sym:'porção',custo:f?custoProduto(f):0};}const i=DB.insumos[id];if(!i)return {sym:'—',custo:0};return {sym:uSym(i.uni),custo:custoInsumoBase(i)*(TO_BASE[i.uni]||1)};}
+function despItensFlat(){const arr=[];
+  Object.values(DB.insumos||{}).forEach(i=>arr.push({tipo:'insumo',id:i.id,nome:i.nome+(i.tipo==='preparado'?' (preparado)':''),grupo:i.tipo==='preparado'?'Preparado':'Insumo'}));
+  Object.values(DB.fichas||{}).forEach(f=>arr.push({tipo:'ficha',id:f.id,nome:f.nome,grupo:'Ficha'}));
+  return arr.sort((a,b)=>a.nome.localeCompare(b.nome));}
 function despNome(tipo,id){if(tipo==='ficha')return (DB.fichas[id]||{}).nome||'—';const i=DB.insumos[id]||{};return (i.nome||'—')+(i.tipo==='preparado'?' (preparado)':'');}
-function despFill(){const v=($('#desp_item').value||'').split('|');const cu=v[0]&&v[1]?custoKgItem(v[0],v[1]):0;
-  const peso=parseFloat($('#desp_peso').value)||0;
-  const cuEl=$('#desp_cu');if(cuEl)cuEl.textContent=fmtBRLp(cu);
-  const ctEl=$('#desp_ct');if(ctEl)ctEl.textContent=fmtBRL(cu*peso);}
-function addDesperdicio(){const v=($('#desp_item').value||'').split('|');if(!v[0]||!v[1])return toast('Selecione o produto/insumo');
-  const peso=parseFloat($('#desp_peso').value)||0;if(peso<=0)return toast('Informe o peso/quantidade');
-  const cu=custoKgItem(v[0],v[1]);
+function despSearch(){const q=($('#desp_search').value||'').trim().toLowerCase();const box=$('#desp_results');if(!box)return;
+  if(!q){box.innerHTML='';return;}
+  const ms=despItensFlat().filter(it=>it.nome.toLowerCase().includes(q)).slice(0,8);
+  box.innerHTML=ms.length?`<div class="ins-results" style="position:absolute;left:0;right:0;top:100%;z-index:30;margin-top:4px">${ms.map(it=>`<div onclick="despPick('${it.tipo}','${it.id}')">${esc(it.nome)} <span style="float:right;color:var(--soft)">${it.grupo}</span></div>`).join('')}</div>`:`<div class="ins-results" style="position:absolute;left:0;right:0;top:100%;z-index:30;margin-top:4px"><div style="color:var(--soft)">Nada encontrado.</div></div>`;}
+function despPick(tipo,id){despSel={tipo,id,nome:despNome(tipo,id)};const s=$('#desp_search');if(s)s.value=despSel.nome;const r=$('#desp_results');if(r)r.innerHTML='';despRefresh();const q=$('#desp_qtd');if(q)q.focus();}
+function despRefresh(){const u=despSel?despUnitItem(despSel.tipo,despSel.id):{sym:'—',custo:0};const qty=parseFloat($('#desp_qtd')?.value)||0;
+  const us=$('#desp_uni');if(us)us.textContent=u.sym;const cu=$('#desp_cu');if(cu)cu.textContent=fmtBRLp(u.custo);const ct=$('#desp_ct');if(ct)ct.textContent=fmtBRL(u.custo*qty);}
+function despAddItem(){if(!despSel)return toast('Busque e selecione o produto/insumo');
+  const qtd=parseFloat($('#desp_qtd').value)||0;if(qtd<=0)return toast('Informe a quantidade');
+  const u=despUnitItem(despSel.tipo,despSel.id);
+  draftDesp.push({tipo:despSel.tipo,refId:despSel.id,nome:despSel.nome,qtd,unidade:u.sym,custoUnit:u.custo,custoTotal:u.custo*qtd,motivo:$('#desp_motivo').value||'',acao:($('#desp_acao').value||'').trim()});
+  despSel=null;$('#desp_search').value='';$('#desp_qtd').value='';$('#desp_acao').value='';despRefresh();renderDespDraft();$('#desp_search').focus();}
+function despDelDraft(i){draftDesp.splice(i,1);renderDespDraft();}
+function renderDespDraft(){const el=$('#desp_draft');if(!el)return;
+  const tot=draftDesp.reduce((s,d)=>s+(d.custoTotal||0),0);
+  el.innerHTML=draftDesp.length?`<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:4px">
+    ${draftDesp.map((d,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px">
+      <b style="flex:1">${esc(d.nome)}</b><span style="color:var(--soft)">${fmtN(d.qtd,3)} ${d.unidade}</span>
+      <span style="color:var(--muted)">${esc(d.motivo||'')}</span><b style="color:var(--red);min-width:80px;text-align:right">${fmtBRL(d.custoTotal)}</b>
+      <button class="mini-del" onclick="despDelDraft(${i})">${icoX}</button></div>`).join('')}
+    <div style="display:flex;justify-content:space-between;padding:10px 12px;background:var(--bg);font-weight:700"><span>Total do lançamento (${draftDesp.length} ${draftDesp.length===1?'item':'itens'})</span><span style="color:var(--red)">${fmtBRL(tot)}</span></div></div>
+    <button class="btn btn-primary" style="margin-top:12px" onclick="registrarDesperdicio()">${icoPlus} Registrar lançamento</button>`
+    :`<div style="font-size:12.5px;color:var(--soft);padding:4px 0">Adicione os itens do dia e clique em Registrar lançamento.</div>`;
+}
+function registrarDesperdicio(){if(!draftDesp.length)return toast('Adicione ao menos um item');
+  const data=$('#desp_data').value||hojeISO();const resp=($('#desp_resp').value||'').trim();
   DB.desperdicios=DB.desperdicios||[];
-  DB.desperdicios.push({id:uid(),data:$('#desp_data').value||hojeISO(),tipo:v[0],refId:v[1],nome:despNome(v[0],v[1]),peso,custoUnit:cu,custoTotal:cu*peso,motivo:$('#desp_motivo').value||'',responsavel:($('#desp_resp').value||'').trim(),acao:($('#desp_acao').value||'').trim()});
-  if(ymOf($('#desp_data').value)!==despCurYM())despYM=ymOf($('#desp_data').value);
-  save();viewDesperdicio();toast('Desperdício registrado');}
+  draftDesp.forEach(it=>DB.desperdicios.push({id:uid(),data,tipo:it.tipo,refId:it.refId,nome:it.nome,qtd:it.qtd,unidade:it.unidade,custoUnit:it.custoUnit,custoTotal:it.custoTotal,motivo:it.motivo,responsavel:resp,acao:it.acao}));
+  if(ymOf(data)!==despCurYM())despYM=ymOf(data);
+  draftDesp=[];despSel=null;save();viewDesperdicio();toast('Lançamento registrado');}
 function delDesperdicio(id){DB.desperdicios=(DB.desperdicios||[]).filter(d=>d.id!==id);save();viewDesperdicio();}
+function despMotivosModal(){
+  modal(`<div class="modal-head"><h3>Motivos de perda</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="display:flex;gap:8px;margin-bottom:14px"><input class="input" id="dm_novo" placeholder="Novo motivo (ex.: Falha de equipamento)" onkeydown="if(event.key==='Enter')despAddMotivo()"><button class="btn btn-primary btn-sm" style="flex:0 0 auto" onclick="despAddMotivo()">${icoPlus} Adicionar</button></div>
+    <div id="dm_list" style="display:flex;flex-wrap:wrap;gap:6px">${despMotivosRows()}</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal();viewDesperdicio()">Concluir</button></div>`);
+  setTimeout(()=>{const el=$('#dm_novo');if(el)el.focus();},60);}
+function despMotivosRows(){return (DB.despMotivos||[]).map((m,i)=>`<span class="cat-chip">${esc(m)}<button onclick="despDelMotivo(${i})">${icoX}</button></span>`).join('')||'<span style="color:var(--soft);font-size:12px">Nenhum motivo cadastrado.</span>';}
+function despAddMotivo(){const v=($('#dm_novo').value||'').trim();if(!v)return;DB.despMotivos=DB.despMotivos||[];if(DB.despMotivos.includes(v))return toast('Esse motivo já existe');DB.despMotivos.push(v);save();$('#dm_novo').value='';$('#dm_list').innerHTML=despMotivosRows();}
+function despDelMotivo(i){DB.despMotivos.splice(i,1);save();$('#dm_list').innerHTML=despMotivosRows();}
 function viewDesperdicio(){
   $('#topActions').innerHTML=`<button class="btn btn-ghost" onclick="imprimirDesperdicio()">🖨️ Imprimir planilha</button>`;
   const ym=despCurYM();
   const regs=(DB.desperdicios||[]).filter(d=>ymOf(d.data)===ym).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));
   const total=regs.reduce((s,d)=>s+(d.custoTotal||0),0);
-  const pesoTot=regs.reduce((s,d)=>s+(d.peso||0),0);
+  const dias=new Set(regs.map(d=>d.data)).size;
   const porMotivo={};regs.forEach(d=>porMotivo[d.motivo||'—']=(porMotivo[d.motivo||'—']||0)+(d.custoTotal||0));
   const topMotivo=Object.entries(porMotivo).sort((a,b)=>b[1]-a[1])[0];
-  const g=despItens();
-  const optsHTML=`<option value="">— selecione —</option>`+Object.keys(g).filter(k=>g[k].length).map(k=>`<optgroup label="${k}">${g[k].map(it=>`<option value="${it.tipo}|${it.id}">${esc(it.nome)}</option>`).join('')}</optgroup>`).join('');
+  const motivos=(DB.despMotivos&&DB.despMotivos.length)?DB.despMotivos:DESP_MOTIVOS;
+  // agrupa por dia
+  const byDate={};regs.forEach(d=>{(byDate[d.data]=byDate[d.data]||[]).push(d);});
+  const datas=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
   $('#view').innerHTML=`
   <div class="kpi-grid" style="margin-bottom:18px">
-    <div class="kpi"><div class="ic ic-red">${icoTrash}</div><div class="k-lbl">Desperdício no mês</div><div class="k-val" style="color:var(--red)">${fmtBRL(total)}</div><div class="k-sub" style="color:var(--soft)">${regs.length} registro(s)</div></div>
-    <div class="kpi"><div class="k-lbl">Peso perdido</div><div class="k-val">${fmtN(pesoTot,2)} kg</div><div class="k-sub" style="color:var(--soft)">no mês</div></div>
+    <div class="kpi"><div class="ic ic-red">${icoTrash}</div><div class="k-lbl">Desperdício no mês</div><div class="k-val" style="color:var(--red)">${fmtBRL(total)}</div><div class="k-sub" style="color:var(--soft)">${regs.length} item(ns)</div></div>
+    <div class="kpi"><div class="k-lbl">Dias com perda</div><div class="k-val">${dias}</div><div class="k-sub" style="color:var(--soft)">no mês</div></div>
     <div class="kpi"><div class="k-lbl">Maior causa</div><div class="k-val" style="font-size:18px">${topMotivo?esc(topMotivo[0]):'—'}</div><div class="k-sub" style="color:var(--soft)">${topMotivo?fmtBRL(topMotivo[1]):''}</div></div>
     <div class="kpi"><div class="k-lbl">Período</div><div class="k-val" style="font-size:18px;text-transform:capitalize">${ymLabel(ym)}</div><div class="k-sub"><input type="month" class="input" style="height:30px;padding:2px 8px;font-size:12px" value="${ym}" onchange="despYM=this.value;viewDesperdicio()"></div></div>
   </div>
-  <div class="card card-pad">
-    <div class="section-head"><div><div class="ttl">Registrar desperdício</div><div class="desc">O custo unitário e o total são calculados automaticamente da sua base de insumos/fichas</div></div></div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px">
-      <div class="field" style="margin:0;flex:0 0 138px"><label>Data</label><input type="date" class="input" id="desp_data" value="${hojeISO()}"></div>
-      <div class="field" style="margin:0;flex:2 1 220px"><label>Produto / Insumo</label><select class="input" id="desp_item" onchange="despFill()">${optsHTML}</select></div>
-      <div class="field" style="margin:0;flex:0 0 100px"><label>Peso (kg)</label><input class="input" id="desp_peso" type="number" step="0.001" placeholder="0,000" oninput="despFill()"></div>
-      <div class="field" style="margin:0;flex:0 0 110px"><label>Custo unit.</label><div class="input" style="display:flex;align-items:center;color:var(--muted)" id="desp_cu">R$ 0,00</div></div>
-      <div class="field" style="margin:0;flex:0 0 110px"><label>Custo total</label><div class="input" style="display:flex;align-items:center;font-weight:700" id="desp_ct">R$ 0,00</div></div>
-      <div class="field" style="margin:0;flex:1 1 160px"><label>Motivo da perda</label><select class="input" id="desp_motivo">${DESP_MOTIVOS.map(m=>`<option>${m}</option>`).join('')}</select></div>
-      <div class="field" style="margin:0;flex:1 1 140px"><label>Responsável</label><input class="input" id="desp_resp" placeholder="Nome"></div>
-      <div class="field" style="margin:0;flex:2 1 180px"><label>Ação corretiva</label><input class="input" id="desp_acao" placeholder="O que fazer p/ evitar"></div>
-      <button class="btn btn-primary btn-sm" style="height:40px" onclick="addDesperdicio()">${icoPlus} Registrar</button>
+  <div class="card card-pad" style="margin-bottom:18px">
+    <div class="section-head"><div><div class="ttl">Registrar desperdício do dia</div><div class="desc">Adicione vários itens no mesmo lançamento — custo e unidade vêm automáticos da sua base</div></div></div>
+    <div class="grid-2" style="margin-bottom:12px">
+      <div class="field" style="margin:0"><label>Data do lançamento</label><input type="date" class="input" id="desp_data" value="${hojeISO()}"></div>
+      <div class="field" style="margin:0"><label>Responsável</label><input class="input" id="desp_resp" placeholder="Nome de quem registrou"></div>
     </div>
-    <div class="scroll-x"><table><thead><tr><th>Data</th><th>Produto / Insumo</th><th class="num">Peso (kg)</th><th class="num">Custo unit.</th><th class="num">Custo total</th><th>Motivo</th><th>Responsável</th><th>Ação corretiva</th><th></th></tr></thead>
-    <tbody>${regs.length?regs.map(d=>`<tr>
-      <td>${fmtDataBR(d.data)}</td><td>${esc(d.nome||'—')}</td><td class="num">${fmtN(d.peso,3)}</td><td class="num">${fmtBRLp(d.custoUnit||0)}</td>
-      <td class="num" style="color:var(--red);font-weight:600">${fmtBRL(d.custoTotal||0)}</td><td>${esc(d.motivo||'—')}</td><td>${esc(d.responsavel||'—')}</td><td>${esc(d.acao||'—')}</td>
-      <td class="num"><button class="mini-del" onclick="delDesperdicio('${d.id}')">${icoX}</button></td></tr>`).join(''):`<tr><td colspan="9" style="color:var(--soft);text-align:center;padding:14px">Nenhum desperdício registrado neste mês.</td></tr>`}</tbody>
-    <tfoot>${regs.length?`<tr><td colspan="4" style="text-align:right;font-weight:600;border-top:2px solid var(--navy)">Total do mês</td><td class="num" style="font-weight:700;color:var(--red);border-top:2px solid var(--navy)">${fmtBRL(total)}</td><td colspan="4" style="border-top:2px solid var(--navy)"></td></tr>`:''}</tfoot></table></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;border:1px solid var(--line);border-radius:12px;padding:12px">
+      <div class="field" style="margin:0;flex:2 1 200px;position:relative"><label>Buscar produto / insumo</label><input class="input" id="desp_search" placeholder="Digite para buscar..." autocomplete="off" oninput="despSearch()"><div id="desp_results"></div></div>
+      <div class="field" style="margin:0;flex:0 0 90px"><label>Quantidade</label><input class="input" id="desp_qtd" type="number" step="0.001" placeholder="0" oninput="despRefresh()"></div>
+      <div class="field" style="margin:0;flex:0 0 72px"><label>Unidade</label><div class="input" style="display:flex;align-items:center;color:var(--muted)" id="desp_uni">—</div></div>
+      <div class="field" style="margin:0;flex:0 0 100px"><label>Custo unit.</label><div class="input" style="display:flex;align-items:center;color:var(--muted)" id="desp_cu">R$ 0,00</div></div>
+      <div class="field" style="margin:0;flex:0 0 100px"><label>Custo total</label><div class="input" style="display:flex;align-items:center;font-weight:700" id="desp_ct">R$ 0,00</div></div>
+      <div class="field" style="margin:0;flex:1 1 150px"><label>Motivo da perda <a onclick="despMotivosModal()" style="color:var(--gold);cursor:pointer;font-weight:600">· editar</a></label><select class="input" id="desp_motivo">${motivos.map(m=>`<option>${esc(m)}</option>`).join('')}</select></div>
+      <div class="field" style="margin:0;flex:1 1 150px"><label>Ação corretiva</label><input class="input" id="desp_acao" placeholder="O que fazer p/ evitar"></div>
+      <button class="btn btn-ghost btn-sm" style="height:40px;color:var(--navy);border-color:var(--navy)" onclick="despAddItem()">${icoPlus} Adicionar item</button>
+    </div>
+    <div id="desp_draft"></div>
+  </div>
+  <div class="card card-pad">
+    <div class="section-head"><div><div class="ttl">Lançamentos do mês</div><div class="desc">Agrupados por dia</div></div><div style="font-size:14px">Total: <b style="color:var(--red)">${fmtBRL(total)}</b></div></div>
+    <div class="scroll-x"><table><thead><tr><th>Data</th><th>Produto / Insumo</th><th class="num">Qtd</th><th class="num">Custo unit.</th><th class="num">Custo total</th><th>Motivo</th><th>Responsável</th><th>Ação corretiva</th><th></th></tr></thead>
+    <tbody>${datas.length?datas.map(dt=>{const its=byDate[dt];const sub=its.reduce((s,d)=>s+(d.custoTotal||0),0);
+      return `<tr style="background:var(--bg)"><td style="font-weight:700">${fmtDataBR(dt)}</td><td colspan="3" style="color:var(--soft);font-size:12px">${its.length} item(ns)</td><td class="num" style="font-weight:700;color:var(--red)">${fmtBRL(sub)}</td><td colspan="4"></td></tr>`
+      +its.map(d=>`<tr><td></td><td>${esc(d.nome||'—')}</td><td class="num">${fmtN(d.qtd!=null?d.qtd:d.peso,3)} ${esc(d.unidade||'kg')}</td><td class="num">${fmtBRLp(d.custoUnit||0)}</td><td class="num" style="color:var(--red)">${fmtBRL(d.custoTotal||0)}</td><td>${esc(d.motivo||'—')}</td><td>${esc(d.responsavel||'—')}</td><td>${esc(d.acao||'—')}</td><td class="num"><button class="mini-del" onclick="delDesperdicio('${d.id}')">${icoX}</button></td></tr>`).join('');
+    }).join(''):`<tr><td colspan="9" style="color:var(--soft);text-align:center;padding:14px">Nenhum desperdício registrado neste mês.</td></tr>`}</tbody></table></div>
   </div>`;
+  renderDespDraft();
 }
 function imprimirDesperdicio(){
   const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';
-  let rows='';for(let i=0;i<16;i++)rows+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+  const motivos=(DB.despMotivos&&DB.despMotivos.length)?DB.despMotivos:DESP_MOTIVOS;
+  let rows='';for(let i=0;i<15;i++)rows+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
   pa.innerHTML=`<div class="dp">
-    <div class="dp-head"><div><div class="dp-t">CONTROLE DE DESPERDÍCIOS</div><div class="dp-r">${esc(rest)}</div></div>
-      <div class="dp-meta">Mês: ____ / ______<br>Responsável turno: ____________________</div></div>
-    <div class="dp-note">Preencha a cada perda. Pese o item, anote o motivo e a ação tomada. Depois registre no app em <b>Desperdícios</b>.</div>
-    <table class="dp-tb"><thead><tr><th>Data</th><th>Produto / Insumo</th><th>Peso (kg)</th><th>Custo Unit. (R$)</th><th>Custo Total (R$)</th><th>Motivo da Perda</th><th>Responsável</th><th>Ação Corretiva</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="dp-foot">Lidera · Flow — controle de desperdícios</div>
+    <div class="dp-bar"><div><div class="dp-t">Controle de Desperdícios</div><div class="dp-sub">DESENVOLVA · INSPIRE · LIDERE</div></div>
+      <div class="dp-rest">${esc(rest)}</div></div>
+    <div class="dp-gold"></div>
+    <div class="dp-meta"><span><b>Mês / Ano:</b> ______ / ________</span><span><b>Setor:</b> _____________</span><span><b>Responsável do turno:</b> ___________________</span></div>
+    <div class="dp-note">Anote cada item descartado: pese (ou conte), informe o motivo e a ação tomada para evitar a repetição. Depois registre no app em <b>Desperdícios</b>.</div>
+    <table class="dp-tb"><thead><tr><th style="width:62px">Data</th><th>Produto / Insumo</th><th style="width:64px">Qtd</th><th style="width:78px">Custo Unit.</th><th style="width:82px">Custo Total</th><th style="width:120px">Motivo da Perda</th><th style="width:96px">Responsável</th><th>Ação Corretiva</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="dp-legend"><b>Motivos:</b> ${motivos.map(esc).join(' · ')}</div>
+    <div class="dp-foot"><span>Total do dia: R$ __________</span><span>Lidera · Flow</span></div>
   </div>`;
   document.body.classList.add('print-desp');
   const fim=()=>{document.body.classList.remove('print-desp');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
@@ -2811,7 +2859,7 @@ function viewEstoque(){
   </div>
   ${forns.map(fn=>{const arr=byForn[fn];const sub=arr.reduce((s,x)=>s+x.totalPrevisto,0);return`
     <div class="card" style="margin-bottom:16px">
-      <div class="card-pad" style="padding-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div class="ttl">🚚 ${fn}</div><div style="font-weight:700">${fmtBRL(sub)}</div></div>
+      <div class="card-pad" style="padding-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div class="ttl">${fn}</div><div style="font-weight:700">${fmtBRL(sub)}</div></div>
       <div class="scroll-x"><table>
         <thead><tr><th>Insumo</th><th class="num">Un.</th><th class="num">Mínimo</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Qtd a pedir</th><th class="num">Custo un.</th><th class="num">Total previsto</th></tr></thead>
         <tbody>${arr.sort((a,b)=>a.nome.localeCompare(b.nome)).map(x=>`
