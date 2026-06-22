@@ -769,7 +769,7 @@ function metricasFicha(ficha){ // mistura por canal usando mix iFood global
 }
 // Classificação do CMV — limiar "excelente" = CMV alvo dos Parâmetros (padrão 30%); crítico acima de 35%
 function cmvAlvoRef(){return DB.cmvAlvo||30;}
-function cmvUpRef(){return Math.max(35,cmvAlvoRef());}
+function cmvUpRef(){return cmvAlvoRef()+5;}
 function cmvClasse(v){const a=cmvAlvoRef();return v<=a?'excelente':(v<=cmvUpRef()?'atencao':'critico');}
 function cmvCorRef(v){const c=cmvClasse(v);return c==='excelente'?'var(--green)':c==='atencao'?'var(--amber)':'var(--red)';}
 function healthFicha(cmv){const c=cmvClasse(cmv);return c==='excelente'?'saudavel':c;}
