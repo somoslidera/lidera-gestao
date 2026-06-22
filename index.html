@@ -937,6 +937,12 @@ function gaugeSVG(pct){
     <path d="M22 92 A73 73 0 0 1 168 92" fill="none" stroke="${cor}" stroke-width="13" stroke-linecap="round" stroke-dasharray="${Math.PI*73}" stroke-dashoffset="${Math.PI*73*(1-p/100)}"/>
   </svg>`;
 }
+function cmvRealPeriodo(R){const regs=(DB.cmvRegistros||[]).map(cmvRegCalc).filter(r=>r.data&&r.data>=R.de&&r.data<=R.ate);
+  if(!regs.length)return null;const cmvRS=regs.reduce((s,r)=>s+(r.cmvRS||0),0),ve=regs.reduce((s,r)=>s+(r.ve||0),0);return ve>0?cmvRS/ve*100:null;}
+function cmvLancPeriodo(R){const ls=(DB.lancamentos||[]).filter(l=>l.data>=R.de&&l.data<=R.ate);
+  const cmv=ls.filter(l=>l.grupo==='CMV').reduce((s,l)=>s+(l.valor||0),0);
+  const rec=ls.filter(l=>grupoTipo(l.grupo)==='receita').reduce((s,l)=>s+(l.valor||0),0);
+  return cmv>0?{pct:rec>0?cmv/rec*100:null,cmvRS:cmv,rec}:null;}
 function viewDashboard(){
   $('#topActions').innerHTML=periodoSeletor();
   const R=periodoRange();
@@ -954,10 +960,13 @@ function viewDashboard(){
   const despMes=(DB.desperdicios||[]).filter(d=>d.data>=R.de&&d.data<=R.ate).reduce((s,d)=>s+(d.custoTotal||0),0);
   // CMV: teórico (fichas) × real (contagem)
   const cmvTeorico=t.cmv;
-  const cmvRegs=(DB.cmvRegistros||[]).map(cmvRegCalc).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
-  const cmvRealUlt=cmvRegs.length?cmvRegs[0].pct:null;
-  const cmvGap=cmvRealUlt!=null?cmvRealUlt-cmvTeorico:null;
-  const cmvHeadVal=cmvRealUlt!=null?cmvRealUlt:cmvTeorico;
+  const cmvRealP=cmvRealPeriodo(R);                 // contagem física agregada no período
+  const cmvLancO=cmvLancPeriodo(R);                  // do grupo CMV nos lançamentos do período
+  const cmvLanc=cmvLancO&&cmvLancO.pct!=null?cmvLancO.pct:null;
+  const cmvRefReal=cmvRealP!=null?cmvRealP:cmvLanc;  // "real" preferido: contagem, senão lançamentos
+  const cmvRealUlt=cmvRefReal;
+  const cmvGap=cmvRefReal!=null?cmvRefReal-cmvTeorico:null;
+  const cmvHeadVal=cmvRefReal!=null?cmvRefReal:cmvTeorico;
   const cmvCorTh=cmvCorRef;
   // status geral
   const status = t.lucro<0?['Atenção','tag-red','var(--red)']:t.margemLiq>=10?['Lucrativo','tag-green','var(--green)']:['Estável','tag-amber','var(--amber)'];
@@ -1040,13 +1049,13 @@ function viewDashboard(){
       <div style="font-size:11px;color:var(--soft);margin-top:12px;border-top:1px solid var(--line);padding-top:10px">Limites saudáveis: marketplace ≤ 23%, custo fixo ≤ 33%, CMV ≤ 30%.</div>
     </div>
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">CMV — Teórico × Real</div><div class="desc">A diferença revela perda no dia a dia</div></div></div>
+      <div class="section-head"><div><div class="ttl">CMV — Teórico × Real</div><div class="desc">Teórico (cardápio) · Contagem e Lançamentos no período</div></div></div>
       <div style="display:flex;gap:8px;text-align:center;margin-top:4px">
         <div style="flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px"><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:${cmvCorTh(cmvTeorico)}">${fmtPct(cmvTeorico)}</div><div style="font-size:11px;color:var(--muted)">Teórico (fichas)</div></div>
-        <div style="flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px"><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:${cmvRealUlt!=null?cmvCorTh(cmvRealUlt):'var(--soft)'}">${cmvRealUlt!=null?fmtPct(cmvRealUlt):'—'}</div><div style="font-size:11px;color:var(--muted)">Real (contagem)</div></div>
-        <div style="flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px"><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:${cmvGap==null?'var(--soft)':cmvGap<=2?'var(--green)':cmvGap<=5?'var(--amber)':'var(--red)'}">${cmvGap!=null?(cmvGap>=0?'+':'')+fmtN(cmvGap,1):'—'}</div><div style="font-size:11px;color:var(--muted)">Diferença (p.p.)</div></div>
+        <div style="flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px"><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:${cmvRealP!=null?cmvCorTh(cmvRealP):'var(--soft)'}">${cmvRealP!=null?fmtPct(cmvRealP):'—'}</div><div style="font-size:11px;color:var(--muted)">Real (contagem)</div></div>
+        <div style="flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px"><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:${cmvLanc!=null?cmvCorTh(cmvLanc):'var(--soft)'}">${cmvLanc!=null?fmtPct(cmvLanc):'—'}</div><div style="font-size:11px;color:var(--muted)">Lançamentos</div></div>
       </div>
-      <div style="font-size:11px;color:var(--soft);margin-top:10px">${fichas.length} fichas ativas${semPreco.length?` · <span style="color:var(--red)">${semPreco.length} sem preço</span>`:''}${cmvRealUlt==null?` · <a onclick="go(&#39;cmv&#39;)" style="color:var(--navy);cursor:pointer">registre uma contagem de CMV</a>`:''}</div>
+      <div style="font-size:11px;color:var(--soft);margin-top:10px">${cmvGap!=null?`Diferença real × teórico: <b style="color:${cmvGap<=2?'var(--green)':cmvGap<=5?'var(--amber)':'var(--red)'}">${(cmvGap>=0?'+':'')+fmtN(cmvGap,1)} p.p.</b> · `:''}${fichas.length} fichas${cmvRealP==null?` · <a onclick="go(&#39;cmv&#39;)" style="color:var(--navy);cursor:pointer">registre uma contagem</a>`:''}</div>
       <div style="margin-top:12px">${alerts}</div>
     </div>
     <div class="card card-pad">
@@ -2206,7 +2215,7 @@ function finList(key,cols){
   <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:6px">${icoPlus} Adicionar</button>`;
 }
 function viewFinanceiro(){
-  const t=totaisGerais();
+  const t=totaisGerais(finTab==='visao'?periodoRange():undefined);
   const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['func','Funcionários'],['socios','Sócios'],['meios','Meios de Pagamento'],['forn','Fornecedores'],['param','Parâmetros']];
   let body='';
   if(finTab==='lanc')body=finLancamentos();
@@ -2329,7 +2338,7 @@ function finVisao(t){
   </div>
   <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:20px" class="dash-grid">
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Resultado do mês</div><div class="desc">Sobre o faturamento lançado e os parâmetros</div></div></div>
+      <div class="section-head"><div><div class="ttl">Resultado do período</div><div class="desc" style="text-transform:capitalize">${periodoRange().label}</div></div>${periodoSeletor()}</div>
       <table><tbody>
         <tr><td>Receita bruta</td><td class="num"><b>${fmtBRL(t.faturamento)}</b></td></tr>
         <tr><td>Receita líquida <span style="color:var(--soft);font-size:12px">(− impostos, comissões e taxas)</span></td><td class="num">${fmtBRL(recLiq)}</td></tr>
