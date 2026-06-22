@@ -489,7 +489,7 @@ body.dark .ins-rm{background:rgba(210,72,63,.16)}
   #printArea .dp-note{font-size:10px;color:#5a6577;padding:8px 18px;background:#f6f7fa}
   #printArea table.dp-tb{width:100%;border-collapse:collapse}
   #printArea table.dp-tb th{font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;background:#1D3573;color:#fff;border:1px solid #1D3573;padding:7px 6px;text-align:left}
-  #printArea table.dp-tb td{border:1px solid #cfd4e0;height:30px;padding:2px 6px}
+  #printArea table.dp-tb td{border:1px solid #cfd4e0;height:26px;padding:2px 6px}
   #printArea table.dp-tb tbody tr:nth-child(even) td{background:#f4f6fa}
   #printArea .dp-legend{font-size:9px;color:#5a6577;padding:8px 18px;border-top:1px solid #e3e6ee}
   #printArea .dp-foot{display:flex;justify-content:space-between;font-size:10px;color:#15233f;padding:9px 18px;border-top:2px solid #1D3573;font-weight:600}
@@ -2567,7 +2567,7 @@ function renderDespDraft(){const el=$('#desp_draft');if(!el)return;
   const tot=draftDesp.reduce((s,d)=>s+(d.custoTotal||0),0);
   el.innerHTML=draftDesp.length?`<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:4px">
     ${draftDesp.map((d,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px">
-      <b style="flex:1">${esc(d.nome)}</b><span style="color:var(--soft)">${fmtN(d.qtd,3)} ${d.unidade}</span>
+      <b style="flex:1">${esc(d.nome)}</b><span style="color:var(--soft)">${nNum(d.qtd)} ${d.unidade}</span>
       <span style="color:var(--muted)">${esc(d.motivo||'')}</span><b style="color:var(--red);min-width:80px;text-align:right">${fmtBRL(d.custoTotal)}</b>
       <button class="mini-del" onclick="despDelDraft(${i})">${icoX}</button></div>`).join('')}
     <div style="display:flex;justify-content:space-between;padding:10px 12px;background:var(--bg);font-weight:700"><span>Total do lançamento (${draftDesp.length} ${draftDesp.length===1?'item':'itens'})</span><span style="color:var(--red)">${fmtBRL(tot)}</span></div></div>
@@ -2634,7 +2634,7 @@ function viewDesperdicio(){
     <div class="scroll-x"><table><thead><tr><th>Data</th><th>Produto / Insumo</th><th class="num">Qtd</th><th class="num">Custo unit.</th><th class="num">Custo total</th><th>Motivo</th><th>Responsável</th><th>Ação corretiva</th><th></th></tr></thead>
     <tbody>${datas.length?datas.map(dt=>{const its=byDate[dt];const sub=its.reduce((s,d)=>s+(d.custoTotal||0),0);
       return `<tr style="background:var(--bg)"><td style="font-weight:700">${fmtDataBR(dt)}</td><td colspan="3" style="color:var(--soft);font-size:12px">${its.length} item(ns)</td><td class="num" style="font-weight:700;color:var(--red)">${fmtBRL(sub)}</td><td colspan="4"></td></tr>`
-      +its.map(d=>`<tr><td></td><td>${esc(d.nome||'—')}</td><td class="num">${fmtN(d.qtd!=null?d.qtd:d.peso,3)} ${esc(d.unidade||'kg')}</td><td class="num">${fmtBRLp(d.custoUnit||0)}</td><td class="num" style="color:var(--red)">${fmtBRL(d.custoTotal||0)}</td><td>${esc(d.motivo||'—')}</td><td>${esc(d.responsavel||'—')}</td><td>${esc(d.acao||'—')}</td><td class="num"><button class="mini-del" onclick="delDesperdicio('${d.id}')">${icoX}</button></td></tr>`).join('');
+      +its.map(d=>`<tr><td></td><td>${esc(d.nome||'—')}</td><td class="num">${nNum(d.qtd!=null?d.qtd:d.peso)} ${esc(d.unidade||'kg')}</td><td class="num">${fmtBRLp(d.custoUnit||0)}</td><td class="num" style="color:var(--red)">${fmtBRL(d.custoTotal||0)}</td><td>${esc(d.motivo||'—')}</td><td>${esc(d.responsavel||'—')}</td><td>${esc(d.acao||'—')}</td><td class="num"><button class="mini-del" onclick="delDesperdicio('${d.id}')">${icoX}</button></td></tr>`).join('');
     }).join(''):`<tr><td colspan="9" style="color:var(--soft);text-align:center;padding:14px">Nenhum desperdício registrado neste mês.</td></tr>`}</tbody></table></div>
   </div>`;
   renderDespDraft();
@@ -2642,7 +2642,7 @@ function viewDesperdicio(){
 function imprimirDesperdicio(){
   const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';
   const motivos=(DB.despMotivos&&DB.despMotivos.length)?DB.despMotivos:DESP_MOTIVOS;
-  let rows='';for(let i=0;i<15;i++)rows+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+  let rows='';for(let i=0;i<28;i++)rows+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
   pa.innerHTML=`<div class="dp">
     <div class="dp-bar"><div><div class="dp-t">Controle de Desperdícios</div><div class="dp-sub">DESENVOLVA · INSPIRE · LIDERE</div></div>
