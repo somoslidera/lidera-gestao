@@ -1989,6 +1989,18 @@ function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast
   if(ymOf($('#lc_data').value)!==curYM())lancYM=ymOf($('#lc_data').value);
   save();viewFinanceiro();toast('Lançamento registrado');}
 function delLancamento(id){DB.lancamentos=DB.lancamentos.filter(l=>l.id!==id);save();viewFinanceiro();}
+function formasRows(){return (DB.formasPagamento||[]).map((f,i)=>`<span class="cat-chip">${esc(f)}<button onclick="delForma(${i})">${icoX}</button></span>`).join('')||'<span style="color:var(--soft);font-size:12px">Nenhuma forma cadastrada.</span>';}
+function addForma(){const v=($('#fp_novo').value||'').trim();if(!v)return;DB.formasPagamento=DB.formasPagamento||[];if(DB.formasPagamento.includes(v))return toast('Essa forma já existe');DB.formasPagamento.push(v);save();$('#fp_novo').value='';$('#fp_list').innerHTML=formasRows();}
+function delForma(i){DB.formasPagamento.splice(i,1);save();$('#fp_list').innerHTML=formasRows();}
+function formasModal(){
+  modal(`<div class="modal-head"><h3>Formas de pagamento</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Adicione ou remova as opções que aparecem no menu suspenso de <b>Forma</b>. Lançamentos já feitos não mudam.</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px"><input class="input" id="fp_novo" placeholder="Nova forma (ex.: Pix Loja)" onkeydown="if(event.key==='Enter')addForma()"><button class="btn btn-primary btn-sm" style="flex:0 0 auto" onclick="addForma()">${icoPlus} Adicionar</button></div>
+    <div id="fp_list" style="display:flex;flex-wrap:wrap;gap:6px">${formasRows()}</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal();viewFinanceiro()">Concluir</button></div>`);
+  setTimeout(()=>{const el=$('#fp_novo');if(el)el.focus();},60);}
 function elSubRefresh(){const g=$('#el_grupo'),s=$('#el_sub');if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=(c?c.subs:[]).map(x=>`<option>${esc(x)}</option>`).join('');}
 function editLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)return;
   const grupos=Object.keys(DB.categorias);
@@ -2039,7 +2051,7 @@ function finLancamentos(){
       <div class="field" style="margin:0;flex:1 1 160px"><label>Subcategoria</label><select class="input" id="lc_sub">${subsG0.map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
       <div class="field" style="margin:0;flex:2 1 200px"><label>Descrição</label><input class="input" id="lc_desc" placeholder="Fornecedor, nº NF, referência..."></div>
       <div class="field" style="margin:0;flex:0 0 130px"><label>Valor</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="lc_valor" inputmode="numeric" placeholder="0,00" oninput="moneyMask(this)"></div></div>
-      <div class="field" style="margin:0;flex:1 1 130px"><label>Forma</label><select class="input" id="lc_forma">${(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
+      <div class="field" style="margin:0;flex:1 1 130px"><label>Forma <a onclick="formasModal()" style="color:var(--gold);cursor:pointer;font-weight:600">· editar</a></label><select class="input" id="lc_forma">${(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
       <button class="btn btn-primary btn-sm" style="flex:0 0 auto;height:40px" onclick="addLancamento()">${icoPlus} Lançar</button>
     </div>
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
