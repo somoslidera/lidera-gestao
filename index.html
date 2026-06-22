@@ -1571,7 +1571,7 @@ function editFicha(id){
           <div class="field"><label>Nome</label><input class="input" id="f_nome" value="${(f.nome||'').replace(/"/g,'&quot;')}" placeholder="Ex.: Arroz com Frango"></div>
           <div class="field"><label>Categoria</label><select class="input" id="f_cat">${catOptions('prato',f.cat)}</select></div>
           <div class="fx-g2">
-            <div class="field"><label>Rendimento <span class="hint">gr</span></label><input class="input" id="f_rend" type="number" step="1" value="${f.rendGramas||''}" placeholder="0"></div>
+            <div class="field"><label>Rendimento</label><div style="display:flex;gap:6px"><input class="input" id="f_rend" type="number" step="0.001" value="${f.rendGramas||''}" placeholder="0" style="flex:1"><select class="input" id="f_renduni" style="flex:0 0 78px">${UNIDADES.map(u=>`<option value="${u}" ${(f.rendUni||'g')===u?'selected':''}>${uSym(u)}</option>`).join('')}</select></div></div>
             <div class="field"><label>Custo embalagem</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="f_emb" inputmode="numeric" value="${fmtMoneyInput(f.custoEmbalagem||0)}" oninput="moneyMask(this);recalcFicha()"></div></div>
           </div>
           <div style="border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:6px">
@@ -1730,7 +1730,7 @@ function recalcFicha(){
 }
 function coletarFichaForm(id){const nome=($('#f_nome').value||'').trim();
   return {id:id||uid(),nome,cat:$('#f_cat').value.trim()||'Pratos',
-    porcoes:1,rendGramas:parseFloat($('#f_rend').value)||0,custoEmbalagem:moneyVal('f_emb')||0,
+    porcoes:1,rendGramas:parseFloat($('#f_rend').value)||0,rendUni:($('#f_renduni')?$('#f_renduni').value:'g'),custoEmbalagem:moneyVal('f_emb')||0,
     precoVenda:moneyVal('f_preco')||0,precoIfood:moneyVal('f_precoIf')||0,
     vendasMes:parseInt($('#f_vendas').value)||0,tempoPreparo:parseFloat($('#f_tempo')?.value)||0,
     utensilios:$('#f_utens')?.value||'',modoPreparo:draftModo.filter(s=>(s||'').trim()),
@@ -1751,7 +1751,7 @@ function imprimirFicha(){
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
   pa.innerHTML=`<div class="fp">
     <div class="fp-title">FICHA TÉCNICA – ${esc((f.nome||'').toUpperCase())}</div>
-    <div class="fp-meta"><span><b>Categoria:</b> ${esc(f.cat||'—')}</span><span><b>Preparo:</b> ${f.tempoPreparo?f.tempoPreparo+' min':'—'}</span><span><b>Rendimento:</b> ${f.rendGramas?f.rendGramas+' gr':'—'}</span><span><b>Utensílios:</b> ${esc(f.utensilios||'—')}</span></div>
+    <div class="fp-meta"><span><b>Categoria:</b> ${esc(f.cat||'—')}</span><span><b>Preparo:</b> ${f.tempoPreparo?f.tempoPreparo+' min':'—'}</span><span><b>Rendimento:</b> ${f.rendGramas?nNum(f.rendGramas)+' '+uSym(f.rendUni||'g'):'—'}</span><span><b>Utensílios:</b> ${esc(f.utensilios||'—')}</span></div>
     <div class="fp-row">
       <div class="fp-foto">${f.foto?`<img src="${f.foto}">`:'FOTO DO PRATO'}</div>
       <div class="fp-ing">
