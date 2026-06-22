@@ -502,6 +502,8 @@ body.dark .cat-chip{background:#222F4E}
 .cat-chip button{display:inline-flex;width:16px;height:16px;border-radius:5px;align-items:center;justify-content:center;color:var(--soft)}
 .cat-chip button:hover{background:var(--red-bg);color:var(--red)}
 .cat-chip svg{width:11px;height:11px}
+.lanc-filtro th{padding:4px 6px!important;border-bottom:1px solid var(--line)}
+.lanc-filtro .input{height:30px;padding:4px 8px;font-size:12px;width:100%;min-width:80px}
 .th-sort:hover{color:var(--gold)}
 
 /* cards de fichas técnicas */
@@ -1888,7 +1890,9 @@ function hojeISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMon
 function ymOf(d){return (d||'').slice(0,7);}
 function fmtDataBR(iso){if(!iso)return '—';const p=iso.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:iso;}
 function ymLabel(ym){const p=(ym||'').split('-');return p.length===2?`${MESES_PT[(+p[1])-1]||''} / ${p[0]}`:ym;}
-let lancYM=null;
+let lancYM=null, lancFiltro={grupo:'',sub:'',desc:'',forma:''};
+function lancSetFiltro(k,v){lancFiltro[k]=v;viewFinanceiro();}
+function lancLimparFiltro(){lancFiltro={grupo:'',sub:'',desc:'',forma:''};viewFinanceiro();}
 function curYM(){return lancYM||ymOf(hojeISO());}
 function grupoTipo(g){const c=DB.categorias&&DB.categorias[g];return c?c.tipo:'despesa';}
 function lancMes(ym){return (DB.lancamentos||[]).filter(l=>ymOf(l.data)===ym);}
@@ -1975,9 +1979,17 @@ function saveLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!
   save();closeModal();viewFinanceiro();toast('Lançamento atualizado');}
 function finLancamentos(){
   const ym=curYM(); const d=dreLanc(ym);
-  const ls=lancMes(ym).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||'')||0);
+  const fl=lancFiltro, ativo=fl.grupo||fl.sub||fl.desc||fl.forma;
+  const ls=lancMes(ym).filter(l=>
+    (!fl.grupo||l.grupo===fl.grupo)&&
+    (!fl.sub||(l.sub||'').toLowerCase().includes(fl.sub.toLowerCase()))&&
+    (!fl.desc||(l.descricao||'').toLowerCase().includes(fl.desc.toLowerCase()))&&
+    (!fl.forma||(l.forma||'')===fl.forma)
+  ).sort((a,b)=>(b.data||'').localeCompare(a.data||'')||0);
+  const filtTot=ls.reduce((s,l)=>s+(grupoTipo(l.grupo)==='receita'?(l.valor||0):-(l.valor||0)),0);
   const grupos=Object.keys(DB.categorias);
   const subsG0=DB.categorias[grupos[0]]?DB.categorias[grupos[0]].subs:[];
+  const formas=DB.formasPagamento||[];
   return `<div class="card card-pad" style="max-width:1000px">
     <div class="section-head"><div><div class="ttl">Lançamentos</div><div class="desc">Receitas e despesas — alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div>
       <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()"></div>
@@ -1995,11 +2007,25 @@ function finLancamentos(){
       <div class="dash-pill"><span>Despesas</span><b style="color:var(--red)">${fmtBRL(d.despTot)}</b></div>
       <div class="dash-pill"><span>Resultado</span><b style="color:${d.resultado>=0?'var(--green)':'var(--red)'}">${fmtBRL(d.resultado)}</b></div>
     </div>
-    <div class="scroll-x"><table><thead><tr><th>Data</th><th>Grupo</th><th>Subcategoria</th><th>Descrição</th><th>Forma</th><th class="num">Valor</th><th></th></tr></thead>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+      <div style="font-size:12.5px;color:var(--soft)">${ls.length} lançamento(s)${ativo?' · filtrado':''}</div>
+      ${ativo?`<a onclick="lancLimparFiltro()" style="color:var(--gold);font-weight:600;font-size:12.5px;cursor:pointer">Limpar filtros ✕</a>`:''}
+    </div>
+    <div class="scroll-x"><table><thead>
+      <tr><th>Data</th><th>Grupo</th><th>Subcategoria</th><th>Descrição</th><th>Forma</th><th class="num">Valor</th><th></th></tr>
+      <tr class="lanc-filtro">
+        <th></th>
+        <th><select class="input" onchange="lancSetFiltro('grupo',this.value)"><option value="">Todos</option>${grupos.map(g=>`<option ${fl.grupo===g?'selected':''}>${esc(g)}</option>`).join('')}</select></th>
+        <th><input class="input" placeholder="filtrar..." value="${(fl.sub||'').replace(/"/g,'&quot;')}" oninput="clearTimeout(window._lf1);window._lf1=setTimeout(()=>lancSetFiltro('sub',this.value),350)"></th>
+        <th><input class="input" placeholder="filtrar..." value="${(fl.desc||'').replace(/"/g,'&quot;')}" oninput="clearTimeout(window._lf2);window._lf2=setTimeout(()=>lancSetFiltro('desc',this.value),350)"></th>
+        <th><select class="input" onchange="lancSetFiltro('forma',this.value)"><option value="">Todas</option>${formas.map(x=>`<option ${fl.forma===x?'selected':''}>${esc(x)}</option>`).join('')}</select></th>
+        <th></th><th></th>
+      </tr></thead>
     <tbody>${ls.length?ls.map(l=>{const rec=grupoTipo(l.grupo)==='receita';return `<tr>
       <td>${fmtDataBR(l.data)}</td><td>${esc(l.grupo)}</td><td>${esc(l.sub||'—')}</td><td>${esc(l.descricao||'—')}${l.fromConta?' <span class="tag tag-gray" style="font-size:9.5px">conta</span>':l.importado?' <span class="tag tag-gray" style="font-size:9.5px">import</span>':''}</td><td style="color:var(--soft)">${esc(l.forma||'—')}</td>
-      <td class="num" style="color:${rec?'var(--green)':'var(--red)'};font-weight:600">${rec?'+':'−'} ${fmtBRL(l.valor)}</td>
-      <td class="num" style="white-space:nowrap"><button class="icon-btn" title="Editar" onclick="editLancamento('${l.id}')" style="margin-right:4px">${icoEdit}</button><button class="mini-del" onclick="delLancamento('${l.id}')">${icoX}</button></td></tr>`;}).join(''):`<tr><td colspan="7" style="color:var(--soft);text-align:center;padding:14px">Nenhum lançamento neste mês. Use o formulário acima.</td></tr>`}</tbody></table></div>
+      <td class="num" style="color:${rec?'var(--green)':'var(--red)'};font-weight:600;white-space:nowrap">${rec?'+':'−'} ${fmtBRL(l.valor)}</td>
+      <td class="num"><div style="display:inline-flex;gap:6px"><button class="icon-btn" title="Editar" onclick="editLancamento('${l.id}')">${icoEdit}</button><button class="icon-btn" title="Excluir" style="color:var(--red)" onclick="delLancamento('${l.id}')">${icoX}</button></div></td></tr>`;}).join(''):`<tr><td colspan="7" style="color:var(--soft);text-align:center;padding:14px">${ativo?'Nenhum lançamento com esse filtro.':'Nenhum lançamento neste mês. Use o formulário acima.'}</td></tr>`}</tbody>
+    ${ativo&&ls.length?`<tfoot><tr><td colspan="5" style="text-align:right;font-weight:600;border-top:2px solid var(--navy)">Total filtrado</td><td class="num" style="font-weight:700;color:${filtTot>=0?'var(--green)':'var(--red)'};border-top:2px solid var(--navy)">${fmtBRL(filtTot)}</td><td style="border-top:2px solid var(--navy)"></td></tr></tfoot>`:''}</table></div>
   </div>`;
 }
 /* ----- Fluxo de Caixa ----- */
