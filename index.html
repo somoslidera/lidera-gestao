@@ -2088,10 +2088,13 @@ function finFluxo(){
   </div>`;
 }
 function parseDataISO(v){if(v==null||v==='')return '';
+  if(v instanceof Date&&!isNaN(v))return v.getUTCFullYear()+'-'+String(v.getUTCMonth()+1).padStart(2,'0')+'-'+String(v.getUTCDate()).padStart(2,'0');
   if(typeof v==='number'){const d=new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000);return d.toISOString().slice(0,10);}
-  const s=v.toString().trim();let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
-  m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);if(m){let y=m[3];if(y.length===2)y='20'+y;return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;}
+  const s=v.toString().trim();let m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m=s.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);if(m){let y=m[3];if(y.length===2)y='20'+y;return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;}
   return '';}
+function mesNum(v){if(v==null||v==='')return 0;const s=v.toString().trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');const n=parseInt(s,10);if(n>=1&&n<=12)return n;
+  const nm=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];const i=nm.findIndex(x=>x.slice(0,3)===s.slice(0,3));return i>=0?i+1:0;}
 function lancModeloAOA(){return [['Data','Grupo','Subcategoria','Descrição','Valor','Forma de Pagamento'],
   ['01/05/2026','Receita','PIX','Vendas do dia',1500,'PIX'],
   ['01/05/2026','Receita','Cartão de Crédito','Vendas cartão',3200,'Crédito'],
@@ -2113,21 +2116,24 @@ function modeloLancModal(){
 function normHdr(s){return (s==null?'':s).toString().trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
 function colIdx(header,cands){for(let i=0;i<header.length;i++){const h=normHdr(header[i]);if(cands.some(c=>h===c||h.includes(c)))return i;}return -1;}
 async function importarLancamentos(input){const f=input&&input.files&&input.files[0];if(input)input.value='';if(!f)return;
-  let rows;try{if(/\.xlsx?$/i.test(f.name)){const X=await loadXLSX();const wb=X.read(new Uint8Array(await f.arrayBuffer()),{type:'array'});rows=X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});}else rows=parseCSV(await f.text());}catch(e){return toast('Não foi possível ler o arquivo. Use o modelo em “Modelo”.');}
+  let rows;try{if(/\.xlsx?$/i.test(f.name)){const X=await loadXLSX();const wb=X.read(new Uint8Array(await f.arrayBuffer()),{type:'array',cellDates:true});rows=X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});}else rows=parseCSV(await f.text());}catch(e){return toast('Não foi possível ler o arquivo. Use o modelo em “Modelo”.');}
   rows=(rows||[]).filter(r=>Array.isArray(r)&&r.some(c=>(c==null?'':c).toString().trim()!==''));
   if(!rows.length)return toast('Planilha vazia');
   // mapeia colunas pelo cabeçalho (aceita qualquer ordem); senão usa posição padrão
   const header=rows[0]||[];const temHdr=/data|grupo|valor|descri|forma|subcateg|categoria/.test(normHdr(header.join(' ')));
   let M;
-  if(temHdr){M={data:colIdx(header,['data']),grupo:colIdx(header,['grupo']),sub:colIdx(header,['subcategoria','subcateg','categoria']),desc:colIdx(header,['descricao','descri','historico','observ']),valor:colIdx(header,['valor','valor (r$)','total']),forma:colIdx(header,['forma','pagamento','meio'])};}
-  else M={data:0,grupo:1,sub:2,desc:3,valor:4,forma:5};
-  if(M.data<0)M.data=0;if(M.grupo<0)M.grupo=1;if(M.valor<0)M.valor=4;
+  if(temHdr){M={data:colIdx(header,['data']),ano:colIdx(header,['ano']),mes:colIdx(header,['mes']),dia:colIdx(header,['dia']),grupo:colIdx(header,['grupo']),sub:colIdx(header,['subcategoria','subcateg']),desc:colIdx(header,['descricao','descri','historico','observ']),valor:colIdx(header,['valor','total']),forma:colIdx(header,['forma','pagamento','meio'])};
+    if(M.sub<0)M.sub=colIdx(header,['categoria']);}
+  else M={data:0,ano:-1,mes:-1,dia:-1,grupo:1,sub:2,desc:3,valor:4,forma:5};
+  if(M.grupo<0)M.grupo=1;if(M.valor<0)M.valor=4;
   const cell=(row,i)=>i>=0&&row[i]!=null?row[i].toString().trim():'';
   DB.lancamentos=DB.lancamentos||[];DB.categorias=DB.categorias||{};DB.formasPagamento=DB.formasPagamento||[];
   let add=0,novos=0,ult='';
   for(let r=temHdr?1:0;r<rows.length;r++){const row=rows[r]||[];
     const grupo=cell(row,M.grupo),sub=cell(row,M.sub),desc=cell(row,M.desc),forma=cell(row,M.forma);
-    const data=parseDataISO(M.data>=0?row[M.data]:'');const val=parseNumBR(M.valor>=0?row[M.valor]:'');
+    let data=M.data>=0?parseDataISO(row[M.data]):'';
+    if(!data&&M.dia>=0&&M.mes>=0){const ano=parseInt(cell(row,M.ano),10)||(new Date().getFullYear()),mm=mesNum(row[M.mes]),dd=parseInt(cell(row,M.dia),10);if(mm&&dd)data=ano+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0');}
+    const val=parseNumBR(M.valor>=0?row[M.valor]:'');
     if(!data||!grupo||!val)continue;
     if(!DB.categorias[grupo]){DB.categorias[grupo]={tipo:val>=0?'receita':'despesa',subs:sub?[sub]:[]};novos++;}
     else if(sub&&!DB.categorias[grupo].subs.includes(sub))DB.categorias[grupo].subs.push(sub);
