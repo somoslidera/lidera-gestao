@@ -2531,7 +2531,7 @@ function finParam(){
       <div class="field"><label>CMV alvo <span class="hint">% meta</span></label><input class="input" type="number" step="0.5" value="${DB.cmvAlvo}" onchange="DB.cmvAlvo=parseFloat(this.value)||30;save();viewFinanceiro()"></div>
       <div class="field"><label>CMV do ponto de equilíbrio <span class="hint">qual CMV usar no cálculo</span></label>
         <select class="input" onchange="DB.fin.peCmvFonte=this.value;save();viewFinanceiro()">
-          ${[['real','CMV real (contagem) · padrão'],['lanc','CMV dos lançamentos'],['manual','Valor digitado'],['teorico','CMV teórico (cardápio)']].map(([v,l])=>`<option value="${v}" ${ (fin.peCmvFonte||'real')===v?'selected':''}>${l}</option>`).join('')}
+          ${[['real','CMV real (contagem) · padrão'],['lanc','CMV dos lançamentos'],['teorico','CMV teórico (cardápio)'],['manual','Valor digitado']].map(([v,l])=>`<option value="${v}" ${ (fin.peCmvFonte||'real')===v?'selected':''}>${l}</option>`).join('')}
         </select></div>
       ${(fin.peCmvFonte||'real')==='manual'?`<div class="field"><label>CMV digitado <span class="hint">% sobre o faturamento</span></label><input class="input" type="number" step="0.5" value="${fin.peCmvManual||''}" placeholder="0" onchange="DB.fin.peCmvManual=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`:''}
       <div style="font-size:11.5px;color:var(--soft);margin:-2px 0 10px">Define a margem de contribuição usada no ponto de equilíbrio. Se a fonte escolhida não tiver dados no período, usamos o CMV teórico do cardápio.</div>
