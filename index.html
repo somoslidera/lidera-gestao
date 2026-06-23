@@ -1065,12 +1065,11 @@ function viewDashboard(){
       <div class="dash-pill"><span>Resultado (real)</span><b style="color:${t.lucroReal>=0?'var(--green)':'var(--red)'}">${fmtBRL(t.lucroReal)}</b></div>
       <div class="dash-pill"><span>Rec. Líquida</span><b>${fmtBRL(recLiquida)}</b></div>
       <div class="dash-pill"><span>${cmvRealUlt!=null?'CMV Real':'CMV'}</span><b style="color:${cmvCorTh(cmvHeadVal)}">${fmtPct(cmvHeadVal)}</b></div>
-      <div class="dash-pill"><span>Ticket</span><b>${fmtBRL(t.ticket)}</b></div>
       <div class="dash-pill" style="cursor:pointer" onclick="go('desperdicio')"><span>Desperdício/mês</span><b style="color:${despMes>0?'var(--red)':'var(--ink)'}">${fmtBRL(despMes)}</b></div>
     </div>
   </div>
 
-  <!-- Faturamento + Ponto de equilíbrio -->
+  <!-- Faturamento + resultado real + Ponto de equilíbrio -->
   <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px" class="dash-grid">
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">Faturamento</div><div class="desc">${t.faturamento>0?'Receitas lançadas no período':'Lance suas receitas em Lançamentos'}</div></div></div>
@@ -1078,13 +1077,12 @@ function viewDashboard(){
         <div class="be-num" style="font-size:34px;color:var(--navy)">${fmtBRL(t.faturamento)}</div>
         ${t.faturamento>0?'':'<a class="tag tag-gold" style="margin-bottom:8px;cursor:pointer" onclick="go(\'financeiro\')">Lançar receitas →</a>'}
       </div>
-      <div class="grid-2" style="margin-top:18px">
-        <div style="border:1px solid var(--line);border-radius:12px;padding:14px">
-          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;color:var(--muted)">Custos Fixos Totais</span><span class="tag tag-navy">${fmtPct(t.fixosPct)}</span></div>
-          <div style="font-size:19px;font-weight:700;font-family:'Fraunces',serif;margin-top:4px">${fmtBRL(t.fixos)}</div></div>
-        <div style="border:1px solid var(--line);border-radius:12px;padding:14px">
-          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;color:var(--muted)">Custos Variáveis Totais</span><span class="tag tag-amber">${fmtPct(t.custosVarPct)}</span></div>
-          <div style="font-size:19px;font-weight:700;font-family:'Fraunces',serif;margin-top:4px">${fmtBRL(t.custosVar)}</div></div>
+      <div style="margin-top:18px;border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div><div style="font-size:12.5px;color:var(--muted)">Resultado do período <span style="color:var(--soft)">(real)</span></div>
+          <div style="font-size:11.5px;color:var(--soft)">receitas − despesas lançadas</div></div>
+        <div style="text-align:right">
+          <div style="font-size:21px;font-weight:700;font-family:'Fraunces',serif;color:${t.lucroReal>=0?'var(--green)':'var(--red)'}">${fmtBRL(t.lucroReal)}</div>
+          <div style="font-size:12px;color:var(--muted)">margem ${t.faturamento>0?fmtPct(t.margemReal):'—'}</div></div>
       </div>
     </div>
     <div class="card card-pad">
@@ -1102,18 +1100,8 @@ function viewDashboard(){
     </div>
   </div>
 
-  <!-- Dinheiro na mesa + Fichas Técnicas + Estrutura de custos -->
-  <div class="grid-3" style="margin-top:20px">
-    <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Dinheiro na mesa</div><div class="desc">Escapa por taxas e canais</div></div></div>
-      <div class="be-num" style="font-size:26px;color:var(--red)">${fmtBRL(t.dinheiroMesa)}</div>
-      <div style="font-size:12px;color:var(--muted)">${fmtPct(t.dinheiroMesaPct)} do faturamento</div>
-      <div style="margin-top:14px;font-size:12.5px;display:flex;flex-direction:column;gap:8px">
-        <div style="display:flex;justify-content:space-between"><span>🛵 Comissão marketplace</span><b>${fmtBRL(t.comissaoRS)}</b></div>
-        <div style="display:flex;justify-content:space-between"><span>💳 Taxa de cartão</span><b>${fmtBRL(t.taxaCartaoRS)}</b></div>
-      </div>
-      <div style="font-size:11px;color:var(--soft);margin-top:12px;border-top:1px solid var(--line);padding-top:10px">Limites saudáveis: marketplace ≤ 23%, custo fixo ≤ 33%, CMV ≤ 30%.</div>
-    </div>
+  <!-- CMV Teórico × Real + Estrutura de custos -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px" class="dash-grid">
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">CMV: Teórico × Real</div><div class="desc">Teórico (cardápio) · Contagem e Lançamentos no período</div></div></div>
       <div style="display:flex;gap:8px;text-align:center;margin-top:4px">
