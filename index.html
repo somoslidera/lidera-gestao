@@ -885,6 +885,14 @@ function totaisGerais(R){
   const provisoesRS=(DB.fin.provisoes||[]).reduce((s,d)=>s+(d.valor||0),0)*nm;
   const folha=folhaTotal()*nm, prol=proLaboreTotal()*nm;
   const fixos=fixosBase+folha+prol+provisoesRS;
+  // ===== RESULTADO REAL (despesas efetivamente LANÇADAS no período) =====
+  const despLancGrupos={};let despLancTot=0;
+  (DB.lancamentos||[]).forEach(l=>{if(l.data>=R.de&&l.data<=R.ate&&grupoTipo(l.grupo)!=='receita'){despLancGrupos[l.grupo]=(despLancGrupos[l.grupo]||0)+(l.valor||0);despLancTot+=(l.valor||0);}});
+  const cmvLancRS=despLancGrupos['CMV']||0;
+  const pessoalLancRS=(despLancGrupos['Mão-de-Obra']||0)+(despLancGrupos['Encargos Sociais']||0)+(despLancGrupos['Benefícios']||0);
+  const outrasLancRS=despLancTot-cmvLancRS-pessoalLancRS;
+  const lucroReal=faturamento-despLancTot;
+  const margemReal=faturamento?lucroReal/faturamento*100:0;
   const mcRS=faturamento-custosVar;
   const mcPctMed=faturamento?mcRS/faturamento*100:0;
   const cmv=cmvPct*100;                                        // CMV teórico do cardápio (independe do faturamento)
@@ -906,7 +914,8 @@ function totaisGerais(R){
     recIfood,recDireto,comissaoRS,impostoRS,taxaCartaoRS,custosVar,custosVarPct:faturamento?custosVar/faturamento*100:0,
     fixosBase,provisoesRS,folha,prol,fixos,fixosPct:faturamento?fixos/faturamento*100:0,
     mcRS,mcPctMed,mcTot:mcRS,lucro,margemLiq:faturamento?lucro/faturamento*100:0,
-    dinheiroMesa,dinheiroMesaPct:faturamento?dinheiroMesa/faturamento*100:0,faturamentoEq,diaEq,cmvEqPct,cmvEqFonte:peFonte,cmvEqFonteUsada,mcPctEq};
+    dinheiroMesa,dinheiroMesaPct:faturamento?dinheiroMesa/faturamento*100:0,faturamentoEq,diaEq,cmvEqPct,cmvEqFonte:peFonte,cmvEqFonteUsada,mcPctEq,
+    despLancGrupos,despLancTot,cmvLancRS,pessoalLancRS,outrasLancRS,lucroReal,margemReal};
 }
 
 /* ===================== ROTEADOR ===================== */
@@ -1024,18 +1033,16 @@ function viewDashboard(){
   const cmvGap=cmvRefReal!=null?cmvRefReal-cmvTeorico:null;
   const cmvHeadVal=cmvRefReal!=null?cmvRefReal:cmvTeorico;
   const cmvCorTh=cmvCorRef;
-  // status geral
-  const status = t.lucro<0?['Atenção','tag-red','var(--red)']:t.margemLiq>=10?['Lucrativo','tag-green','var(--green)']:['Estável','tag-amber','var(--amber)'];
+  // status geral (resultado REAL pelos lançamentos)
+  const semLanc=(t.faturamento<=0&&t.despLancTot<=0);
+  const status = semLanc?['Sem lançamentos','tag-amber','var(--amber)']:t.lucroReal<0?['Atenção','tag-red','var(--red)']:t.margemReal>=10?['Lucrativo','tag-green','var(--green)']:['Estável','tag-amber','var(--amber)'];
   const hoje=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
   // gauge faturado vs meta(equilíbrio)
   const gpct=isFinite(t.faturamentoEq)&&t.faturamentoEq>0?t.faturamento/t.faturamentoEq*100:100;
-  // estrutura de custos por grupo
-  const grupos={};
-  (DB.fin.custosFixos||[]).forEach(d=>{const g=d.grupo||'Outros';grupos[g]=(grupos[g]||0)+(d.valor||0);});
-  grupos['Pessoal']=(grupos['Pessoal']||0)+t.folha+t.prol;
-  const estrutura=[['CMV Teórico',t.custoTot,'var(--red)'],['Pessoal + Sócios',grupos['Pessoal']||0,'var(--navy)'],
-    ['Infraestrutura',grupos['Infraestrutura']||0,'var(--gold)'],['Admin e Mkt',grupos['Admin e Mkt']||0,'var(--amber)']];
-  const estruturaTotal=estrutura.reduce((s,x)=>s+x[1],0);
+  // estrutura de custos por grupo (REAL, despesas lançadas no período)
+  const estruturaCores=['var(--red)','var(--navy)','var(--gold)','var(--amber)','#6B7A99','#B07A3C','#3C8C6B','#8E5BC0'];
+  const estrutura=Object.entries(t.despLancGrupos).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([g,v],i)=>[g,v,estruturaCores[i%estruturaCores.length]]);
+  const estruturaTotal=t.despLancTot;
 
   let alerts='';
   if(cmvGap!=null&&cmvGap>4)alerts+=alertRow(cmvGap>8?'red':'amber',icoWarn,`<b>Perda de ${fmtN(cmvGap,1)} p.p.:</b> o CMV real (${fmtPct(cmvRealUlt)}) está acima do teórico (${fmtPct(cmvTeorico)}), possível desperdício, furto ou erro de porção.`);
@@ -1053,6 +1060,7 @@ function viewDashboard(){
       <span class="tag ${status[1]}" style="font-size:12.5px;padding:5px 12px">● ${status[0]}</span>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div class="dash-pill"><span>Resultado (real)</span><b style="color:${t.lucroReal>=0?'var(--green)':'var(--red)'}">${fmtBRL(t.lucroReal)}</b></div>
       <div class="dash-pill"><span>Rec. Líquida</span><b>${fmtBRL(recLiquida)}</b></div>
       <div class="dash-pill"><span>${cmvRealUlt!=null?'CMV Real':'CMV'}</span><b style="color:${cmvCorTh(cmvHeadVal)}">${fmtPct(cmvHeadVal)}</b></div>
       <div class="dash-pill"><span>Ticket</span><b>${fmtBRL(t.ticket)}</b></div>
@@ -1115,10 +1123,10 @@ function viewDashboard(){
       <div style="margin-top:12px">${alerts}</div>
     </div>
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Estrutura de custos</div><div class="desc">% do faturamento</div></div><span class="tag tag-navy">Fixo ${fmtPct(t.fixosPct)}</span></div>
+      <div class="section-head"><div><div class="ttl">Estrutura de custos</div><div class="desc">Despesas lançadas no período</div></div><span class="tag tag-navy">${t.faturamento>0?fmtPct(estruturaTotal/t.faturamento*100)+' da receita':fmtBRL(estruturaTotal)}</span></div>
       <div class="be-num" style="font-size:24px">${fmtBRL(estruturaTotal)}</div>
       <div style="margin-top:12px;display:flex;flex-direction:column;gap:9px">
-        ${estrutura.map(([n,v,c])=>`<div><div style="display:flex;justify-content:space-between;font-size:12.5px"><span>${n}</span><b>${fmtBRL(v)}</b></div><div class="bar" style="height:6px"><i style="width:${clamp(estruturaTotal?v/estruturaTotal*100:0,0,100)}%;background:${c}"></i></div></div>`).join('')}
+        ${estrutura.length?estrutura.map(([n,v,c])=>`<div><div style="display:flex;justify-content:space-between;font-size:12.5px"><span>${n}</span><b>${fmtBRL(v)}</b></div><div class="bar" style="height:6px"><i style="width:${clamp(estruturaTotal?v/estruturaTotal*100:0,0,100)}%;background:${c}"></i></div></div>`).join(''):`<div style="font-size:12.5px;color:var(--soft)">Sem despesas lançadas no período.</div>`}
       </div>
       ${(DB.fin.provisoes||[]).length?`<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px">
         <div style="font-size:11px;color:var(--soft);font-weight:600;letter-spacing:.4px;margin-bottom:6px">PROVISÕES A RESERVAR / MÊS</div>
@@ -1908,7 +1916,7 @@ function viewFaturamento(){
       <div class="alert alert-${DB.fat.mixIfood>=50?'red':DB.fat.mixIfood>=35?'amber':'green'}" style="margin-top:6px">${DB.fat.mixIfood>=35?icoWarn:icoOk}<div>${DB.fat.mixIfood>=50?'Concentração alta no iFood, você paga <b>'+fmtBRL(comissaoIfoodRS)+'</b>/mês de comissão. Estimule o canal próprio.':DB.fat.mixIfood>=35?'Comissão iFood estimada: <b>'+fmtBRL(comissaoIfoodRS)+'</b>/mês. Vale incentivar o balcão.':'Dependência de delivery sob controle.'}</div></div>
     </div>
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Resultado do mês</div></div></div>
+      <div class="section-head"><div><div class="ttl">Resultado estimado (modelo)</div><div class="desc">Projeção pelo CMV teórico e custos fixos. O resultado real está na Visão Geral e no DRE.</div></div></div>
       <table><tbody>
         <tr><td>Faturamento</td><td class="num"><b>${fmtBRL(t.faturamento)}</b></td></tr>
         <tr><td>(–) CMV (insumos + embalagem)</td><td class="num" style="color:var(--red)">${fmtBRL(-t.custoTot)}</td></tr>
@@ -2002,6 +2010,7 @@ function dreToggle(g){if(dreCollapsed.has(g))dreCollapsed.delete(g);else dreColl
 function viewDRE(){
   const ym=curYM(), d=dreLanc(ym), rec=d.recTot;
   const pct=v=>rec?v/rec*100:0;
+  const pctTxt=v=>rec?fmtPct(v/rec*100):'—'; // sem receita lançada, % sobre receita não faz sentido
   const cmvRS=Object.values(d.despesa['CMV']||{}).reduce((a,b)=>a+b,0);
   const cmvPct=pct(cmvRS), alvo=DB.cmvAlvo||30;
   const cmvCls=cmvClasse(cmvPct);const cmvStatus=cmvCls==='excelente'?['CMV excelente','var(--green)']:cmvCls==='atencao'?['dentro do aceitável','var(--amber)']:['acima da meta','var(--red)'];
@@ -2018,25 +2027,25 @@ function viewDRE(){
   <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:20px" class="dash-grid">
     <div class="card"><div class="card-pad" style="padding-bottom:6px"><div class="ttl">Demonstrativo de Resultado (DRE)</div><div class="desc">Resultado real do mês, receitas e despesas lançadas</div></div>
       <table class="dre-table"><tbody>
-        <tr class="grp"><td>Receita Bruta</td><td class="num">${fmtBRL(rec)}</td><td class="num" style="color:var(--soft)">100%</td></tr>
-        ${recGrupos.map(g=>Object.entries(d.receita[g]).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(v))}</td></tr>`).join('')).join('')}
+        <tr class="grp"><td>Receita Bruta</td><td class="num">${fmtBRL(rec)}</td><td class="num" style="color:var(--soft)">${rec?'100%':'—'}</td></tr>
+        ${recGrupos.map(g=>Object.entries(d.receita[g]).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${pctTxt(v)}</td></tr>`).join('')).join('')}
         ${ordered.map(g=>{const subs=d.despesa[g];const subtot=Object.values(subs).reduce((a,b)=>a+b,0);const col=dreCollapsed.has(g);
-          return `<tr class="dre-cat" onclick="dreToggle('${g.replace(/'/g,"\\'")}')" style="cursor:pointer"><td style="font-size:10.5px;letter-spacing:.6px;color:var(--gold);text-transform:uppercase;font-weight:700;padding:9px 13px 5px"><span style="display:inline-block;width:12px;color:var(--muted)">${col?'▸':'▾'}</span> ${g}</td><td class="num" style="font-weight:700;color:var(--red)">${fmtBRL(-subtot)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(subtot))}</td></tr>`
-          +(col?'':Object.entries(subs).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num" style="color:var(--red)">${fmtBRL(-v)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(v))}</td></tr>`).join(''));}).join('')}
-        <tr class="total"><td>(=) Resultado líquido</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(lucro)}</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtPct(pct(lucro))}</td></tr>
+          return `<tr class="dre-cat" onclick="dreToggle('${g.replace(/'/g,"\\'")}')" style="cursor:pointer"><td style="font-size:10.5px;letter-spacing:.6px;color:var(--gold);text-transform:uppercase;font-weight:700;padding:9px 13px 5px"><span style="display:inline-block;width:12px;color:var(--muted)">${col?'▸':'▾'}</span> ${g}</td><td class="num" style="font-weight:700;color:var(--red)">${fmtBRL(-subtot)}</td><td class="num" style="color:var(--soft)">${pctTxt(subtot)}</td></tr>`
+          +(col?'':Object.entries(subs).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num" style="color:var(--red)">${fmtBRL(-v)}</td><td class="num" style="color:var(--soft)">${pctTxt(v)}</td></tr>`).join(''));}).join('')}
+        <tr class="total"><td>(=) Resultado líquido</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(lucro)}</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${pctTxt(lucro)}</td></tr>
       </tbody></table>
     </div>
     <div>
       <div class="card card-pad" style="margin-bottom:16px"><div class="k-lbl">Margem líquida</div>
-        <div class="k-val" style="color:${lucro>=0?'var(--green)':'var(--red)'};font-size:34px">${fmtPct(pct(lucro))}</div>
+        <div class="k-val" style="color:${lucro>=0?'var(--green)':'var(--red)'};font-size:34px">${pctTxt(lucro)}</div>
         <div class="bar"><i style="width:${clamp(pct(lucro),2,100)}%;background:${barC(pct(lucro))}"></i></div>
         <div style="font-size:12.5px;color:var(--muted);margin-top:10px">${lucro>=0?'Operação no azul. ':'Resultado negativo. '}Referência em food service: 10–15%.</div></div>
       <div class="card card-pad" style="margin-bottom:16px"><div class="k-lbl">CMV real</div>
-        <div class="k-val" style="color:${cmvCorRef(cmvPct)};font-size:34px">${fmtPct(cmvPct)}</div>
-        <div style="font-size:12.5px;color:var(--muted);margin-top:6px">Meta (CMV alvo): ${fmtPct(alvo)} · <b style="color:${cmvStatus[1]}">${cmvStatus[0]}</b></div></div>
+        <div class="k-val" style="color:${rec?cmvCorRef(cmvPct):'var(--soft)'};font-size:34px">${rec?fmtPct(cmvPct):'—'}</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:6px">Meta (CMV alvo): ${fmtPct(alvo)}${rec?` · <b style="color:${cmvStatus[1]}">${cmvStatus[0]}</b>`:' · sem receita lançada'}</div></div>
       <div class="card card-pad"><div class="ttl" style="margin-bottom:14px">Composição da receita</div>
-        ${ordered.map(g=>{const v=pct(Object.values(d.despesa[g]).reduce((a,b)=>a+b,0));return `<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${g}</span><b>${fmtPct(v)}</b></div><div class="bar"><i style="width:${clamp(v,0,100)}%;background:var(--gold)"></i></div></div>`;}).join('')}
-        <div style="margin-top:4px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>Resultado</span><b>${fmtPct(pct(lucro))}</b></div><div class="bar"><i style="width:${clamp(pct(lucro),0,100)}%;background:var(--green)"></i></div></div>
+        ${ordered.map(g=>{const v=pct(Object.values(d.despesa[g]).reduce((a,b)=>a+b,0));return `<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${g}</span><b>${rec?fmtPct(v):'—'}</b></div><div class="bar"><i style="width:${clamp(v,0,100)}%;background:var(--gold)"></i></div></div>`;}).join('')}
+        <div style="margin-top:4px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>Resultado</span><b>${pctTxt(lucro)}</b></div><div class="bar"><i style="width:${clamp(pct(lucro),0,100)}%;background:var(--green)"></i></div></div>
       </div>
     </div>
   </div>`}`;
@@ -2470,18 +2479,18 @@ function finVisao(t){
   </div>
   <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:20px" class="dash-grid">
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Resultado do período</div><div class="desc" style="text-transform:capitalize">${periodoRange().label}</div></div>${periodoSeletor()}</div>
-      <table><tbody>
-        <tr><td>Receita bruta</td><td class="num"><b>${fmtBRL(t.faturamento)}</b></td></tr>
-        <tr><td>Receita líquida <span style="color:var(--soft);font-size:12px">(− impostos, comissões e taxas)</span></td><td class="num">${fmtBRL(recLiq)}</td></tr>
-        <tr><td>Margem de contribuição</td><td class="num">${fmtBRL(t.mcRS)} · ${fmtPct(t.mcPctMed)}</td></tr>
-        <tr><td>(−) Custos fixos + pessoal</td><td class="num" style="color:var(--red)">${fmtBRL(-t.fixos)}</td></tr>
-        <tr style="border-top:2px solid var(--navy)"><td><b>Lucro líquido</b></td><td class="num"><b style="color:${t.lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(t.lucro)}</b></td></tr>
-      </tbody></table>
+      <div class="section-head"><div><div class="ttl">Resultado do período</div><div class="desc">Real, pelos lançamentos do período</div></div>${periodoSeletor()}</div>
+      ${(t.faturamento>0||t.despLancTot>0)?`<table><tbody>
+        <tr><td>Receita bruta (lançada)</td><td class="num"><b>${fmtBRL(t.faturamento)}</b></td><td class="num" style="color:var(--soft)">${t.faturamento>0?'100%':'—'}</td></tr>
+        <tr><td>(−) CMV (lançado)</td><td class="num" style="color:var(--red)">${fmtBRL(-t.cmvLancRS)}</td><td class="num" style="color:var(--soft)">${t.faturamento>0?fmtPct(t.cmvLancRS/t.faturamento*100):'—'}</td></tr>
+        <tr><td>(−) Pessoal (lançado)</td><td class="num" style="color:var(--red)">${fmtBRL(-t.pessoalLancRS)}</td><td class="num" style="color:var(--soft)">${t.faturamento>0?fmtPct(t.pessoalLancRS/t.faturamento*100):'—'}</td></tr>
+        <tr><td>(−) Demais despesas (lançadas)</td><td class="num" style="color:var(--red)">${fmtBRL(-t.outrasLancRS)}</td><td class="num" style="color:var(--soft)">${t.faturamento>0?fmtPct(t.outrasLancRS/t.faturamento*100):'—'}</td></tr>
+        <tr style="border-top:2px solid var(--navy)"><td><b>(=) Resultado líquido (real)</b></td><td class="num"><b style="color:${t.lucroReal>=0?'var(--green)':'var(--red)'}">${fmtBRL(t.lucroReal)}</b></td><td class="num"><b style="color:${t.lucroReal>=0?'var(--green)':'var(--red)'}">${t.faturamento>0?fmtPct(t.margemReal):'—'}</b></td></tr>
+      </tbody></table>`:`<div style="font-size:13px;color:var(--soft);padding:10px 0">Nenhum lançamento neste período. <a onclick="finTab='lanc';viewFinanceiro()" style="color:var(--navy);cursor:pointer">Registrar lançamentos →</a></div>`}
       <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
-        <div class="dash-pill"><span>Folha (CLT)</span><b>${fmtBRL(t.folha)}</b></div>
-        <div class="dash-pill"><span>Pró-labore</span><b>${fmtBRL(t.prol)}</b></div>
-        <div class="dash-pill"><span>Provisões</span><b>${fmtBRL(t.provisoesRS)}</b></div>
+        <div class="dash-pill"><span>Despesas lançadas</span><b>${fmtBRL(t.despLancTot)}</b></div>
+        <div class="dash-pill"><span>Resultado projetado (modelo)</span><b>${fmtBRL(t.lucro)}</b></div>
+        <div class="dash-pill"><span>Margem real</span><b>${t.faturamento>0?fmtPct(t.margemReal):'—'}</b></div>
       </div>
     </div>
     <div class="card card-pad">
