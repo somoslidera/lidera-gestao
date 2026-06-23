@@ -874,7 +874,7 @@ function totaisGerais(R){
   const mix=(DB.fat.mixIfood||0)/100;
   // faturamento real: soma das Receitas lançadas no período; fallback p/ valor manual × nº de meses
   const recReal=(DB.lancamentos||[]).filter(l=>l.data>=R.de&&l.data<=R.ate&&grupoTipo(l.grupo)==='receita').reduce((s,l)=>s+(l.valor||0),0);
-  const faturamento=recReal>0?recReal:((DB.fat.lancado||0)*nm);
+  const faturamento=recReal; // faturamento vem 100% das Receitas lançadas no período
   const cmvPct=receitaEst>0?(custoTot/receitaEst):0;            // CMV teórico (proporção do cardápio)
   const recIfood=faturamento*mix, recDireto=faturamento*(1-mix), cmvRS=faturamento*cmvPct;
   const comissaoRS=recIfood*((DB.fin.comissaoIfood||0)/100);
@@ -1054,10 +1054,10 @@ function viewDashboard(){
   <!-- Faturamento + Ponto de equilíbrio -->
   <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px" class="dash-grid">
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Faturamento</div><div class="desc">${DB.fat.lancado>0?'Lançado no Financeiro':'Lance suas vendas no Financeiro'}</div></div></div>
+      <div class="section-head"><div><div class="ttl">Faturamento</div><div class="desc">${t.faturamento>0?'Receitas lançadas no período':'Lance suas receitas em Lançamentos'}</div></div></div>
       <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
         <div class="be-num" style="font-size:34px;color:var(--navy)">${fmtBRL(t.faturamento)}</div>
-        ${DB.fat.lancado>0?'':'<a class="tag tag-gold" style="margin-bottom:8px;cursor:pointer" onclick="go(\'faturamento\')">Lançar faturamento →</a>'}
+        ${t.faturamento>0?'':'<a class="tag tag-gold" style="margin-bottom:8px;cursor:pointer" onclick="go(\'financeiro\')">Lançar receitas →</a>'}
       </div>
       <div class="grid-2" style="margin-top:18px">
         <div style="border:1px solid var(--line);border-radius:12px;padding:14px">
@@ -1878,7 +1878,7 @@ function planoAcao(){
 /* ===================== FATURAMENTO ===================== */
 function viewFaturamento(){
   const R=periodoRange();
-  $('#topActions').innerHTML=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${periodoSeletor()}<button class="btn btn-ghost" onclick="editFaturamento()">${icoEdit} Lançar faturamento</button></div>`;
+  $('#topActions').innerHTML=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${periodoSeletor()}<button class="btn btn-ghost" onclick="editMixIfood()">${icoEdit} Editar % iFood</button></div>`;
   const t=totaisGerais(R);
   const recBalcao=t.recDireto, recIfood=t.recIfood;
   const comissaoIfoodRS=recIfood*(DB.fin.comissaoIfood/100);
@@ -1910,15 +1910,15 @@ function viewFaturamento(){
     </div>
   </div>`;
 }
-function editFaturamento(){
-  modal(`<div class="modal-head"><h3>Lançar faturamento</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+function editMixIfood(){
+  modal(`<div class="modal-head"><h3>Dependência iFood</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div class="field"><label>Faturamento bruto do mês <span class="hint">total de vendas realizadas</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="ft_lan" inputmode="numeric" value="${fmtMoneyInput(DB.fat.lancado||0)}" oninput="moneyMask(this)"></div></div>
     <div class="field"><label>% do faturamento via iFood <span class="hint">mix de canal</span></label><input class="input" id="ft_mix" type="number" step="1" value="${DB.fat.mixIfood||''}" placeholder="0"></div>
+    <div style="font-size:12px;color:var(--soft)">O faturamento é calculado automaticamente a partir das <b>Receitas lançadas</b> em Financeiro → Lançamentos.</div>
   </div>
-  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveFaturamento()">Salvar</button></div>`);
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveMixIfood()">Salvar</button></div>`);
 }
-function saveFaturamento(){DB.fat.lancado=moneyVal('ft_lan');DB.fat.mixIfood=clamp(parseFloat($('#ft_mix').value)||0,0,100);save();closeModal();viewFaturamento();toast('Faturamento atualizado');}
+function saveMixIfood(){DB.fat.mixIfood=clamp(parseFloat($('#ft_mix').value)||0,0,100);save();closeModal();viewFaturamento();toast('Mix iFood atualizado');}
 
 /* ===================== DRE ===================== */
 function dreCustosDetalhe(){
