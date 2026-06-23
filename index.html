@@ -2039,6 +2039,7 @@ function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast
   save();viewFinanceiro();toast('Lançamento registrado');}
 function delLancamento(id){DB.lancamentos=DB.lancamentos.filter(l=>l.id!==id);save();viewFinanceiro();}
 function formasRows(){return (DB.formasPagamento||[]).map((f,i)=>`<span class="cat-chip">${esc(f)}<button onclick="delForma(${i})">${icoX}</button></span>`).join('')||'<span style="color:var(--soft);font-size:12px">Nenhuma forma cadastrada.</span>';}
+function formaSelect(val,onchange){const fs=DB.formasPagamento||[];return `<select class="input" title="Forma de pagamento" onchange="${onchange}"><option value="">—</option>${fs.map(x=>`<option ${x===(val||'')?'selected':''}>${esc(x)}</option>`).join('')}</select>`;}
 function addForma(){const v=($('#fp_novo').value||'').trim();if(!v)return;DB.formasPagamento=DB.formasPagamento||[];if(DB.formasPagamento.includes(v))return toast('Essa forma já existe');DB.formasPagamento.push(v);save();$('#fp_novo').value='';$('#fp_list').innerHTML=formasRows();}
 function delForma(i){DB.formasPagamento.splice(i,1);save();$('#fp_list').innerHTML=formasRows();}
 function formasModal(){
@@ -2258,14 +2259,14 @@ function finCategorias(){
 /* ===================== FINANCEIRO ===================== */
 let finTab='visao';
 const FIN_TEMPLATES={
-  contasPagar:()=>({id:uid(),descricao:'',grupo:'Despesas Gerais',sub:((DB.categorias&&DB.categorias['Despesas Gerais'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,pago:false}),
-  contasReceber:()=>({id:uid(),descricao:'',grupo:'Receita',sub:((DB.categorias&&DB.categorias['Receita'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,recebido:false}),
+  contasPagar:()=>({id:uid(),descricao:'',grupo:'Despesas Gerais',sub:((DB.categorias&&DB.categorias['Despesas Gerais'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,pago:false,forma:''}),
+  contasReceber:()=>({id:uid(),descricao:'',grupo:'Receita',sub:((DB.categorias&&DB.categorias['Receita'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,recebido:false,forma:''}),
   funcionarios:()=>({id:uid(),nome:'',cargo:'',salario:0,diaVenc:0,desde:ymNow()}),
   socios:()=>({id:uid(),nome:'',proLabore:0,diaVenc:0,desde:ymNow()}),
   meiosPagamento:()=>({id:uid(),nome:'',tipo:'Crédito',taxa:0}),
   fornecedores:()=>({id:uid(),nome:'',contato:''}),
   contasBancarias:()=>({id:uid(),nome:'',saldo:0}),
-  custosFixos:()=>({id:uid(),nome:'',valor:0,grupo:'Despesas Gerais',sub:((DB.categorias&&DB.categorias['Despesas Gerais'])||{subs:[]}).subs[0]||'',diaVenc:0,desde:ymNow()}),
+  custosFixos:()=>({id:uid(),nome:'',valor:0,grupo:'Despesas Gerais',sub:((DB.categorias&&DB.categorias['Despesas Gerais'])||{subs:[]}).subs[0]||'',diaVenc:0,desde:ymNow(),forma:''}),
   provisoes:()=>({id:uid(),nome:'',valor:0}),
 };
 function finAdd(key){DB.fin[key]=DB.fin[key]||[];DB.fin[key].push(FIN_TEMPLATES[key]());save();viewFinanceiro();}
@@ -2321,7 +2322,7 @@ function syncContaLanc(key,conta){
   if(ativo&&(conta.valor||0)>0){
     DB.lancamentos.push({id:uid(),fromConta:conta.id,data:conta.vencimento||hojeISO(),
       grupo:conta.grupo||(key==='contasPagar'?'Despesas Gerais':'Receita'),sub:conta.sub||'',
-      descricao:conta.descricao||'',valor:conta.valor||0,forma:''});
+      descricao:conta.descricao||'',valor:conta.valor||0,forma:conta.forma||''});
   }
 }
 function contaToggle(key,i){const row=DB.fin[key][i];const cf=key==='contasPagar'?'pago':'recebido';
@@ -2340,12 +2341,13 @@ function finContas(key){
   const aberto=noMes.filter(c=>!c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const feito=noMes.filter(c=>c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const linhas=all.map((row,i)=>{if(row.vencimento&&ymOf(row.vencimento)!==ym)return '';const subs=(DB.categorias[row.grupo]||{subs:[]}).subs;return `
-    <div class="comp-row" style="grid-template-columns:1fr 1.5fr 1.5fr 132px 118px 100px 28px;align-items:center">
+    <div class="comp-row" style="grid-template-columns:1fr 1.25fr 1.25fr 118px 106px 104px 92px 28px;align-items:center">
       <input class="input" value="${(row.descricao||'').replace(/"/g,'&quot;')}" placeholder="Descrição" oninput="DB.fin.${key}[${i}].descricao=this.value;contaResync('${key}',${i})">
       <select class="input" onchange="contaSetGrupo('${key}',${i},this.value)">${grupos.map(g=>`<option ${g===row.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
       <select class="input" onchange="DB.fin.${key}[${i}].sub=this.value;contaResync('${key}',${i})">${subs.map(s=>`<option ${s===row.sub?'selected':''}>${esc(s)}</option>`).join('')||'<option value="">—</option>'}</select>
       <input type="date" class="input" value="${row.vencimento||''}" onchange="DB.fin.${key}[${i}].vencimento=this.value;contaResync('${key}',${i});viewFinanceiro()">
       <div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(row.valor||0)}" oninput="DB.fin.${key}[${i}].valor=moneyMask(this);contaResync('${key}',${i})" onblur="viewFinanceiro()"></div>
+      ${formaSelect(row.forma,`DB.fin.${key}[${i}].forma=this.value;contaResync('${key}',${i})`)}
       <button class="icon-btn" onclick="contaToggle('${key}',${i})" title="Marcar como ${fLabel.toLowerCase()}" style="white-space:nowrap;width:auto;padding:0 10px;${row[cf]?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${row[cf]?'✓ ':'○ '}${fLabel}</button>
       <button class="mini-del" onclick="deleteConta('${key}',${i})">${icoX}</button>
     </div>`;}).join('');
@@ -2367,14 +2369,14 @@ function gerarRecorrentesMes(ym){
   if(!ym)return false;DB.fin.contasPagar=DB.fin.contasPagar||[];DB.fin.recGerados=DB.fin.recGerados||{};
   const last=new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate();
   let novo=false;
-  const add=(src,nome,grupo,sub,dia,valor,desde,ate)=>{const k=src+'|'+ym;if(DB.fin.recGerados[k])return;
+  const add=(src,nome,grupo,sub,dia,valor,desde,ate,forma)=>{const k=src+'|'+ym;if(DB.fin.recGerados[k])return;
     if(desde&&ym<desde)return; // só gera a partir do mês de cadastro
     if(ate&&ym>ate)return;     // recorrência encerrada a partir de certo mês
-    DB.fin.contasPagar.push({id:uid(),descricao:nome,grupo,sub,vencimento:ym+'-'+pad2(Math.min(last,Math.max(1,dia||5))),valor:valor||0,pago:false,fromRec:src,mesRef:ym});
+    DB.fin.contasPagar.push({id:uid(),descricao:nome,grupo,sub,vencimento:ym+'-'+pad2(Math.min(last,Math.max(1,dia||5))),valor:valor||0,pago:false,fromRec:src,mesRef:ym,forma:forma||''});
     DB.fin.recGerados[k]=true;novo=true;};
-  (DB.fin.custosFixos||[]).forEach(c=>{if(c.diaVenc>0)add('cf_'+c.id,c.nome||'Custo fixo',c.grupo||'Despesas Gerais',c.sub||'',c.diaVenc,c.valor,c.desde,c.ate);});
-  (DB.fin.funcionarios||[]).forEach(f=>{if(f.diaVenc>0&&(f.salario||0)>0)add('fn_'+f.id,(f.nome||'Funcionário')+' · salário','Mão-de-Obra','Salários',f.diaVenc,f.salario,f.desde,f.ate);});
-  (DB.fin.socios||[]).forEach(s=>{if(s.diaVenc>0&&(s.proLabore||0)>0)add('sc_'+s.id,(s.nome||'Sócio')+' · pró-labore','Mão-de-Obra','Pró-labore',s.diaVenc,s.proLabore,s.desde,s.ate);});
+  (DB.fin.custosFixos||[]).forEach(c=>{if(c.diaVenc>0)add('cf_'+c.id,c.nome||'Custo fixo',c.grupo||'Despesas Gerais',c.sub||'',c.diaVenc,c.valor,c.desde,c.ate,c.forma);});
+  (DB.fin.funcionarios||[]).forEach(f=>{if(f.diaVenc>0&&(f.salario||0)>0)add('fn_'+f.id,(f.nome||'Funcionário')+' · salário','Mão-de-Obra','Salários',f.diaVenc,f.salario,f.desde,f.ate,f.forma);});
+  (DB.fin.socios||[]).forEach(s=>{if(s.diaVenc>0&&(s.proLabore||0)>0)add('sc_'+s.id,(s.nome||'Sócio')+' · pró-labore','Mão-de-Obra','Pró-labore',s.diaVenc,s.proLabore,s.desde,s.ate,s.forma);});
   return novo;
 }
 function setRecAte(src,ate){ // encerra a recorrência de uma origem (custo fixo / funcionário / sócio)
@@ -2423,12 +2425,13 @@ function recSetGrupo(i,g){const r=DB.fin.custosFixos[i];r.grupo=g;const subs=(DB
 function finRecorrentes(){
   const arr=DB.fin.custosFixos||[];const grupos=Object.keys(DB.categorias).filter(g=>grupoTipo(g)!=='receita');
   return `${arr.length?arr.map((r,i)=>{const subs=(DB.categorias[r.grupo]||{subs:[]}).subs;return `
-    <div class="comp-row" style="grid-template-columns:1.3fr 1fr 1fr 72px 110px 30px;align-items:center">
+    <div class="comp-row" style="grid-template-columns:1.2fr .9fr .9fr 60px 100px 96px 30px;align-items:center">
       <input class="input" ${r.auto?'title="Importado da anamnese — recalculado ao salvar a anamnese" style="border-left:3px solid var(--gold)"':''} value="${(r.nome||'').replace(/"/g,'&quot;')}" placeholder="Nome (ex.: Aluguel)" oninput="DB.fin.custosFixos[${i}].nome=this.value;finTouch()">
       <select class="input" onchange="recSetGrupo(${i},this.value)">${grupos.map(g=>`<option ${g===r.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
       <select class="input" onchange="DB.fin.custosFixos[${i}].sub=this.value;finTouch()">${subs.map(s=>`<option ${s===r.sub?'selected':''}>${esc(s)}</option>`).join('')||'<option value="">—</option>'}</select>
       <input class="input" type="number" min="1" max="31" value="${r.diaVenc||''}" placeholder="Dia" title="Dia do vencimento" onchange="DB.fin.custosFixos[${i}].diaVenc=parseInt(this.value)||0;save()">
       <div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(r.valor||0)}" oninput="DB.fin.custosFixos[${i}].valor=moneyMask(this);finTouch()"></div>
+      ${formaSelect(r.forma,`DB.fin.custosFixos[${i}].forma=this.value;save()`)}
       <button class="mini-del" onclick="DB.fin.custosFixos.splice(${i},1);save();viewFinanceiro()">${icoX}</button>
     </div>`;}).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhum custo fixo.</div>`}
     <button class="btn btn-ghost btn-sm" onclick="finAdd('custosFixos')" style="margin-top:6px">${icoPlus} Adicionar</button>
@@ -2477,7 +2480,7 @@ function finVisao(t){
 function finCustosFixos(){
   return `<div class="card card-pad" style="max-width:980px">
     <div class="section-head"><div><div class="ttl">Custos fixos mensais (recorrentes)</div><div class="desc">Aluguel, energia, etc. — com dia de vencimento aparecem todo mês em Contas a Pagar</div></div></div>
-    <div class="comp-row" style="grid-template-columns:1.3fr 1fr 1fr 72px 110px 30px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 0 4px"><span>Nome</span><span>Grupo</span><span>Subcategoria</span><span>Dia venc.</span><span>Valor previsto</span><span></span></div>
+    <div class="comp-row" style="grid-template-columns:1.2fr .9fr .9fr 60px 100px 96px 30px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 0 4px"><span>Nome</span><span>Grupo</span><span>Subcategoria</span><span>Dia venc.</span><span>Valor previsto</span><span>Forma</span><span></span></div>
     ${finRecorrentes()}
     <div style="margin-top:18px"><div class="ttl" style="font-size:13px;margin-bottom:8px">Provisões a reservar / mês</div>
       ${finList('provisoes',[{f:'nome',ph:'Nome',w:'1.5fr'},{f:'valor',type:'money',w:'120px'}])}</div>
