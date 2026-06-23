@@ -843,7 +843,7 @@ function syncAnamneseCustosFixos(){
   itens.forEach(it=>{
     const r=DB.fin.custosFixos.find(x=>x.auto&&x.src===it.src);
     if(r){r.nome=it.nome;r.grupo=it.grupo;r.sub=it.sub;r.valor=it.valor;} // preserva diaVenc definido na aba
-    else DB.fin.custosFixos.push({id:uid(),auto:true,src:it.src,nome:it.nome,grupo:it.grupo,sub:it.sub,valor:it.valor,diaVenc:0});
+    else DB.fin.custosFixos.push({id:uid(),auto:true,src:it.src,nome:it.nome,grupo:it.grupo,sub:it.sub,valor:it.valor,diaVenc:0,desde:ymNow()});
   });
 }
 /* ===== Filtro de período (Dashboard / Faturamento) ===== */
@@ -953,10 +953,10 @@ function normData(){
   (f.contasReceber||[]).forEach(c=>{if(c.grupo==null){c.grupo='Receita';c.sub=c.categoria||'Outras Receitas';}});
   // custos fixos recorrentes: grupo/sub do DRE + dia de vencimento (geram contas a pagar todo mês)
   f.recGerados=f.recGerados||{};
-  (f.custosFixos||[]).forEach(c=>{if(!DB.categorias[c.grupo]){c.grupo='Despesas Gerais';c.sub=c.sub||((DB.categorias['Despesas Gerais']||{subs:[]}).subs[0]||'');}if(c.diaVenc==null)c.diaVenc=0;});
+  (f.custosFixos||[]).forEach(c=>{if(!DB.categorias[c.grupo]){c.grupo='Despesas Gerais';c.sub=c.sub||((DB.categorias['Despesas Gerais']||{subs:[]}).subs[0]||'');}if(c.diaVenc==null)c.diaVenc=0;if(c.desde==null)c.desde=ymNow();});
   if(!f._fixosMigrados){syncAnamneseCustosFixos();f._fixosMigrados=true;} // espelha custos da anamnese p/ aba Custos Fixos (1x)
-  (f.funcionarios||[]).forEach(x=>{if(x.diaVenc==null)x.diaVenc=0;});
-  (f.socios||[]).forEach(x=>{if(x.diaVenc==null)x.diaVenc=0;});
+  (f.funcionarios||[]).forEach(x=>{if(x.diaVenc==null)x.diaVenc=0;if(x.desde==null)x.desde=ymNow();});
+  (f.socios||[]).forEach(x=>{if(x.diaVenc==null)x.diaVenc=0;if(x.desde==null)x.desde=ymNow();});
   if(DB.onboardingFeito==null)DB.onboardingFeito=(Object.keys(DB.insumos||{}).length>0||Object.keys(DB.fichas||{}).length>0);
 }
 function renderFoot(){normData();const fn=$('#footName');if(fn)fn.textContent=(DB.conta&&DB.conta.restaurante)||'Seu Restaurante';}
@@ -1976,6 +1976,8 @@ function lancSetFiltro(k,v){lancFiltro[k]=v;viewFinanceiro();}
 function lancSetFiltroData(v){lancFiltro.data=v;if(v)lancYM=ymOf(v);viewFinanceiro();}
 function lancLimparFiltro(){lancFiltro={data:'',grupo:'',sub:'',desc:'',forma:''};viewFinanceiro();}
 function curYM(){return lancYM||ymOf(hojeISO());}
+function ymNow(){return ymOf(hojeISO());} // mês-calendário atual (AAAA-MM)
+function ymMinus1(ym){let y=+ym.slice(0,4),m=+ym.slice(5,7)-1;if(m<1){m=12;y--;}return y+'-'+String(m).padStart(2,'0');}
 function grupoTipo(g){const c=DB.categorias&&DB.categorias[g];return c?c.tipo:'despesa';}
 function lancMes(ym){return (DB.lancamentos||[]).filter(l=>ymOf(l.data)===ym);}
 function dreLanc(ym){
@@ -2258,12 +2260,12 @@ let finTab='visao';
 const FIN_TEMPLATES={
   contasPagar:()=>({id:uid(),descricao:'',grupo:'Despesas Gerais',sub:((DB.categorias&&DB.categorias['Despesas Gerais'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,pago:false}),
   contasReceber:()=>({id:uid(),descricao:'',grupo:'Receita',sub:((DB.categorias&&DB.categorias['Receita'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,recebido:false}),
-  funcionarios:()=>({id:uid(),nome:'',cargo:'',salario:0,diaVenc:0}),
-  socios:()=>({id:uid(),nome:'',proLabore:0,diaVenc:0}),
+  funcionarios:()=>({id:uid(),nome:'',cargo:'',salario:0,diaVenc:0,desde:ymNow()}),
+  socios:()=>({id:uid(),nome:'',proLabore:0,diaVenc:0,desde:ymNow()}),
   meiosPagamento:()=>({id:uid(),nome:'',tipo:'Crédito',taxa:0}),
   fornecedores:()=>({id:uid(),nome:'',contato:''}),
   contasBancarias:()=>({id:uid(),nome:'',saldo:0}),
-  custosFixos:()=>({id:uid(),nome:'',valor:0,grupo:'Despesas Gerais',sub:((DB.categorias&&DB.categorias['Despesas Gerais'])||{subs:[]}).subs[0]||'',diaVenc:0}),
+  custosFixos:()=>({id:uid(),nome:'',valor:0,grupo:'Despesas Gerais',sub:((DB.categorias&&DB.categorias['Despesas Gerais'])||{subs:[]}).subs[0]||'',diaVenc:0,desde:ymNow()}),
   provisoes:()=>({id:uid(),nome:'',valor:0}),
 };
 function finAdd(key){DB.fin[key]=DB.fin[key]||[];DB.fin[key].push(FIN_TEMPLATES[key]());save();viewFinanceiro();}
@@ -2345,7 +2347,7 @@ function finContas(key){
       <input type="date" class="input" value="${row.vencimento||''}" onchange="DB.fin.${key}[${i}].vencimento=this.value;contaResync('${key}',${i});viewFinanceiro()">
       <div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(row.valor||0)}" oninput="DB.fin.${key}[${i}].valor=moneyMask(this);contaResync('${key}',${i})" onblur="viewFinanceiro()"></div>
       <button class="icon-btn" onclick="contaToggle('${key}',${i})" title="Marcar como ${fLabel.toLowerCase()}" style="white-space:nowrap;width:auto;padding:0 10px;${row[cf]?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${row[cf]?'✓ ':'○ '}${fLabel}</button>
-      <button class="mini-del" onclick="DB.lancamentos=DB.lancamentos.filter(l=>l.fromConta!=='${row.id}');DB.fin.${key}.splice(${i},1);save();viewFinanceiro()">${icoX}</button>
+      <button class="mini-del" onclick="deleteConta('${key}',${i})">${icoX}</button>
     </div>`;}).join('');
   return `<div class="card card-pad" style="max-width:1010px">
     <div class="section-head"><div><div class="ttl">${isPagar?'Contas a Pagar':'Contas a Receber'}</div><div class="desc">Marque “${fLabel}” e o valor lança automaticamente no DRE e no Fluxo de Caixa</div></div>
@@ -2365,13 +2367,57 @@ function gerarRecorrentesMes(ym){
   if(!ym)return false;DB.fin.contasPagar=DB.fin.contasPagar||[];DB.fin.recGerados=DB.fin.recGerados||{};
   const last=new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate();
   let novo=false;
-  const add=(src,nome,grupo,sub,dia,valor)=>{const k=src+'|'+ym;if(DB.fin.recGerados[k])return;
+  const add=(src,nome,grupo,sub,dia,valor,desde,ate)=>{const k=src+'|'+ym;if(DB.fin.recGerados[k])return;
+    if(desde&&ym<desde)return; // só gera a partir do mês de cadastro
+    if(ate&&ym>ate)return;     // recorrência encerrada a partir de certo mês
     DB.fin.contasPagar.push({id:uid(),descricao:nome,grupo,sub,vencimento:ym+'-'+pad2(Math.min(last,Math.max(1,dia||5))),valor:valor||0,pago:false,fromRec:src,mesRef:ym});
     DB.fin.recGerados[k]=true;novo=true;};
-  (DB.fin.custosFixos||[]).forEach(c=>{if(c.diaVenc>0)add('cf_'+c.id,c.nome||'Custo fixo',c.grupo||'Despesas Gerais',c.sub||'',c.diaVenc,c.valor);});
-  (DB.fin.funcionarios||[]).forEach(f=>{if(f.diaVenc>0&&(f.salario||0)>0)add('fn_'+f.id,(f.nome||'Funcionário')+' · salário','Mão-de-Obra','Salários',f.diaVenc,f.salario);});
-  (DB.fin.socios||[]).forEach(s=>{if(s.diaVenc>0&&(s.proLabore||0)>0)add('sc_'+s.id,(s.nome||'Sócio')+' · pró-labore','Mão-de-Obra','Pró-labore',s.diaVenc,s.proLabore);});
+  (DB.fin.custosFixos||[]).forEach(c=>{if(c.diaVenc>0)add('cf_'+c.id,c.nome||'Custo fixo',c.grupo||'Despesas Gerais',c.sub||'',c.diaVenc,c.valor,c.desde,c.ate);});
+  (DB.fin.funcionarios||[]).forEach(f=>{if(f.diaVenc>0&&(f.salario||0)>0)add('fn_'+f.id,(f.nome||'Funcionário')+' · salário','Mão-de-Obra','Salários',f.diaVenc,f.salario,f.desde,f.ate);});
+  (DB.fin.socios||[]).forEach(s=>{if(s.diaVenc>0&&(s.proLabore||0)>0)add('sc_'+s.id,(s.nome||'Sócio')+' · pró-labore','Mão-de-Obra','Pró-labore',s.diaVenc,s.proLabore,s.desde,s.ate);});
   return novo;
+}
+function setRecAte(src,ate){ // encerra a recorrência de uma origem (custo fixo / funcionário / sócio)
+  const id=src.slice(3);const arr=src.startsWith('cf_')?DB.fin.custosFixos:src.startsWith('fn_')?DB.fin.funcionarios:src.startsWith('sc_')?DB.fin.socios:null;
+  if(!arr)return;const o=(arr||[]).find(x=>x.id===id);if(o)o.ate=ate;}
+function rmContaLanc(id){DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromConta!==id);}
+function deleteConta(key,i){
+  const row=DB.fin[key][i];if(!row)return;
+  if(key==='contasPagar'&&row.fromRec){delContaRecorrente(i);return;} // recorrente → pergunta escopo
+  rmContaLanc(row.id);DB.fin[key].splice(i,1);save();viewFinanceiro();
+}
+function delContaRecorrente(i){
+  const row=DB.fin.contasPagar[i];if(!row)return;
+  const ym=row.mesRef||ymOf(row.vencimento);
+  window._delRec={src:row.fromRec,ym,id:row.id};
+  modal(`<div class="modal-head"><h3>Excluir lançamento recorrente</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:13.5px;margin-bottom:6px"><b>${esc(row.descricao||'Custo fixo')}</b> · ${ymLabel(ym)}</div>
+    <div style="font-size:13px;color:var(--muted)">Este custo é recorrente. O que deseja excluir?</div>
+  </div>
+  <div class="modal-foot" style="flex-wrap:wrap;gap:8px">
+    <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-ghost" onclick="delRecAplicar('mes')">Somente este mês</button>
+    <button class="btn btn-primary" onclick="delRecAplicar('posteriores')">Este e os posteriores</button>
+  </div>`);
+}
+function delRecAplicar(escopo){
+  const d=window._delRec;if(!d)return closeModal();
+  if(escopo==='mes'){
+    // remove só esta instância; recGerados[src|ym] permanece → não regenera este mês
+    rmContaLanc(d.id);DB.fin.contasPagar=(DB.fin.contasPagar||[]).filter(c=>c.id!==d.id);
+    save();closeModal();viewFinanceiro();toast('Lançamento removido (somente este mês)');
+  }else{
+    // encerra a recorrência a partir deste mês: ate = mês anterior
+    setRecAte(d.src,ymMinus1(d.ym));
+    DB.fin.contasPagar=(DB.fin.contasPagar||[]).filter(c=>{
+      const cym=c.mesRef||ymOf(c.vencimento);
+      if(c.fromRec===d.src&&cym>=d.ym){rmContaLanc(c.id);delete DB.fin.recGerados[d.src+'|'+cym];return false;}
+      return true;});
+    Object.keys(DB.fin.recGerados||{}).forEach(k=>{if(k.indexOf(d.src+'|')===0&&k.split('|')[1]>=d.ym)delete DB.fin.recGerados[k];});
+    save();closeModal();viewFinanceiro();toast('Recorrência encerrada a partir deste mês');
+  }
+  window._delRec=null;
 }
 function recSetGrupo(i,g){const r=DB.fin.custosFixos[i];r.grupo=g;const subs=(DB.categorias[g]||{subs:[]}).subs;if(!subs.includes(r.sub))r.sub=subs[0]||'';save();viewFinanceiro();}
 function finRecorrentes(){
