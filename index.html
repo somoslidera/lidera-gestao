@@ -891,13 +891,22 @@ function totaisGerais(R){
   const ticket=vendas?faturamento/vendas:0;
   const lucro=mcRS-fixos;
   const dinheiroMesa=comissaoRS+taxaCartaoRS;
-  const faturamentoEq=mcPctMed>0?fixos/(mcPctMed/100):Infinity;
+  // CMV usado no PONTO DE EQUILÍBRIO (escolhível): real (padrão) · lançamentos · valor digitado · teórico (fallback)
+  const peFonte=DB.fin.peCmvFonte||'real';
+  let cmvEqPct,cmvEqFonteUsada=peFonte;
+  if(peFonte==='manual'){cmvEqPct=DB.fin.peCmvManual||0;}
+  else if(peFonte==='lanc'){const cl=cmvLancPeriodo(R);if(cl&&cl.pct!=null){cmvEqPct=cl.pct;}else{cmvEqPct=cmv;cmvEqFonteUsada='teorico';}}
+  else if(peFonte==='teorico'){cmvEqPct=cmv;}
+  else {const cr=cmvRealPeriodo(R);if(cr!=null){cmvEqPct=cr;}else{cmvEqPct=cmv;cmvEqFonteUsada='teorico';}}
+  const custosVarEq=faturamento*(cmvEqPct/100)+comissaoRS+impostoRS+taxaCartaoRS;
+  const mcPctEq=faturamento?(faturamento-custosVarEq)/faturamento*100:mcPctMed;
+  const faturamentoEq=mcPctEq>0?fixos/(mcPctEq/100):Infinity;
   const diaEq=faturamento>0&&isFinite(faturamentoEq)?faturamentoEq/faturamento*30:Infinity;
   return {receita:receitaEst,faturamento,custoTot:cmvRS,cmv,vendas,ticket,
     recIfood,recDireto,comissaoRS,impostoRS,taxaCartaoRS,custosVar,custosVarPct:faturamento?custosVar/faturamento*100:0,
     fixosBase,provisoesRS,folha,prol,fixos,fixosPct:faturamento?fixos/faturamento*100:0,
     mcRS,mcPctMed,mcTot:mcRS,lucro,margemLiq:faturamento?lucro/faturamento*100:0,
-    dinheiroMesa,dinheiroMesaPct:faturamento?dinheiroMesa/faturamento*100:0,faturamentoEq,diaEq};
+    dinheiroMesa,dinheiroMesaPct:faturamento?dinheiroMesa/faturamento*100:0,faturamentoEq,diaEq,cmvEqPct,cmvEqFonte:peFonte,cmvEqFonteUsada,mcPctEq};
 }
 
 /* ===================== ROTEADOR ===================== */
@@ -1883,12 +1892,13 @@ function viewFaturamento(){
   const recBalcao=t.recDireto, recIfood=t.recIfood;
   const comissaoIfoodRS=recIfood*(DB.fin.comissaoIfood/100);
   const diaEqTxt=!isFinite(t.diaEq)?'—':t.diaEq>30?'> 30 dias':'dia '+Math.ceil(t.diaEq);
+  const cmvFonteLbl={real:'CMV real',lanc:'CMV lançamentos',manual:'CMV digitado',teorico:'CMV teórico'}[t.cmvEqFonteUsada]||'CMV';
   $('#view').innerHTML=`
   <div class="kpi-grid">
     <div class="kpi"><div class="ic ic-navy">${ico('cash')}</div><div class="k-lbl">Faturamento</div><div class="k-val">${fmtBRL(t.faturamento)}</div><div class="k-sub" style="color:var(--soft);text-transform:capitalize">${R.label}</div></div>
     <div class="kpi"><div class="ic ic-gold">${ico('mc')}</div><div class="k-lbl">Ticket médio</div><div class="k-val">${fmtBRL(t.ticket)}</div><div class="k-sub">por pedido</div></div>
     <div class="kpi"><div class="ic ic-${DB.fat.mixIfood>=50?'red':'navy'}">${ico('cmv')}</div><div class="k-lbl">Dependência iFood</div><div class="k-val">${fmtPct(DB.fat.mixIfood)}</div><div class="k-sub ${DB.fat.mixIfood>=50?'trend-down':''}">do faturamento</div></div>
-    <div class="kpi"><div class="ic ${isFinite(t.diaEq)&&t.diaEq<=30?'ic-green':'ic-amber'}">${ico('profit')}</div><div class="k-lbl">Ponto de equilíbrio</div><div class="k-val">${diaEqTxt}</div><div class="k-sub">${isFinite(t.faturamentoEq)?fmtBRL(t.faturamentoEq):'—'}</div></div>
+    <div class="kpi"><div class="ic ${isFinite(t.diaEq)&&t.diaEq<=30?'ic-green':'ic-amber'}">${ico('profit')}</div><div class="k-lbl">Ponto de equilíbrio</div><div class="k-val">${diaEqTxt}</div><div class="k-sub">${isFinite(t.faturamentoEq)?fmtBRL(t.faturamentoEq):'—'} · ${cmvFonteLbl} ${fmtPct(t.cmvEqPct)}</div></div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="dash-grid">
     <div class="card card-pad">
@@ -2519,6 +2529,12 @@ function finParam(){
         <div class="field"><label>Taxa de cartão <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaCartao}" onchange="DB.fin.taxaCartao=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
       </div>
       <div class="field"><label>CMV alvo <span class="hint">% meta</span></label><input class="input" type="number" step="0.5" value="${DB.cmvAlvo}" onchange="DB.cmvAlvo=parseFloat(this.value)||30;save();viewFinanceiro()"></div>
+      <div class="field"><label>CMV do ponto de equilíbrio <span class="hint">qual CMV usar no cálculo</span></label>
+        <select class="input" onchange="DB.fin.peCmvFonte=this.value;save();viewFinanceiro()">
+          ${[['real','CMV real (contagem) · padrão'],['lanc','CMV dos lançamentos'],['manual','Valor digitado'],['teorico','CMV teórico (cardápio)']].map(([v,l])=>`<option value="${v}" ${ (fin.peCmvFonte||'real')===v?'selected':''}>${l}</option>`).join('')}
+        </select></div>
+      ${(fin.peCmvFonte||'real')==='manual'?`<div class="field"><label>CMV digitado <span class="hint">% sobre o faturamento</span></label><input class="input" type="number" step="0.5" value="${fin.peCmvManual||''}" placeholder="0" onchange="DB.fin.peCmvManual=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`:''}
+      <div style="font-size:11.5px;color:var(--soft);margin:-2px 0 10px">Define a margem de contribuição usada no ponto de equilíbrio. Se a fonte escolhida não tiver dados no período, usamos o CMV teórico do cardápio.</div>
       <div style="margin-top:8px"><div class="ttl" style="font-size:13px;margin-bottom:8px">Contas bancárias</div>
         ${finList('contasBancarias',[{f:'nome',ph:'Conta',w:'1.4fr'},{f:'saldo',type:'money',w:'130px'}])}</div>
     </div>
