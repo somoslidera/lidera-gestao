@@ -147,18 +147,25 @@ th.num{text-align:right}
 .chan-tabs button{flex:1;padding:9px;border-radius:9px;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted)}
 .chan-tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 
-.matrix-wrap{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;align-items:start}
-.matrix{position:relative;aspect-ratio:1/1;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
-.quad{position:absolute;width:50%;height:50%;display:flex;align-items:flex-start;padding:12px 14px}
-.quad .ql{font-size:12px;font-weight:700}.quad .qd{font-size:10.5px;opacity:.7;font-weight:500}
-.q-star{background:rgba(30,158,106,.07)}.q-horse{background:rgba(29,53,115,.06)}
-.q-puzzle{background:rgba(201,137,42,.08)}.q-dog{background:rgba(210,72,63,.06)}
-.matrix .axis-v{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
-.matrix .axis-h{position:absolute;top:50%;left:0;right:0;height:1px;background:var(--line)}
-.dot{position:absolute;width:32px;height:32px;border-radius:50%;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;cursor:pointer;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.18);transition:.15s}
-.dot:hover{transform:translate(-50%,-50%) scale(1.18);z-index:5}
-.axis-label{font-size:11px;color:var(--muted);text-align:center;margin-top:8px;font-weight:600}
-.axis-label-y{position:absolute;left:-8px;top:50%;transform:rotate(-90deg) translateX(50%);transform-origin:left;font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap}
+.matrix-wrap{display:grid;grid-template-columns:1.35fr 1fr;gap:22px;align-items:start}
+.matrix{position:relative;aspect-ratio:1/1;background:radial-gradient(130% 130% at 100% 0%,rgba(30,158,106,.06),transparent 46%),radial-gradient(130% 130% at 0% 100%,rgba(210,72,63,.05),transparent 46%),var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 18px 50px rgba(16,31,66,.10)}
+.quad{position:absolute;width:50%;height:50%;display:flex;align-items:flex-start;padding:15px 17px}
+.quad .ql{font-size:12.5px;font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:5px}
+.quad .qd{font-size:9.5px;color:var(--soft);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-top:3px}
+.q-star{background:linear-gradient(135deg,rgba(30,158,106,.12),transparent 56%)}
+.q-horse{background:linear-gradient(225deg,rgba(29,53,115,.10),transparent 56%)}
+.q-puzzle{background:linear-gradient(45deg,rgba(201,137,42,.13),transparent 56%)}
+.q-dog{background:linear-gradient(315deg,rgba(210,72,63,.09),transparent 56%)}
+.matrix .axis-v{position:absolute;left:50%;top:7%;bottom:7%;width:0;border-left:1px dashed var(--line)}
+.matrix .axis-h{position:absolute;top:50%;left:7%;right:7%;height:0;border-top:1px dashed var(--line)}
+.matrix .axis-mid{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;letter-spacing:.6px;text-transform:uppercase;color:var(--soft);background:var(--card);padding:2px 7px;border-radius:7px;border:1px solid var(--line);font-weight:700;z-index:1}
+.dot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;font-family:'Fraunces',serif;color:#fff;cursor:pointer;border:2.5px solid var(--card);box-shadow:0 5px 14px rgba(16,31,66,.22);transition:.16s ease;z-index:2}
+.dot:hover{transform:translate(-50%,-50%) scale(1.22);z-index:6;box-shadow:0 9px 22px rgba(16,31,66,.32)}
+.axis-label{font-size:10.5px;color:var(--muted);text-align:center;margin-top:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase}
+.axis-label-y{position:absolute;left:-12px;top:50%;transform:rotate(-90deg) translateX(50%);transform-origin:left;font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.7px;text-transform:uppercase;white-space:nowrap}
+.eng-stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px 12px;position:relative;overflow:hidden}
+.eng-stat::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
+.eng-rank{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:12.5px;color:#fff;flex:0 0 auto}
 
 .dre-table .grp td{font-weight:700;background:#FAFBFC}
 .dre-table .ind td:first-child{padding-left:28px;color:var(--muted)}
@@ -1835,37 +1842,71 @@ function classificar(){
     x.avgPop=avgPop;x.avgMarg=avgMarg;x.n=idx+1;});
   return arr;
 }
+const ENG_COR={Estrelas:'#1E9E6A',Populares:'#1D3573',Potenciais:'#C9892A','Críticos':'#D2483F'};
+const ENG_GLYPH={Estrelas:'★',Populares:'●',Potenciais:'◆','Críticos':'▼'};
+function engTag(c){return c==='Estrelas'?'tag-green':c==='Populares'?'tag-navy':c==='Potenciais'?'tag-amber':'tag-red';}
 function viewEngenharia(){
   const arr=classificar();
   if(!arr.length){$('#view').innerHTML=`<div class="card">${emptyState('Sem dados','Cadastre fichas com preço e vendas.','go(&#39;fichas&#39;)')}</div>`;return;}
   const avgPop=arr[0].avgPop,avgMarg=arr[0].avgMarg;
   const maxPop=Math.max(...arr.map(x=>x.pop)),minPop=Math.min(...arr.map(x=>x.pop));
   const maxMarg=Math.max(...arr.map(x=>x.marg)),minMarg=Math.min(...arr.map(x=>x.marg));
-  const colorOf=c=>c==='Estrelas'?'#1E9E6A':c==='Populares'?'#1D3573':c==='Potenciais'?'#C9892A':'#D2483F';
+  const colorOf=c=>ENG_COR[c]||'#888';
   const px=v=>v>=avgPop?50+((v-avgPop)/((maxPop-avgPop)||1))*40:10+((v-minPop)/((avgPop-minPop)||1))*40;
   const py=v=>v>=avgMarg?50-((v-avgMarg)/((maxMarg-avgMarg)||1))*40:90-((v-minMarg)/((avgMarg-minMarg)||1))*40;
+  const ORDEM=['Estrelas','Populares','Potenciais','Críticos'];
+  const mcTot=arr.reduce((s,x)=>s+x.marg*x.pop,0);
+  const byClass={},countBy={};arr.forEach(x=>{byClass[x.classe]=(byClass[x.classe]||0)+x.marg*x.pop;countBy[x.classe]=(countBy[x.classe]||0)+1;});
+  const top=ORDEM.map(c=>({c,v:mcTot>0?(byClass[c]||0)/mcTot*100:0})).sort((a,b)=>b.v-a.v)[0];
+  const ranked=[...arr].sort((a,b)=>(b.marg*b.pop)-(a.marg*a.pop));
   $('#view').innerHTML=`
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px">
+    <div>
+      <div style="font-family:'Fraunces',serif;font-size:24px;font-weight:600;line-height:1.1">Engenharia de Cardápio</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px;max-width:560px">Cada prato posicionado por <b>popularidade</b> × <b>margem de contribuição</b>. As linhas tracejadas marcam a média do seu cardápio.</div>
+    </div>
+    <div style="font-size:11.5px;color:var(--soft);font-weight:600;letter-spacing:.3px">${arr.length} pratos analisados</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:18px">
+    ${ORDEM.map(c=>`<div class="eng-stat" style="--c:${colorOf(c)}">
+      <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:${colorOf(c)}"><span style="font-size:13px">${ENG_GLYPH[c]}</span> ${c}</div>
+      <div style="display:flex;align-items:baseline;gap:7px;margin-top:7px">
+        <div style="font-family:'Fraunces',serif;font-size:30px;font-weight:600;line-height:1">${countBy[c]||0}</div>
+        <div style="font-size:11.5px;color:var(--muted)">${(countBy[c]||0)===1?'prato':'pratos'}</div></div>
+      <div style="font-size:11px;color:var(--soft);margin-top:3px">${mcTot>0?fmtPct((byClass[c]||0)/mcTot*100)+' da margem':'—'}</div>
+    </div>`).join('')}
+  </div>
+
+  ${mcTot>0?`<div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(164,138,87,.14),rgba(29,53,115,.06));border:1px solid var(--line);border-radius:14px;padding:13px 16px;margin-bottom:20px">
+    <div style="width:34px;height:34px;border-radius:10px;background:var(--navy);color:var(--gold-soft);display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto">✦</div>
+    <div style="font-size:13px;line-height:1.5">As <b style="color:${colorOf(top.c)}">${top.c}</b> concentram <b>${fmtPct(top.v)}</b> da sua margem de contribuição. ${top.c==='Estrelas'?'Proteja a qualidade e dê destaque a elas no cardápio.':top.c==='Populares'?'Vendem muito mas rendem pouco — reduzir o custo aqui tem alto impacto.':top.c==='Potenciais'?'Boa margem com baixa saída — vale empurrar com sugestão e posicionamento.':'Concentração no grupo de menor desempenho — hora de reformular ou cortar.'}</div>
+  </div>`:''}
+
   <div class="matrix-wrap">
     <div>
       <div class="matrix">
         <div class="quad q-puzzle" style="top:0;left:0;right:auto;bottom:auto"><div><div class="ql" style="color:var(--amber)">◆ Potenciais</div><div class="qd">baixa saída · alta margem</div></div></div>
-        <div class="quad q-star" style="top:0;right:0;left:auto;bottom:auto;justify-content:flex-end;text-align:right"><div><div class="ql" style="color:var(--green)">★ Estrelas</div><div class="qd">alta saída · alta margem</div></div></div>
-        <div class="quad q-dog" style="bottom:0;left:0;top:auto;right:auto"><div><div class="ql" style="color:var(--red)">▼ Críticos</div><div class="qd">baixa saída · margem baixa</div></div></div>
-        <div class="quad q-horse" style="bottom:0;right:0;top:auto;left:auto;justify-content:flex-end;text-align:right"><div><div class="ql" style="color:var(--navy)">● Populares</div><div class="qd">alta saída · margem baixa</div></div></div>
-        <div class="axis-v"></div><div class="axis-h"></div>
-        ${arr.map(x=>`<div class="dot" style="left:${px(x.pop)}%;top:${py(x.marg)}%;background:${colorOf(x.classe)}" title="${x.f.nome} · ${x.classe}&#10;Vendas: ${x.pop} · MC: ${fmtBRL(x.marg)}">${x.n}</div>`).join('')}
+        <div class="quad q-star" style="top:0;right:0;left:auto;bottom:auto;justify-content:flex-end;text-align:right"><div><div class="ql" style="color:var(--green);justify-content:flex-end">★ Estrelas</div><div class="qd">alta saída · alta margem</div></div></div>
+        <div class="quad q-dog" style="bottom:0;left:0;top:auto;right:auto;align-items:flex-end"><div><div class="ql" style="color:var(--red)">▼ Críticos</div><div class="qd">baixa saída · margem baixa</div></div></div>
+        <div class="quad q-horse" style="bottom:0;right:0;top:auto;left:auto;justify-content:flex-end;text-align:right;align-items:flex-end"><div><div class="ql" style="color:var(--navy);justify-content:flex-end">● Populares</div><div class="qd">alta saída · margem baixa</div></div></div>
+        <div class="axis-v"></div><div class="axis-h"></div><div class="axis-mid">média</div>
+        ${arr.map(x=>`<div class="dot" style="left:${px(x.pop)}%;top:${py(x.marg)}%;background:${colorOf(x.classe)}" title="${x.f.nome} · ${x.classe}&#10;Vendas: ${x.pop} · MC un.: ${fmtBRL(x.marg)}">${x.n}</div>`).join('')}
       </div>
       <div class="axis-label">Popularidade (vendas/mês) →</div>
       <div class="axis-label-y">Margem de contribuição →</div>
     </div>
     <div>
-      <div class="card card-pad" style="margin-bottom:16px"><div class="ttl" style="margin-bottom:12px">Pratos</div>
-        <div style="display:flex;flex-direction:column;gap:8px">${[...arr].sort((a,b)=>b.marg-a.marg).map(x=>`
-          <div style="display:flex;align-items:center;gap:10px;font-size:13px">
-            <span class="dot" style="position:static;transform:none;width:24px;height:24px;font-size:10px;background:${colorOf(x.classe)};box-shadow:none">${x.n}</span>
-            <b style="flex:1">${x.f.nome}</b>
-            <span style="font-size:11.5px;color:var(--muted)">${fmtBRL(x.marg)}</span>
-            <span class="tag ${x.classe==='Estrelas'?'tag-green':x.classe==='Populares'?'tag-navy':x.classe==='Potenciais'?'tag-amber':'tag-red'}">${x.classe}</span>
+      <div class="card card-pad" style="margin-bottom:16px">
+        <div class="ttl">Ranking por contribuição</div>
+        <div class="desc" style="margin-bottom:14px">Margem de contribuição mensal · MC unitária × vendas</div>
+        <div style="display:flex;flex-direction:column;gap:11px">${ranked.map(x=>`
+          <div style="display:flex;align-items:center;gap:11px">
+            <span class="eng-rank" style="background:${colorOf(x.classe)}">${x.n}</span>
+            <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.f.nome}</div>
+              <div style="font-size:11px;color:var(--soft)">${x.pop} vendas · MC un. ${fmtBRL(x.marg)}</div></div>
+            <div style="text-align:right;flex:0 0 auto"><div style="font-weight:700;font-size:13px;font-family:'Fraunces',serif">${fmtBRL(x.marg*x.pop)}</div>
+              <span class="tag ${engTag(x.classe)}" style="margin-top:2px">${x.classe}</span></div>
           </div>`).join('')}</div>
       </div>
       ${planoAcao()}
@@ -1873,13 +1914,17 @@ function viewEngenharia(){
   </div>`;
 }
 function planoAcao(){
-  const cls=classificar();
-  const d=[['Estrelas','#1E9E6A','Alta popularidade e alta rentabilidade. Destaque no cardápio e proteja a qualidade.'],
-    ['Populares','#1D3573','Alta saída, margem baixa. Reduza custo do insumo ou ajuste preço com cautela.'],
-    ['Potenciais','#C9892A','Boa margem, vende pouco. Reposicione, sugira e treine a equipe.'],
-    ['Críticos','#D2483F','Baixa popularidade e baixa rentabilidade. Candidato a sair do cardápio ou reformular.']];
-  return `<div class="card card-pad"><div class="ttl" style="margin-bottom:12px">Plano de ação</div>
-  <div class="legend">${d.map(([n,c,t])=>`<div class="li"><div class="sw" style="background:${c}"></div><div><b>${n}<span style="float:right;color:var(--muted)">${cls.filter(x=>x.classe===n).length}</span></b><small>${t}</small></div></div>`).join('')}</div></div>`;
+  const cls=classificar();const cnt=n=>cls.filter(x=>x.classe===n).length;
+  const d=[['Estrelas','Alta popularidade e alta rentabilidade. Destaque no cardápio e proteja a qualidade.'],
+    ['Populares','Alta saída, margem baixa. Reduza o custo do insumo ou ajuste o preço com cautela.'],
+    ['Potenciais','Boa margem, vende pouco. Reposicione, sugira e treine a equipe.'],
+    ['Críticos','Baixa popularidade e baixa rentabilidade. Candidato a sair do cardápio ou reformular.']];
+  return `<div class="card card-pad"><div class="ttl">Plano de ação</div><div class="desc" style="margin-bottom:6px">O que fazer com cada grupo</div>
+  ${d.map(([n,t],i)=>`<div style="display:flex;gap:12px;padding:11px 0;${i<d.length-1?'border-bottom:1px solid var(--line)':''}">
+    <div style="width:4px;border-radius:3px;background:${ENG_COR[n]};flex:0 0 auto"></div>
+    <div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px;color:${ENG_COR[n]}">${ENG_GLYPH[n]} ${n}</b><span style="font-family:'Fraunces',serif;font-weight:600;font-size:15px;color:var(--muted)">${cnt(n)}</span></div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5">${t}</div></div>
+  </div>`).join('')}</div>`;
 }
 
 /* ===================== FATURAMENTO ===================== */
