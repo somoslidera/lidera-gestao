@@ -867,15 +867,17 @@ function periodoSeletor(){const opts=[['mesAtual','Mês atual'],['mesAnterior','
 function totaisGerais(R){
   R=R||{de:periodoRange('mesAtual').de,ate:periodoRange('mesAtual').ate,nm:1};
   const nm=R.nm||1;
-  // vendasMes das fichas alimenta SÓ a Engenharia de Menu e a proporção (CMV teórico).
-  let receitaEst=0,custoTot=0,vendas=0;
+  // vendasMes das fichas alimenta a Engenharia de Menu e a ponderação do CMV teórico.
+  let receitaEst=0,custoTot=0,vendas=0,custoUnit=0,precoUnit=0;
   fichasVendaveis().forEach(f=>{const m=metricasFicha(f);
-    receitaEst+=m.receita; custoTot+=m.custo*m.vendas; vendas+=m.vendas;});
+    receitaEst+=m.receita; custoTot+=m.custo*m.vendas; vendas+=m.vendas;
+    if(m.precoBlend>0){custoUnit+=m.custo;precoUnit+=m.precoBlend;}});  // base p/ fallback sem vendas
   const mix=(DB.fat.mixIfood||0)/100;
   // faturamento real: soma das Receitas lançadas no período; fallback p/ valor manual × nº de meses
   const recReal=(DB.lancamentos||[]).filter(l=>l.data>=R.de&&l.data<=R.ate&&grupoTipo(l.grupo)==='receita').reduce((s,l)=>s+(l.valor||0),0);
   const faturamento=recReal; // faturamento vem 100% das Receitas lançadas no período
-  const cmvPct=receitaEst>0?(custoTot/receitaEst):0;            // CMV teórico (proporção do cardápio)
+  // CMV teórico: ponderado pela média de vendas; sem vendas preenchidas, usa a média do cardápio (fichas com preço)
+  const cmvPct=receitaEst>0?(custoTot/receitaEst):(precoUnit>0?custoUnit/precoUnit:0);
   const recIfood=faturamento*mix, recDireto=faturamento*(1-mix), cmvRS=faturamento*cmvPct;
   const comissaoRS=recIfood*((DB.fin.comissaoIfood||0)/100);
   const impostoRS=DB.fin.mei?impostoMensal(faturamento)*nm:impostoMensal(faturamento);
