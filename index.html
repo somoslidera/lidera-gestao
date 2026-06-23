@@ -68,7 +68,7 @@ input,select,textarea{font-family:inherit}
 .kpi .k-lbl{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.2px;text-transform:uppercase}
 .kpi .k-val{font-size:24px;font-weight:700;letter-spacing:-.6px;margin-top:2px;font-family:'Fraunces',serif;line-height:1.05}
 .kpi .k-sub{font-size:11.5px;margin-top:4px;display:flex;align-items:center;gap:5px;font-weight:600;color:var(--soft)}
-/* com ícone: layout horizontal (ícone à esquerda) — melhor uso da largura, menos espaço vazio */
+/* com ícone: layout horizontal (ícone à esquerda), melhor uso da largura, menos espaço vazio */
 .kpi:has(.ic){display:grid;grid-template-columns:44px 1fr;column-gap:15px;align-items:center;padding:15px 18px}
 .kpi:has(.ic) .ic{grid-column:1;grid-row:1 / 4;align-self:center;margin-bottom:0}
 .kpi:has(.ic) .k-lbl{grid-column:2;grid-row:1}
@@ -280,7 +280,7 @@ body.dark .empty svg{opacity:.4}
   a[href]:after{content:''}
 }
 /* =====================================================================
-   UX v2 — polimento premium (gradientes navy→dourado, micro-interações)
+   UX v2, polimento premium (gradientes navy→dourado, micro-interações)
    ===================================================================== */
 
 /* fundo com profundidade sutil */
@@ -402,7 +402,7 @@ body.dark .wiz-foot{background:#0E1626}
   #printArea .ci-b{width:58px;height:18px;border:1px solid #999;border-radius:3px;flex-shrink:0}
 }
 
-/* ===== Ficha técnica — modal em 2 painéis ===== */
+/* ===== Ficha técnica, modal em 2 painéis ===== */
 .modal.fichamodal{max-width:1020px;overflow:hidden}
 .ficha-split{display:flex;align-items:stretch;min-height:560px}
 .fx-left{width:38%;border-right:1px solid var(--line);display:flex;flex-direction:column;background:#FAFBFC}
@@ -605,7 +605,7 @@ thead th{letter-spacing:.7px}
 
 <script>
 /* ============================================================
-   LIDERA GESTÃO v2 — gestão financeira p/ restaurante
+   LIDERA GESTÃO v2, gestão financeira p/ restaurante
    Precificação consciente por canal · Programa Lucro e Liberdade
    ============================================================ */
 const STORE_KEY='lidera_gestao_v12';
@@ -662,9 +662,9 @@ function seed(){
   const maionese=mk('Maionese','Mercearia','kg',14.00,1);
   const mostarda=mk('Mostarda','Mercearia','kg',12.00,1);
   const ketchup=mk('Ketchup','Mercearia','kg',11.00,1);
-  // INSUMO PREPARADO (produzido na casa) — rende 1000g
+  // INSUMO PREPARADO (produzido na casa), rende 1000g
   const molhoEsp=mkp('Molho especial da casa','Molhos','g',1000,[[maionese,600],[ketchup,250],[mostarda,150]]);
-  // estoque (mín/atual na unidade de compra) e fornecedor — exemplo
+  // estoque (mín/atual na unidade de compra) e fornecedor, exemplo
   const est=(id,forn,min,atual)=>{const o=i[id];o.fornecedor=forn;o.estoqueMin=min;o.estoqueAtual=atual;};
   est(carne,'Lojão das Carnes',8,3); est(frango,'Lojão das Carnes',6,6); est(queijo,'Karne e Keijo',4,1);
   est(pao,'Padaria Central',120,40); est(batata,'Karne e Keijo',10,4); est(alface,'Hortifruti do Zé',5,2);
@@ -694,12 +694,12 @@ function seed(){
       fornecedores:[{id:uid(),nome:'Distribuidora Central',contato:'(51) 99999-0000'},{id:uid(),nome:'Hortifruti do Zé',contato:'(51) 98888-0000'}],
       contasBancarias:[{id:uid(),nome:'Conta Corrente',saldo:12500}],
       contasPagar:[
-        {id:uid(),descricao:'Aluguel — junho',valor:6500,categoria:'Infraestrutura',vencimento:'2026-06-15',pago:false},
-        {id:uid(),descricao:'Fornecedor — Distribuidora Central',valor:8200,categoria:'Insumos',vencimento:'2026-06-12',pago:false},
+        {id:uid(),descricao:'Aluguel · junho',valor:6500,categoria:'Infraestrutura',vencimento:'2026-06-15',pago:false},
+        {id:uid(),descricao:'Fornecedor · Distribuidora Central',valor:8200,categoria:'Insumos',vencimento:'2026-06-12',pago:false},
         {id:uid(),descricao:'Energia + Água + Gás',valor:2600,categoria:'Infraestrutura',vencimento:'2026-06-20',pago:false},
         {id:uid(),descricao:'Internet',valor:120,categoria:'Infraestrutura',vencimento:'2026-06-22',pago:false}],
       contasReceber:[
-        {id:uid(),descricao:'Repasse iFood — semana',valor:15770,categoria:'Vendas',vencimento:'2026-06-18',recebido:false},
+        {id:uid(),descricao:'Repasse iFood · semana',valor:15770,categoria:'Vendas',vencimento:'2026-06-18',recebido:false},
         {id:uid(),descricao:'Evento corporativo',valor:3200,categoria:'Vendas',vencimento:'2026-06-25',recebido:false}]},
     fat:{lancado:0, mixIfood:35},
     cmvAlvo:30,
@@ -767,7 +767,7 @@ function metricasFicha(ficha){ // mistura por canal usando mix iFood global
     receita:precoBlend*vendas, mcTotal:mcBlend*vendas,
     health: healthFicha(b.cmv)};
 }
-// Classificação do CMV — limiar "excelente" = CMV alvo dos Parâmetros (padrão 30%); crítico acima de 35%
+// Classificação do CMV, limiar "excelente" = CMV alvo dos Parâmetros (padrão 30%); crítico acima de 35%
 function cmvAlvoRef(){return DB.cmvAlvo||30;}
 function cmvUpRef(){return cmvAlvoRef()+5;}
 function cmvClasse(v){const a=cmvAlvoRef();return v<=a?'excelente':(v<=cmvUpRef()?'atencao':'critico');}
@@ -931,7 +931,7 @@ function normData(){
   if(f.aliquota==null)f.aliquota=6; if(f.impostoFixo==null)f.impostoFixo=75;
   if(f.inssSocio==null)f.inssSocio=11;
   if(f.comissaoIfood==null)f.comissaoIfood=27; if(f.taxaCartao==null)f.taxaCartao=2.5;
-  // encargos CLT detalhados (FGTS + INSS + provisões 13º/férias) — migra do encargoCLT antigo
+  // encargos CLT detalhados (FGTS + INSS + provisões 13º/férias), migra do encargoCLT antigo
   if(f.encFGTS==null||f.encINSS==null||f.encProv==null){const old=(f.encargoCLT!=null?f.encargoCLT:32);f.encFGTS=8;f.encINSS=0;f.encProv=Math.max(0,old-8);}
   f.imovel=f.imovel||{}; f.utilidades=f.utilidades||{}; f.servicosRec=f.servicosRec||{}; f.operacionais=f.operacionais||{}; f.sistemas=f.sistemas||{}; f.marketing=f.marketing||{};
   f.marketing.canais=f.marketing.canais||[]; // múltiplos canais de tráfego/mídia
@@ -1029,10 +1029,10 @@ function viewDashboard(){
   const estruturaTotal=estrutura.reduce((s,x)=>s+x[1],0);
 
   let alerts='';
-  if(cmvGap!=null&&cmvGap>4)alerts+=alertRow(cmvGap>8?'red':'amber',icoWarn,`<b>Perda de ${fmtN(cmvGap,1)} p.p.:</b> o CMV real (${fmtPct(cmvRealUlt)}) está acima do teórico (${fmtPct(cmvTeorico)}) — possível desperdício, furto ou erro de porção.`);
-  criticas.slice(0,3).forEach(x=>alerts+=alertRow('red',icoWarn,`<b>${x.f.nome}</b> — CMV crítico de ${fmtPct(x.m.balcao.cmv)} (acima de 35%).`));
+  if(cmvGap!=null&&cmvGap>4)alerts+=alertRow(cmvGap>8?'red':'amber',icoWarn,`<b>Perda de ${fmtN(cmvGap,1)} p.p.:</b> o CMV real (${fmtPct(cmvRealUlt)}) está acima do teórico (${fmtPct(cmvTeorico)}), possível desperdício, furto ou erro de porção.`);
+  criticas.slice(0,3).forEach(x=>alerts+=alertRow('red',icoWarn,`<b>${x.f.nome}</b>: CMV crítico de ${fmtPct(x.m.balcao.cmv)} (acima de 35%).`));
   prejuizoIfood.slice(0,2).forEach(x=>alerts+=alertRow('red',icoWarn,`<b>${x.f.nome}</b> dá <b>prejuízo no iFood</b> (${fmtBRL(x.m.ifood.mc)}/un).`));
-  atencao.slice(0,2).forEach(x=>alerts+=alertRow('amber',icoWarn,`<b>${x.f.nome}</b> — CMV em ${fmtPct(x.m.balcao.cmv)} (atenção).`));
+  atencao.slice(0,2).forEach(x=>alerts+=alertRow('amber',icoWarn,`<b>${x.f.nome}</b>: CMV em ${fmtPct(x.m.balcao.cmv)} (atenção).`));
   if(!alerts)alerts=alertRow('green',icoOk,'Nenhum alerta crítico. Cardápio saudável.');
 
   $('#view').innerHTML=`
@@ -1096,7 +1096,7 @@ function viewDashboard(){
       <div style="font-size:11px;color:var(--soft);margin-top:12px;border-top:1px solid var(--line);padding-top:10px">Limites saudáveis: marketplace ≤ 23%, custo fixo ≤ 33%, CMV ≤ 30%.</div>
     </div>
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">CMV — Teórico × Real</div><div class="desc">Teórico (cardápio) · Contagem e Lançamentos no período</div></div></div>
+      <div class="section-head"><div><div class="ttl">CMV: Teórico × Real</div><div class="desc">Teórico (cardápio) · Contagem e Lançamentos no período</div></div></div>
       <div style="display:flex;gap:8px;text-align:center;margin-top:4px">
         <div style="flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px"><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:${cmvCorTh(cmvTeorico)}">${fmtPct(cmvTeorico)}</div><div style="font-size:11px;color:var(--muted)">Teórico (fichas)</div></div>
         <div style="flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px"><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:${cmvRealP!=null?cmvCorTh(cmvRealP):'var(--soft)'}">${cmvRealP!=null?fmtPct(cmvRealP):'—'}</div><div style="font-size:11px;color:var(--muted)">Real (contagem)</div></div>
@@ -1301,7 +1301,7 @@ function baixarTemplateInsumos(){
 }
 function insumoAOA(modo){
   const header=['Produto/Insumo','Grupo','Fornecedor','Peso/Conteúdo','Unidade','Valor Embalagem'];
-  if(modo==='modelo')return [header];   // modelo em branco — só o cabeçalho
+  if(modo==='modelo')return [header];   // modelo em branco, só o cabeçalho
   const prontos=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado');
   return [header,...prontos.map(i=>[i.nome,i.cat,i.fornecedor||'',i.qtd,uSym(i.uni),i.preco])];
 }
@@ -1523,7 +1523,7 @@ function simularPreco(){
   const T=totaisGerais();const fixosPct=Math.round((T.fixosPct||0)*10)/10;const imp=impostoVarPct();
   modal(`<div class="modal-head"><h3>Simular preço</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div class="field"><label>Partir de uma ficha <span class="hint">opcional — preenche o custo</span></label>
+    <div class="field"><label>Partir de uma ficha <span class="hint">opcional, preenche o custo</span></label>
       <select class="input" onchange="if(this.value){document.getElementById('sim_custo').value=fmtMoneyInput(custoProduto(DB.fichas[this.value]));simRecalc();}">
         <option value="">— custo manual —</option>${Object.values(DB.fichas).sort((a,b)=>a.nome.localeCompare(b.nome)).map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('')}</select></div>
     <div class="grid-2">
@@ -1564,7 +1564,7 @@ function fichaAOA(){
 }
 function baixarModeloFichas(){
   modal(`<div class="modal-head"><h3>Baixar planilha de fichas</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
-  <div class="modal-body"><div style="font-size:13.5px;color:var(--muted);margin-bottom:16px">Baixe suas fichas (preços e categorias — sem os ingredientes) para editar e reimportar. Excel (.xlsx) é o recomendado.</div>
+  <div class="modal-body"><div style="font-size:13.5px;color:var(--muted);margin-bottom:16px">Baixe suas fichas (preços e categorias, sem os ingredientes) para editar e reimportar. Excel (.xlsx) é o recomendado.</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" onclick="exportFichas('xlsx')">⬇ Excel (.xlsx)</button><button class="btn btn-ghost" onclick="exportFichas('csv')">⬇ CSV (.csv)</button></div></div>`);
 }
 async function exportFichas(fmt){const aoa=fichaAOA();
@@ -1586,7 +1586,7 @@ function aplicarImportFichas(rows){rows=(rows||[]).filter(r=>r&&r.some(c=>(c||''
     const nid=uid();DB.fichas[nid]={id:nid,nome,cat,porcoes:parseNumBR(iR>=0?row[iR]:1)||1,custoEmbalagem:parseNumBR(iE>=0?row[iE]:0),precoVenda:parseNumBR(iB>=0?row[iB]:0),precoIfood:parseNumBR(iI>=0?row[iI]:0),vendasMes:0,tempoPreparo:0,utensilios:'',modoPreparo:[],padraoFinalizacao:'',foto:'',comps:[],criada:hoje()};
     if(cat&&!catList('prato').includes(cat))dbCats().prato.push(cat);
     n++;}
-  if(!n)return toast('Nenhuma linha válida encontrada');save();viewFichas();toast(n+' ficha(s) importada(s) — adicione os ingredientes');
+  if(!n)return toast('Nenhuma linha válida encontrada');save();viewFichas();toast(n+' ficha(s) importada(s), adicione os ingredientes');
 }
 let draftComps=[],draftModo=[];
 let draftFoto='', draftFichaId='';
@@ -1846,7 +1846,7 @@ function viewEngenharia(){
         <div class="quad q-dog" style="bottom:0;left:0;top:auto;right:auto"><div><div class="ql" style="color:var(--red)">▼ Críticos</div><div class="qd">baixa saída · margem baixa</div></div></div>
         <div class="quad q-horse" style="bottom:0;right:0;top:auto;left:auto;justify-content:flex-end;text-align:right"><div><div class="ql" style="color:var(--navy)">● Populares</div><div class="qd">alta saída · margem baixa</div></div></div>
         <div class="axis-v"></div><div class="axis-h"></div>
-        ${arr.map(x=>`<div class="dot" style="left:${px(x.pop)}%;top:${py(x.marg)}%;background:${colorOf(x.classe)}" title="${x.f.nome} — ${x.classe}&#10;Vendas: ${x.pop} · MC: ${fmtBRL(x.marg)}">${x.n}</div>`).join('')}
+        ${arr.map(x=>`<div class="dot" style="left:${px(x.pop)}%;top:${py(x.marg)}%;background:${colorOf(x.classe)}" title="${x.f.nome} · ${x.classe}&#10;Vendas: ${x.pop} · MC: ${fmtBRL(x.marg)}">${x.n}</div>`).join('')}
       </div>
       <div class="axis-label">Popularidade (vendas/mês) →</div>
       <div class="axis-label-y">Margem de contribuição →</div>
@@ -1868,9 +1868,9 @@ function viewEngenharia(){
 function planoAcao(){
   const cls=classificar();
   const d=[['Estrelas','#1E9E6A','Alta popularidade e alta rentabilidade. Destaque no cardápio e proteja a qualidade.'],
-    ['Populares','#1D3573','Alta saída, margem baixa — reduza custo do insumo ou ajuste preço com cautela.'],
-    ['Potenciais','#C9892A','Boa margem, vende pouco — reposicione, sugira e treine a equipe.'],
-    ['Críticos','#D2483F','Baixa popularidade e baixa rentabilidade — candidato a sair do cardápio ou reformular.']];
+    ['Populares','#1D3573','Alta saída, margem baixa. Reduza custo do insumo ou ajuste preço com cautela.'],
+    ['Potenciais','#C9892A','Boa margem, vende pouco. Reposicione, sugira e treine a equipe.'],
+    ['Críticos','#D2483F','Baixa popularidade e baixa rentabilidade. Candidato a sair do cardápio ou reformular.']];
   return `<div class="card card-pad"><div class="ttl" style="margin-bottom:12px">Plano de ação</div>
   <div class="legend">${d.map(([n,c,t])=>`<div class="li"><div class="sw" style="background:${c}"></div><div><b>${n}<span style="float:right;color:var(--muted)">${cls.filter(x=>x.classe===n).length}</span></b><small>${t}</small></div></div>`).join('')}</div></div>`;
 }
@@ -1895,7 +1895,7 @@ function viewFaturamento(){
       <div class="section-head"><div><div class="ttl">Mix de canais</div><div class="desc">Distribuição do faturamento</div></div></div>
       <div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>🏪 Balcão / App próprio</span><b>${fmtPct(100-DB.fat.mixIfood)} · ${fmtBRL(recBalcao)}</b></div><div class="bar"><i style="width:${100-DB.fat.mixIfood}%;background:var(--navy)"></i></div></div>
       <div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>🛵 iFood</span><b>${fmtPct(DB.fat.mixIfood)} · ${fmtBRL(recIfood)}</b></div><div class="bar"><i style="width:${DB.fat.mixIfood}%;background:var(--gold)"></i></div></div>
-      <div class="alert alert-${DB.fat.mixIfood>=50?'red':DB.fat.mixIfood>=35?'amber':'green'}" style="margin-top:6px">${DB.fat.mixIfood>=35?icoWarn:icoOk}<div>${DB.fat.mixIfood>=50?'Concentração alta no iFood — você paga <b>'+fmtBRL(comissaoIfoodRS)+'</b>/mês de comissão. Estimule o canal próprio.':DB.fat.mixIfood>=35?'Comissão iFood estimada: <b>'+fmtBRL(comissaoIfoodRS)+'</b>/mês. Vale incentivar o balcão.':'Dependência de delivery sob controle.'}</div></div>
+      <div class="alert alert-${DB.fat.mixIfood>=50?'red':DB.fat.mixIfood>=35?'amber':'green'}" style="margin-top:6px">${DB.fat.mixIfood>=35?icoWarn:icoOk}<div>${DB.fat.mixIfood>=50?'Concentração alta no iFood, você paga <b>'+fmtBRL(comissaoIfoodRS)+'</b>/mês de comissão. Estimule o canal próprio.':DB.fat.mixIfood>=35?'Comissão iFood estimada: <b>'+fmtBRL(comissaoIfoodRS)+'</b>/mês. Vale incentivar o balcão.':'Dependência de delivery sob controle.'}</div></div>
     </div>
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">Resultado do mês</div></div></div>
@@ -2006,7 +2006,7 @@ function viewDRE(){
     <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewDRE()"></div>
   ${!temLanc?`<div class="card card-pad">${emptyState('Sem lançamentos neste mês','Registre receitas e despesas em Financeiro › Lançamentos para gerar o DRE.','go(&#39;financeiro&#39;)')}</div>`:`
   <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:20px" class="dash-grid">
-    <div class="card"><div class="card-pad" style="padding-bottom:6px"><div class="ttl">Demonstrativo de Resultado (DRE)</div><div class="desc">Resultado real do mês — receitas e despesas lançadas</div></div>
+    <div class="card"><div class="card-pad" style="padding-bottom:6px"><div class="ttl">Demonstrativo de Resultado (DRE)</div><div class="desc">Resultado real do mês, receitas e despesas lançadas</div></div>
       <table class="dre-table"><tbody>
         <tr class="grp"><td>Receita Bruta</td><td class="num">${fmtBRL(rec)}</td><td class="num" style="color:var(--soft)">100%</td></tr>
         ${recGrupos.map(g=>Object.entries(d.receita[g]).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${fmtPct(pct(v))}</td></tr>`).join('')).join('')}
@@ -2089,7 +2089,7 @@ function finLancamentos(){
   const subsG0=DB.categorias[grupos[0]]?DB.categorias[grupos[0]].subs:[];
   const formas=DB.formasPagamento||[];
   return `<div class="card card-pad" style="max-width:1000px">
-    <div class="section-head"><div><div class="ttl">Lançamentos</div><div class="desc">Receitas e despesas — alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div>
+    <div class="section-head"><div><div class="ttl">Lançamentos</div><div class="desc">Receitas e despesas, alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="month" class="input" style="max-width:160px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()">
         <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆ Importar<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarLancamentos(this)"></label>
@@ -2232,7 +2232,7 @@ function catAddGrupo(){ngTipoSel='despesa';
       </div>
       <div style="font-size:11.5px;color:var(--soft);margin-top:6px">Despesa entra como saída no DRE/Fluxo; Receita como entrada.</div>
     </div>
-    <div class="field"><label>Subcategorias <span class="hint">opcional — separe por vírgula</span></label><input class="input" id="ng_subs" placeholder="Ex.: iFood, Rappi, 99Food"></div>
+    <div class="field"><label>Subcategorias <span class="hint">opcional, separe por vírgula</span></label><input class="input" id="ng_subs" placeholder="Ex.: iFood, Rappi, 99Food"></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveNovoGrupo()">Criar grupo</button></div>`);
   setTimeout(()=>{const el=$('#ng_nome');if(el)el.focus();},60);}
@@ -2243,7 +2243,7 @@ function catDelGrupo(g){if(!confirm('Excluir o grupo "'+g+'" e suas subcategoria
 function finCategorias(){
   const grupos=Object.keys(DB.categorias);
   return `<div class="card card-pad" style="max-width:880px">
-    <div class="section-head"><div><div class="ttl">Categorias</div><div class="desc">Grupos e subcategorias dos lançamentos — já vêm padrão e você pode personalizar</div></div>
+    <div class="section-head"><div><div class="ttl">Categorias</div><div class="desc">Grupos e subcategorias dos lançamentos, já vêm padrão e você pode personalizar</div></div>
       <button class="btn btn-ghost btn-sm" onclick="catAddGrupo()">${icoPlus} Novo grupo</button></div>
     ${grupos.map(g=>{const c=DB.categorias[g];return `<div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -2327,7 +2327,7 @@ function syncContaLanc(key,conta){
 }
 function contaToggle(key,i){const row=DB.fin[key][i];const cf=key==='contasPagar'?'pago':'recebido';
   row[cf]=!row[cf];syncContaLanc(key,row);save();viewFinanceiro();
-  if(row[cf])toast(key==='contasPagar'?'Pago — lançado no DRE e Fluxo':'Recebido — lançado no DRE e Fluxo');}
+  if(row[cf])toast(key==='contasPagar'?'Pago, lançado no DRE e Fluxo':'Recebido, lançado no DRE e Fluxo');}
 function contaSetGrupo(key,i,g){const row=DB.fin[key][i];row.grupo=g;const subs=(DB.categorias[g]||{subs:[]}).subs;if(!subs.includes(row.sub))row.sub=subs[0]||'';
   if(row[key==='contasPagar'?'pago':'recebido'])syncContaLanc(key,row);save();viewFinanceiro();}
 function contaResync(key,i){const row=DB.fin[key][i];if(row[key==='contasPagar'?'pago':'recebido'])syncContaLanc(key,row);finTouch();}
@@ -2340,8 +2340,9 @@ function finContas(key){
   const total=noMes.reduce((s,c)=>s+(c.valor||0),0);
   const aberto=noMes.filter(c=>!c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const feito=noMes.filter(c=>c[cf]).reduce((s,c)=>s+(c.valor||0),0);
+  const gC='1.5fr 1.2fr 1.2fr 142px 124px 128px 108px 30px';
   const linhas=all.map((row,i)=>{if(row.vencimento&&ymOf(row.vencimento)!==ym)return '';const subs=(DB.categorias[row.grupo]||{subs:[]}).subs;return `
-    <div class="comp-row" style="grid-template-columns:1fr 1.25fr 1.25fr 118px 106px 104px 92px 28px;align-items:center">
+    <div class="comp-row" style="grid-template-columns:${gC};align-items:center">
       <input class="input" value="${(row.descricao||'').replace(/"/g,'&quot;')}" placeholder="Descrição" oninput="DB.fin.${key}[${i}].descricao=this.value;contaResync('${key}',${i})">
       <select class="input" onchange="contaSetGrupo('${key}',${i},this.value)">${grupos.map(g=>`<option ${g===row.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
       <select class="input" onchange="DB.fin.${key}[${i}].sub=this.value;contaResync('${key}',${i})">${subs.map(s=>`<option ${s===row.sub?'selected':''}>${esc(s)}</option>`).join('')||'<option value="">—</option>'}</select>
@@ -2351,7 +2352,7 @@ function finContas(key){
       <button class="icon-btn" onclick="contaToggle('${key}',${i})" title="Marcar como ${fLabel.toLowerCase()}" style="white-space:nowrap;width:auto;padding:0 10px;${row[cf]?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${row[cf]?'✓ ':'○ '}${fLabel}</button>
       <button class="mini-del" onclick="deleteConta('${key}',${i})">${icoX}</button>
     </div>`;}).join('');
-  return `<div class="card card-pad" style="max-width:1010px">
+  return `<div class="card card-pad" style="max-width:1220px">
     <div class="section-head"><div><div class="ttl">${isPagar?'Contas a Pagar':'Contas a Receber'}</div><div class="desc">Marque “${fLabel}” e o valor lança automaticamente no DRE e no Fluxo de Caixa</div></div>
       <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()"></div>
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
@@ -2359,9 +2360,10 @@ function finContas(key){
       <div class="dash-pill"><span>${isPagar?'A pagar (em aberto)':'A receber (em aberto)'}</span><b style="color:${isPagar?'var(--red)':'var(--amber)'}">${fmtBRL(aberto)}</b></div>
       <div class="dash-pill"><span>${fLabel}</span><b style="color:var(--green)">${fmtBRL(feito)}</b></div>
     </div>
+    <div class="comp-row" style="grid-template-columns:${gC};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Descrição</span><span>Grupo</span><span>Subcategoria</span><span>Vencimento</span><span>Valor</span><span>Forma</span><span>${fLabel}</span><span></span></div>
     ${linhas||`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhuma conta neste mês.</div>`}
     <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:8px">${icoPlus} Adicionar</button>
-    <div style="font-size:11.5px;color:var(--soft);margin-top:8px">As contas em aberto já somam acima — ao marcar <b>${fLabel}</b>, o valor entra no DRE e no Fluxo de Caixa.</div>
+    <div style="font-size:11.5px;color:var(--soft);margin-top:8px">As contas em aberto já somam acima, ao marcar <b>${fLabel}</b>, o valor entra no DRE e no Fluxo de Caixa.</div>
   </div>`;
 }
 function pad2(n){return String(n).padStart(2,'0');}
@@ -2425,8 +2427,8 @@ function recSetGrupo(i,g){const r=DB.fin.custosFixos[i];r.grupo=g;const subs=(DB
 function finRecorrentes(){
   const arr=DB.fin.custosFixos||[];const grupos=Object.keys(DB.categorias).filter(g=>grupoTipo(g)!=='receita');
   return `${arr.length?arr.map((r,i)=>{const subs=(DB.categorias[r.grupo]||{subs:[]}).subs;return `
-    <div class="comp-row" style="grid-template-columns:1.2fr .9fr .9fr 60px 100px 96px 30px;align-items:center">
-      <input class="input" ${r.auto?'title="Importado da anamnese — recalculado ao salvar a anamnese" style="border-left:3px solid var(--gold)"':''} value="${(r.nome||'').replace(/"/g,'&quot;')}" placeholder="Nome (ex.: Aluguel)" oninput="DB.fin.custosFixos[${i}].nome=this.value;finTouch()">
+    <div class="comp-row" style="grid-template-columns:1.5fr 1.1fr 1.1fr 78px 124px 124px 30px;align-items:center">
+      <input class="input" ${r.auto?'title="Importado da anamnese, recalculado ao salvar a anamnese" style="border-left:3px solid var(--gold)"':''} value="${(r.nome||'').replace(/"/g,'&quot;')}" placeholder="Nome (ex.: Aluguel)" oninput="DB.fin.custosFixos[${i}].nome=this.value;finTouch()">
       <select class="input" onchange="recSetGrupo(${i},this.value)">${grupos.map(g=>`<option ${g===r.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
       <select class="input" onchange="DB.fin.custosFixos[${i}].sub=this.value;finTouch()">${subs.map(s=>`<option ${s===r.sub?'selected':''}>${esc(s)}</option>`).join('')||'<option value="">—</option>'}</select>
       <input class="input" type="number" min="1" max="31" value="${r.diaVenc||''}" placeholder="Dia" title="Dia do vencimento" onchange="DB.fin.custosFixos[${i}].diaVenc=parseInt(this.value)||0;save()">
@@ -2435,21 +2437,25 @@ function finRecorrentes(){
       <button class="mini-del" onclick="DB.fin.custosFixos.splice(${i},1);save();viewFinanceiro()">${icoX}</button>
     </div>`;}).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhum custo fixo.</div>`}
     <button class="btn btn-ghost btn-sm" onclick="finAdd('custosFixos')" style="margin-top:6px">${icoPlus} Adicionar</button>
-    <div style="font-size:11.5px;color:var(--soft);margin-top:8px">Itens com <span style="color:var(--gold)">borda dourada</span> vêm da <b>anamnese</b> e são atualizados ao salvá-la. Preencha o <b>dia de vencimento</b> para o custo aparecer todo mês já pré-lançado em <b>Contas a Pagar</b> — é só confirmar o valor (que pode variar) e marcar Pago.</div>`;
+    <div style="font-size:11.5px;color:var(--soft);margin-top:8px">Itens com <span style="color:var(--gold)">borda dourada</span> vêm da <b>anamnese</b> e são atualizados ao salvá-la. Preencha o <b>dia de vencimento</b> para o custo aparecer todo mês já pré-lançado em <b>Contas a Pagar</b>, é só confirmar o valor (que pode variar) e marcar Pago.</div>`;
 }
 function finVisao(t){
+  const R=periodoRange();
+  const noPer=d=>!!d&&d>=R.de&&d<=R.ate; // vencimento dentro do período selecionado
   const saldoConta=(DB.fin.contasBancarias||[]).reduce((s,x)=>s+(x.saldo||0),0);
-  const aPagar=(DB.fin.contasPagar||[]).filter(x=>!x.pago).reduce((s,x)=>s+x.valor,0);
-  const aReceber=(DB.fin.contasReceber||[]).filter(x=>!x.recebido).reduce((s,x)=>s+x.valor,0);
+  const pagarAbertos=(DB.fin.contasPagar||[]).filter(x=>!x.pago&&noPer(x.vencimento));
+  const receberAbertos=(DB.fin.contasReceber||[]).filter(x=>!x.recebido&&noPer(x.vencimento));
+  const aPagar=pagarAbertos.reduce((s,x)=>s+(x.valor||0),0);
+  const aReceber=receberAbertos.reduce((s,x)=>s+(x.valor||0),0);
   const projetado=saldoConta+aReceber-aPagar;
   const recLiq=t.faturamento-t.impostoRS-t.comissaoRS-t.taxaCartaoRS;
-  const venc=[...(DB.fin.contasPagar||[]).filter(x=>!x.pago)].sort((a,b)=>(a.vencimento||'').localeCompare(b.vencimento||''));
+  const venc=[...(DB.fin.contasPagar||[]).filter(x=>!x.pago&&noPer(x.vencimento))].sort((a,b)=>(a.vencimento||'').localeCompare(b.vencimento||''));
   const fmtData=d=>{if(!d)return '—';const p=d.split('-');return p.length===3?`${p[2]}/${p[1]}`:d;};
   return `
   <div class="kpi-grid">
     <div class="kpi"><div class="k-lbl">Saldo em conta</div><div class="k-val">${fmtBRL(saldoConta)}</div><div class="k-sub" style="color:var(--soft)">${(DB.fin.contasBancarias||[]).length} conta(s)</div></div>
-    <div class="kpi"><div class="k-lbl">A pagar (em aberto)</div><div class="k-val" style="color:var(--red)">${fmtBRL(aPagar)}</div><div class="k-sub trend-down">${(DB.fin.contasPagar||[]).filter(x=>!x.pago).length} lançamento(s)</div></div>
-    <div class="kpi"><div class="k-lbl">A receber</div><div class="k-val" style="color:var(--green)">${fmtBRL(aReceber)}</div><div class="k-sub trend-up">${(DB.fin.contasReceber||[]).filter(x=>!x.recebido).length} lançamento(s)</div></div>
+    <div class="kpi"><div class="k-lbl">A pagar (em aberto)</div><div class="k-val" style="color:var(--red)">${fmtBRL(aPagar)}</div><div class="k-sub trend-down" style="text-transform:capitalize">${pagarAbertos.length} no período · ${R.label}</div></div>
+    <div class="kpi"><div class="k-lbl">A receber</div><div class="k-val" style="color:var(--green)">${fmtBRL(aReceber)}</div><div class="k-sub trend-up" style="text-transform:capitalize">${receberAbertos.length} no período · ${R.label}</div></div>
     <div class="kpi"><div class="k-lbl">Saldo projetado</div><div class="k-val" style="color:${projetado>=0?'var(--green)':'var(--red)'}">${fmtBRL(projetado)}</div><div class="k-sub" style="color:var(--soft)">conta + receber − pagar</div></div>
   </div>
   <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:20px" class="dash-grid">
@@ -2478,9 +2484,9 @@ function finVisao(t){
   </div>`;
 }
 function finCustosFixos(){
-  return `<div class="card card-pad" style="max-width:980px">
-    <div class="section-head"><div><div class="ttl">Custos fixos mensais (recorrentes)</div><div class="desc">Aluguel, energia, etc. — com dia de vencimento aparecem todo mês em Contas a Pagar</div></div></div>
-    <div class="comp-row" style="grid-template-columns:1.2fr .9fr .9fr 60px 100px 96px 30px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 0 4px"><span>Nome</span><span>Grupo</span><span>Subcategoria</span><span>Dia venc.</span><span>Valor previsto</span><span>Forma</span><span></span></div>
+  return `<div class="card card-pad" style="max-width:1120px">
+    <div class="section-head"><div><div class="ttl">Custos fixos mensais (recorrentes)</div><div class="desc">Aluguel, energia, etc., com dia de vencimento aparecem todo mês em Contas a Pagar</div></div></div>
+    <div class="comp-row" style="grid-template-columns:1.5fr 1.1fr 1.1fr 78px 124px 124px 30px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Nome</span><span>Grupo</span><span>Subcategoria</span><span>Dia venc.</span><span>Valor previsto</span><span>Forma</span><span></span></div>
     ${finRecorrentes()}
     <div style="margin-top:18px"><div class="ttl" style="font-size:13px;margin-bottom:8px">Provisões a reservar / mês</div>
       ${finList('provisoes',[{f:'nome',ph:'Nome',w:'1.5fr'},{f:'valor',type:'money',w:'120px'}])}</div>
@@ -2500,8 +2506,8 @@ function finParam(){
       </div>
       ${fin.mei
         ?`<div class="field"><label>Imposto fixo mensal (DAS)</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(fin.impostoFixo||0)}" oninput="DB.fin.impostoFixo=moneyMask(this)" onchange="save()"></div></div>`
-        :`<div class="field"><label>Alíquota efetiva de impostos <span class="hint">% — confirme com seu contador</span></label><input class="input" type="number" step="0.1" value="${fin.aliquota}" onchange="DB.fin.aliquota=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`}
-      <div style="font-size:12.5px;font-weight:600;color:var(--muted);margin:4px 0 6px">Encargos CLT <span class="hint" style="font-weight:400">% sobre salário — total ${fmtPct((fin.encFGTS||0)+(fin.encINSS||0)+(fin.encProv||0))}</span></div>
+        :`<div class="field"><label>Alíquota efetiva de impostos <span class="hint">%, confirme com seu contador</span></label><input class="input" type="number" step="0.1" value="${fin.aliquota}" onchange="DB.fin.aliquota=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`}
+      <div style="font-size:12.5px;font-weight:600;color:var(--muted);margin:4px 0 6px">Encargos CLT <span class="hint" style="font-weight:400">% sobre salário, total ${fmtPct((fin.encFGTS||0)+(fin.encINSS||0)+(fin.encProv||0))}</span></div>
       <div class="grid-3">
         <div class="field"><label>FGTS <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.encFGTS!=null?fin.encFGTS:8}" onchange="DB.fin.encFGTS=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
         <div class="field"><label>INSS patronal <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.encINSS!=null?fin.encINSS:0}" onchange="DB.fin.encINSS=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
@@ -2557,7 +2563,7 @@ function editMembro(id){editMembroId=id;const m=normMembro(DB.equipe.find(x=>x.i
     </div>
     <div class="field"><label>Senha provisória</label><input class="input" id="mb_senha" value="${esc(m.senha)}" placeholder="defina uma senha"></div>
     <div class="field"><label>Nível de acesso</label>
-      <select class="input" id="mb_nivel" onchange="membroSetNivel(this.value)">${Object.entries(NIVEIS).map(([k,v])=>`<option value="${k}" ${m.nivel===k?'selected':''}>${v.label} — ${v.desc}</option>`).join('')}</select></div>
+      <select class="input" id="mb_nivel" onchange="membroSetNivel(this.value)">${Object.entries(NIVEIS).map(([k,v])=>`<option value="${k}" ${m.nivel===k?'selected':''}>${v.label} · ${v.desc}</option>`).join('')}</select></div>
     <div style="font-size:12px;font-weight:600;color:var(--muted);margin:6px 0 8px">Áreas que este membro pode acessar</div>
     <div id="mb_perms" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px">${ACESSOS.map(([k,l])=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" data-perm="${k}" ${m.permissoes.includes(k)?'checked':''} onchange="membroTogglePerm()" style="width:16px;height:16px;accent-color:var(--navy)"> ${l}</label>`).join('')}</div>
   </div>
@@ -2605,7 +2611,7 @@ function viewMapa(){
   $('#view').innerHTML=`<div class="card card-pad" style="max-width:760px">
     <div style="display:flex;align-items:center;gap:18px;margin-bottom:20px">
       <div style="position:relative;flex-shrink:0">${ringSVG(pct)}<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'Fraunces',serif;font-size:19px">${pct}%</div></div>
-      <div><div class="ttl" style="font-size:18px">Mapa do Caminho</div><div class="desc">${done} de ${steps.length} etapas concluídas — siga para destravar todo o potencial do app.</div></div>
+      <div><div class="ttl" style="font-size:18px">Mapa do Caminho</div><div class="desc">${done} de ${steps.length} etapas concluídas, siga para destravar todo o potencial do app.</div></div>
     </div>
     ${steps.map(s=>`<div style="display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--line);border-radius:12px;margin-bottom:9px">
       <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;${s.done?'background:var(--green);color:#fff':'background:#EEF0F4;color:var(--soft)'}">${s.done?'✓':'○'}</div>
@@ -2619,16 +2625,16 @@ function viewMapa(){
 let contaTab='conta';
 function esc(s){return (s==null?'':s).toString().replace(/"/g,'&quot;');}
 function exportDados(){const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='lidera-gestao-dados.json';a.click();toast('Dados exportados');}
-function importarBackup(input){const f=input&&input.files&&input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d||!d.insumos||!d.fichas)throw 0;DB=d;save();renderFoot();go('dashboard');toast('Backup importado com sucesso');}catch(e){toast('Arquivo inválido — selecione um backup do Lidera Gestão');}};rd.readAsText(f);}
+function importarBackup(input){const f=input&&input.files&&input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d||!d.insumos||!d.fichas)throw 0;DB=d;save();renderFoot();go('dashboard');toast('Backup importado com sucesso');}catch(e){toast('Arquivo inválido, selecione um backup do Lidera Gestão');}};rd.readAsText(f);}
 function comecarVazio(){if(!confirm('Isto apaga tudo e inicia o app vazio, sem dados de exemplo. Deseja continuar?'))return;
   DB={insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};
-  save();renderFoot();go('insumos');toast('App iniciado do zero — comece cadastrando seus insumos');}
+  save();renderFoot();go('insumos');toast('App iniciado do zero, comece cadastrando seus insumos');}
 function viewConta(){
   DB.conta=DB.conta||{};const c=DB.conta;
   const tabs=[['conta','Conta'],['seg','Segurança'],['plano','Plano e cobrança'],['priv','Privacidade']];
   let body='';
   if(contaTab==='conta')body=`<div class="card card-pad" style="max-width:740px">
-    <div class="section-head"><div><div class="ttl">Conta</div><div class="desc">Suas informações — usadas em comunicações e identificação</div></div></div>
+    <div class="section-head"><div><div class="ttl">Conta</div><div class="desc">Suas informações, usadas em comunicações e identificação</div></div></div>
     <div class="field"><label>Nome do restaurante</label><input class="input" value="${esc(c.restaurante)}" placeholder="Ex.: Restaurante Lidera" oninput="DB.conta.restaurante=this.value;finTouch();renderFoot()"></div>
     <div class="grid-2">
       <div class="field"><label>Nome completo</label><input class="input" value="${esc(c.nome)}" placeholder="Seu nome" oninput="DB.conta.nome=this.value;finTouch()"></div>
@@ -2736,7 +2742,7 @@ function viewBuffet(){
         <span style="color:var(--soft)">Arraste as cubas · alça inferior direita redimensiona</span>
       </div>
       <div id="buffetBoard" onpointerdown="buffetDeselect(event)" style="position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;height:calc(100vh - 330px);min-height:520px;background:repeating-linear-gradient(0deg,var(--card) 0 39px,var(--bg) 39px 40px),repeating-linear-gradient(90deg,var(--card) 0 39px,var(--bg) 39px 40px)">
-        <div style="position:absolute;top:10px;left:14px;font-size:11px;color:var(--soft);pointer-events:none">Vista superior do buffet — ${d.cubas.length} cuba(s)</div>
+        <div style="position:absolute;top:10px;left:14px;font-size:11px;color:var(--soft);pointer-events:none">Vista superior do buffet · ${d.cubas.length} cuba(s)</div>
         ${d.cubas.length===0?`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--soft);pointer-events:none"><div><div style="font-size:34px;margin-bottom:6px">🍽️</div>Adicione cubas com <b>+ Cuba</b><br/>e monte seu buffet como na realidade</div></div>`:''}
         ${d.cubas.map(c=>{const col=cubaCol(c,d.precoKg);const s=c.id===buffetSel;return`
           <div id="cuba_${c.id}" onpointerdown="buffetCubaDown(event,'${c.id}','move')" style="position:absolute;left:${c.x}px;top:${c.y}px;width:${c.w}px;height:${c.h}px;background:${col.bg};border:2px solid ${s?'var(--gold)':col.br};border-radius:8px;cursor:grab;display:flex;flex-direction:column;overflow:hidden;transform:rotate(${c.rot||0}deg);box-shadow:${s?'0 0 0 2px rgba(164,138,87,.3)':'0 1px 3px rgba(0,0,0,.08)'};touch-action:none">
@@ -2867,7 +2873,7 @@ function viewDesperdicio(){
     <div class="kpi"><div class="k-lbl">Período</div><div class="k-val" style="font-size:18px;text-transform:capitalize">${ymLabel(ym)}</div><div class="k-sub"><input type="month" class="input" style="height:30px;padding:2px 8px;font-size:12px" value="${ym}" onchange="despYM=this.value;viewDesperdicio()"></div></div>
   </div>
   <div class="card card-pad" style="margin-bottom:18px">
-    <div class="section-head"><div><div class="ttl">Registrar desperdício do dia</div><div class="desc">Adicione vários itens no mesmo lançamento — custo e unidade vêm automáticos da sua base</div></div></div>
+    <div class="section-head"><div><div class="ttl">Registrar desperdício do dia</div><div class="desc">Adicione vários itens no mesmo lançamento, custo e unidade vêm automáticos da sua base</div></div></div>
     <div class="grid-2" style="margin-bottom:12px">
       <div class="field" style="margin:0"><label>Data do lançamento</label><input type="date" class="input" id="desp_data" value="${hojeISO()}"></div>
       <div class="field" style="margin:0"><label>Responsável</label><input class="input" id="desp_resp" placeholder="Nome de quem registrou"></div>
@@ -3034,7 +3040,7 @@ function estoqueItens(){
   });
 }
 function estoqueValorTotal(){return estoqueItens().reduce((s,x)=>s+x.valorEstoque,0);}
-function lancarCmvDoEstoque(){const v=Math.round(estoqueValorTotal()*100)/100;editCmvReg(null,{ef:v});toast('Estoque atual ('+fmtBRL(v)+') lançado como estoque final — informe compras e vendas');}
+function lancarCmvDoEstoque(){const v=Math.round(estoqueValorTotal()*100)/100;editCmvReg(null,{ef:v});toast('Estoque atual ('+fmtBRL(v)+') lançado como estoque final, informe compras e vendas');}
 function imprimirContagem(){
   const items=estoqueItens().slice().sort((a,b)=>(a.cat||'').localeCompare(b.cat||'')||a.nome.localeCompare(b.nome));
   if(!items.length)return toast('Nenhum insumo marcado para contagem');
@@ -3373,7 +3379,7 @@ async function abrirCliente(orgId){let org=null;try{org=(await sb.from('organiza
   document.querySelectorAll('#nav a[data-route]').forEach(a=>a.style.display='');go('dashboard');}
 function voltarAdmin(){CLOUD=false;ADMIN_MODE=false;ORG=null;const bn=document.getElementById('cloudBanner');if(bn)bn.style.display='none';showAdmin();}
 async function atividadesCliente(orgId,nome){let ats=[];try{ats=(await sb.from('atividades').select('*').eq('org_id',orgId).order('criada_em',{ascending:false})).data||[];}catch(e){}
-  modal(`<div class="modal-head"><h3>Atividades — ${nome}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  modal(`<div class="modal-head"><h3>Atividades: ${nome}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">${ats.length?ats.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)"><div><b>${a.titulo}</b><div style="font-size:12px;color:var(--soft)">${a.descricao||''}${a.prazo?' · prazo '+a.prazo:''}</div></div><span class="tag ${a.status==='concluida'?'tag-green':a.status==='fazendo'?'tag-amber':'tag-navy'}">${a.status}</span></div>`).join(''):'<div style="font-size:13px;color:var(--soft);padding:6px 0">Nenhuma atividade ainda.</div>'}
     <div style="margin-top:14px"><button class="btn btn-ghost btn-sm" onclick="addAtividade('${orgId}','${nome}')">${icoPlus} Nova atividade</button></div></div>
   <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal()">Fechar</button></div>`);}
@@ -3399,21 +3405,21 @@ function subBox(title,inner,arrPath,idx){return `<div class="wiz-sub"><div class
 const WIZ=[
  {g:'Perfil do Usuário',t:'Seus dados',ctx:'Como devemos te chamar no sistema? Esses dados aparecem no seu painel.',body:()=>
    fTxt('conta.nome','Seu nome','','Ex.: Guilherme')+fTxt('conta.whatsapp','WhatsApp','','51 99999-9999')+fFoto('conta.foto','Sua foto')},
- {g:'Identidade e Equipe',t:'Identidade do negócio',ctx:'O básico do seu estabelecimento e o regime tributário — ele muda como calculamos impostos e encargos.',body:()=>
+ {g:'Identidade e Equipe',t:'Identidade do negócio',ctx:'O básico do seu estabelecimento e o regime tributário, ele muda como calculamos impostos e encargos.',body:()=>
    fTxt('conta.restaurante','Nome do restaurante','','Ex.: Restaurante Lidera')
    +fSel('conta.tipoNegocio','Tipo de negócio',['Buffet / por quilo','À la carte','Fast-food','Hamburgueria','Pizzaria','Cafeteria / Padaria','Bar / Petiscaria','Outro'])
    +fFoto('conta.logo','Logo da empresa')
    +fSeg('fin.regime','Regime tributário',[{v:'simples',l:'Simples'},{v:'presumido',l:'Presumido'},{v:'lucroReal',l:'Lucro Real'}])
    +fSeg('fin.mei','É MEI?',[{v:false,l:'Não'},{v:true,l:'Sim'}])
-   +(wzGet('fin.mei')?fMoney('fin.impostoFixo','Imposto fixo mensal (DAS)'):fNum('fin.aliquota','Alíquota efetiva de impostos','% — confirme com seu contador'))},
- {g:'Identidade e Equipe',t:'Sócios e gestão',ctx:'Cadastre os sócios. O pró-labore costuma ter um valor de retirada (real) e um menor declarado na folha (base do INSS — geralmente 1 salário mínimo).',body:()=>{
+   +(wzGet('fin.mei')?fMoney('fin.impostoFixo','Imposto fixo mensal (DAS)'):fNum('fin.aliquota','Alíquota efetiva de impostos','%, confirme com seu contador'))},
+ {g:'Identidade e Equipe',t:'Sócios e gestão',ctx:'Cadastre os sócios. O pró-labore costuma ter um valor de retirada (real) e um menor declarado na folha (base do INSS, geralmente 1 salário mínimo).',body:()=>{
    const a=wzGet('fin.socios')||[];return (a.length?a.map((s,i)=>{const inss=((s.proLaboreDeclarado!=null&&s.proLaboreDeclarado!=='')?s.proLaboreDeclarado:(s.proLabore||0))*((DB.fin.inssSocio||11)/100);return subBox('Sócio '+(i+1),
      fTxt('fin.socios.'+i+'.nome','Nome')+fTxt('fin.socios.'+i+'.cargo','Cargo','','Ex.: Sócio Proprietário')
      +`<div class="grid-2">`+fMoney('fin.socios.'+i+'.proLabore','Pró-labore real (retirada)','',true)+fMoney('fin.socios.'+i+'.proLaboreDeclarado','Valor declarado na folha','base do INSS',true)+`</div>`
      +fFoto('fin.socios.'+i+'.foto','Foto')
      +`<div class="wiz-calc">Retirada: <b>${fmtBRL(s.proLabore||0)}</b> · INSS sobre declarado (${fmtPct(DB.fin.inssSocio||11)}): <b>${fmtBRL(inss)}</b> · <b style="color:var(--navy)">Custo real: ${fmtBRL(custoSocio(s))}</b></div>`,'fin.socios',i);}).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum sócio cadastrado.</div>')
    +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.socios',{nome:'',cargo:'',proLabore:0,proLaboreDeclarado:0})">${icoPlus} Adicionar sócio</button>`;}},
- {g:'Identidade e Equipe',t:'Funcionários',ctx:'Cadastre a equipe. Para CLT calculamos o "custo fantasma" — mostramos INSS, FGTS e provisões (13º/férias) separadamente.',body:()=>{
+ {g:'Identidade e Equipe',t:'Funcionários',ctx:'Cadastre a equipe. Para CLT calculamos o "custo fantasma", mostramos INSS, FGTS e provisões (13º/férias) separadamente.',body:()=>{
    const a=wzGet('fin.funcionarios')||[];return (a.length?a.map((f,i)=>{const c=custoFuncionario(f);const isCLT=(f.regime||'CLT')==='CLT';return subBox('Funcionário '+(i+1),
      fTxt('fin.funcionarios.'+i+'.nome','Nome')+fTxt('fin.funcionarios.'+i+'.cargo','Cargo')
      +fSeg('fin.funcionarios.'+i+'.regime','Regime',[{v:'CLT',l:'CLT'},{v:'PJ',l:'PJ'},{v:'Diarista',l:'Diarista'}])
@@ -3445,7 +3451,7 @@ const WIZ=[
      +`<div class="grid-2">`+fMoney('fin.equipamentos.'+i+'.valorPago','Valor pago','',true)+fInt('fin.equipamentos.'+i+'.vidaUtilAnos','Vida útil (anos)','',true)+`</div>`
      +`<div class="wiz-calc">Depreciação mensal: <b>${fmtBRL(dep)}</b></div>`,'fin.equipamentos',i);}).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum equipamento.</div>')
    +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.equipamentos',{nome:'',valorPago:0,vidaUtilAnos:5})">${icoPlus} Adicionar equipamento</button>`;}},
- {g:'Ativos e Inteligência',t:'Sistemas e administrativo',ctx:'Softwares, serviços contábeis e aluguel de maquininha — custos administrativos mensais.',body:()=>
+ {g:'Ativos e Inteligência',t:'Sistemas e administrativo',ctx:'Softwares, serviços contábeis e aluguel de maquininha, custos administrativos mensais.',body:()=>
    fMoney('fin.sistemas.software','Software / sistema (mensal)')+fMoney('fin.sistemas.contabil','Serviços contábeis')+fMoney('fin.sistemas.aluguelMaquininha','Aluguel maquininha')},
  {g:'Ativos e Inteligência',t:'Veículos da operação',ctx:'Custos com veículos da empresa. IPVA e seguro anuais são diluídos por 12.',body:()=>{
    const a=wzGet('fin.veiculos')||[];return (a.length?a.map((v,i)=>subBox('Veículo '+(i+1),
