@@ -798,7 +798,53 @@ function custosEstruturais(){const f=DB.fin;let t=0;
 function custosFixosTotais(){
   const desp=(DB.fin.custosFixos||[]).reduce((s,d)=>s+(d.valor||0),0);
   const prov=(DB.fin.provisoes||[]).reduce((s,d)=>s+(d.valor||0),0);
-  return desp+custosEstruturais()+folhaTotal()+proLaboreTotal()+prov;
+  return desp+folhaTotal()+proLaboreTotal()+prov; // estruturais já espelhados em custosFixos
+}
+/* ===== Espelhar custos fixos da anamnese → aba Custos Fixos ===== */
+function anamneseFixosItens(){
+  const f=DB.fin,out=[];
+  const add=(src,nome,grupo,sub,valor)=>{if(valor>0)out.push({src,nome,grupo,sub,valor:Math.round(valor*100)/100});};
+  const im=f.imovel||{};
+  add('ana_aluguel','Aluguel','Despesas Prediais','Aluguel',im.aluguel||0);
+  add('ana_iptu','IPTU (rateio mensal)','Despesas Prediais','IPTU',(im.iptuAnual||0)/12);
+  const u=f.utilidades||{};
+  add('ana_energia','Energia elétrica','Utilidades','Energia Elétrica',u.energia||0);
+  add('ana_agua','Água / esgoto','Utilidades','Água / Esgoto',u.agua||0);
+  add('ana_internet','Internet','Utilidades','Telefonia / Internet',u.internet||0);
+  add('ana_telefone','Telefone','Utilidades','Telefonia / Internet',u.telefone||0);
+  add('ana_alarme','Alarme','Despesas Gerais','Despesas Diversas',u.alarme||0);
+  add('ana_seguranca','Segurança / ronda','Despesas Gerais','Despesas Diversas',u.seguranca||0);
+  const sr=f.servicosRec||{};
+  add('ana_dedetizacao','Dedetização','Terceiros','Limpeza / Higiene',sr.dedetizacao||0);
+  add('ana_lixo','Lixo especial','Terceiros','Limpeza / Higiene',sr.lixo||0);
+  add('ana_limpeza','Material de limpeza','Materiais','Material de Limpeza',sr.limpeza||0);
+  const op=f.operacionais||{};
+  add('ana_gas','Gás de cozinha','Utilidades','Gás',op.gas||0);
+  add('ana_oleo','Óleo / gordura','CMV','Produtos Extras',op.oleo||0);
+  add('ana_descartaveis','Descartáveis','CMV','Embalagens',op.descartaveis||0);
+  (f.servicosMensais||[]).forEach((s,i)=>add('ana_servm_'+i,s.desc||'Serviço mensal','Despesas Gerais','Despesas Diversas',s.valor||0));
+  (f.equipamentos||[]).forEach((e,i)=>{const anos=(e.vidaUtilAnos||5)||5;add('ana_equip_'+i,(e.nome||'Equipamento')+' (depreciação)','Despesas Gerais','Investimentos',(e.valorPago||0)/(anos*12));});
+  const si=f.sistemas||{};
+  add('ana_software','Software / sistema','Terceiros','Informática / TI',si.software||0);
+  add('ana_contabil','Serviços contábeis','Terceiros','Contabilidade',si.contabil||0);
+  add('ana_maquininha','Aluguel maquininha','Despesas Financeiras','Taxas de Cartões',si.aluguelMaquininha||0);
+  (f.veiculos||[]).forEach((v,i)=>add('ana_veic_'+i,(v.nome||'Veículo'),'Despesas Gerais','Despesas Diversas',(v.parcela||0)+((v.ipvaAnual||0)/12)+((v.seguroAnual||0)/12)+(v.combustivel||0)));
+  const mk=f.marketing||{};
+  add('ana_mkt_agencia','Agência / freelancer mkt','Publicidade','Marketing Digital',mk.agencia||0);
+  (mk.canais||[]).forEach((c,i)=>add('ana_mkt_canal_'+i,c.nome||'Mídia / tráfego','Publicidade','Publicidade e Propaganda',c.valor||0));
+  add('ana_mkt_brinde','Brindes','Publicidade','Publicidade e Propaganda',(mk.brindeUnit||0)*(mk.brindeQtd||0));
+  return out;
+}
+function syncAnamneseCustosFixos(){
+  DB.fin.custosFixos=DB.fin.custosFixos||[];
+  const itens=anamneseFixosItens(),srcs=new Set(itens.map(x=>x.src));
+  // remove linhas automáticas cuja origem sumiu (valor zerado / item removido na anamnese)
+  DB.fin.custosFixos=DB.fin.custosFixos.filter(r=>!(r.auto&&!srcs.has(r.src)));
+  itens.forEach(it=>{
+    const r=DB.fin.custosFixos.find(x=>x.auto&&x.src===it.src);
+    if(r){r.nome=it.nome;r.grupo=it.grupo;r.sub=it.sub;r.valor=it.valor;} // preserva diaVenc definido na aba
+    else DB.fin.custosFixos.push({id:uid(),auto:true,src:it.src,nome:it.nome,grupo:it.grupo,sub:it.sub,valor:it.valor,diaVenc:0});
+  });
 }
 /* ===== Filtro de período (Dashboard / Faturamento) ===== */
 let periodo='mesAtual', periodoCustom={de:'',ate:''};
@@ -835,7 +881,7 @@ function totaisGerais(R){
   const impostoRS=DB.fin.mei?impostoMensal(faturamento)*nm:impostoMensal(faturamento);
   const taxaCartaoRS=recDireto*((DB.fin.taxaCartao||0)/100);
   const custosVar=cmvRS+comissaoRS+impostoRS+taxaCartaoRS;
-  const fixosBase=((DB.fin.custosFixos||[]).reduce((s,d)=>s+(d.valor||0),0)+custosEstruturais())*nm;
+  const fixosBase=((DB.fin.custosFixos||[]).reduce((s,d)=>s+(d.valor||0),0))*nm; // estruturais já espelhados em custosFixos
   const provisoesRS=(DB.fin.provisoes||[]).reduce((s,d)=>s+(d.valor||0),0)*nm;
   const folha=folhaTotal()*nm, prol=proLaboreTotal()*nm;
   const fixos=fixosBase+folha+prol+provisoesRS;
@@ -908,6 +954,7 @@ function normData(){
   // custos fixos recorrentes: grupo/sub do DRE + dia de vencimento (geram contas a pagar todo mês)
   f.recGerados=f.recGerados||{};
   (f.custosFixos||[]).forEach(c=>{if(!DB.categorias[c.grupo]){c.grupo='Despesas Gerais';c.sub=c.sub||((DB.categorias['Despesas Gerais']||{subs:[]}).subs[0]||'');}if(c.diaVenc==null)c.diaVenc=0;});
+  if(!f._fixosMigrados){syncAnamneseCustosFixos();f._fixosMigrados=true;} // espelha custos da anamnese p/ aba Custos Fixos (1x)
   (f.funcionarios||[]).forEach(x=>{if(x.diaVenc==null)x.diaVenc=0;});
   (f.socios||[]).forEach(x=>{if(x.diaVenc==null)x.diaVenc=0;});
   if(DB.onboardingFeito==null)DB.onboardingFeito=(Object.keys(DB.insumos||{}).length>0||Object.keys(DB.fichas||{}).length>0);
@@ -2331,7 +2378,7 @@ function finRecorrentes(){
   const arr=DB.fin.custosFixos||[];const grupos=Object.keys(DB.categorias).filter(g=>grupoTipo(g)!=='receita');
   return `${arr.length?arr.map((r,i)=>{const subs=(DB.categorias[r.grupo]||{subs:[]}).subs;return `
     <div class="comp-row" style="grid-template-columns:1.3fr 1fr 1fr 72px 110px 30px;align-items:center">
-      <input class="input" value="${(r.nome||'').replace(/"/g,'&quot;')}" placeholder="Nome (ex.: Aluguel)" oninput="DB.fin.custosFixos[${i}].nome=this.value;finTouch()">
+      <input class="input" ${r.auto?'title="Importado da anamnese — recalculado ao salvar a anamnese" style="border-left:3px solid var(--gold)"':''} value="${(r.nome||'').replace(/"/g,'&quot;')}" placeholder="Nome (ex.: Aluguel)" oninput="DB.fin.custosFixos[${i}].nome=this.value;finTouch()">
       <select class="input" onchange="recSetGrupo(${i},this.value)">${grupos.map(g=>`<option ${g===r.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
       <select class="input" onchange="DB.fin.custosFixos[${i}].sub=this.value;finTouch()">${subs.map(s=>`<option ${s===r.sub?'selected':''}>${esc(s)}</option>`).join('')||'<option value="">—</option>'}</select>
       <input class="input" type="number" min="1" max="31" value="${r.diaVenc||''}" placeholder="Dia" title="Dia do vencimento" onchange="DB.fin.custosFixos[${i}].diaVenc=parseInt(this.value)||0;save()">
@@ -2339,7 +2386,7 @@ function finRecorrentes(){
       <button class="mini-del" onclick="DB.fin.custosFixos.splice(${i},1);save();viewFinanceiro()">${icoX}</button>
     </div>`;}).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhum custo fixo.</div>`}
     <button class="btn btn-ghost btn-sm" onclick="finAdd('custosFixos')" style="margin-top:6px">${icoPlus} Adicionar</button>
-    <div style="font-size:11.5px;color:var(--soft);margin-top:8px">Preencha o <b>dia de vencimento</b> para o custo aparecer todo mês já pré-lançado em <b>Contas a Pagar</b> — é só confirmar o valor (que pode variar) e marcar Pago.</div>`;
+    <div style="font-size:11.5px;color:var(--soft);margin-top:8px">Itens com <span style="color:var(--gold)">borda dourada</span> vêm da <b>anamnese</b> e são atualizados ao salvá-la. Preencha o <b>dia de vencimento</b> para o custo aparecer todo mês já pré-lançado em <b>Contas a Pagar</b> — é só confirmar o valor (que pode variar) e marcar Pago.</div>`;
 }
 function finVisao(t){
   const saldoConta=(DB.fin.contasBancarias||[]).reduce((s,x)=>s+(x.saldo||0),0);
@@ -3379,19 +3426,15 @@ const WIZ=[
    const a=wzGet('fin.custosFixos')||[];return (a.length?a.map((c,i)=>subBox('Custo '+(i+1),
      fTxt('fin.custosFixos.'+i+'.nome','Descrição','','Ex.: Manutenção predial')+fMoney('fin.custosFixos.'+i+'.valor','Valor mensal'),'fin.custosFixos',i)).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum custo extra.</div>')
    +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.custosFixos',{nome:'',grupo:'Outros',valor:0})">${icoPlus} Adicionar custo</button>`;}},
- {g:'Marketing e Vendas',t:'Histórico de faturamento',ctx:'Preencha o faturamento bruto dos últimos meses. Recomendamos no mínimo 3 meses.',body:()=>{
-   const a=wzGet('fin.historicoFat')||[];return (a.length?a.map((h,i)=>subBox('Mês '+(i+1),
-     `<div class="grid-2">`+fTxt('fin.historicoFat.'+i+'.mesAno','Mês/Ano','','Ex.: 05/2026')+fMoney('fin.historicoFat.'+i+'.valor','Faturamento')+`</div>`,'fin.historicoFat',i)).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum mês informado.</div>')
-   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.historicoFat',{mesAno:'',valor:0})">${icoPlus} Adicionar mês</button>`;}},
 ];
 function abrirWizard(step){normData();wizState.step=step||wizState.step||1;let w=document.getElementById('wizScreen');if(!w){w=document.createElement('div');w.id='wizScreen';document.body.appendChild(w);}w.style.display='flex';wizRender();}
 function fecharWizard(){const w=document.getElementById('wizScreen');if(w)w.style.display='none';}
 function wizNav(d){const n=wizState.step+d;if(n<1)return;if(n>WIZ.length)return wizFinish();wizState.step=n;wizRender();window.scrollTo(0,0);}
-function wizSalvarFechar(){save();fecharWizard();toast('Dados salvos');}
+function wizSalvarFechar(){syncAnamneseCustosFixos();save();fecharWizard();toast('Dados salvos');}
 function wizSync(){const f=DB.fin;
   if((f.marketplaces||[]).length){f.comissaoIfood=f.marketplaces[0].comissao||f.comissaoIfood;const mix=f.marketplaces.reduce((s,m)=>s+(m.pctVendas||0),0);DB.fat.mixIfood=Math.min(100,mix);}
   const ops=(f.operadorasCartao||[]).filter(o=>o.taxaCredito);if(ops.length)f.taxaCartao=ops.reduce((s,o)=>s+(o.taxaCredito||0),0)/ops.length;
-  const hist=(f.historicoFat||[]).filter(h=>h.valor>0);if(hist.length&&!(DB.fat.lancado>0))DB.fat.lancado=hist[hist.length-1].valor;}
+  syncAnamneseCustosFixos();} // espelha custos fixos da anamnese p/ aba Custos Fixos (faturamento vem só dos lançamentos)
 function wizFinish(){wizSync();DB.onboardingFeito=true;save();fecharWizard();toast('Onboarding concluído! 🎉');go('dashboard');}
 function wizRender(){const w=document.getElementById('wizScreen');if(!w)return;const i=wizState.step,step=WIZ[i-1];const pct=Math.round(i/WIZ.length*100);
   w.innerHTML=`<div class="wiz-top"><div class="wm serif">Flow <span class="by">by Lidera</span></div><div class="wiz-step-lbl">Passo ${i} de ${WIZ.length}</div></div>
