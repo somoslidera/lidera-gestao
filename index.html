@@ -2528,11 +2528,11 @@ function finFolha(){
   const cats=funcCats(),GRUPOS=[...cats,'Sócios','Freelancers'];
   const porCat={};GRUPOS.forEach(c=>porCat[c]=[]);
   ativos.forEach(({f,i,m})=>{const r=f.regime||'CLT';const g=r==='Sócio'?'Sócios':r==='Freelancer'?'Freelancers':(cats.includes(f.categoria)?f.categoria:(cats[0]||'Sem categoria'));(porCat[g]=porCat[g]||[]).push({f,i,m});});
-  const head=`<tr style="background:var(--bg);color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px 10px">Funcionário</th><th class="num">Bruto</th><th class="num">Por fora</th><th class="num">Vales</th><th class="num">Consumo</th><th class="num">Benef.</th><th class="num">INSS</th><th class="num">FGTS</th><th class="num">13º+Férias</th><th class="num">Líquido</th><th class="num">Custo total</th><th style="width:110px;text-align:center">Pago</th><th style="width:32px"></th></tr>`;
+  const head=`<tr style="background:var(--bg);color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px 10px;min-width:190px">Funcionário</th><th class="num">Bruto</th><th class="num">Por fora</th><th class="num">Vales</th><th class="num">Consumo</th><th class="num">Benef.</th><th class="num">INSS</th><th class="num">FGTS</th><th class="num">13º+Férias</th><th class="num">Líquido</th><th class="num">Custo total</th><th style="width:110px;text-align:center">Pago</th><th style="width:32px"></th></tr>`;
   const rowsByCat=GRUPOS.map(cat=>{const lst=porCat[cat]||[];if(!lst.length)return '';
     const sub={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0};lst.forEach(x=>Object.keys(sub).forEach(k=>sub[k]+=x.m[k]||0));
     const rows=lst.map(({f,i,m})=>{const pg=!!(f.pagosMes&&f.pagosMes[ym]);return `<tr style="border-top:1px solid var(--line)">
-      <td style="padding:8px 10px"><div style="font-weight:600;font-size:13px">${esc(f.nome||'—')}</div><div style="font-size:11px;color:var(--soft)">${esc(f.cargo||'')}${f.regime&&f.regime!=='CLT'?` · ${esc(f.regime)}`:''}</div></td>
+      <td style="padding:8px 10px;min-width:190px"><div style="font-weight:600;font-size:13px;white-space:nowrap">${esc(f.nome||'—')}</div><div style="font-size:11px;color:var(--soft);white-space:nowrap">${esc(f.cargo||'')}${f.regime&&f.regime!=='CLT'?` · ${esc(f.regime)}`:''}</div></td>
       <td class="num">${fmtBRL(m.bruto)}</td><td class="num">${fmtBRL(m.porFora)}</td><td class="num" style="color:${m.vales>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.vales)}</td><td class="num" style="color:${m.consumo>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.consumo)}</td><td class="num">${fmtBRL(m.beneficios)}</td>
       <td class="num" style="color:var(--muted)">${fmtBRL(m.inss)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.fgts)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.prov)}</td>
       <td class="num"><b>${fmtBRL(m.liquido)}</b></td><td class="num"><b style="color:var(--navy);font-family:'Fraunces',serif">${fmtBRL(m.total)}</b></td>
@@ -2751,10 +2751,10 @@ function finParam(){
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">Regime tributário</div><div class="desc">Imposto no preço e encargos da folha</div></div><button class="btn btn-ghost btn-sm" onclick="abrirWizard(1)">✎ Anamnese</button></div>
       <div class="chan-tabs" style="margin-top:0">
-        <button class="${!fin.mei&&fin.regime==='simples'?'on':''}" onclick="DB.fin.mei=false;DB.fin.regime='simples';save();viewFinanceiro()">Simples</button>
-        <button class="${!fin.mei&&fin.regime==='presumido'?'on':''}" onclick="DB.fin.mei=false;DB.fin.regime='presumido';if(!DB.fin.aliquota)DB.fin.aliquota=13.33;save();viewFinanceiro()">Presumido</button>
-        <button class="${!fin.mei&&fin.regime==='lucroReal'?'on':''}" onclick="DB.fin.mei=false;DB.fin.regime='lucroReal';save();viewFinanceiro()">Lucro Real</button>
-        <button class="${fin.mei?'on':''}" onclick="DB.fin.mei=true;save();viewFinanceiro()">MEI</button>
+        <button class="${!fin.mei&&fin.regime==='simples'?'on':''}" onclick="if(DB.fin.mei||DB.fin.regime!=='simples')DB.fin.aliquota=6;DB.fin.mei=false;DB.fin.regime='simples';save();viewFinanceiro()">Simples</button>
+        <button class="${!fin.mei&&fin.regime==='presumido'?'on':''}" onclick="if(DB.fin.mei||DB.fin.regime!=='presumido')DB.fin.aliquota=13.33;DB.fin.mei=false;DB.fin.regime='presumido';save();viewFinanceiro()">Presumido</button>
+        <button class="${!fin.mei&&fin.regime==='lucroReal'?'on':''}" onclick="if(DB.fin.mei||DB.fin.regime!=='lucroReal')DB.fin.aliquota=16.33;DB.fin.mei=false;DB.fin.regime='lucroReal';save();viewFinanceiro()">Lucro Real</button>
+        <button class="${fin.mei?'on':''}" onclick="if(DB.fin.impostoFixo==null)DB.fin.impostoFixo=75;DB.fin.mei=true;save();viewFinanceiro()">MEI</button>
       </div>
       ${fin.mei
         ?`<div class="field"><label>Imposto fixo mensal (DAS)</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(fin.impostoFixo||0)}" oninput="DB.fin.impostoFixo=moneyMask(this)" onchange="save()"></div></div>`
