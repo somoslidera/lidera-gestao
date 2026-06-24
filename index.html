@@ -147,7 +147,7 @@ th.num{text-align:right}
 .chan-tabs button{flex:1;padding:9px;border-radius:9px;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted)}
 .chan-tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 
-.matrix-wrap{display:grid;grid-template-columns:minmax(300px,430px) 1fr;gap:26px;align-items:start}
+.matrix-wrap{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,460px);justify-content:start;gap:26px;align-items:start}
 .matrix{position:relative;aspect-ratio:1/1;background:radial-gradient(130% 130% at 100% 0%,rgba(30,158,106,.06),transparent 46%),radial-gradient(130% 130% at 0% 100%,rgba(210,72,63,.05),transparent 46%),var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 18px 50px rgba(16,31,66,.10)}
 .quad{position:absolute;width:50%;height:50%;display:flex;align-items:flex-start;padding:15px 17px}
 .quad .ql{font-size:12.5px;font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:5px}
@@ -1833,98 +1833,89 @@ function imprimirFicha(){
 
 /* ===================== ENGENHARIA DE MENU ===================== */
 function classificar(){
-  const arr=fichasVendaveis().map(f=>{const m=metricasFicha(f);return{f,m,pop:f.vendasMes||0,marg:m.mcBlend};});
+  const arr=fichasVendaveis().filter(f=>(f.precoVenda||0)>0).map(f=>{const m=metricasFicha(f);return{f,m,pop:f.vendasMes||0,marg:m.mcBlend,cmv:m.cmvBlend};});
   if(!arr.length)return [];
   const avgPop=arr.reduce((s,x)=>s+x.pop,0)/arr.length;
-  const avgMarg=arr.reduce((s,x)=>s+x.marg,0)/arr.length;
-  arr.forEach((x,idx)=>{const hiP=x.pop>=avgPop,hiM=x.marg>=avgMarg;
-    x.classe=hiP&&hiM?'Estrelas':hiP&&!hiM?'Populares':!hiP&&hiM?'Potenciais':'Críticos';
-    x.avgPop=avgPop;x.avgMarg=avgMarg;x.n=idx+1;});
+  const avgCmv=arr.reduce((s,x)=>s+x.cmv,0)/arr.length;
+  arr.forEach((x,idx)=>{const hiP=x.pop>=avgPop,eff=x.cmv<=avgCmv; // eff = CMV abaixo da média (mais eficiente)
+    x.classe=hiP&&eff?'Estrelas':hiP&&!eff?'Populares':!hiP&&eff?'Potenciais':'Críticos';
+    x.avgPop=avgPop;x.avgCmv=avgCmv;x.n=idx+1;});
   return arr;
 }
 const ENG_COR={Estrelas:'#1E9E6A',Populares:'#1D3573',Potenciais:'#C9892A','Críticos':'#D2483F'};
 const ENG_GLYPH={Estrelas:'★',Populares:'●',Potenciais:'◆','Críticos':'▼'};
+const ENG_GUIA={Estrelas:'Vende bem e com CMV baixo. Destaque no cardápio e proteja a ficha.',Populares:'Vende muito, mas com CMV alto. Renegocie o insumo ou ajuste porção e preço.',Potenciais:'CMV baixo, mas vende pouco. Dê visibilidade e estimule a venda.','Críticos':'Vende pouco e com CMV alto. Reformule a ficha ou tire do cardápio.'};
 function engTag(c){return c==='Estrelas'?'tag-green':c==='Populares'?'tag-navy':c==='Potenciais'?'tag-amber':'tag-red';}
 function viewEngenharia(){
   const arr=classificar();
   if(!arr.length){$('#view').innerHTML=`<div class="card">${emptyState('Sem dados','Cadastre fichas com preço e vendas.','go(&#39;fichas&#39;)')}</div>`;return;}
-  const avgPop=arr[0].avgPop,avgMarg=arr[0].avgMarg;
+  const avgPop=arr[0].avgPop,avgCmv=arr[0].avgCmv,alvo=cmvAlvoRef();
   const maxPop=Math.max(...arr.map(x=>x.pop)),minPop=Math.min(...arr.map(x=>x.pop));
-  const maxMarg=Math.max(...arr.map(x=>x.marg)),minMarg=Math.min(...arr.map(x=>x.marg));
+  const maxCmv=Math.max(...arr.map(x=>x.cmv)),minCmv=Math.min(...arr.map(x=>x.cmv));
   const colorOf=c=>ENG_COR[c]||'#888';
   const px=v=>v>=avgPop?50+((v-avgPop)/((maxPop-avgPop)||1))*40:10+((v-minPop)/((avgPop-minPop)||1))*40;
-  const py=v=>v>=avgMarg?50-((v-avgMarg)/((maxMarg-avgMarg)||1))*40:90-((v-minMarg)/((avgMarg-minMarg)||1))*40;
+  const py=v=>v<=avgCmv?50-((avgCmv-v)/((avgCmv-minCmv)||1))*40:50+((v-avgCmv)/((maxCmv-avgCmv)||1))*40; // CMV baixo no topo
   const ORDEM=['Estrelas','Populares','Potenciais','Críticos'];
-  const mcTot=arr.reduce((s,x)=>s+x.marg*x.pop,0);
-  const byClass={},countBy={};arr.forEach(x=>{byClass[x.classe]=(byClass[x.classe]||0)+x.marg*x.pop;countBy[x.classe]=(countBy[x.classe]||0)+1;});
-  const top=ORDEM.map(c=>({c,v:mcTot>0?(byClass[c]||0)/mcTot*100:0})).sort((a,b)=>b.v-a.v)[0];
-  const ranked=[...arr].sort((a,b)=>(b.marg*b.pop)-(a.marg*a.pop));
+  const countBy={},cmvList={};arr.forEach(x=>{countBy[x.classe]=(countBy[x.classe]||0)+1;(cmvList[x.classe]=cmvList[x.classe]||[]).push(x.cmv);});
+  const cmvMed=c=>cmvList[c]&&cmvList[c].length?cmvList[c].reduce((s,v)=>s+v,0)/cmvList[c].length:null;
+  const acimaMeta=arr.filter(x=>x.cmv>alvo);
+  const ranked=[...arr].sort((a,b)=>a.cmv-b.cmv); // menor CMV (mais eficiente) primeiro
   $('#view').innerHTML=`
+  <div style="max-width:1060px">
   <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px">
     <div>
       <div style="font-family:'Fraunces',serif;font-size:24px;font-weight:600;line-height:1.1">Engenharia de Cardápio</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:4px;max-width:560px">Cada prato posicionado por <b>popularidade</b> × <b>margem de contribuição</b>. As linhas tracejadas marcam a média do seu cardápio.</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px;max-width:560px">Cada prato posicionado por <b>popularidade</b> × <b>CMV</b>. As linhas tracejadas marcam a média do seu cardápio.</div>
     </div>
     <div style="font-size:11.5px;color:var(--soft);font-weight:600;letter-spacing:.3px">${arr.length} pratos analisados</div>
   </div>
 
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:18px">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:14px;margin-bottom:18px">
     ${ORDEM.map(c=>`<div class="eng-stat" style="--c:${colorOf(c)}">
-      <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:${colorOf(c)}"><span style="font-size:13px">${ENG_GLYPH[c]}</span> ${c}</div>
-      <div style="display:flex;align-items:baseline;gap:7px;margin-top:7px">
-        <div style="font-family:'Fraunces',serif;font-size:30px;font-weight:600;line-height:1">${countBy[c]||0}</div>
-        <div style="font-size:11.5px;color:var(--muted)">${(countBy[c]||0)===1?'prato':'pratos'}</div></div>
-      <div style="font-size:11px;color:var(--soft);margin-top:3px">${mcTot>0?fmtPct((byClass[c]||0)/mcTot*100)+' da margem':'—'}</div>
+      <div style="display:flex;gap:13px;align-items:flex-start">
+        <div style="font-family:'Fraunces',serif;font-size:34px;font-weight:600;line-height:.9;color:${colorOf(c)}">${countBy[c]||0}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:700;color:${colorOf(c)}">${ENG_GLYPH[c]} ${c}</div>
+          <div style="font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:3px">${ENG_GUIA[c]}</div></div>
+      </div>
+      <div style="font-size:10.5px;color:var(--soft);margin-top:9px;border-top:1px solid var(--line);padding-top:7px">CMV médio ${cmvMed(c)!=null?fmtPct(cmvMed(c)):'—'}</div>
     </div>`).join('')}
   </div>
 
-  ${mcTot>0?`<div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(164,138,87,.14),rgba(29,53,115,.06));border:1px solid var(--line);border-radius:14px;padding:13px 16px;margin-bottom:20px">
+  <div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(164,138,87,.14),rgba(29,53,115,.06));border:1px solid var(--line);border-radius:14px;padding:13px 16px;margin-bottom:20px">
     <div style="width:34px;height:34px;border-radius:10px;background:var(--navy);color:var(--gold-soft);display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto">✦</div>
-    <div style="font-size:13px;line-height:1.5">As <b style="color:${colorOf(top.c)}">${top.c}</b> concentram <b>${fmtPct(top.v)}</b> da sua margem de contribuição. ${top.c==='Estrelas'?'Proteja a qualidade e dê destaque a elas no cardápio.':top.c==='Populares'?'Vendem muito mas rendem pouco — reduzir o custo aqui tem alto impacto.':top.c==='Potenciais'?'Boa margem com baixa saída — vale empurrar com sugestão e posicionamento.':'Concentração no grupo de menor desempenho — hora de reformular ou cortar.'}</div>
-  </div>`:''}
+    <div style="font-size:13px;line-height:1.5">${acimaMeta.length?`<b>${acimaMeta.length}</b> ${acimaMeta.length===1?'prato está':'pratos estão'} com CMV acima da meta de <b>${fmtPct(alvo)}</b>. Comece pelos <b style="color:${colorOf('Populares')}">Populares</b> (vendem muito) para o maior ganho.`:`Todos os pratos estão dentro da meta de CMV de <b>${fmtPct(alvo)}</b>. Cardápio eficiente — foque em vender mais os de baixa saída.`}</div>
+  </div>
 
   <div class="matrix-wrap">
     <div>
       <div class="matrix">
-        <div class="quad q-puzzle" style="top:0;left:0;right:auto;bottom:auto"><div><div class="ql" style="color:var(--amber)">◆ Potenciais</div><div class="qd">baixa saída · alta margem</div></div></div>
-        <div class="quad q-star" style="top:0;right:0;left:auto;bottom:auto;justify-content:flex-end;text-align:right"><div><div class="ql" style="color:var(--green);justify-content:flex-end">★ Estrelas</div><div class="qd">alta saída · alta margem</div></div></div>
-        <div class="quad q-dog" style="bottom:0;left:0;top:auto;right:auto;align-items:flex-end"><div><div class="ql" style="color:var(--red)">▼ Críticos</div><div class="qd">baixa saída · margem baixa</div></div></div>
-        <div class="quad q-horse" style="bottom:0;right:0;top:auto;left:auto;justify-content:flex-end;text-align:right;align-items:flex-end"><div><div class="ql" style="color:var(--navy);justify-content:flex-end">● Populares</div><div class="qd">alta saída · margem baixa</div></div></div>
+        <div class="quad q-puzzle" style="top:0;left:0;right:auto;bottom:auto"><div><div class="ql" style="color:var(--amber)">◆ Potenciais</div><div class="qd">baixa saída · CMV baixo</div></div></div>
+        <div class="quad q-star" style="top:0;right:0;left:auto;bottom:auto;justify-content:flex-end;text-align:right"><div><div class="ql" style="color:var(--green);justify-content:flex-end">★ Estrelas</div><div class="qd">alta saída · CMV baixo</div></div></div>
+        <div class="quad q-dog" style="bottom:0;left:0;top:auto;right:auto;align-items:flex-end"><div><div class="ql" style="color:var(--red)">▼ Críticos</div><div class="qd">baixa saída · CMV alto</div></div></div>
+        <div class="quad q-horse" style="bottom:0;right:0;top:auto;left:auto;justify-content:flex-end;text-align:right;align-items:flex-end"><div><div class="ql" style="color:var(--navy);justify-content:flex-end">● Populares</div><div class="qd">alta saída · CMV alto</div></div></div>
         <div class="axis-v"></div><div class="axis-h"></div><div class="axis-mid">média</div>
-        ${arr.map(x=>`<div class="dot" style="left:${px(x.pop)}%;top:${py(x.marg)}%;background:${colorOf(x.classe)}" title="${x.f.nome} · ${x.classe}&#10;Vendas: ${x.pop} · MC un.: ${fmtBRL(x.marg)}">${x.n}</div>`).join('')}
+        ${arr.map(x=>`<div class="dot" style="left:${px(x.pop)}%;top:${py(x.cmv)}%;background:${colorOf(x.classe)}" title="${x.f.nome} · ${x.classe}&#10;Vendas: ${x.pop} · CMV: ${fmtPct(x.cmv)}">${x.n}</div>`).join('')}
       </div>
       <div class="axis-label">Popularidade (vendas/mês) →</div>
-      <div class="axis-label-y">Margem de contribuição →</div>
+      <div class="axis-label-y">Eficiência · menor CMV ↑</div>
     </div>
     <div>
-      <div class="card card-pad" style="margin-bottom:16px">
-        <div class="ttl">Ranking por contribuição</div>
-        <div class="desc" style="margin-bottom:14px">Margem de contribuição mensal · MC unitária × vendas</div>
+      <div class="card card-pad">
+        <div class="ttl">Ranking por CMV</div>
+        <div class="desc" style="margin-bottom:14px">Do mais eficiente ao menos eficiente</div>
         <div style="display:flex;flex-direction:column;gap:11px">${ranked.map(x=>`
           <div style="display:flex;align-items:center;gap:11px">
             <span class="eng-rank" style="background:${colorOf(x.classe)}">${x.n}</span>
             <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.f.nome}</div>
-              <div style="font-size:11px;color:var(--soft)">${x.pop} vendas · MC un. ${fmtBRL(x.marg)}</div></div>
-            <div style="text-align:right;flex:0 0 auto"><div style="font-weight:700;font-size:13px;font-family:'Fraunces',serif">${fmtBRL(x.marg*x.pop)}</div>
+              <div style="font-size:11px;color:var(--soft)">${x.pop} vendas/mês</div></div>
+            <div style="text-align:right;flex:0 0 auto"><div style="font-weight:700;font-size:15px;font-family:'Fraunces',serif;color:${cmvCorRef(x.cmv)}">${fmtPct(x.cmv)}</div>
               <span class="tag ${engTag(x.classe)}" style="margin-top:2px">${x.classe}</span></div>
           </div>`).join('')}</div>
       </div>
-      ${planoAcao()}
     </div>
+  </div>
   </div>`;
-}
-function planoAcao(){
-  const cls=classificar();const cnt=n=>cls.filter(x=>x.classe===n).length;
-  const d=[['Estrelas','Alta popularidade e alta rentabilidade. Destaque no cardápio e proteja a qualidade.'],
-    ['Populares','Alta saída, margem baixa. Reduza o custo do insumo ou ajuste o preço com cautela.'],
-    ['Potenciais','Boa margem, vende pouco. Reposicione, sugira e treine a equipe.'],
-    ['Críticos','Baixa popularidade e baixa rentabilidade. Candidato a sair do cardápio ou reformular.']];
-  return `<div class="card card-pad"><div class="ttl">Plano de ação</div><div class="desc" style="margin-bottom:6px">O que fazer com cada grupo</div>
-  ${d.map(([n,t],i)=>`<div style="display:flex;gap:12px;padding:11px 0;${i<d.length-1?'border-bottom:1px solid var(--line)':''}">
-    <div style="width:4px;border-radius:3px;background:${ENG_COR[n]};flex:0 0 auto"></div>
-    <div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px;color:${ENG_COR[n]}">${ENG_GLYPH[n]} ${n}</b><span style="font-family:'Fraunces',serif;font-weight:600;font-size:15px;color:var(--muted)">${cnt(n)}</span></div>
-      <div style="font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5">${t}</div></div>
-  </div>`).join('')}</div>`;
 }
 
 /* ===================== FATURAMENTO ===================== */
