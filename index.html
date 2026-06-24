@@ -583,10 +583,11 @@ thead th{letter-spacing:.7px}
     <a data-route="cmv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h18v4H3zM3 10h18v10H3z"/><path d="M7 14h4M7 17h7"/></svg>Controle de CMV</a>
     <a data-route="desperdicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>Desperdícios</a>
     <a data-route="buffet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h18M5 11a7 7 0 0 1 14 0M4 13v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1M8 19h8"/></svg>Mapa do Buffet</a>
-    <a data-route="faturamento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg>Faturamento</a>
     <a data-route="dre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>DRE</a>
     <div class="lbl">FINANCEIRO</div>
     <a data-route="financeiro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18v13H3z"/><path d="M3 10h18M7 15h4"/></svg>Financeiro</a>
+    <div class="lbl">PESSOAS</div>
+    <a data-route="folha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M21 20a6 6 0 0 0-3-5"/></svg>Folha de Pagamento</a>
     <div class="lbl">SUA CONTA</div>
     <a data-route="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>Mapa do Caminho</a>
     <a data-route="equipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M21 20a6 6 0 0 0-3-5"/></svg>Equipe</a>
@@ -955,6 +956,7 @@ const ROUTES={
   faturamento:{title:'Faturamento',render:viewFaturamento},
   dre:{title:'DRE',render:viewDRE},
   financeiro:{title:'Financeiro',render:viewFinanceiro},
+  folha:{title:'Folha de Pagamento',render:viewFolha},
   mapa:{title:'Mapa do Caminho',render:viewMapa},
   equipe:{title:'Equipe',render:viewEquipe},
   conta:{title:'Configurações',render:viewConta},
@@ -2072,8 +2074,8 @@ function viewDRE(){
   <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:20px" class="dash-grid">
     <div class="card"><div class="card-pad" style="padding-bottom:6px"><div class="ttl">Demonstrativo de Resultado (DRE)</div><div class="desc">Resultado real do mês, receitas e despesas lançadas</div></div>
       <table class="dre-table"><tbody>
-        <tr class="grp"><td>Receita Bruta</td><td class="num">${fmtBRL(rec)}</td><td class="num" style="color:var(--soft)">${rec?'100%':'—'}</td></tr>
-        ${recGrupos.map(g=>Object.entries(d.receita[g]).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${pctTxt(v)}</td></tr>`).join('')).join('')}
+        ${(function(){const colR=dreCollapsed.has('__rec__');return `<tr class="grp" onclick="dreToggle('__rec__')" style="cursor:pointer"><td><span style="display:inline-block;width:12px;color:var(--muted)">${colR?'▸':'▾'}</span> Receita Bruta</td><td class="num">${fmtBRL(rec)}</td><td class="num" style="color:var(--soft)">${rec?'100%':'—'}</td></tr>`
+          +(colR?'':recGrupos.map(g=>Object.entries(d.receita[g]).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${pctTxt(v)}</td></tr>`).join('')).join(''));})()}
         ${ordered.map(g=>{const subs=d.despesa[g];const subtot=Object.values(subs).reduce((a,b)=>a+b,0);const col=dreCollapsed.has(g);
           return `<tr class="dre-cat" onclick="dreToggle('${g.replace(/'/g,"\\'")}')" style="cursor:pointer"><td style="font-size:10.5px;letter-spacing:.6px;color:var(--gold);text-transform:uppercase;font-weight:700;padding:9px 13px 5px"><span style="display:inline-block;width:12px;color:var(--muted)">${col?'▸':'▾'}</span> ${g}</td><td class="num" style="font-weight:700;color:var(--red)">${fmtBRL(-subtot)}</td><td class="num" style="color:var(--soft)">${pctTxt(subtot)}</td></tr>`
           +(col?'':Object.entries(subs).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num" style="color:var(--red)">${fmtBRL(-v)}</td><td class="num" style="color:var(--soft)">${pctTxt(v)}</td></tr>`).join(''));}).join('')}
@@ -2347,6 +2349,7 @@ function finCategorias(){
 /* ===================== FINANCEIRO ===================== */
 let finTab='visao',folhaYM=null;
 function curFolhaYM(){return folhaYM||ymOf(hojeISO());}
+function viewFolha(){$('#topActions').innerHTML='';$('#view').innerHTML=`<div style="max-width:1320px">${finFolha()}</div>`;}
 const FIN_TEMPLATES={
   contasPagar:()=>({id:uid(),descricao:'',grupo:'Despesas Gerais',sub:((DB.categorias&&DB.categorias['Despesas Gerais'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,pago:false,forma:''}),
   contasReceber:()=>({id:uid(),descricao:'',grupo:'Receita',sub:((DB.categorias&&DB.categorias['Receita'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,recebido:false,forma:''}),
@@ -2375,7 +2378,7 @@ function finList(key,cols){
 }
 function viewFinanceiro(){
   const t=totaisGerais(finTab==='visao'?periodoRange():undefined);
-  const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['func','Folha de Pagamento'],['meios','Meios de Pagamento'],['forn','Fornecedores'],['param','Parâmetros']];
+  const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['meios','Meios de Pagamento'],['forn','Fornecedores'],['param','Parâmetros']];
   let body='';
   if(finTab==='lanc')body=finLancamentos();
   else if(finTab==='fluxo')body=finFluxo();
@@ -2384,7 +2387,6 @@ function viewFinanceiro(){
   else if(finTab==='visao')body=finVisao(t);
   else if(finTab==='pagar')body=finContas('contasPagar');
   else if(finTab==='receber')body=finContas('contasReceber');
-  else if(finTab==='func')body=finFolha();
   else if(finTab==='meios')body=finCard('Meios de Pagamento','Taxas por meio de recebimento',
     finList('meiosPagamento',[{f:'nome',ph:'Nome',w:'1.4fr'},{f:'tipo',type:'select',opts:['Crédito','Débito','Marketplace','PIX','Dinheiro','Voucher'],w:'1fr'},{f:'taxa',type:'num',ph:'%',w:'100px'}]),
     `<span style="color:var(--muted)">A comissão de marketplace usada no cálculo é definida em <b>Parâmetros</b>.</span>`);
@@ -2404,13 +2406,13 @@ function funcCats(){return (DB.fin&&DB.fin.funcCategorias&&DB.fin.funcCategorias
 function funcCatsRows(){return funcCats().map((c,i)=>`<span class="cat-chip">${esc(c)}<button onclick="delFuncCat(${i})" title="Remover">${icoX}</button></span>`).join('')||'<span style="color:var(--soft);font-size:12px">Nenhuma categoria cadastrada.</span>';}
 function addFuncCat(){const v=($('#fc_novo').value||'').trim();if(!v)return;DB.fin.funcCategorias=funcCats().slice();if(DB.fin.funcCategorias.includes(v))return toast('Essa categoria já existe');DB.fin.funcCategorias.push(v);save();$('#fc_novo').value='';$('#fc_list').innerHTML=funcCatsRows();}
 function delFuncCat(i){const cats=funcCats().slice();const c=cats[i];const usado=(DB.fin.funcionarios||[]).some(f=>(f.categoria||'')===c);if(usado&&!confirm(`A categoria "${c}" está em uso. Remover assim mesmo?`))return;cats.splice(i,1);DB.fin.funcCategorias=cats;save();$('#fc_list').innerHTML=funcCatsRows();}
-function funcCatsModal(){modal(`<div class="modal-head"><h3>Categorias de funcionários</h3><button class="x" onclick="closeModal();viewFinanceiro()">${icoX}</button></div>
+function funcCatsModal(){modal(`<div class="modal-head"><h3>Categorias de funcionários</h3><button class="x" onclick="closeModal();viewFolha()">${icoX}</button></div>
   <div class="modal-body">
     <div class="field"><label>Nova categoria</label><div style="display:flex;gap:8px"><input class="input" id="fc_novo" placeholder="Ex.: Bar, Salão, Limpeza" onkeydown="if(event.key==='Enter'){addFuncCat();event.preventDefault();}"><button class="btn btn-primary btn-sm" onclick="addFuncCat()">${icoPlus} Adicionar</button></div></div>
     <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:6px" id="fc_list">${funcCatsRows()}</div>
     <div style="font-size:11.5px;color:var(--soft);margin-top:12px">Freelancers não têm categoria — são marcados pelo regime na hora de cadastrar o funcionário.</div>
   </div>
-  <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal();viewFinanceiro()">Fechar</button></div>`);}
+  <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal();viewFolha()">Fechar</button></div>`);}
 function funcRmLanc(funcId,ym){DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromFunc!==(funcId+(ym?'|'+ym:'')));}
 function funcRmAllLancs(funcId){DB.lancamentos=(DB.lancamentos||[]).filter(l=>!(l.fromFunc||'').startsWith(funcId+'|'));}
 function funcDel(i){
@@ -2436,11 +2438,11 @@ function funcDelAplicar(escopo){
     // limpa pagosMes e lançamentos de d.ym em diante
     if(f.pagosMes)Object.keys(f.pagosMes).forEach(k=>{if(k>=d.ym)delete f.pagosMes[k];});
     DB.lancamentos=(DB.lancamentos||[]).filter(l=>{if(!(l.fromFunc||'').startsWith('fn_'+d.id+'|'))return true;const lym=l.fromFunc.split('|')[1];return lym<d.ym;});
-    save();closeModal();viewFinanceiro();toast('Encerrado a partir de '+ymLabel(d.ym));
+    save();closeModal();viewFolha();toast('Encerrado a partir de '+ymLabel(d.ym));
   } else {
     funcRmAllLancs('fn_'+d.id);
     DB.fin.funcionarios.splice(d.i,1);
-    save();closeModal();viewFinanceiro();toast('Funcionário removido');
+    save();closeModal();viewFolha();toast('Funcionário removido');
   }
   window._delFunc=null;
 }
@@ -2449,7 +2451,7 @@ function funcTogglePago(i){
   const ym=curFolhaYM();f.pagosMes=f.pagosMes||{};
   if(f.pagosMes[ym]){
     if(!confirm(`Desmarcar pagamento de ${ymLabel(ym)} para ${f.nome||'este funcionário'}? O lançamento correspondente também será removido.`))return;
-    delete f.pagosMes[ym];funcRmLanc('fn_'+f.id,ym);save();viewFinanceiro();toast('Pagamento desmarcado');return;
+    delete f.pagosMes[ym];funcRmLanc('fn_'+f.id,ym);save();viewFolha();toast('Pagamento desmarcado');return;
   }
   // não pago ainda: abre confirmação de lançar no DRE
   window._payFunc={i,id:f.id,nome:f.nome||'',ym,liquido:custoFuncionario(f).liquido};
@@ -2475,7 +2477,7 @@ function funcConfirmPago(lancar){
     DB.lancamentos=DB.lancamentos||[];
     DB.lancamentos.push({id:uid(),fromFunc:'fn_'+d.id+'|'+d.ym,data:d.ym+'-'+pad2(dia),grupo:'Mão-de-Obra',sub:'Salários',descricao:(d.nome||'Funcionário')+' · líquido',valor:d.liquido,forma:f.forma||''});
   }
-  save();closeModal();viewFinanceiro();toast(lancar?'Pago e lançado no DRE':'Marcado como pago');
+  save();closeModal();viewFolha();toast(lancar?'Pago e lançado no DRE':'Marcado como pago');
   window._payFunc=null;
 }
 function funcEdit(i){
@@ -2513,7 +2515,7 @@ function funcSave(i){
   DB.fin.funcionarios=DB.fin.funcionarios||[];
   if(i==null){DB.fin.funcionarios.push({...FIN_TEMPLATES.funcionarios(),...o});}
   else {DB.fin.funcionarios[i]={...DB.fin.funcionarios[i],...o};}
-  save();closeModal();viewFinanceiro();toast('Funcionário salvo');
+  save();closeModal();viewFolha();toast('Funcionário salvo');
 }
 function finFolha(){
   const ym=curFolhaYM();
@@ -2793,7 +2795,7 @@ function finParam(){
 }
 
 /* ===================== EQUIPE ===================== */
-const ACESSOS=[['dashboard','Dashboard'],['insumos','Insumos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['faturamento','Faturamento'],['dre','DRE'],['financeiro','Financeiro'],['mapa','Mapa do Caminho'],['equipe','Equipe'],['conta','Configurações']];
+const ACESSOS=[['dashboard','Dashboard'],['insumos','Insumos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['mapa','Mapa do Caminho'],['equipe','Equipe'],['conta','Configurações']];
 const NIVEIS={
   admin:{label:'Administrador',desc:'Acesso total a tudo',perms:ACESSOS.map(a=>a[0])},
   gerente:{label:'Gerente',desc:'Operação + indicadores (sem equipe/config)',perms:['dashboard','insumos','fichas','estoque','engenharia','cmv','desperdicio','buffet','faturamento','dre','mapa']},
