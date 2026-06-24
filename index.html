@@ -2717,9 +2717,10 @@ function finCustosFixos(){
 }
 function finParam(){
   const fin=DB.fin;
-  return `<div style="max-width:560px">
+  return `<div style="max-width:980px">
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="dash-grid">
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Regime tributário</div><div class="desc">Define o imposto no preço</div></div><button class="btn btn-ghost btn-sm" onclick="abrirWizard(1)">✎ Editar anamnese</button></div>
+      <div class="section-head"><div><div class="ttl">Regime tributário</div><div class="desc">Imposto no preço e encargos da folha</div></div><button class="btn btn-ghost btn-sm" onclick="abrirWizard(1)">✎ Anamnese</button></div>
       <div class="chan-tabs" style="margin-top:0">
         <button class="${!fin.mei&&fin.regime==='simples'?'on':''}" onclick="DB.fin.mei=false;DB.fin.regime='simples';save();viewFinanceiro()">Simples</button>
         <button class="${!fin.mei&&fin.regime==='presumido'?'on':''}" onclick="DB.fin.mei=false;DB.fin.regime='presumido';if(!DB.fin.aliquota)DB.fin.aliquota=13.33;save();viewFinanceiro()">Presumido</button>
@@ -2729,16 +2730,23 @@ function finParam(){
       ${fin.mei
         ?`<div class="field"><label>Imposto fixo mensal (DAS)</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(fin.impostoFixo||0)}" oninput="DB.fin.impostoFixo=moneyMask(this)" onchange="save()"></div></div>`
         :`<div class="field"><label>Alíquota efetiva de impostos <span class="hint">%, confirme com seu contador</span></label><input class="input" type="number" step="0.1" value="${fin.aliquota}" onchange="DB.fin.aliquota=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`}
-      <div style="font-size:12.5px;font-weight:600;color:var(--muted);margin:4px 0 6px">Encargos CLT <span class="hint" style="font-weight:400">% sobre salário, total ${fmtPct((fin.encFGTS||0)+(fin.encINSS||0)+(fin.encProv||0))}</span></div>
+      <div style="font-size:12.5px;font-weight:600;color:var(--muted);margin:8px 0 6px">Encargos CLT <span class="hint" style="font-weight:400">% sobre salário, total ${fmtPct((fin.encFGTS||0)+(fin.encINSS||0)+(fin.encProv||0))}</span></div>
       <div class="grid-3">
         <div class="field"><label>FGTS <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.encFGTS!=null?fin.encFGTS:8}" onchange="DB.fin.encFGTS=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
         <div class="field"><label>INSS patronal <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.encINSS!=null?fin.encINSS:0}" onchange="DB.fin.encINSS=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
-        <div class="field"><label>Provisões 13º/férias <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.encProv!=null?fin.encProv:24}" onchange="DB.fin.encProv=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+        <div class="field"><label>Prov. 13º/férias <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.encProv!=null?fin.encProv:24}" onchange="DB.fin.encProv=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
       </div>
       <div class="field"><label>INSS sócio (pró-labore) <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.inssSocio!=null?fin.inssSocio:11}" onchange="DB.fin.inssSocio=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
-      <div class="grid-2">
-        <div class="field"><label>Comissão marketplace <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.comissaoIfood}" onchange="DB.fin.comissaoIfood=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
-        <div class="field"><label>Taxa de cartão <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaCartao}" onchange="DB.fin.taxaCartao=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+    </div>
+
+    <div class="card card-pad">
+      <div class="section-head"><div><div class="ttl">Taxas e CMV</div><div class="desc">Comissão de delivery, cartão e metas de CMV</div></div></div>
+      <div class="field"><label>Comissão delivery <span class="hint">% iFood / marketplace</span></label><input class="input" type="number" step="0.5" value="${fin.comissaoIfood}" onchange="DB.fin.comissaoIfood=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+      <div style="font-size:12.5px;font-weight:600;color:var(--muted);margin:4px 0 6px">Taxas de cartão / PIX</div>
+      <div class="grid-3">
+        <div class="field"><label>Débito <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaDebito!=null?fin.taxaDebito:''}" placeholder="0" onchange="DB.fin.taxaDebito=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+        <div class="field"><label>Crédito <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaCartao}" onchange="DB.fin.taxaCartao=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+        <div class="field"><label>PIX <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaPix!=null?fin.taxaPix:''}" placeholder="0" onchange="DB.fin.taxaPix=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
       </div>
       <div class="field"><label>CMV alvo <span class="hint">% meta</span></label><input class="input" type="number" step="0.5" value="${DB.cmvAlvo}" onchange="DB.cmvAlvo=parseFloat(this.value)||30;save();viewFinanceiro()"></div>
       <div class="field"><label>CMV do ponto de equilíbrio <span class="hint">qual CMV usar no cálculo</span></label>
@@ -2746,10 +2754,14 @@ function finParam(){
           ${[['real','CMV real (contagem) · padrão'],['lanc','CMV dos lançamentos'],['teorico','CMV teórico (cardápio)'],['manual','Valor digitado']].map(([v,l])=>`<option value="${v}" ${ (fin.peCmvFonte||'real')===v?'selected':''}>${l}</option>`).join('')}
         </select></div>
       ${(fin.peCmvFonte||'real')==='manual'?`<div class="field"><label>CMV digitado <span class="hint">% sobre o faturamento</span></label><input class="input" type="number" step="0.5" value="${fin.peCmvManual||''}" placeholder="0" onchange="DB.fin.peCmvManual=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`:''}
-      <div style="font-size:11.5px;color:var(--soft);margin:-2px 0 10px">Define a margem de contribuição usada no ponto de equilíbrio. Se a fonte escolhida não tiver dados no período, usamos o CMV teórico do cardápio.</div>
-      <div style="margin-top:8px"><div class="ttl" style="font-size:13px;margin-bottom:8px">Contas bancárias</div>
-        ${finList('contasBancarias',[{f:'nome',ph:'Conta',w:'1.4fr'},{f:'saldo',type:'money',w:'130px'}])}</div>
+      <div style="font-size:11.5px;color:var(--soft);margin-top:-2px">Define a margem de contribuição usada no ponto de equilíbrio. Sem dados da fonte no período, usamos o CMV teórico.</div>
     </div>
+   </div>
+
+   <div class="card card-pad" style="margin-top:20px;max-width:560px">
+     <div class="ttl" style="font-size:14px;margin-bottom:10px">Contas bancárias</div>
+     ${finList('contasBancarias',[{f:'nome',ph:'Conta',w:'1.4fr'},{f:'saldo',type:'money',w:'130px'}])}
+   </div>
   </div>`;
 }
 
