@@ -761,7 +761,8 @@ function metricasCanal(ficha,canal){ // canal: 'balcao' | 'ifood'
   const descPct=(comissao+impostoVarPct())/100;
   const mc = preco - custo - preco*descPct;       // margem de contribuição R$
   const mcPct = preco? mc/preco*100 : 0;
-  const cmv = preco? custo/preco*100 : 0;
+  const precoLiq = preco*(1-comissao/100);        // líquido após a comissão do canal (iFood)
+  const cmv = precoLiq>0? custo/precoLiq*100 : 0; // CMV sobre o líquido recebido (no iFood considera a comissão)
   return {preco,custo,comissaoPct:comissao,impostoPct:impostoVarPct(),mc,mcPct,cmv,markup:custo?preco/custo:0};
 }
 function metricasFicha(ficha){ // mistura por canal usando mix iFood global
@@ -1665,7 +1666,7 @@ function editFicha(id){
             </div>
             <div class="field" style="margin:12px 0 0"><label>Preço no iFood <span class="hint">opcional</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="f_precoIf" inputmode="numeric" value="${fmtMoneyInput(f.precoIfood||0)}" oninput="moneyMask(this);recalcFicha()"></div></div>
             <div class="mc-line"><span style="color:var(--muted)">CMV (%)</span><span class="mc-v" id="f_mc">—</span></div>
-            <div class="mc-line" style="border-top:0;margin-top:0;padding-top:4px"><span style="color:var(--muted)">CMV (%) iFood</span><span class="mc-v" id="f_mcIf">—</span></div>
+            <div class="mc-line" style="border-top:0;margin-top:0;padding-top:4px"><span style="color:var(--muted)">CMV (%) iFood <span style="font-size:10px;color:var(--soft)">c/ comissão</span></span><span class="mc-v" id="f_mcIf">—</span></div>
           </div>
           <div id="f_calc"></div>
         </div>
@@ -1798,7 +1799,8 @@ function recalcFicha(){
   const mcB=preco-custo-preco*(impPct/100);
   const mcI=precoIf-custo-precoIf*((comIf+impPct)/100);
   const cmv=preco?custo/preco*100:0;
-  const cmvIf=precoIf?custo/precoIf*100:0;
+  const precoIfLiq=precoIf*(1-comIf/100); // líquido após comissão do iFood
+  const cmvIf=precoIfLiq>0?custo/precoIfLiq*100:0; // CMV iFood sobre o que se recebe de fato
   const sug=DB.cmvAlvo?custo/(DB.cmvAlvo/100):0;
   const cc=cmvCorRef;
   const mcEl=$('#f_mc');if(mcEl)mcEl.innerHTML=preco?`<span style="color:${cc(cmv)}">${fmtPct(cmv)}</span>`:'—';
