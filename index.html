@@ -782,13 +782,27 @@ function cmvClasse(v){const a=cmvAlvoRef();return v<=a?'excelente':(v<=cmvUpRef(
 function cmvCorRef(v){const c=cmvClasse(v);return c==='excelente'?'var(--green)':c==='atencao'?'var(--amber)':'var(--red)';}
 function healthFicha(cmv){const c=cmvClasse(cmv);return c==='excelente'?'saudavel':c;}
 function fichasVendaveis(){return Object.values(DB.fichas);}
-function custoFuncionario(f){const base=(f.salario||0)+(f.premio||0);
-  const benef=(f.vt||0)+((f.custoRefeicaoDia||0)*(f.diasTrabalhados||0)*(f.qtdVales||0));
-  const isCLT=(f.regime||'CLT')==='CLT';
-  const fgts=isCLT?base*((DB.fin.encFGTS||0)/100):0;
-  const inss=isCLT?base*((DB.fin.encINSS||0)/100):0;
-  const prov=isCLT?base*((DB.fin.encProv||0)/100):0;
-  return {base,benef,fgts,inss,prov,encargos:fgts+inss+prov,total:base+benef+fgts+inss+prov};}
+// INSS progressivo 2026 (Port. Interm. MPS/MF 13/2026). Faixas editáveis em fin.inssFaixas.
+const INSS_FAIXAS_2026=[{ate:1621.00,aliq:7.5,ded:0},{ate:2902.84,aliq:9,ded:24.32},{ate:4354.27,aliq:12,ded:111.41},{ate:8475.55,aliq:14,ded:198.49}];
+function inssFaixas(){return (DB.fin.inssFaixas&&DB.fin.inssFaixas.length)?DB.fin.inssFaixas:INSS_FAIXAS_2026;}
+function inssProgressivo(bruto){if(!bruto||bruto<=0)return 0;const f=inssFaixas();let alq=f[f.length-1];for(const x of f){if(bruto<=x.ate){alq=x;break;}}return Math.max(0,bruto*(alq.aliq/100)-alq.ded);}
+function custoFuncionario(f){
+  const bruto=(f.salario||0)+(f.premio||0); // base de INSS/FGTS/provisões
+  const porFora=f.porFora||0;               // não entra na base
+  const beneficios=(f.beneficios||0)+((f.custoRefeicaoDia||0)*(f.diasTrabalhados||0)*(f.qtdVales||0))+(f.vt||0);
+  const vales=f.vales||0;
+  const consumo=f.consumo||0;
+  const regime=f.regime||'CLT';
+  const isCLT=regime==='CLT';
+  const inss=isCLT?inssProgressivo(bruto):0;
+  const fgts=isCLT?bruto*((DB.fin.encFGTS||8)/100):0;        // 8%
+  const prov13=isCLT?bruto*(8.33/100):0;                      // 13º — 1/12
+  const provFerias=isCLT?bruto*(11.11/100):0;                 // férias + 1/3
+  const prov=prov13+provFerias;
+  const liquido=bruto+porFora-vales-consumo-inss;
+  const total=bruto+porFora+beneficios+fgts+prov;             // custo da empresa
+  return {bruto,porFora,beneficios,vales,consumo,inss,fgts,prov13,provFerias,prov,encargos:fgts+prov,liquido,total,base:bruto,benef:beneficios};
+}
 function folhaTotal(){return (DB.fin.funcionarios||[]).reduce((s,f)=>s+custoFuncionario(f).total,0);}
 function custoSocio(s){const real=s.proLabore||0;const decl=(s.proLaboreDeclarado!=null&&s.proLaboreDeclarado!=='')?s.proLaboreDeclarado:real;return real+decl*((DB.fin.inssSocio||11)/100);}
 function proLaboreTotal(){return (DB.fin.socios||[]).reduce((s,x)=>s+custoSocio(x),0);}
@@ -2307,7 +2321,7 @@ let finTab='visao';
 const FIN_TEMPLATES={
   contasPagar:()=>({id:uid(),descricao:'',grupo:'Despesas Gerais',sub:((DB.categorias&&DB.categorias['Despesas Gerais'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,pago:false,forma:''}),
   contasReceber:()=>({id:uid(),descricao:'',grupo:'Receita',sub:((DB.categorias&&DB.categorias['Receita'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,recebido:false,forma:''}),
-  funcionarios:()=>({id:uid(),nome:'',cargo:'',salario:0,diaVenc:0,desde:ymNow()}),
+  funcionarios:()=>({id:uid(),categoria:'Atendimento',nome:'',cargo:'',regime:'CLT',salario:0,premio:0,porFora:0,vales:0,consumo:0,beneficios:0,vt:0,diasTrabalhados:0,qtdVales:0,custoRefeicaoDia:0,diaVenc:0,desde:ymNow(),pago:false,observacao:''}),
   socios:()=>({id:uid(),nome:'',proLabore:0,diaVenc:0,desde:ymNow()}),
   meiosPagamento:()=>({id:uid(),nome:'',tipo:'Crédito',taxa:0}),
   fornecedores:()=>({id:uid(),nome:'',contato:''}),
@@ -2332,7 +2346,7 @@ function finList(key,cols){
 }
 function viewFinanceiro(){
   const t=totaisGerais(finTab==='visao'?periodoRange():undefined);
-  const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['func','Funcionários'],['socios','Sócios'],['meios','Meios de Pagamento'],['forn','Fornecedores'],['param','Parâmetros']];
+  const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['func','Folha de Pagamento'],['socios','Sócios'],['meios','Meios de Pagamento'],['forn','Fornecedores'],['param','Parâmetros']];
   let body='';
   if(finTab==='lanc')body=finLancamentos();
   else if(finTab==='fluxo')body=finFluxo();
@@ -2341,9 +2355,7 @@ function viewFinanceiro(){
   else if(finTab==='visao')body=finVisao(t);
   else if(finTab==='pagar')body=finContas('contasPagar');
   else if(finTab==='receber')body=finContas('contasReceber');
-  else if(finTab==='func')body=finCard('Funcionários','Folha de pagamento (CLT)',
-    finList('funcionarios',[{f:'nome',ph:'Nome',w:'1.4fr'},{f:'cargo',ph:'Cargo',w:'1fr'},{f:'salario',type:'money',w:'120px'},{f:'diaVenc',type:'num',ph:'Dia venc.',w:'90px'}]),
-    `Folha base: <b>${fmtBRL(folhaTotal())}</b>`);
+  else if(finTab==='func')body=finFolha();
   else if(finTab==='socios')body=finCard('Sócios','Pró-labore dos sócios',
     finList('socios',[{f:'nome',ph:'Nome',w:'1.6fr'},{f:'proLabore',type:'money',w:'140px'},{f:'diaVenc',type:'num',ph:'Dia venc.',w:'90px'}]),
     `Pró-labore total: <b>${fmtBRL(proLaboreTotal())}</b>`);
@@ -2360,6 +2372,81 @@ function finCard(ttl,desc,inner,foot){
     <div class="section-head"><div><div class="ttl">${ttl}</div><div class="desc">${desc}</div></div></div>
     ${inner}
     ${foot?`<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px;font-size:14px;text-align:right">${foot}</div>`:''}</div>`;
+}
+const FUNC_CATS=['Atendimento','Cozinha','Administrativo','Frees / Extras'];
+function funcTogglePago(i){const f=DB.fin.funcionarios[i];if(!f)return;f.pago=!f.pago;save();viewFinanceiro();toast(f.pago?'Marcado como pago':'Marcado como pendente');}
+function funcDel(i){const f=DB.fin.funcionarios[i];if(!f)return;if(!confirm(`Remover ${f.nome||'funcionário'}?`))return;DB.fin.funcionarios.splice(i,1);save();viewFinanceiro();}
+function funcEdit(i){
+  const f=i==null?{...FIN_TEMPLATES.funcionarios()}:DB.fin.funcionarios[i];if(!f)return;
+  const opt=(arr,v)=>arr.map(x=>`<option ${x===v?'selected':''}>${esc(x)}</option>`).join('');
+  modal(`<div class="modal-head"><h3>${i==null?'Novo funcionário':'Editar funcionário'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div class="grid-2">
+      <div class="field"><label>Categoria</label><select class="input" id="fn_cat">${opt(FUNC_CATS,f.categoria||'Atendimento')}</select></div>
+      <div class="field"><label>Regime</label><select class="input" id="fn_reg">${opt(['CLT','PJ','Diarista'],f.regime||'CLT')}</select></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>Nome</label><input class="input" id="fn_nome" value="${esc(f.nome||'')}" placeholder="Ex.: João Silva"></div>
+      <div class="field"><label>Cargo</label><input class="input" id="fn_cargo" value="${esc(f.cargo||'')}" placeholder="Ex.: Garçom"></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>Salário bruto <span class="hint">base de INSS, FGTS e provisões</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="fn_bruto" value="${fmtMoneyInput(f.salario||0)}" oninput="moneyMask(this)"></div></div>
+      <div class="field"><label>Por fora <span class="hint">não entra na base</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="fn_pfora" value="${fmtMoneyInput(f.porFora||0)}" oninput="moneyMask(this)"></div></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>Vales / adiantamento</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="fn_vales" value="${fmtMoneyInput(f.vales||0)}" oninput="moneyMask(this)"></div></div>
+      <div class="field"><label>Consumo / outros descontos</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="fn_cons" value="${fmtMoneyInput(f.consumo||0)}" oninput="moneyMask(this)"></div></div>
+    </div>
+    <div class="field"><label>Benefícios <span class="hint">VT, VR, plano de saúde…</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="fn_bnf" value="${fmtMoneyInput(f.beneficios||0)}" oninput="moneyMask(this)"></div></div>
+    <div class="grid-2">
+      <div class="field"><label>Dia de vencimento</label><input class="input" id="fn_dia" type="number" min="0" max="31" value="${f.diaVenc||''}" placeholder="Ex.: 5"></div>
+      <div class="field"><label>Início (mês)</label><input class="input" id="fn_desde" type="month" value="${f.desde||ymNow()}"></div>
+    </div>
+    <div class="field"><label>Observação</label><input class="input" id="fn_obs" value="${esc(f.observacao||'')}" placeholder="Opcional"></div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="funcSave(${i==null?'null':i})">Salvar</button></div>`,true);
+}
+function funcSave(i){
+  const o={categoria:$('#fn_cat').value,regime:$('#fn_reg').value,nome:($('#fn_nome').value||'').trim(),cargo:($('#fn_cargo').value||'').trim(),salario:moneyVal('fn_bruto'),porFora:moneyVal('fn_pfora'),vales:moneyVal('fn_vales'),consumo:moneyVal('fn_cons'),beneficios:moneyVal('fn_bnf'),diaVenc:parseInt($('#fn_dia').value)||0,desde:$('#fn_desde').value||ymNow(),observacao:($('#fn_obs').value||'').trim()};
+  DB.fin.funcionarios=DB.fin.funcionarios||[];
+  if(i==null){DB.fin.funcionarios.push({...FIN_TEMPLATES.funcionarios(),...o});}
+  else {DB.fin.funcionarios[i]={...DB.fin.funcionarios[i],...o};}
+  save();closeModal();viewFinanceiro();toast('Funcionário salvo');
+}
+function finFolha(){
+  const arr=DB.fin.funcionarios||[];const tot={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0};
+  const porCat={};FUNC_CATS.forEach(c=>porCat[c]=[]);
+  arr.forEach((f,i)=>{const c=f.categoria||'Atendimento';(porCat[c]=porCat[c]||[]).push({f,i,m:custoFuncionario(f)});});
+  arr.forEach(f=>{const m=custoFuncionario(f);Object.keys(tot).forEach(k=>tot[k]+=m[k]||0);});
+  const head=`<tr style="background:var(--bg);color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px 10px">Funcionário</th><th class="num">Bruto</th><th class="num">Por fora</th><th class="num">Vales</th><th class="num">Consumo</th><th class="num">Benef.</th><th class="num">INSS</th><th class="num">FGTS</th><th class="num">13º+Férias</th><th class="num">Líquido</th><th class="num">Custo total</th><th style="width:96px"></th><th style="width:32px"></th></tr>`;
+  const rowsByCat=FUNC_CATS.map(cat=>{const lst=porCat[cat]||[];if(!lst.length)return '';
+    const sub={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0};lst.forEach(x=>Object.keys(sub).forEach(k=>sub[k]+=x.m[k]||0));
+    const rows=lst.map(({f,i,m})=>`<tr style="border-top:1px solid var(--line)">
+      <td style="padding:8px 10px"><div style="display:flex;align-items:center;gap:8px"><div style="font-weight:600;font-size:13px">${esc(f.nome||'—')}</div></div><div style="font-size:11px;color:var(--soft)">${esc(f.cargo||'')}${f.regime&&f.regime!=='CLT'?` · ${esc(f.regime)}`:''}</div></td>
+      <td class="num">${fmtBRL(m.bruto)}</td><td class="num">${fmtBRL(m.porFora)}</td><td class="num" style="color:${m.vales>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.vales)}</td><td class="num" style="color:${m.consumo>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.consumo)}</td><td class="num">${fmtBRL(m.beneficios)}</td>
+      <td class="num" style="color:var(--muted)">${fmtBRL(m.inss)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.fgts)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.prov)}</td>
+      <td class="num"><b>${fmtBRL(m.liquido)}</b></td><td class="num"><b style="color:var(--navy);font-family:'Fraunces',serif">${fmtBRL(m.total)}</b></td>
+      <td><button class="icon-btn" onclick="funcTogglePago(${i})" style="white-space:nowrap;width:auto;padding:0 10px;${f.pago?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${f.pago?'✓ Pago':'○ Pendente'}</button></td>
+      <td><span style="display:inline-flex;gap:4px"><button class="icon-btn" title="Editar" onclick="funcEdit(${i})">${icoEdit}</button><button class="mini-del" title="Remover" onclick="funcDel(${i})">${icoX}</button></span></td>
+    </tr>`).join('');
+    return `<tr><td colspan="13" style="padding:14px 10px 4px;font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;font-weight:700">${cat} <span style="color:var(--soft);margin-left:6px;font-weight:600;letter-spacing:0">${lst.length} ${lst.length===1?'pessoa':'pessoas'}</span></td></tr>
+    ${rows}
+    <tr style="background:rgba(29,53,115,.04)"><td style="padding:8px 10px;font-size:11.5px;color:var(--muted);font-weight:600">Subtotal ${cat}</td><td class="num">${fmtBRL(sub.bruto)}</td><td class="num">${fmtBRL(sub.porFora)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.vales)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.consumo)}</td><td class="num">${fmtBRL(sub.beneficios)}</td><td class="num">${fmtBRL(sub.inss)}</td><td class="num">${fmtBRL(sub.fgts)}</td><td class="num">${fmtBRL(sub.prov)}</td><td class="num"><b>${fmtBRL(sub.liquido)}</b></td><td class="num"><b style="color:var(--navy)">${fmtBRL(sub.total)}</b></td><td></td><td></td></tr>`;
+  }).join('');
+  return `<div class="card card-pad" style="max-width:1320px">
+    <div class="section-head"><div><div class="ttl">Folha de pagamento</div><div class="desc">Bruto, líquido e custo total da empresa por funcionário, com INSS progressivo, FGTS, 13º e férias calculados automaticamente.</div></div>
+      <button class="btn btn-primary btn-sm" onclick="funcEdit(null)">${icoPlus} Novo funcionário</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0 18px">
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Bruto total</div><div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-top:3px">${fmtBRL(tot.bruto)}</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Líquido a pagar</div><div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--green);margin-top:3px">${fmtBRL(tot.liquido)}</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Encargos (FGTS+Prov.)</div><div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-top:3px">${fmtBRL(tot.fgts+tot.prov)}</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(29,53,115,.08),transparent)"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Custo total da empresa</div><div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--navy);margin-top:3px">${fmtBRL(tot.total)}</div></div>
+    </div>
+    ${arr.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead>${head}</thead><tbody>${rowsByCat}</tbody></table></div>`:`<div style="text-align:center;padding:36px 0;color:var(--soft)">Nenhum funcionário cadastrado. <a class="tag tag-gold" style="cursor:pointer" onclick="funcEdit(null)">Adicionar →</a></div>`}
+    <div style="font-size:11.5px;color:var(--soft);margin-top:14px;border-top:1px solid var(--line);padding-top:10px;line-height:1.55">
+      <b>Como calculamos:</b> INSS pela tabela progressiva 2026 sobre o bruto (CLT). FGTS 8% e provisões (13º 8,33% + Férias com 1/3 11,11%) sobre o bruto. <b>Por Fora</b> não entra na base de INSS/FGTS/provisões. <b>Vales</b> e <b>Consumo</b> reduzem o líquido. Frees/PJ não têm encargos.
+    </div>
+  </div>`;
 }
 function syncContaLanc(key,conta){
   // cria/atualiza/remove o lançamento automático espelhando a conta paga/recebida
