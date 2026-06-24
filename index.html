@@ -2319,7 +2319,8 @@ function finCategorias(){
 }
 
 /* ===================== FINANCEIRO ===================== */
-let finTab='visao';
+let finTab='visao',folhaYM=null;
+function curFolhaYM(){return folhaYM||ymOf(hojeISO());}
 const FIN_TEMPLATES={
   contasPagar:()=>({id:uid(),descricao:'',grupo:'Despesas Gerais',sub:((DB.categorias&&DB.categorias['Despesas Gerais'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,pago:false,forma:''}),
   contasReceber:()=>({id:uid(),descricao:'',grupo:'Receita',sub:((DB.categorias&&DB.categorias['Receita'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,recebido:false,forma:''}),
@@ -2387,7 +2388,73 @@ function funcCatsModal(){modal(`<div class="modal-head"><h3>Categorias de funcio
     <div style="font-size:11.5px;color:var(--soft);margin-top:12px">Freelancers não têm categoria — são marcados pelo regime na hora de cadastrar o funcionário.</div>
   </div>
   <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal();viewFinanceiro()">Fechar</button></div>`);}
-function funcDel(i){const f=DB.fin.funcionarios[i];if(!f)return;if(!confirm(`Remover ${f.nome||'funcionário'}?`))return;DB.fin.funcionarios.splice(i,1);save();viewFinanceiro();}
+function funcRmLanc(funcId,ym){DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromFunc!==(funcId+(ym?'|'+ym:'')));}
+function funcRmAllLancs(funcId){DB.lancamentos=(DB.lancamentos||[]).filter(l=>!(l.fromFunc||'').startsWith(funcId+'|'));}
+function funcDel(i){
+  const f=DB.fin.funcionarios[i];if(!f)return;
+  const ym=curFolhaYM();
+  window._delFunc={i,id:f.id,nome:f.nome||'funcionário',ym};
+  modal(`<div class="modal-head"><h3>Remover funcionário</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:13.5px;margin-bottom:6px"><b>${esc(f.nome||'—')}</b>${f.cargo?` · ${esc(f.cargo)}`:''}</div>
+    <div style="font-size:13px;color:var(--muted)">Como deseja remover?</div>
+  </div>
+  <div class="modal-foot" style="flex-wrap:wrap;gap:8px">
+    <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-ghost" onclick="funcDelAplicar('posteriores')">A partir de ${ymLabel(ym)}</button>
+    <button class="btn btn-primary" onclick="funcDelAplicar('completo')" style="background:var(--red);border-color:var(--red)">Remover completamente</button>
+  </div>`);
+}
+function funcDelAplicar(escopo){
+  const d=window._delFunc;if(!d)return closeModal();
+  const f=DB.fin.funcionarios[d.i];if(!f)return closeModal();
+  if(escopo==='posteriores'){
+    f.ate=ymMinus1(d.ym);
+    // limpa pagosMes e lançamentos de d.ym em diante
+    if(f.pagosMes)Object.keys(f.pagosMes).forEach(k=>{if(k>=d.ym)delete f.pagosMes[k];});
+    DB.lancamentos=(DB.lancamentos||[]).filter(l=>{if(!(l.fromFunc||'').startsWith('fn_'+d.id+'|'))return true;const lym=l.fromFunc.split('|')[1];return lym<d.ym;});
+    save();closeModal();viewFinanceiro();toast('Encerrado a partir de '+ymLabel(d.ym));
+  } else {
+    funcRmAllLancs('fn_'+d.id);
+    DB.fin.funcionarios.splice(d.i,1);
+    save();closeModal();viewFinanceiro();toast('Funcionário removido');
+  }
+  window._delFunc=null;
+}
+function funcTogglePago(i){
+  const f=DB.fin.funcionarios[i];if(!f)return;
+  const ym=curFolhaYM();f.pagosMes=f.pagosMes||{};
+  if(f.pagosMes[ym]){
+    if(!confirm(`Desmarcar pagamento de ${ymLabel(ym)} para ${f.nome||'este funcionário'}? O lançamento correspondente também será removido.`))return;
+    delete f.pagosMes[ym];funcRmLanc('fn_'+f.id,ym);save();viewFinanceiro();toast('Pagamento desmarcado');return;
+  }
+  // não pago ainda: abre confirmação de lançar no DRE
+  window._payFunc={i,id:f.id,nome:f.nome||'',ym,liquido:custoFuncionario(f).liquido};
+  modal(`<div class="modal-head"><h3>Marcar como pago</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:13.5px;margin-bottom:4px"><b>${esc(f.nome||'—')}</b> · ${ymLabel(ym)}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:6px">Líquido: <b>${fmtBRL(window._payFunc.liquido)}</b></div>
+    <div style="font-size:13px">Deseja também lançar este pagamento no <b>DRE</b> (Mão-de-Obra · Salários)?</div>
+  </div>
+  <div class="modal-foot" style="flex-wrap:wrap;gap:8px">
+    <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-ghost" onclick="funcConfirmPago(false)">Só marcar como pago</button>
+    <button class="btn btn-primary" onclick="funcConfirmPago(true)">Marcar e lançar no DRE</button>
+  </div>`);
+}
+function funcConfirmPago(lancar){
+  const d=window._payFunc;if(!d)return closeModal();
+  const f=DB.fin.funcionarios[d.i];if(!f)return closeModal();
+  f.pagosMes=f.pagosMes||{};f.pagosMes[d.ym]=true;
+  if(lancar&&d.liquido>0){
+    const last=new Date(+d.ym.slice(0,4),+d.ym.slice(5,7),0).getDate();
+    const dia=Math.min(last,Math.max(1,f.diaVenc||5));
+    DB.lancamentos=DB.lancamentos||[];
+    DB.lancamentos.push({id:uid(),fromFunc:'fn_'+d.id+'|'+d.ym,data:d.ym+'-'+pad2(dia),grupo:'Mão-de-Obra',sub:'Salários',descricao:(d.nome||'Funcionário')+' · líquido',valor:d.liquido,forma:f.forma||''});
+  }
+  save();closeModal();viewFinanceiro();toast(lancar?'Pago e lançado no DRE':'Marcado como pago');
+  window._payFunc=null;
+}
 function funcEdit(i){
   const f=i==null?{...FIN_TEMPLATES.funcionarios()}:DB.fin.funcionarios[i];if(!f)return;
   const opt=(arr,v)=>arr.map(x=>`<option ${x===v?'selected':''}>${esc(x)}</option>`).join('');
@@ -2426,37 +2493,47 @@ function funcSave(i){
   save();closeModal();viewFinanceiro();toast('Funcionário salvo');
 }
 function finFolha(){
-  const arr=DB.fin.funcionarios||[];const tot={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0};
+  const ym=curFolhaYM();
+  // ativos no mês: desde <= ym e (sem ate ou ate >= ym)
+  const todos=DB.fin.funcionarios||[];
+  const ativos=todos.map((f,i)=>({f,i,m:custoFuncionario(f)})).filter(({f})=>(!f.desde||f.desde<=ym)&&(!f.ate||f.ate>=ym));
+  const tot={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0};
+  ativos.forEach(({m})=>Object.keys(tot).forEach(k=>tot[k]+=m[k]||0));
+  const pagos=ativos.filter(({f})=>f.pagosMes&&f.pagosMes[ym]).length;
   const cats=funcCats(),GRUPOS=[...cats,'Freelancers'];
   const porCat={};GRUPOS.forEach(c=>porCat[c]=[]);
-  arr.forEach((f,i)=>{const g=(f.regime||'CLT')==='Freelancer'?'Freelancers':(cats.includes(f.categoria)?f.categoria:(cats[0]||'Sem categoria'));(porCat[g]=porCat[g]||[]).push({f,i,m:custoFuncionario(f)});});
-  arr.forEach(f=>{const m=custoFuncionario(f);Object.keys(tot).forEach(k=>tot[k]+=m[k]||0);});
-  const head=`<tr style="background:var(--bg);color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px 10px">Funcionário</th><th class="num">Bruto</th><th class="num">Por fora</th><th class="num">Vales</th><th class="num">Consumo</th><th class="num">Benef.</th><th class="num">INSS</th><th class="num">FGTS</th><th class="num">13º+Férias</th><th class="num">Líquido</th><th class="num">Custo total</th><th style="width:32px"></th></tr>`;
+  ativos.forEach(({f,i,m})=>{const g=(f.regime||'CLT')==='Freelancer'?'Freelancers':(cats.includes(f.categoria)?f.categoria:(cats[0]||'Sem categoria'));(porCat[g]=porCat[g]||[]).push({f,i,m});});
+  const head=`<tr style="background:var(--bg);color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px 10px">Funcionário</th><th class="num">Bruto</th><th class="num">Por fora</th><th class="num">Vales</th><th class="num">Consumo</th><th class="num">Benef.</th><th class="num">INSS</th><th class="num">FGTS</th><th class="num">13º+Férias</th><th class="num">Líquido</th><th class="num">Custo total</th><th style="width:110px;text-align:center">Pago</th><th style="width:32px"></th></tr>`;
   const rowsByCat=GRUPOS.map(cat=>{const lst=porCat[cat]||[];if(!lst.length)return '';
     const sub={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0};lst.forEach(x=>Object.keys(sub).forEach(k=>sub[k]+=x.m[k]||0));
-    const rows=lst.map(({f,i,m})=>`<tr style="border-top:1px solid var(--line)">
-      <td style="padding:8px 10px"><div style="display:flex;align-items:center;gap:8px"><div style="font-weight:600;font-size:13px">${esc(f.nome||'—')}</div></div><div style="font-size:11px;color:var(--soft)">${esc(f.cargo||'')}${f.regime&&f.regime!=='CLT'?` · ${esc(f.regime)}`:''}</div></td>
+    const rows=lst.map(({f,i,m})=>{const pg=!!(f.pagosMes&&f.pagosMes[ym]);return `<tr style="border-top:1px solid var(--line)">
+      <td style="padding:8px 10px"><div style="font-weight:600;font-size:13px">${esc(f.nome||'—')}</div><div style="font-size:11px;color:var(--soft)">${esc(f.cargo||'')}${f.regime&&f.regime!=='CLT'?` · ${esc(f.regime)}`:''}</div></td>
       <td class="num">${fmtBRL(m.bruto)}</td><td class="num">${fmtBRL(m.porFora)}</td><td class="num" style="color:${m.vales>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.vales)}</td><td class="num" style="color:${m.consumo>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.consumo)}</td><td class="num">${fmtBRL(m.beneficios)}</td>
       <td class="num" style="color:var(--muted)">${fmtBRL(m.inss)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.fgts)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.prov)}</td>
       <td class="num"><b>${fmtBRL(m.liquido)}</b></td><td class="num"><b style="color:var(--navy);font-family:'Fraunces',serif">${fmtBRL(m.total)}</b></td>
+      <td style="text-align:center"><button class="icon-btn" onclick="funcTogglePago(${i})" title="Marcar como ${pg?'pendente':'pago'} em ${ymLabel(ym)}" style="white-space:nowrap;width:auto;padding:0 10px;${pg?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${pg?'✓ Pago':'○ Pendente'}</button></td>
       <td><span style="display:inline-flex;gap:4px"><button class="icon-btn" title="Editar" onclick="funcEdit(${i})">${icoEdit}</button><button class="mini-del" title="Remover" onclick="funcDel(${i})">${icoX}</button></span></td>
-    </tr>`).join('');
-    return `<tr><td colspan="12" style="padding:14px 10px 4px;font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;font-weight:700">${cat} <span style="color:var(--soft);margin-left:6px;font-weight:600;letter-spacing:0">${lst.length} ${lst.length===1?'pessoa':'pessoas'}</span></td></tr>
+    </tr>`;}).join('');
+    return `<tr><td colspan="13" style="padding:14px 10px 4px;font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;font-weight:700">${cat} <span style="color:var(--soft);margin-left:6px;font-weight:600;letter-spacing:0">${lst.length} ${lst.length===1?'pessoa':'pessoas'}</span></td></tr>
     ${rows}
-    <tr style="background:rgba(29,53,115,.04)"><td style="padding:8px 10px;font-size:11.5px;color:var(--muted);font-weight:600">Subtotal ${cat}</td><td class="num">${fmtBRL(sub.bruto)}</td><td class="num">${fmtBRL(sub.porFora)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.vales)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.consumo)}</td><td class="num">${fmtBRL(sub.beneficios)}</td><td class="num">${fmtBRL(sub.inss)}</td><td class="num">${fmtBRL(sub.fgts)}</td><td class="num">${fmtBRL(sub.prov)}</td><td class="num"><b>${fmtBRL(sub.liquido)}</b></td><td class="num"><b style="color:var(--navy)">${fmtBRL(sub.total)}</b></td><td></td></tr>`;
+    <tr style="background:rgba(29,53,115,.04)"><td style="padding:8px 10px;font-size:11.5px;color:var(--muted);font-weight:600">Subtotal ${cat}</td><td class="num">${fmtBRL(sub.bruto)}</td><td class="num">${fmtBRL(sub.porFora)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.vales)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.consumo)}</td><td class="num">${fmtBRL(sub.beneficios)}</td><td class="num">${fmtBRL(sub.inss)}</td><td class="num">${fmtBRL(sub.fgts)}</td><td class="num">${fmtBRL(sub.prov)}</td><td class="num"><b>${fmtBRL(sub.liquido)}</b></td><td class="num"><b style="color:var(--navy)">${fmtBRL(sub.total)}</b></td><td></td><td></td></tr>`;
   }).join('');
   return `<div class="card card-pad" style="max-width:1320px">
-    <div class="section-head"><div><div class="ttl">Folha de pagamento</div><div class="desc">Bruto, líquido e custo total da empresa por funcionário, com INSS progressivo, FGTS, 13º e férias calculados automaticamente.</div></div>
-      <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="funcCatsModal()">${icoEdit} Categorias</button><button class="btn btn-primary btn-sm" onclick="funcEdit(null)">${icoPlus} Novo funcionário</button></div></div>
+    <div class="section-head"><div><div class="ttl">Folha de pagamento</div><div class="desc">Controle mensal. Marque <b>Pago</b> para registrar o pagamento, com opção de lançar no DRE.</div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="folhaYM=this.value;viewFinanceiro()">
+        <button class="btn btn-ghost btn-sm" onclick="funcCatsModal()">${icoEdit} Categorias</button>
+        <button class="btn btn-primary btn-sm" onclick="funcEdit(null)">${icoPlus} Novo funcionário</button>
+      </div></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0 18px">
       <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Bruto total</div><div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-top:3px">${fmtBRL(tot.bruto)}</div></div>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Líquido a pagar</div><div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--green);margin-top:3px">${fmtBRL(tot.liquido)}</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Líquido a pagar</div><div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--green);margin-top:3px">${fmtBRL(tot.liquido)}</div><div style="font-size:10.5px;color:var(--soft);margin-top:2px">${pagos}/${ativos.length} pagos</div></div>
       <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Encargos (FGTS+Prov.)</div><div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-top:3px">${fmtBRL(tot.fgts+tot.prov)}</div></div>
       <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(29,53,115,.08),transparent)"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Custo total da empresa</div><div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--navy);margin-top:3px">${fmtBRL(tot.total)}</div></div>
     </div>
-    ${arr.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead>${head}</thead><tbody>${rowsByCat}</tbody></table></div>`:`<div style="text-align:center;padding:36px 0;color:var(--soft)">Nenhum funcionário cadastrado. <a class="tag tag-gold" style="cursor:pointer" onclick="funcEdit(null)">Adicionar →</a></div>`}
+    ${ativos.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead>${head}</thead><tbody>${rowsByCat}</tbody></table></div>`:`<div style="text-align:center;padding:36px 0;color:var(--soft)">${todos.length?`Nenhum funcionário ativo em <b>${ymLabel(ym)}</b>. Selecione outro mês ou cadastre.`:'Nenhum funcionário cadastrado.'} <a class="tag tag-gold" style="cursor:pointer" onclick="funcEdit(null)">Adicionar →</a></div>`}
     <div style="font-size:11.5px;color:var(--soft);margin-top:14px;border-top:1px solid var(--line);padding-top:10px;line-height:1.55">
-      <b>Lançamento automático:</b> ao cadastrar um funcionário com <b>dia de vencimento</b>, o líquido é lançado automaticamente todo mês em <b>Contas a Pagar</b> (grupo Mão-de-Obra). Marque como pago lá.<br>
+      <b>Como funciona:</b> os funcionários aparecem a partir do <b>mês de cadastro</b> (início). Marcar como pago abre a opção de também lançar no DRE. Excluir pergunta se quer remover só dos meses posteriores ou completamente.<br>
       <b>Como calculamos:</b> INSS pela tabela progressiva 2026 sobre o bruto (CLT). FGTS 8% e provisões (13º 8,33% + Férias com 1/3 11,11%) sobre o bruto. <b>Por Fora</b> não entra na base de INSS/FGTS/provisões. <b>Vales</b> e <b>Consumo</b> reduzem o líquido. Freelancers/PJ não têm encargos.
     </div>
   </div>`;
@@ -2523,7 +2600,7 @@ function gerarRecorrentesMes(ym){
     DB.fin.contasPagar.push({id:uid(),descricao:nome,grupo,sub,vencimento:ym+'-'+pad2(Math.min(last,Math.max(1,dia||5))),valor:valor||0,pago:false,fromRec:src,mesRef:ym,forma:forma||''});
     DB.fin.recGerados[k]=true;novo=true;};
   (DB.fin.custosFixos||[]).forEach(c=>{if(c.diaVenc>0)add('cf_'+c.id,c.nome||'Custo fixo',c.grupo||'Despesas Gerais',c.sub||'',c.diaVenc,c.valor,c.desde,c.ate,c.forma);});
-  (DB.fin.funcionarios||[]).forEach(f=>{const liq=custoFuncionario(f).liquido;if(f.diaVenc>0&&liq>0)add('fn_'+f.id,(f.nome||'Funcionário')+' · líquido','Mão-de-Obra','Salários',f.diaVenc,liq,f.desde,f.ate,f.forma);});
+  // funcionários NÃO geram conta a pagar automática — gestão é feita na aba Folha de Pagamento
   (DB.fin.socios||[]).forEach(s=>{if(s.diaVenc>0&&(s.proLabore||0)>0)add('sc_'+s.id,(s.nome||'Sócio')+' · pró-labore','Mão-de-Obra','Pró-labore',s.diaVenc,s.proLabore,s.desde,s.ate,s.forma);});
   return novo;
 }
