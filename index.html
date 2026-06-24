@@ -980,7 +980,7 @@ function normData(){
   if(f.marketing.trafego>0&&!f.marketing.canais.length){f.marketing.canais.push({nome:f.marketing.plataforma||'Tráfego pago',valor:f.marketing.trafego});f.marketing.trafego=0;}
   f.servicosMensais=f.servicosMensais||[]; f.equipamentos=f.equipamentos||[]; f.veiculos=f.veiculos||[]; f.marketplaces=f.marketplaces||[]; f.operadorasCartao=f.operadorasCartao||[]; f.historicoFat=f.historicoFat||[];
   f.funcionarios=f.funcionarios||[]; f.socios=f.socios||[];
-  (f.funcionarios||[]).forEach(x=>{if(x.regime==null)x.regime='CLT';});
+  (f.funcionarios||[]).forEach(x=>{if(x.regime==null)x.regime='CLT';if(x.regime==='Diarista')x.regime='Freelancer';if(x.categoria==='Frees / Extras'){x.categoria='';x.regime='Freelancer';}});
   (f.socios||[]).forEach(s=>{if(s.proLaboreDeclarado==null)s.proLaboreDeclarado=s.proLabore||0;});
   DB.conta=DB.conta||{};
   DB.modulares=DB.modulares||{};
@@ -2375,7 +2375,18 @@ function finCard(ttl,desc,inner,foot){
     ${inner}
     ${foot?`<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px;font-size:14px;text-align:right">${foot}</div>`:''}</div>`;
 }
-const FUNC_CATS=['Atendimento','Cozinha','Administrativo','Frees / Extras'];
+const FUNC_CATS_DEFAULT=['Atendimento','Cozinha','Administrativo'];
+function funcCats(){return (DB.fin&&DB.fin.funcCategorias&&DB.fin.funcCategorias.length)?DB.fin.funcCategorias:FUNC_CATS_DEFAULT;}
+function funcCatsRows(){return funcCats().map((c,i)=>`<span class="cat-chip">${esc(c)}<button onclick="delFuncCat(${i})" title="Remover">${icoX}</button></span>`).join('')||'<span style="color:var(--soft);font-size:12px">Nenhuma categoria cadastrada.</span>';}
+function addFuncCat(){const v=($('#fc_novo').value||'').trim();if(!v)return;DB.fin.funcCategorias=funcCats().slice();if(DB.fin.funcCategorias.includes(v))return toast('Essa categoria já existe');DB.fin.funcCategorias.push(v);save();$('#fc_novo').value='';$('#fc_list').innerHTML=funcCatsRows();}
+function delFuncCat(i){const cats=funcCats().slice();const c=cats[i];const usado=(DB.fin.funcionarios||[]).some(f=>(f.categoria||'')===c);if(usado&&!confirm(`A categoria "${c}" está em uso. Remover assim mesmo?`))return;cats.splice(i,1);DB.fin.funcCategorias=cats;save();$('#fc_list').innerHTML=funcCatsRows();}
+function funcCatsModal(){modal(`<div class="modal-head"><h3>Categorias de funcionários</h3><button class="x" onclick="closeModal();viewFinanceiro()">${icoX}</button></div>
+  <div class="modal-body">
+    <div class="field"><label>Nova categoria</label><div style="display:flex;gap:8px"><input class="input" id="fc_novo" placeholder="Ex.: Bar, Salão, Limpeza" onkeydown="if(event.key==='Enter'){addFuncCat();event.preventDefault();}"><button class="btn btn-primary btn-sm" onclick="addFuncCat()">${icoPlus} Adicionar</button></div></div>
+    <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:6px" id="fc_list">${funcCatsRows()}</div>
+    <div style="font-size:11.5px;color:var(--soft);margin-top:12px">Freelancers não têm categoria — são marcados pelo regime na hora de cadastrar o funcionário.</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal();viewFinanceiro()">Fechar</button></div>`);}
 function funcTogglePago(i){const f=DB.fin.funcionarios[i];if(!f)return;f.pago=!f.pago;save();viewFinanceiro();toast(f.pago?'Marcado como pago':'Marcado como pendente');}
 function funcDel(i){const f=DB.fin.funcionarios[i];if(!f)return;if(!confirm(`Remover ${f.nome||'funcionário'}?`))return;DB.fin.funcionarios.splice(i,1);save();viewFinanceiro();}
 function funcEdit(i){
@@ -2384,8 +2395,8 @@ function funcEdit(i){
   modal(`<div class="modal-head"><h3>${i==null?'Novo funcionário':'Editar funcionário'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div class="grid-2">
-      <div class="field"><label>Categoria</label><select class="input" id="fn_cat">${opt(FUNC_CATS,f.categoria||'Atendimento')}</select></div>
-      <div class="field"><label>Regime</label><select class="input" id="fn_reg">${opt(['CLT','PJ','Diarista'],f.regime||'CLT')}</select></div>
+      <div class="field"><label>Categoria <span class="hint"><a onclick="closeModal();funcCatsModal()" style="color:var(--gold);cursor:pointer;font-weight:600">editar</a></span></label><select class="input" id="fn_cat"><option value="">— sem categoria —</option>${opt(funcCats(),f.categoria||'')}</select></div>
+      <div class="field"><label>Regime</label><select class="input" id="fn_reg">${opt(['CLT','PJ','Freelancer'],f.regime||'CLT')}</select></div>
     </div>
     <div class="grid-2">
       <div class="field"><label>Nome</label><input class="input" id="fn_nome" value="${esc(f.nome||'')}" placeholder="Ex.: João Silva"></div>
@@ -2417,11 +2428,12 @@ function funcSave(i){
 }
 function finFolha(){
   const arr=DB.fin.funcionarios||[];const tot={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0};
-  const porCat={};FUNC_CATS.forEach(c=>porCat[c]=[]);
-  arr.forEach((f,i)=>{const c=f.categoria||'Atendimento';(porCat[c]=porCat[c]||[]).push({f,i,m:custoFuncionario(f)});});
+  const cats=funcCats(),GRUPOS=[...cats,'Freelancers'];
+  const porCat={};GRUPOS.forEach(c=>porCat[c]=[]);
+  arr.forEach((f,i)=>{const g=(f.regime||'CLT')==='Freelancer'?'Freelancers':(cats.includes(f.categoria)?f.categoria:(cats[0]||'Sem categoria'));(porCat[g]=porCat[g]||[]).push({f,i,m:custoFuncionario(f)});});
   arr.forEach(f=>{const m=custoFuncionario(f);Object.keys(tot).forEach(k=>tot[k]+=m[k]||0);});
   const head=`<tr style="background:var(--bg);color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px 10px">Funcionário</th><th class="num">Bruto</th><th class="num">Por fora</th><th class="num">Vales</th><th class="num">Consumo</th><th class="num">Benef.</th><th class="num">INSS</th><th class="num">FGTS</th><th class="num">13º+Férias</th><th class="num">Líquido</th><th class="num">Custo total</th><th style="width:96px"></th><th style="width:32px"></th></tr>`;
-  const rowsByCat=FUNC_CATS.map(cat=>{const lst=porCat[cat]||[];if(!lst.length)return '';
+  const rowsByCat=GRUPOS.map(cat=>{const lst=porCat[cat]||[];if(!lst.length)return '';
     const sub={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0};lst.forEach(x=>Object.keys(sub).forEach(k=>sub[k]+=x.m[k]||0));
     const rows=lst.map(({f,i,m})=>`<tr style="border-top:1px solid var(--line)">
       <td style="padding:8px 10px"><div style="display:flex;align-items:center;gap:8px"><div style="font-weight:600;font-size:13px">${esc(f.nome||'—')}</div></div><div style="font-size:11px;color:var(--soft)">${esc(f.cargo||'')}${f.regime&&f.regime!=='CLT'?` · ${esc(f.regime)}`:''}</div></td>
@@ -2437,7 +2449,7 @@ function finFolha(){
   }).join('');
   return `<div class="card card-pad" style="max-width:1320px">
     <div class="section-head"><div><div class="ttl">Folha de pagamento</div><div class="desc">Bruto, líquido e custo total da empresa por funcionário, com INSS progressivo, FGTS, 13º e férias calculados automaticamente.</div></div>
-      <button class="btn btn-primary btn-sm" onclick="funcEdit(null)">${icoPlus} Novo funcionário</button></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="funcCatsModal()">${icoEdit} Categorias</button><button class="btn btn-primary btn-sm" onclick="funcEdit(null)">${icoPlus} Novo funcionário</button></div></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0 18px">
       <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Bruto total</div><div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-top:3px">${fmtBRL(tot.bruto)}</div></div>
       <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Líquido a pagar</div><div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--green);margin-top:3px">${fmtBRL(tot.liquido)}</div></div>
@@ -3563,7 +3575,7 @@ const WIZ=[
  {g:'Identidade e Equipe',t:'Funcionários',ctx:'Cadastre a equipe. Para CLT calculamos o "custo fantasma", mostramos INSS, FGTS e provisões (13º/férias) separadamente.',body:()=>{
    const a=wzGet('fin.funcionarios')||[];return (a.length?a.map((f,i)=>{const c=custoFuncionario(f);const isCLT=(f.regime||'CLT')==='CLT';return subBox('Funcionário '+(i+1),
      fTxt('fin.funcionarios.'+i+'.nome','Nome')+fTxt('fin.funcionarios.'+i+'.cargo','Cargo')
-     +fSeg('fin.funcionarios.'+i+'.regime','Regime',[{v:'CLT',l:'CLT'},{v:'PJ',l:'PJ'},{v:'Diarista',l:'Diarista'}])
+     +fSeg('fin.funcionarios.'+i+'.regime','Regime',[{v:'CLT',l:'CLT'},{v:'PJ',l:'PJ'},{v:'Freelancer',l:'Freelancer'}])
      +`<div class="grid-2">`+fMoney('fin.funcionarios.'+i+'.salario','Salário base','',true)+fMoney('fin.funcionarios.'+i+'.premio','Prêmio','',true)+`</div>`
      +`<div class="grid-2">`+fMoney('fin.funcionarios.'+i+'.vt','Vale transporte','',true)+fInt('fin.funcionarios.'+i+'.diasTrabalhados','Dias trabalhados/mês','',true)+`</div>`
      +`<div class="grid-2">`+fInt('fin.funcionarios.'+i+'.qtdVales','Qtd vales/dia','',true)+fMoney('fin.funcionarios.'+i+'.custoRefeicaoDia','Custo refeição/dia','',true)+`</div>`
