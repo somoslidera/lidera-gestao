@@ -2387,7 +2387,6 @@ function funcCatsModal(){modal(`<div class="modal-head"><h3>Categorias de funcio
     <div style="font-size:11.5px;color:var(--soft);margin-top:12px">Freelancers não têm categoria — são marcados pelo regime na hora de cadastrar o funcionário.</div>
   </div>
   <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal();viewFinanceiro()">Fechar</button></div>`);}
-function funcTogglePago(i){const f=DB.fin.funcionarios[i];if(!f)return;f.pago=!f.pago;save();viewFinanceiro();toast(f.pago?'Marcado como pago':'Marcado como pendente');}
 function funcDel(i){const f=DB.fin.funcionarios[i];if(!f)return;if(!confirm(`Remover ${f.nome||'funcionário'}?`))return;DB.fin.funcionarios.splice(i,1);save();viewFinanceiro();}
 function funcEdit(i){
   const f=i==null?{...FIN_TEMPLATES.funcionarios()}:DB.fin.funcionarios[i];if(!f)return;
@@ -2432,7 +2431,7 @@ function finFolha(){
   const porCat={};GRUPOS.forEach(c=>porCat[c]=[]);
   arr.forEach((f,i)=>{const g=(f.regime||'CLT')==='Freelancer'?'Freelancers':(cats.includes(f.categoria)?f.categoria:(cats[0]||'Sem categoria'));(porCat[g]=porCat[g]||[]).push({f,i,m:custoFuncionario(f)});});
   arr.forEach(f=>{const m=custoFuncionario(f);Object.keys(tot).forEach(k=>tot[k]+=m[k]||0);});
-  const head=`<tr style="background:var(--bg);color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px 10px">Funcionário</th><th class="num">Bruto</th><th class="num">Por fora</th><th class="num">Vales</th><th class="num">Consumo</th><th class="num">Benef.</th><th class="num">INSS</th><th class="num">FGTS</th><th class="num">13º+Férias</th><th class="num">Líquido</th><th class="num">Custo total</th><th style="width:96px"></th><th style="width:32px"></th></tr>`;
+  const head=`<tr style="background:var(--bg);color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px 10px">Funcionário</th><th class="num">Bruto</th><th class="num">Por fora</th><th class="num">Vales</th><th class="num">Consumo</th><th class="num">Benef.</th><th class="num">INSS</th><th class="num">FGTS</th><th class="num">13º+Férias</th><th class="num">Líquido</th><th class="num">Custo total</th><th style="width:32px"></th></tr>`;
   const rowsByCat=GRUPOS.map(cat=>{const lst=porCat[cat]||[];if(!lst.length)return '';
     const sub={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0};lst.forEach(x=>Object.keys(sub).forEach(k=>sub[k]+=x.m[k]||0));
     const rows=lst.map(({f,i,m})=>`<tr style="border-top:1px solid var(--line)">
@@ -2440,12 +2439,11 @@ function finFolha(){
       <td class="num">${fmtBRL(m.bruto)}</td><td class="num">${fmtBRL(m.porFora)}</td><td class="num" style="color:${m.vales>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.vales)}</td><td class="num" style="color:${m.consumo>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.consumo)}</td><td class="num">${fmtBRL(m.beneficios)}</td>
       <td class="num" style="color:var(--muted)">${fmtBRL(m.inss)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.fgts)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.prov)}</td>
       <td class="num"><b>${fmtBRL(m.liquido)}</b></td><td class="num"><b style="color:var(--navy);font-family:'Fraunces',serif">${fmtBRL(m.total)}</b></td>
-      <td><button class="icon-btn" onclick="funcTogglePago(${i})" style="white-space:nowrap;width:auto;padding:0 10px;${f.pago?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${f.pago?'✓ Pago':'○ Pendente'}</button></td>
       <td><span style="display:inline-flex;gap:4px"><button class="icon-btn" title="Editar" onclick="funcEdit(${i})">${icoEdit}</button><button class="mini-del" title="Remover" onclick="funcDel(${i})">${icoX}</button></span></td>
     </tr>`).join('');
-    return `<tr><td colspan="13" style="padding:14px 10px 4px;font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;font-weight:700">${cat} <span style="color:var(--soft);margin-left:6px;font-weight:600;letter-spacing:0">${lst.length} ${lst.length===1?'pessoa':'pessoas'}</span></td></tr>
+    return `<tr><td colspan="12" style="padding:14px 10px 4px;font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;font-weight:700">${cat} <span style="color:var(--soft);margin-left:6px;font-weight:600;letter-spacing:0">${lst.length} ${lst.length===1?'pessoa':'pessoas'}</span></td></tr>
     ${rows}
-    <tr style="background:rgba(29,53,115,.04)"><td style="padding:8px 10px;font-size:11.5px;color:var(--muted);font-weight:600">Subtotal ${cat}</td><td class="num">${fmtBRL(sub.bruto)}</td><td class="num">${fmtBRL(sub.porFora)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.vales)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.consumo)}</td><td class="num">${fmtBRL(sub.beneficios)}</td><td class="num">${fmtBRL(sub.inss)}</td><td class="num">${fmtBRL(sub.fgts)}</td><td class="num">${fmtBRL(sub.prov)}</td><td class="num"><b>${fmtBRL(sub.liquido)}</b></td><td class="num"><b style="color:var(--navy)">${fmtBRL(sub.total)}</b></td><td></td><td></td></tr>`;
+    <tr style="background:rgba(29,53,115,.04)"><td style="padding:8px 10px;font-size:11.5px;color:var(--muted);font-weight:600">Subtotal ${cat}</td><td class="num">${fmtBRL(sub.bruto)}</td><td class="num">${fmtBRL(sub.porFora)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.vales)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.consumo)}</td><td class="num">${fmtBRL(sub.beneficios)}</td><td class="num">${fmtBRL(sub.inss)}</td><td class="num">${fmtBRL(sub.fgts)}</td><td class="num">${fmtBRL(sub.prov)}</td><td class="num"><b>${fmtBRL(sub.liquido)}</b></td><td class="num"><b style="color:var(--navy)">${fmtBRL(sub.total)}</b></td><td></td></tr>`;
   }).join('');
   return `<div class="card card-pad" style="max-width:1320px">
     <div class="section-head"><div><div class="ttl">Folha de pagamento</div><div class="desc">Bruto, líquido e custo total da empresa por funcionário, com INSS progressivo, FGTS, 13º e férias calculados automaticamente.</div></div>
@@ -2458,7 +2456,8 @@ function finFolha(){
     </div>
     ${arr.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead>${head}</thead><tbody>${rowsByCat}</tbody></table></div>`:`<div style="text-align:center;padding:36px 0;color:var(--soft)">Nenhum funcionário cadastrado. <a class="tag tag-gold" style="cursor:pointer" onclick="funcEdit(null)">Adicionar →</a></div>`}
     <div style="font-size:11.5px;color:var(--soft);margin-top:14px;border-top:1px solid var(--line);padding-top:10px;line-height:1.55">
-      <b>Como calculamos:</b> INSS pela tabela progressiva 2026 sobre o bruto (CLT). FGTS 8% e provisões (13º 8,33% + Férias com 1/3 11,11%) sobre o bruto. <b>Por Fora</b> não entra na base de INSS/FGTS/provisões. <b>Vales</b> e <b>Consumo</b> reduzem o líquido. Frees/PJ não têm encargos.
+      <b>Lançamento automático:</b> ao cadastrar um funcionário com <b>dia de vencimento</b>, o líquido é lançado automaticamente todo mês em <b>Contas a Pagar</b> (grupo Mão-de-Obra). Marque como pago lá.<br>
+      <b>Como calculamos:</b> INSS pela tabela progressiva 2026 sobre o bruto (CLT). FGTS 8% e provisões (13º 8,33% + Férias com 1/3 11,11%) sobre o bruto. <b>Por Fora</b> não entra na base de INSS/FGTS/provisões. <b>Vales</b> e <b>Consumo</b> reduzem o líquido. Freelancers/PJ não têm encargos.
     </div>
   </div>`;
 }
@@ -2524,7 +2523,7 @@ function gerarRecorrentesMes(ym){
     DB.fin.contasPagar.push({id:uid(),descricao:nome,grupo,sub,vencimento:ym+'-'+pad2(Math.min(last,Math.max(1,dia||5))),valor:valor||0,pago:false,fromRec:src,mesRef:ym,forma:forma||''});
     DB.fin.recGerados[k]=true;novo=true;};
   (DB.fin.custosFixos||[]).forEach(c=>{if(c.diaVenc>0)add('cf_'+c.id,c.nome||'Custo fixo',c.grupo||'Despesas Gerais',c.sub||'',c.diaVenc,c.valor,c.desde,c.ate,c.forma);});
-  (DB.fin.funcionarios||[]).forEach(f=>{if(f.diaVenc>0&&(f.salario||0)>0)add('fn_'+f.id,(f.nome||'Funcionário')+' · salário','Mão-de-Obra','Salários',f.diaVenc,f.salario,f.desde,f.ate,f.forma);});
+  (DB.fin.funcionarios||[]).forEach(f=>{const liq=custoFuncionario(f).liquido;if(f.diaVenc>0&&liq>0)add('fn_'+f.id,(f.nome||'Funcionário')+' · líquido','Mão-de-Obra','Salários',f.diaVenc,liq,f.desde,f.ate,f.forma);});
   (DB.fin.socios||[]).forEach(s=>{if(s.diaVenc>0&&(s.proLabore||0)>0)add('sc_'+s.id,(s.nome||'Sócio')+' · pró-labore','Mão-de-Obra','Pró-labore',s.diaVenc,s.proLabore,s.desde,s.ate,s.forma);});
   return novo;
 }
