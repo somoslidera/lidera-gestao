@@ -988,6 +988,7 @@ function normData(){
   // Lançamentos financeiros + categorias (DRE / Fluxo de Caixa)
   if(!DB.categorias||!Object.keys(DB.categorias).length){DB.categorias={};DRE_DEFAULT.forEach(([g,tipo,subs])=>{DB.categorias[g]={tipo,subs:subs.slice()};});}
   DB.lancamentos=DB.lancamentos||[];
+  if(!f._taxasSync){syncAllTaxas();f._taxasSync=true;} // gera taxas de cartão/PIX p/ receitas já lançadas (1x)
   DB.desperdicios=DB.desperdicios||[];
   DB.despMotivos=(DB.despMotivos&&DB.despMotivos.length)?DB.despMotivos:DESP_MOTIVOS.slice();
   DB.formasPagamento=(DB.formasPagamento&&DB.formasPagamento.length)?DB.formasPagamento:FORMAS_DEFAULT.slice();
@@ -2096,11 +2097,34 @@ function viewDRE(){
 }
 /* ----- Lançamentos ----- */
 function lancSubRefresh(){const g=$('#lc_grupo');const s=$('#lc_sub');if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=(c?c.subs:[]).map(x=>`<option>${esc(x)}</option>`).join('');}
+/* ===== Taxas de cartão/PIX automáticas no DRE (sobre recebíveis) ===== */
+function taxaInfo(L){ // identifica a taxa pela forma de pagamento (ou pela subcategoria da receita)
+  const cand=[L.forma||'',L.sub||''];
+  for(const c of cand){const cl=c.toLowerCase();
+    if(/cr[eé]dito/.test(cl))return{pct:DB.fin.taxaCartao||0,sub:'Taxa de Crédito'};
+    if(/d[eé]bito/.test(cl))return{pct:DB.fin.taxaDebito||0,sub:'Taxa de Débito'};
+    if(/pix/.test(cl))return{pct:DB.fin.taxaPix||0,sub:'Taxa de PIX'};
+  }
+  return null;
+}
+function ensureTaxaSubs(){const g=DB.categorias&&DB.categorias['Despesas Financeiras'];if(!g)return;['Taxa de Débito','Taxa de Crédito','Taxa de PIX'].forEach(s=>{if(!g.subs.includes(s))g.subs.push(s);});}
+function syncTaxaLanc(L){ // cria/atualiza/remove a despesa de taxa vinculada a uma receita
+  DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromTaxa!==L.id);
+  if(!L||grupoTipo(L.grupo)!=='receita')return;
+  const t=taxaInfo(L);
+  if(t&&t.pct>0&&(L.valor||0)>0){ensureTaxaSubs();
+    DB.lancamentos.push({id:uid(),fromTaxa:L.id,autoTaxa:true,data:L.data,grupo:'Despesas Financeiras',sub:t.sub,descricao:`${t.sub} · ${L.descricao||L.forma||''}`,valor:Math.round(L.valor*t.pct/100*100)/100,forma:L.forma});}
+}
+function syncAllTaxas(){ // recalcula todas as taxas (uso em importação, mudança de % e migração)
+  DB.lancamentos=(DB.lancamentos||[]).filter(l=>!l.autoTaxa);
+  DB.lancamentos.slice().forEach(L=>{if(grupoTipo(L.grupo)==='receita')syncTaxaLanc(L);});
+}
 function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast('Informe o valor');
-  DB.lancamentos.push({id:uid(),data:$('#lc_data').value||hojeISO(),grupo:$('#lc_grupo').value,sub:$('#lc_sub').value||'',descricao:($('#lc_desc').value||'').trim(),valor,forma:$('#lc_forma').value||''});
+  const novo={id:uid(),data:$('#lc_data').value||hojeISO(),grupo:$('#lc_grupo').value,sub:$('#lc_sub').value||'',descricao:($('#lc_desc').value||'').trim(),valor,forma:$('#lc_forma').value||''};
+  DB.lancamentos.push(novo);syncTaxaLanc(novo);
   if(ymOf($('#lc_data').value)!==curYM())lancYM=ymOf($('#lc_data').value);
   save();viewFinanceiro();toast('Lançamento registrado');}
-function delLancamento(id){DB.lancamentos=DB.lancamentos.filter(l=>l.id!==id);save();viewFinanceiro();}
+function delLancamento(id){DB.lancamentos=DB.lancamentos.filter(l=>l.id!==id&&l.fromTaxa!==id);save();viewFinanceiro();}
 function formasRows(){return (DB.formasPagamento||[]).map((f,i)=>`<span class="cat-chip">${esc(f)}<button onclick="delForma(${i})">${icoX}</button></span>`).join('')||'<span style="color:var(--soft);font-size:12px">Nenhuma forma cadastrada.</span>';}
 function formaSelect(val,onchange){const fs=DB.formasPagamento||[];return `<select class="input" title="Forma de pagamento" onchange="${onchange}"><option value="">—</option>${fs.map(x=>`<option ${x===(val||'')?'selected':''}>${esc(x)}</option>`).join('')}</select>`;}
 function addForma(){const v=($('#fp_novo').value||'').trim();if(!v)return;DB.formasPagamento=DB.formasPagamento||[];if(DB.formasPagamento.includes(v))return toast('Essa forma já existe');DB.formasPagamento.push(v);save();$('#fp_novo').value='';$('#fp_list').innerHTML=formasRows();}
@@ -2136,7 +2160,7 @@ function editLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!
 function saveLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)return closeModal();
   const valor=moneyVal('el_valor');if(!valor)return toast('Informe o valor');
   l.data=$('#el_data').value||l.data;l.grupo=$('#el_grupo').value;l.sub=$('#el_sub').value||'';l.descricao=($('#el_desc').value||'').trim();l.valor=valor;l.forma=$('#el_forma').value||'';
-  save();closeModal();viewFinanceiro();toast('Lançamento atualizado');}
+  syncTaxaLanc(l);save();closeModal();viewFinanceiro();toast('Lançamento atualizado');}
 function finLancamentos(){
   const ym=curYM(); const d=dreLanc(ym);
   const fl=lancFiltro, ativo=fl.data||fl.grupo||fl.sub||fl.desc||fl.forma;
@@ -2186,10 +2210,10 @@ function finLancamentos(){
         <th><select class="input" onchange="lancSetFiltro('forma',this.value)"><option value="">Todas</option>${formas.map(x=>`<option ${fl.forma===x?'selected':''}>${esc(x)}</option>`).join('')}</select></th>
         <th></th><th></th>
       </tr></thead>
-    <tbody>${ls.length?ls.map(l=>{const rec=grupoTipo(l.grupo)==='receita';return `<tr>
-      <td>${fmtDataBR(l.data)}</td><td>${esc(l.grupo)}</td><td>${esc(l.sub||'—')}</td><td>${esc(l.descricao||'—')}</td><td style="color:var(--soft)">${esc(l.forma||'—')}</td>
+    <tbody>${ls.length?ls.map(l=>{const rec=grupoTipo(l.grupo)==='receita';const auto=l.autoTaxa;return `<tr${auto?' style="background:var(--bg)"':''}>
+      <td>${fmtDataBR(l.data)}</td><td>${esc(l.grupo)}</td><td>${esc(l.sub||'—')}${auto?' <span style="font-size:9.5px;color:var(--soft);border:1px solid var(--line);border-radius:5px;padding:0 4px;letter-spacing:.3px">AUTO</span>':''}</td><td>${esc(l.descricao||'—')}</td><td style="color:var(--soft)">${esc(l.forma||'—')}</td>
       <td class="num" style="color:${rec?'var(--green)':'var(--red)'};font-weight:600;white-space:nowrap">${rec?'+':'−'} ${fmtBRL(l.valor)}</td>
-      <td class="num"><div style="display:inline-flex;gap:6px"><button class="icon-btn" title="Editar" onclick="editLancamento('${l.id}')">${icoEdit}</button><button class="icon-btn" title="Excluir" style="color:var(--red)" onclick="delLancamento('${l.id}')">${icoX}</button></div></td></tr>`;}).join(''):`<tr><td colspan="7" style="color:var(--soft);text-align:center;padding:14px">${ativo?'Nenhum lançamento com esse filtro.':'Nenhum lançamento neste mês. Use o formulário acima.'}</td></tr>`}</tbody>
+      <td class="num">${auto?`<span style="font-size:10.5px;color:var(--soft)" title="Taxa calculada automaticamente sobre o recebível. Ajuste o % em Parâmetros.">automático</span>`:`<div style="display:inline-flex;gap:6px"><button class="icon-btn" title="Editar" onclick="editLancamento('${l.id}')">${icoEdit}</button><button class="icon-btn" title="Excluir" style="color:var(--red)" onclick="delLancamento('${l.id}')">${icoX}</button></div>`}</td></tr>`;}).join(''):`<tr><td colspan="7" style="color:var(--soft);text-align:center;padding:14px">${ativo?'Nenhum lançamento com esse filtro.':'Nenhum lançamento neste mês. Use o formulário acima.'}</td></tr>`}</tbody>
     ${ativo&&ls.length?`<tfoot><tr><td colspan="5" style="text-align:right;font-weight:600;border-top:2px solid var(--navy)">Total filtrado</td><td class="num" style="font-weight:700;color:${filtTot>=0?'var(--green)':'var(--red)'};border-top:2px solid var(--navy)">${fmtBRL(filtTot)}</td><td style="border-top:2px solid var(--navy)"></td></tr></tfoot>`:''}</table></div>
   </div>`;
 }
@@ -2268,6 +2292,7 @@ async function importarLancamentos(input){const f=input&&input.files&&input.file
     DB.lancamentos.push({id:uid(),data,grupo,sub,descricao:desc,valor:Math.abs(val),forma,importado:true});add++;ult=ymOf(data);
   }
   if(!add)return toast('Nenhuma linha válida (confira Data, Grupo e Valor)');
+  syncAllTaxas(); // gera as taxas de cartão/PIX sobre as receitas importadas
   if(ult)lancYM=ult;
   const ok=await saveNow();viewFinanceiro();
   toast(ok?`${add} lançamento(s) importado(s)`+(novos?` · ${novos} grupo(s) novo(s)`:''):'Importado, mas houve falha ao salvar. Verifique a conexão e importe novamente.');
@@ -2540,12 +2565,14 @@ function finFolha(){
 }
 function syncContaLanc(key,conta){
   // cria/atualiza/remove o lançamento automático espelhando a conta paga/recebida
-  DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromConta!==conta.id);
+  const old=(DB.lancamentos||[]).find(l=>l.fromConta===conta.id);
+  DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromConta!==conta.id&&!(old&&l.fromTaxa===old.id));
   const ativo=key==='contasPagar'?conta.pago:conta.recebido;
   if(ativo&&(conta.valor||0)>0){
-    DB.lancamentos.push({id:uid(),fromConta:conta.id,data:conta.vencimento||hojeISO(),
+    const novo={id:uid(),fromConta:conta.id,data:conta.vencimento||hojeISO(),
       grupo:conta.grupo||(key==='contasPagar'?'Despesas Gerais':'Receita'),sub:conta.sub||'',
-      descricao:conta.descricao||'',valor:conta.valor||0,forma:conta.forma||''});
+      descricao:conta.descricao||'',valor:conta.valor||0,forma:conta.forma||''};
+    DB.lancamentos.push(novo);syncTaxaLanc(novo);
   }
 }
 function contaToggle(key,i){const row=DB.fin[key][i];const cf=key==='contasPagar'?'pago':'recebido';
@@ -2744,9 +2771,9 @@ function finParam(){
       <div class="field"><label>Comissão delivery <span class="hint">% iFood / marketplace</span></label><input class="input" type="number" step="0.5" value="${fin.comissaoIfood}" onchange="DB.fin.comissaoIfood=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
       <div style="font-size:12.5px;font-weight:600;color:var(--muted);margin:4px 0 6px">Taxas de cartão / PIX</div>
       <div class="grid-3">
-        <div class="field"><label>Débito <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaDebito!=null?fin.taxaDebito:''}" placeholder="0" onchange="DB.fin.taxaDebito=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
-        <div class="field"><label>Crédito <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaCartao}" onchange="DB.fin.taxaCartao=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
-        <div class="field"><label>PIX <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaPix!=null?fin.taxaPix:''}" placeholder="0" onchange="DB.fin.taxaPix=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+        <div class="field"><label>Débito <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaDebito!=null?fin.taxaDebito:''}" placeholder="0" onchange="DB.fin.taxaDebito=parseFloat(this.value)||0;syncAllTaxas();save();viewFinanceiro()"></div>
+        <div class="field"><label>Crédito <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaCartao}" onchange="DB.fin.taxaCartao=parseFloat(this.value)||0;syncAllTaxas();save();viewFinanceiro()"></div>
+        <div class="field"><label>PIX <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaPix!=null?fin.taxaPix:''}" placeholder="0" onchange="DB.fin.taxaPix=parseFloat(this.value)||0;syncAllTaxas();save();viewFinanceiro()"></div>
       </div>
       <div class="field"><label>CMV alvo <span class="hint">% meta</span></label><input class="input" type="number" step="0.5" value="${DB.cmvAlvo}" onchange="DB.cmvAlvo=parseFloat(this.value)||30;save();viewFinanceiro()"></div>
       <div class="field"><label>CMV do ponto de equilíbrio <span class="hint">qual CMV usar no cálculo</span></label>
