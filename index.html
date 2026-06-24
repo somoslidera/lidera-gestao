@@ -794,7 +794,7 @@ function custoFuncionario(f){
   const consumo=f.consumo||0;
   const regime=f.regime||'CLT';
   const isCLT=regime==='CLT';
-  const inss=isCLT?inssProgressivo(bruto):0;
+  const inss=isCLT?inssProgressivo(bruto):(regime==='Sócio'?Math.min(bruto,8475.55)*((DB.fin.inssSocio||11)/100):0); // pró-labore: INSS 11% até o teto
   const fgts=isCLT?bruto*((DB.fin.encFGTS||8)/100):0;        // 8%
   const prov13=isCLT?bruto*(8.33/100):0;                      // 13º — 1/12
   const provFerias=isCLT?bruto*(11.11/100):0;                 // férias + 1/3
@@ -805,7 +805,7 @@ function custoFuncionario(f){
 }
 function folhaTotal(){return (DB.fin.funcionarios||[]).reduce((s,f)=>s+custoFuncionario(f).total,0);}
 function custoSocio(s){const real=s.proLabore||0;const decl=(s.proLaboreDeclarado!=null&&s.proLaboreDeclarado!=='')?s.proLaboreDeclarado:real;return real+decl*((DB.fin.inssSocio||11)/100);}
-function proLaboreTotal(){return (DB.fin.socios||[]).reduce((s,x)=>s+custoSocio(x),0);}
+function proLaboreTotal(){return (DB.fin.funcionarios||[]).filter(f=>(f.regime||'')==='Sócio').reduce((s,f)=>s+custoFuncionario(f).total,0);} // sócios agora estão na folha
 function custosEstruturais(){const f=DB.fin;let t=0;
   const im=f.imovel||{};t+=(im.aluguel||0)+((im.iptuAnual||0)/12);
   const u=f.utilidades||{};t+=(u.energia||0)+(u.agua||0)+(u.internet||0)+(u.telefone||0)+(u.alarme||0)+(u.seguranca||0);
@@ -820,7 +820,7 @@ function custosEstruturais(){const f=DB.fin;let t=0;
 function custosFixosTotais(){
   const desp=(DB.fin.custosFixos||[]).reduce((s,d)=>s+(d.valor||0),0);
   const prov=(DB.fin.provisoes||[]).reduce((s,d)=>s+(d.valor||0),0);
-  return desp+folhaTotal()+proLaboreTotal()+prov; // estruturais já espelhados em custosFixos
+  return desp+folhaTotal()+prov; // folhaTotal já inclui sócios; estruturais espelhados em custosFixos
 }
 /* ===== Espelhar custos fixos da anamnese → aba Custos Fixos ===== */
 function anamneseFixosItens(){
@@ -907,8 +907,8 @@ function totaisGerais(R){
   const custosVar=cmvRS+comissaoRS+impostoRS+taxaCartaoRS;
   const fixosBase=((DB.fin.custosFixos||[]).reduce((s,d)=>s+(d.valor||0),0))*nm; // estruturais já espelhados em custosFixos
   const provisoesRS=(DB.fin.provisoes||[]).reduce((s,d)=>s+(d.valor||0),0)*nm;
-  const folha=folhaTotal()*nm, prol=proLaboreTotal()*nm;
-  const fixos=fixosBase+folha+prol+provisoesRS;
+  const folha=folhaTotal()*nm, prol=proLaboreTotal()*nm; // prol é subconjunto de folha (só p/ exibição)
+  const fixos=fixosBase+folha+provisoesRS; // folha já inclui sócios
   // ===== RESULTADO REAL (despesas efetivamente LANÇADAS no período) =====
   const despLancGrupos={};let despLancTot=0;
   (DB.lancamentos||[]).forEach(l=>{if(l.data>=R.de&&l.data<=R.ate&&grupoTipo(l.grupo)!=='receita'){despLancGrupos[l.grupo]=(despLancGrupos[l.grupo]||0)+(l.valor||0);despLancTot+=(l.valor||0);}});
@@ -981,7 +981,8 @@ function normData(){
   f.servicosMensais=f.servicosMensais||[]; f.equipamentos=f.equipamentos||[]; f.veiculos=f.veiculos||[]; f.marketplaces=f.marketplaces||[]; f.operadorasCartao=f.operadorasCartao||[]; f.historicoFat=f.historicoFat||[];
   f.funcionarios=f.funcionarios||[]; f.socios=f.socios||[];
   (f.funcionarios||[]).forEach(x=>{if(x.regime==null)x.regime='CLT';if(x.regime==='Diarista')x.regime='Freelancer';if(x.categoria==='Frees / Extras'){x.categoria='';x.regime='Freelancer';}});
-  (f.socios||[]).forEach(s=>{if(s.proLaboreDeclarado==null)s.proLaboreDeclarado=s.proLabore||0;});
+  // sócios passam a fazer parte da Folha (regime "Sócio") — migra e esvazia o array antigo
+  if(f.socios&&f.socios.length){f.socios.forEach(s=>{f.funcionarios.push({id:s.id||uid(),regime:'Sócio',categoria:'',nome:s.nome||'',cargo:s.cargo||'Sócio',salario:s.proLabore||0,premio:0,porFora:0,vales:0,consumo:0,beneficios:0,vt:0,diasTrabalhados:0,qtdVales:0,custoRefeicaoDia:0,diaVenc:s.diaVenc||0,desde:s.desde||ymNow(),ate:s.ate,forma:s.forma||'',pagosMes:s.pagosMes||{},observacao:s.observacao||''});});f.socios=[];}
   DB.conta=DB.conta||{};
   DB.modulares=DB.modulares||{};
   // Lançamentos financeiros + categorias (DRE / Fluxo de Caixa)
@@ -2349,7 +2350,7 @@ function finList(key,cols){
 }
 function viewFinanceiro(){
   const t=totaisGerais(finTab==='visao'?periodoRange():undefined);
-  const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['func','Folha de Pagamento'],['socios','Sócios'],['meios','Meios de Pagamento'],['forn','Fornecedores'],['param','Parâmetros']];
+  const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['func','Folha de Pagamento'],['meios','Meios de Pagamento'],['forn','Fornecedores'],['param','Parâmetros']];
   let body='';
   if(finTab==='lanc')body=finLancamentos();
   else if(finTab==='fluxo')body=finFluxo();
@@ -2359,9 +2360,6 @@ function viewFinanceiro(){
   else if(finTab==='pagar')body=finContas('contasPagar');
   else if(finTab==='receber')body=finContas('contasReceber');
   else if(finTab==='func')body=finFolha();
-  else if(finTab==='socios')body=finCard('Sócios','Pró-labore dos sócios',
-    finList('socios',[{f:'nome',ph:'Nome',w:'1.6fr'},{f:'proLabore',type:'money',w:'140px'},{f:'diaVenc',type:'num',ph:'Dia venc.',w:'90px'}]),
-    `Pró-labore total: <b>${fmtBRL(proLaboreTotal())}</b>`);
   else if(finTab==='meios')body=finCard('Meios de Pagamento','Taxas por meio de recebimento',
     finList('meiosPagamento',[{f:'nome',ph:'Nome',w:'1.4fr'},{f:'tipo',type:'select',opts:['Crédito','Débito','Marketplace','PIX','Dinheiro','Voucher'],w:'1fr'},{f:'taxa',type:'num',ph:'%',w:'100px'}]),
     `<span style="color:var(--muted)">A comissão de marketplace usada no cálculo é definida em <b>Parâmetros</b>.</span>`);
@@ -2462,7 +2460,7 @@ function funcEdit(i){
   <div class="modal-body">
     <div class="grid-2">
       <div class="field"><label>Categoria <span class="hint"><a onclick="closeModal();funcCatsModal()" style="color:var(--gold);cursor:pointer;font-weight:600">editar</a></span></label><select class="input" id="fn_cat"><option value="">— sem categoria —</option>${opt(funcCats(),f.categoria||'')}</select></div>
-      <div class="field"><label>Regime</label><select class="input" id="fn_reg">${opt(['CLT','PJ','Freelancer'],f.regime||'CLT')}</select></div>
+      <div class="field"><label>Regime</label><select class="input" id="fn_reg">${opt(['CLT','Sócio','PJ','Freelancer'],f.regime||'CLT')}</select></div>
     </div>
     <div class="grid-2">
       <div class="field"><label>Nome</label><input class="input" id="fn_nome" value="${esc(f.nome||'')}" placeholder="Ex.: João Silva"></div>
@@ -2500,9 +2498,9 @@ function finFolha(){
   const tot={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0};
   ativos.forEach(({m})=>Object.keys(tot).forEach(k=>tot[k]+=m[k]||0));
   const pagos=ativos.filter(({f})=>f.pagosMes&&f.pagosMes[ym]).length;
-  const cats=funcCats(),GRUPOS=[...cats,'Freelancers'];
+  const cats=funcCats(),GRUPOS=[...cats,'Sócios','Freelancers'];
   const porCat={};GRUPOS.forEach(c=>porCat[c]=[]);
-  ativos.forEach(({f,i,m})=>{const g=(f.regime||'CLT')==='Freelancer'?'Freelancers':(cats.includes(f.categoria)?f.categoria:(cats[0]||'Sem categoria'));(porCat[g]=porCat[g]||[]).push({f,i,m});});
+  ativos.forEach(({f,i,m})=>{const r=f.regime||'CLT';const g=r==='Sócio'?'Sócios':r==='Freelancer'?'Freelancers':(cats.includes(f.categoria)?f.categoria:(cats[0]||'Sem categoria'));(porCat[g]=porCat[g]||[]).push({f,i,m});});
   const head=`<tr style="background:var(--bg);color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px 10px">Funcionário</th><th class="num">Bruto</th><th class="num">Por fora</th><th class="num">Vales</th><th class="num">Consumo</th><th class="num">Benef.</th><th class="num">INSS</th><th class="num">FGTS</th><th class="num">13º+Férias</th><th class="num">Líquido</th><th class="num">Custo total</th><th style="width:110px;text-align:center">Pago</th><th style="width:32px"></th></tr>`;
   const rowsByCat=GRUPOS.map(cat=>{const lst=porCat[cat]||[];if(!lst.length)return '';
     const sub={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0};lst.forEach(x=>Object.keys(sub).forEach(k=>sub[k]+=x.m[k]||0));
@@ -2525,11 +2523,13 @@ function finFolha(){
         <button class="btn btn-ghost btn-sm" onclick="funcCatsModal()">${icoEdit} Categorias</button>
         <button class="btn btn-primary btn-sm" onclick="funcEdit(null)">${icoPlus} Novo funcionário</button>
       </div></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0 18px">
-      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Bruto total</div><div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-top:3px">${fmtBRL(tot.bruto)}</div></div>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Líquido a pagar</div><div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--green);margin-top:3px">${fmtBRL(tot.liquido)}</div><div style="font-size:10.5px;color:var(--soft);margin-top:2px">${pagos}/${ativos.length} pagos</div></div>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Encargos (FGTS+Prov.)</div><div style="font-family:'Fraunces',serif;font-size:20px;font-weight:600;margin-top:3px">${fmtBRL(tot.fgts+tot.prov)}</div></div>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(29,53,115,.08),transparent)"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Custo total da empresa</div><div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--navy);margin-top:3px">${fmtBRL(tot.total)}</div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px;margin:14px 0 18px">
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Bruto total</div><div style="font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-top:3px">${fmtBRL(tot.bruto)}</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Líquido a pagar</div><div style="font-family:'Fraunces',serif;font-size:19px;font-weight:600;color:var(--green);margin-top:3px">${fmtBRL(tot.liquido)}</div><div style="font-size:10.5px;color:var(--soft);margin-top:2px">${pagos}/${ativos.length} pagos</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">INSS</div><div style="font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-top:3px">${fmtBRL(tot.inss)}</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">FGTS</div><div style="font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-top:3px">${fmtBRL(tot.fgts)}</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Provisões 13º+Férias</div><div style="font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-top:3px">${fmtBRL(tot.prov)}</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(29,53,115,.08),transparent)"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Custo total da empresa</div><div style="font-family:'Fraunces',serif;font-size:21px;font-weight:600;color:var(--navy);margin-top:3px">${fmtBRL(tot.total)}</div></div>
     </div>
     ${ativos.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead>${head}</thead><tbody>${rowsByCat}</tbody></table></div>`:`<div style="text-align:center;padding:36px 0;color:var(--soft)">${todos.length?`Nenhum funcionário ativo em <b>${ymLabel(ym)}</b>. Selecione outro mês ou cadastre.`:'Nenhum funcionário cadastrado.'} <a class="tag tag-gold" style="cursor:pointer" onclick="funcEdit(null)">Adicionar →</a></div>`}
     <div style="font-size:11.5px;color:var(--soft);margin-top:14px;border-top:1px solid var(--line);padding-top:10px;line-height:1.55">
@@ -2601,7 +2601,6 @@ function gerarRecorrentesMes(ym){
     DB.fin.recGerados[k]=true;novo=true;};
   (DB.fin.custosFixos||[]).forEach(c=>{if(c.diaVenc>0)add('cf_'+c.id,c.nome||'Custo fixo',c.grupo||'Despesas Gerais',c.sub||'',c.diaVenc,c.valor,c.desde,c.ate,c.forma);});
   // funcionários NÃO geram conta a pagar automática — gestão é feita na aba Folha de Pagamento
-  (DB.fin.socios||[]).forEach(s=>{if(s.diaVenc>0&&(s.proLabore||0)>0)add('sc_'+s.id,(s.nome||'Sócio')+' · pró-labore','Mão-de-Obra','Pró-labore',s.diaVenc,s.proLabore,s.desde,s.ate,s.forma);});
   return novo;
 }
 function setRecAte(src,ate){ // encerra a recorrência de uma origem (custo fixo / funcionário / sócio)
@@ -2833,7 +2832,7 @@ function viewMapa(){
     {nome:'Insumos',desc:`${nIns} insumo(s) cadastrado(s)`,done:nIns>0,route:'insumos'},
     {nome:'Fichas Técnicas',desc:`${nFic} ficha(s) com custo`,done:nFic>0,route:'fichas'},
     {nome:'Engenharia de Menu',desc:'Matriz com preço e vendas',done:fichasVendaveis().some(f=>f.precoVenda>0&&f.vendasMes>0),route:'engenharia'},
-    {nome:'Equipe',desc:`${(DB.fin.socios||[]).length} sócio(s) · ${(DB.fin.funcionarios||[]).length} funcionário(s)`,done:(DB.fin.socios||[]).length>0&&(DB.fin.funcionarios||[]).length>0,route:'financeiro'},
+    {nome:'Equipe',desc:`${(DB.fin.funcionarios||[]).length} pessoa(s) na folha`,done:(DB.fin.funcionarios||[]).length>0,route:'financeiro'},
     {nome:'Financeiro',desc:'Gestão financeira ativa',done:(DB.fin.contasPagar||[]).length>0,route:'financeiro'},
   ];
   const done=steps.filter(s=>s.done).length, pct=Math.round(done/steps.length*100);
@@ -3641,23 +3640,25 @@ const WIZ=[
    +fSeg('fin.regime','Regime tributário',[{v:'simples',l:'Simples'},{v:'presumido',l:'Presumido'},{v:'lucroReal',l:'Lucro Real'}])
    +fSeg('fin.mei','É MEI?',[{v:false,l:'Não'},{v:true,l:'Sim'}])
    +(wzGet('fin.mei')?fMoney('fin.impostoFixo','Imposto fixo mensal (DAS)'):fNum('fin.aliquota','Alíquota efetiva de impostos','%, confirme com seu contador'))},
- {g:'Identidade e Equipe',t:'Sócios e gestão',ctx:'Cadastre os sócios. O pró-labore costuma ter um valor de retirada (real) e um menor declarado na folha (base do INSS, geralmente 1 salário mínimo).',body:()=>{
-   const a=wzGet('fin.socios')||[];return (a.length?a.map((s,i)=>{const inss=((s.proLaboreDeclarado!=null&&s.proLaboreDeclarado!=='')?s.proLaboreDeclarado:(s.proLabore||0))*((DB.fin.inssSocio||11)/100);return subBox('Sócio '+(i+1),
-     fTxt('fin.socios.'+i+'.nome','Nome')+fTxt('fin.socios.'+i+'.cargo','Cargo','','Ex.: Sócio Proprietário')
-     +`<div class="grid-2">`+fMoney('fin.socios.'+i+'.proLabore','Pró-labore real (retirada)','',true)+fMoney('fin.socios.'+i+'.proLaboreDeclarado','Valor declarado na folha','base do INSS',true)+`</div>`
-     +fFoto('fin.socios.'+i+'.foto','Foto')
-     +`<div class="wiz-calc">Retirada: <b>${fmtBRL(s.proLabore||0)}</b> · INSS sobre declarado (${fmtPct(DB.fin.inssSocio||11)}): <b>${fmtBRL(inss)}</b> · <b style="color:var(--navy)">Custo real: ${fmtBRL(custoSocio(s))}</b></div>`,'fin.socios',i);}).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum sócio cadastrado.</div>')
-   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.socios',{nome:'',cargo:'',proLabore:0,proLaboreDeclarado:0})">${icoPlus} Adicionar sócio</button>`;}},
- {g:'Identidade e Equipe',t:'Funcionários',ctx:'Cadastre a equipe. Para CLT calculamos o "custo fantasma", mostramos INSS, FGTS e provisões (13º/férias) separadamente.',body:()=>{
-   const a=wzGet('fin.funcionarios')||[];return (a.length?a.map((f,i)=>{const c=custoFuncionario(f);const isCLT=(f.regime||'CLT')==='CLT';return subBox('Funcionário '+(i+1),
-     fTxt('fin.funcionarios.'+i+'.nome','Nome')+fTxt('fin.funcionarios.'+i+'.cargo','Cargo')
-     +fSeg('fin.funcionarios.'+i+'.regime','Regime',[{v:'CLT',l:'CLT'},{v:'PJ',l:'PJ'},{v:'Freelancer',l:'Freelancer'}])
-     +`<div class="grid-2">`+fMoney('fin.funcionarios.'+i+'.salario','Salário base','',true)+fMoney('fin.funcionarios.'+i+'.premio','Prêmio','',true)+`</div>`
-     +`<div class="grid-2">`+fMoney('fin.funcionarios.'+i+'.vt','Vale transporte','',true)+fInt('fin.funcionarios.'+i+'.diasTrabalhados','Dias trabalhados/mês','',true)+`</div>`
-     +`<div class="grid-2">`+fInt('fin.funcionarios.'+i+'.qtdVales','Qtd vales/dia','',true)+fMoney('fin.funcionarios.'+i+'.custoRefeicaoDia','Custo refeição/dia','',true)+`</div>`
-     +`<div class="wiz-calc">Salário + benefícios: <b>${fmtBRL(c.base+c.benef)}</b>${isCLT?` · INSS (${fmtPct(DB.fin.encINSS||0)}): <b>${fmtBRL(c.inss)}</b> · FGTS (${fmtPct(DB.fin.encFGTS||0)}): <b>${fmtBRL(c.fgts)}</b> · Provisões 13º/férias (${fmtPct(DB.fin.encProv||0)}): <b>${fmtBRL(c.prov)}</b>`:' · sem encargos (não-CLT)'} · <b style="color:var(--navy)">Custo total: ${fmtBRL(c.total)}</b></div>`
-     ,'fin.funcionarios',i);}).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum funcionário cadastrado.</div>')
-   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.funcionarios',{nome:'',cargo:'',regime:'CLT',salario:0,premio:0,vt:0,diasTrabalhados:22,qtdVales:0,custoRefeicaoDia:0})">${icoPlus} Adicionar funcionário</button>`;}},
+ {g:'Identidade e Equipe',t:'Sócios e pró-labore',ctx:'Cadastre os sócios que retiram pró-labore. Aplicamos INSS de 11% sobre o pró-labore (até o teto), sem FGTS, 13º ou férias. Eles aparecem na Folha de Pagamento.',body:()=>{
+   const all=wzGet('fin.funcionarios')||[];const socios=all.map((f,idx)=>({f,idx})).filter(x=>(x.f.regime||'')==='Sócio');
+   return (socios.length?socios.map(({f,idx},n)=>{const inss=Math.min(f.salario||0,8475.55)*((DB.fin.inssSocio||11)/100);return subBox('Sócio '+(n+1),
+     fTxt('fin.funcionarios.'+idx+'.nome','Nome')+fTxt('fin.funcionarios.'+idx+'.cargo','Cargo','','Ex.: Sócio Proprietário')
+     +fMoney('fin.funcionarios.'+idx+'.salario','Pró-labore (retirada)','',true)
+     +fFoto('fin.funcionarios.'+idx+'.foto','Foto')
+     +`<div class="wiz-calc">Pró-labore: <b>${fmtBRL(f.salario||0)}</b> · INSS (${fmtPct(DB.fin.inssSocio||11)}): <b>${fmtBRL(inss)}</b> · <b style="color:var(--navy)">Líquido: ${fmtBRL((f.salario||0)-inss)}</b></div>`,'fin.funcionarios',idx);}).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum sócio cadastrado.</div>')
+   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.funcionarios',{regime:'Sócio',categoria:'',nome:'',cargo:'Sócio',salario:0,premio:0,porFora:0,vales:0,consumo:0,beneficios:0,diaVenc:0,desde:ymNow(),pagosMes:{}})">${icoPlus} Adicionar sócio</button>`;}},
+ {g:'Identidade e Equipe',t:'Funcionários',ctx:'Cadastre a equipe CLT/PJ/Freelancer. Para CLT calculamos o "custo fantasma", mostrando INSS, FGTS e provisões (13º/férias) separadamente.',body:()=>{
+   const all=wzGet('fin.funcionarios')||[];const funcs=all.map((f,idx)=>({f,idx})).filter(x=>(x.f.regime||'CLT')!=='Sócio');
+   return (funcs.length?funcs.map(({f,idx},n)=>{const c=custoFuncionario(f);const isCLT=(f.regime||'CLT')==='CLT';return subBox('Funcionário '+(n+1),
+     fTxt('fin.funcionarios.'+idx+'.nome','Nome')+fTxt('fin.funcionarios.'+idx+'.cargo','Cargo')
+     +fSeg('fin.funcionarios.'+idx+'.regime','Regime',[{v:'CLT',l:'CLT'},{v:'PJ',l:'PJ'},{v:'Freelancer',l:'Freelancer'}])
+     +`<div class="grid-2">`+fMoney('fin.funcionarios.'+idx+'.salario','Salário base','',true)+fMoney('fin.funcionarios.'+idx+'.premio','Prêmio','',true)+`</div>`
+     +`<div class="grid-2">`+fMoney('fin.funcionarios.'+idx+'.vt','Vale transporte','',true)+fInt('fin.funcionarios.'+idx+'.diasTrabalhados','Dias trabalhados/mês','',true)+`</div>`
+     +`<div class="grid-2">`+fInt('fin.funcionarios.'+idx+'.qtdVales','Qtd vales/dia','',true)+fMoney('fin.funcionarios.'+idx+'.custoRefeicaoDia','Custo refeição/dia','',true)+`</div>`
+     +`<div class="wiz-calc">Salário + benefícios: <b>${fmtBRL(c.base+c.benef)}</b>${isCLT?` · INSS: <b>${fmtBRL(c.inss)}</b> · FGTS: <b>${fmtBRL(c.fgts)}</b> · Provisões 13º/férias: <b>${fmtBRL(c.prov)}</b>`:' · sem encargos (não-CLT)'} · <b style="color:var(--navy)">Custo total: ${fmtBRL(c.total)}</b></div>`
+     ,'fin.funcionarios',idx);}).join(''):'<div style="font-size:13px;color:var(--soft);margin-bottom:10px">Nenhum funcionário cadastrado.</div>')
+   +`<button class="btn btn-ghost btn-sm" onclick="wizAdd('fin.funcionarios',{regime:'CLT',categoria:'Atendimento',nome:'',cargo:'',salario:0,premio:0,porFora:0,vales:0,consumo:0,beneficios:0,vt:0,diasTrabalhados:22,qtdVales:0,custoRefeicaoDia:0,diaVenc:0,desde:ymNow(),pagosMes:{}})">${icoPlus} Adicionar funcionário</button>`;}},
  {g:'Infraestrutura',t:'Imóvel',ctx:'Custos com o ponto comercial. O IPTU anual é diluído por 12 no custo mensal.',body:()=>
    fMoney('fin.imovel.aluguel','Valor do aluguel (mensal)')+fMoney('fin.imovel.iptuAnual','Valor do IPTU (anual)')},
  {g:'Infraestrutura',t:'Utilidades básicas',ctx:'Custos mensais de operação do ponto.',body:()=>
