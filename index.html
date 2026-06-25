@@ -1182,7 +1182,8 @@ function viewInsumos(){
     +`<button class="btn btn-ghost" onclick="gerenciarCategorias('fornecedor')">≡ Fornecedores</button>`
     +`<button class="btn btn-ghost" onclick="gerenciarCategorias('insumo')">≡ Categorias</button>`
     +`<button class="btn btn-ghost" onclick="baixarTemplateInsumos()">⬇ Baixar modelo</button>`
-    +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Importar<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarInsumos(this)"></label>`;
+    +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarInsumos(this)"></label>`
+    +`<label class="btn btn-ghost" style="cursor:pointer">🧾 Importar NF-e<input type="file" accept=".xml" style="display:none" onchange="importarNFe(this)"></label>`;
   const list=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado'); // preparados ficam só nas Fichas Técnicas
   const cats=['Todos',...new Set(list.map(i=>i.cat))];
   if(!cats.includes(insumoFiltro))insumoFiltro='Todos';
@@ -1392,6 +1393,75 @@ function aplicarImportInsumos(rows){rows=(rows||[]).filter(r=>r&&r.some(c=>(c||'
     n++;}
   if(!n)return toast('Nenhuma linha válida encontrada');
   save();viewInsumos();toast(n+' insumo(s) importado(s)');
+}
+
+/* ----- Importar NF-e (XML) — cria/atualiza insumos + lança a compra ----- */
+function parseNFe(text){
+  let doc;try{doc=new DOMParser().parseFromString(text,'application/xml');}catch(e){return null;}
+  if(!doc||doc.getElementsByTagName('parsererror').length)return null;
+  const one=(p,t)=>{const e=p&&p.getElementsByTagNameNS('*',t)[0];return e?e.textContent.trim():'';};
+  const emit=doc.getElementsByTagNameNS('*','emit')[0], ide=doc.getElementsByTagNameNS('*','ide')[0];
+  if(!emit&&!doc.getElementsByTagNameNS('*','det').length)return null;
+  const fornecedor=emit?one(emit,'xNome'):'';
+  const cnpj=emit?one(emit,'CNPJ'):'';
+  const nNF=ide?one(ide,'nNF'):'';
+  let data=ide?(one(ide,'dhEmi')||one(ide,'dEmi')):''; data=(data||'').slice(0,10);
+  const itens=Array.from(doc.getElementsByTagNameNS('*','det')).map(det=>{const prod=det.getElementsByTagNameNS('*','prod')[0];if(!prod)return null;
+    return {desc:one(prod,'xProd'),uCom:one(prod,'uCom'),qtd:parseFloat(one(prod,'qCom'))||0,vUn:parseFloat(one(prod,'vUnCom'))||0,vTotal:parseFloat(one(prod,'vProd'))||0};}).filter(Boolean);
+  if(!itens.length)return null;
+  const vNF=doc.getElementsByTagNameNS('*','vNF')[0];
+  let total=vNF?parseFloat(vNF.textContent)||0:0; if(!total)total=itens.reduce((s,i)=>s+i.vTotal,0);
+  return {fornecedor,cnpj,nNF,data,total,itens};
+}
+function nfeMatch(desc){const n=normHdr(desc);if(!n)return '';let best='';
+  Object.values(DB.insumos).filter(i=>i.tipo!=='preparado').forEach(i=>{const ni=normHdr(i.nome);if(ni&&(n.includes(ni)||ni.includes(n)))best=i.id;});
+  return best;}
+async function importarNFe(input){const f=input&&input.files&&input.files[0];if(input)input.value='';if(!f)return;
+  let text;try{text=await f.text();}catch(e){return toast('Não foi possível ler o arquivo.');}
+  const d=parseNFe(text);
+  if(!d)return toast('Não reconheci a NF-e. Envie o arquivo .xml da nota (NF-e ou NFC-e).');
+  window._nfe=d; nfeConfirmModal(d);
+}
+function nfeConfirmModal(d){
+  const cats=catList('insumo'),insumos=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado');
+  const rows=d.itens.map((it,idx)=>{const m=nfeMatch(it.desc);return `<tr style="border-top:1px solid var(--line)">
+    <td style="padding:7px 8px"><div style="font-size:12.5px;font-weight:600">${esc(it.desc||'Item')}</div><div style="font-size:11px;color:var(--soft)">${it.qtd} ${esc(it.uCom||'')} · unit ${fmtBRL(it.vUn)} · total ${fmtBRL(it.vTotal)}</div></td>
+    <td style="padding:7px 8px"><select class="input" id="nfe_map_${idx}">
+      <option value="novo" ${!m?'selected':''}>＋ Criar novo insumo</option>
+      <option value="ignorar">Ignorar este item</option>
+      ${insumos.map(i=>`<option value="${i.id}" ${m===i.id?'selected':''}>${esc(i.nome)}</option>`).join('')}
+    </select></td></tr>`;}).join('');
+  modal(`<div class="modal-head"><h3>Importar NF-e</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <div class="dash-pill"><span>Fornecedor</span><b>${esc(d.fornecedor||'—')}</b></div>
+      ${d.nNF?`<div class="dash-pill"><span>NF nº</span><b>${esc(d.nNF)}</b></div>`:''}
+      ${d.data?`<div class="dash-pill"><span>Data</span><b>${fmtDataBR(d.data)}</b></div>`:''}
+      <div class="dash-pill"><span>Total</span><b>${fmtBRL(d.total)}</b></div>
+      <div class="dash-pill"><span>Itens</span><b>${d.itens.length}</b></div>
+    </div>
+    <div class="field" style="max-width:280px;margin-bottom:6px"><label>Categoria dos novos insumos</label><select class="input" id="nfe_cat">${(cats.length?cats:['Mercearia']).map(c=>`<option ${c==='Mercearia'?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Confira cada item: vincule a um insumo existente (atualiza o preço de compra) ou crie um novo.</div>
+    <div style="max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:12px"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg);color:var(--soft);font-size:10px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px">Produto na nota</th><th style="text-align:left;padding:8px;width:46%">Insumo no app</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;cursor:pointer"><input type="checkbox" id="nfe_lanc" checked style="width:16px;height:16px"> Lançar a compra como despesa <b>(CMV · Entrada de Produtos)</b> de <b>${fmtBRL(d.total)}</b></label>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="nfeAplicar()">Importar</button></div>`,true);
+}
+function nfeAplicar(){
+  const d=window._nfe;if(!d)return closeModal();
+  const novaCat=($('#nfe_cat')&&$('#nfe_cat').value)||'Mercearia';
+  DB.fin=DB.fin||{};DB.fin.fornecedores=DB.fin.fornecedores||[];
+  if(d.fornecedor&&!DB.fin.fornecedores.some(f=>(f.nome||'').toLowerCase()===d.fornecedor.toLowerCase()))DB.fin.fornecedores.push({id:uid(),nome:d.fornecedor,contato:d.cnpj||''});
+  let cri=0,upd=0;
+  d.itens.forEach((it,idx)=>{const sel=$('#nfe_map_'+idx);const target=sel?sel.value:'novo';
+    if(target==='ignorar')return;
+    if(target&&target!=='novo'&&DB.insumos[target]){const ins=DB.insumos[target];if(it.vUn>0)ins.preco=it.vUn;if(d.fornecedor)ins.fornecedor=d.fornecedor;upd++;}
+    else{const nid=uid();DB.insumos[nid]={id:nid,nome:it.desc||'Item NF',cat:novaCat,tipo:'pronto',uni:normUni(it.uCom),qtd:1,preco:it.vUn||0,fornecedor:d.fornecedor||''};cri++;}
+  });
+  if(novaCat&&!catList('insumo').includes(novaCat))dbCats().insumo.push(novaCat);
+  if($('#nfe_lanc')&&$('#nfe_lanc').checked&&d.total>0){DB.lancamentos=DB.lancamentos||[];
+    DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:'CMV',sub:'Entrada de Produtos',descricao:(d.fornecedor||'Compra')+(d.nNF?' · NF '+d.nNF:''),valor:d.total,forma:'',fromNFe:true});}
+  window._nfe=null;save();closeModal();viewInsumos();toast(`NF importada · ${cri} novo(s), ${upd} atualizado(s)`);
 }
 
 /* ===================== FICHAS TÉCNICAS ===================== */
