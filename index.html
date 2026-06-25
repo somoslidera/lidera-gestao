@@ -799,7 +799,7 @@ function custoFuncionario(f){
   const inss=isCLT?inssProgressivo(bruto):(regime==='Sócio'?Math.min(bruto,8475.55)*((DB.fin.inssSocio||11)/100):0); // pró-labore: INSS 11% até o teto
   const fgts=isCLT?bruto*((DB.fin.encFGTS||8)/100):0;        // 8%
   const prov13=isCLT?bruto*(8.33/100):0;                      // 13º — 1/12
-  const provFerias=isCLT?bruto*(11.11/100):0;                 // férias + 1/3
+  const provFerias=isCLT?bruto*(2.78/100):0;                  // terço constitucional de férias (1/3 sobre 1/12); o salário de férias já está nos 12 salários
   const prov=prov13+provFerias;
   const liquido=bruto+porFora-vales-consumo-inss;
   const total=bruto+porFora+beneficios+fgts+prov;             // custo da empresa
@@ -2563,7 +2563,7 @@ function finFolha(){
     ${ativos.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead>${head}</thead><tbody>${rowsByCat}</tbody></table></div>`:`<div style="text-align:center;padding:36px 0;color:var(--soft)">${todos.length?`Nenhum funcionário ativo em <b>${ymLabel(ym)}</b>. Selecione outro mês ou cadastre.`:'Nenhum funcionário cadastrado.'} <a class="tag tag-gold" style="cursor:pointer" onclick="funcEdit(null)">Adicionar →</a></div>`}
     <div style="font-size:11.5px;color:var(--soft);margin-top:14px;border-top:1px solid var(--line);padding-top:10px;line-height:1.55">
       <b>Como funciona:</b> os funcionários aparecem a partir do <b>mês de cadastro</b> (início). Marcar como pago abre a opção de também lançar no DRE. Excluir pergunta se quer remover só dos meses posteriores ou completamente.<br>
-      <b>Como calculamos:</b> INSS pela tabela progressiva 2026 sobre o bruto (CLT). FGTS 8% e provisões (13º 8,33% + Férias com 1/3 11,11%) sobre o bruto. <b>Por Fora</b> não entra na base de INSS/FGTS/provisões. <b>Vales</b> e <b>Consumo</b> reduzem o líquido. Freelancers/PJ não têm encargos.
+      <b>Como calculamos:</b> INSS pela tabela progressiva 2026 sobre o bruto (CLT). FGTS 8% e provisões (13º 8,33% + terço de férias 2,78% = 11,11%) sobre o bruto — o salário de férias já está nos 12 salários, por isso provisionamos só o adicional. <b>Por Fora</b> não entra na base de INSS/FGTS/provisões. <b>Vales</b> e <b>Consumo</b> reduzem o líquido. Freelancers/PJ não têm encargos.
     </div>
   </div>`;
 }
