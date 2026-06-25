@@ -1179,7 +1179,8 @@ function applySort(tab,arr){const s=SORT[tab],acc=SORTCOLS[tab][s.k];if(!acc)ret
 function thS(tab,label,k,num){const s=SORT[tab],a=s.k===k?(s.d>0?' ↑':' ↓'):'';return `<th class="${num?'num ':''}th-sort" onclick="setSort('${tab}','${k}')">${label}${a}</th>`;}
 function viewInsumos(){
   $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editInsumo()">${icoPlus} Novo insumo</button>`
-    +`<button class="btn btn-ghost" onclick="gerenciarCategorias()">≡ Categorias</button>`
+    +`<button class="btn btn-ghost" onclick="gerenciarCategorias('fornecedor')">≡ Fornecedores</button>`
+    +`<button class="btn btn-ghost" onclick="gerenciarCategorias('insumo')">≡ Categorias</button>`
     +`<button class="btn btn-ghost" onclick="baixarTemplateInsumos()">⬇ Baixar modelo</button>`
     +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Importar<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarInsumos(this)"></label>`;
   const list=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado'); // preparados ficam só nas Fichas Técnicas
@@ -2380,7 +2381,7 @@ function finList(key,cols){
 }
 function viewFinanceiro(){
   const t=totaisGerais(finTab==='visao'?periodoRange():undefined);
-  const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['meios','Meios de Pagamento'],['forn','Fornecedores'],['param','Parâmetros']];
+  const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['meios','Meios de Pagamento'],['param','Parâmetros']];
   let body='';
   if(finTab==='lanc')body=finLancamentos();
   else if(finTab==='fluxo')body=finFluxo();
@@ -2392,8 +2393,6 @@ function viewFinanceiro(){
   else if(finTab==='meios')body=finCard('Meios de Pagamento','Taxas por meio de recebimento',
     finList('meiosPagamento',[{f:'nome',ph:'Nome',w:'1.4fr'},{f:'tipo',type:'select',opts:['Crédito','Débito','Marketplace','PIX','Dinheiro','Voucher'],w:'1fr'},{f:'taxa',type:'num',ph:'%',w:'100px'}]),
     `<span style="color:var(--muted)">A comissão de marketplace usada no cálculo é definida em <b>Parâmetros</b>.</span>`);
-  else if(finTab==='forn')body=finCard('Fornecedores','Cadastro de fornecedores',
-    finList('fornecedores',[{f:'nome',ph:'Nome',w:'1.4fr'},{f:'contato',ph:'Contato / telefone',w:'1.4fr'}]),'');
   else if(finTab==='param')body=finParam();
   $('#view').innerHTML=`<div class="pill-filter" style="margin-bottom:18px">${tabs.map(([k,l])=>`<button class="${finTab===k?'on':''}" onclick="finTab='${k}';viewFinanceiro()">${l}</button>`).join('')}</div>${body}`;
 }
