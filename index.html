@@ -575,7 +575,7 @@ thead th{letter-spacing:.7px}
   <nav class="nav" id="nav">
     <div class="lbl">GESTÃO</div>
     <a data-route="dashboard" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
-    <a data-route="insumos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Insumos</a>
+    <a data-route="insumos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Produtos</a>
     <a data-route="fichas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2v6M15 2v6M7 8h10l-1 12a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2L7 8z"/></svg>Fichas Técnicas</a>
     <a data-route="estoque"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>Estoque &amp; Compras</a>
     <div class="lbl">INTELIGÊNCIA</div>
@@ -947,7 +947,7 @@ function totaisGerais(R){
 /* ===================== ROTEADOR ===================== */
 const ROUTES={
   dashboard:{title:'Dashboard',render:viewDashboard},
-  insumos:{title:'Insumos',render:viewInsumos},
+  insumos:{title:'Produtos',render:viewInsumos},
   fichas:{title:'Fichas Técnicas',render:viewFichas},
   estoque:{title:'Estoque & Compras',render:viewEstoque},
   engenharia:{title:'Engenharia de Menu',render:viewEngenharia},
@@ -1178,21 +1178,20 @@ function setSort(tab,k){const s=SORT[tab];if(s.k===k)s.d=-s.d;else{s.k=k;s.d=1;}
 function applySort(tab,arr){const s=SORT[tab],acc=SORTCOLS[tab][s.k];if(!acc)return arr;return arr.slice().sort((a,b)=>{let x=acc(a),y=acc(b);if(typeof x==='string'||typeof y==='string'){x=(x||'').toString().toLowerCase();y=(y||'').toString().toLowerCase();return x<y?-s.d:x>y?s.d:0;}return ((x||0)-(y||0))*s.d;});}
 function thS(tab,label,k,num){const s=SORT[tab],a=s.k===k?(s.d>0?' ↑':' ↓'):'';return `<th class="${num?'num ':''}th-sort" onclick="setSort('${tab}','${k}')">${label}${a}</th>`;}
 function viewInsumos(){
-  $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editInsumo()">${icoPlus} Novo insumo</button>`
+  $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editInsumo()">${icoPlus} Novo produto</button>`
     +`<button class="btn btn-ghost" onclick="gerenciarCategorias('fornecedor')">≡ Fornecedores</button>`
     +`<button class="btn btn-ghost" onclick="gerenciarCategorias('insumo')">≡ Categorias</button>`
     +`<button class="btn btn-ghost" onclick="baixarTemplateInsumos()">⬇ Baixar modelo</button>`
-    +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarInsumos(this)"></label>`
-    +`<label class="btn btn-ghost" style="cursor:pointer">🧾 Importar NF-e<input type="file" accept=".xml" style="display:none" onchange="importarNFe(this)"></label>`;
+    +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarInsumos(this)"></label>`;
   const list=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado'); // preparados ficam só nas Fichas Técnicas
   const cats=['Todos',...new Set(list.map(i=>i.cat))];
   if(!cats.includes(insumoFiltro))insumoFiltro='Todos';
   const filt=applySort('insumos',insumoFiltro==='Todos'?list:list.filter(i=>i.cat===insumoFiltro));
   $('#view').innerHTML=`
   <div class="section-head"><select class="input" style="max-width:220px" onchange="insumoFiltro=this.value;viewInsumos()">${cats.map(c=>`<option ${c===insumoFiltro?'selected':''}>${c}</option>`).join('')}</select>
-    <input class="input" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="filtrarLinhas(this,'#insumosTbody')"></div>
+    <input class="input" style="max-width:240px" placeholder="🔎 Buscar produto..." oninput="filtrarLinhas(this,'#insumosTbody')"></div>
   <div class="card">${list.length?`<div class="scroll-x"><table>
-    <thead><tr>${thS('insumos','Insumo','nome')}${thS('insumos','Categoria','cat')}${thS('insumos','Fornecedor','fornecedor')}${thS('insumos','Valor','preco',1)}${thS('insumos','Quantidade','qtd',1)}${thS('insumos','Custo por unidade','custo',1)}${thS('insumos','Estoque','noEstoque',1)}<th></th></tr></thead>
+    <thead><tr>${thS('insumos','Produto','nome')}${thS('insumos','Categoria','cat')}${thS('insumos','Fornecedor','fornecedor')}${thS('insumos','Valor','preco',1)}${thS('insumos','Quantidade','qtd',1)}${thS('insumos','Custo por unidade','custo',1)}${thS('insumos','Estoque','noEstoque',1)}<th></th></tr></thead>
     <tbody id="insumosTbody">${filt.map(i=>`
       <tr><td><b>${i.nome}</b></td>
       <td><span class="tag tag-gray">${i.cat}</span></td>
@@ -1202,16 +1201,16 @@ function viewInsumos(){
       <td class="num">${fmtBRL(custoInsumoBase(i)*(TO_BASE[i.uni]||1))} <span style="color:var(--soft);font-size:12px">/${uSym(i.uni)}</span></td>
       <td class="num"><input type="checkbox" ${i.noEstoque!==false?'checked':''} title="Incluir na contagem de estoque" onclick="DB.insumos['${i.id}'].noEstoque=this.checked;save()" style="width:17px;height:17px;cursor:pointer;accent-color:var(--navy)"></td>
       <td><div class="row-actions"><button class="icon-btn" onclick="editInsumo('${i.id}')">${icoEdit}</button><button class="icon-btn del" onclick="delInsumo('${i.id}')">${icoTrash}</button></div></td></tr>`).join('')}</tbody></table></div>`
-  :emptyState('Nenhum insumo cadastrado','Cadastre os insumos que você compra. Os preparados ficam nas Fichas Técnicas.','editInsumo()')}</div>`;
+  :emptyState('Nenhum produto cadastrado','Cadastre os produtos que você compra. Os preparados ficam nas Fichas Técnicas.','editInsumo()')}</div>`;
 }
 let editingInsId=null, draftInsTipo='pronto', draftInsComps=[];
 function editInsumo(id){
   const i=id?DB.insumos[id]:{nome:'',cat:'',tipo:'pronto',uni:'g',preco:'',qtd:'',rendimento:'',comps:[],fornecedor:''};
   editingInsId=id||null; draftInsTipo=i.tipo||'pronto'; draftInsComps=JSON.parse(JSON.stringify(i.comps||[]));
-  modal(`<div class="modal-head"><h3>${id?'Editar insumo':'Novo insumo'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  modal(`<div class="modal-head"><h3>${id?'Editar produto':'Novo produto'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div class="field"><label>Nome</label><input class="input" id="i_nome" value="${(i.nome||'').replace(/"/g,'&quot;')}" placeholder="Ex.: Peito de frango"></div>
-    <div class="field"><label>Tipo de insumo</label>
+    <div class="field"><label>Tipo de produto</label>
       <div class="chan-tabs" style="margin:0">
         <button type="button" id="tp_pronto" class="${draftInsTipo==='pronto'?'on':''}" onclick="setInsTipo('pronto')">Pronto</button>
         <button type="button" id="tp_prep" class="${draftInsTipo==='preparado'?'on':''}" onclick="setInsTipo('preparado')">Preparado</button>
@@ -1289,7 +1288,7 @@ function delInsumo(id){
 /* ---- GERENCIAR CATEGORIAS (Insumos · Pratos · Fornecedores) ---- */
 let catTab='insumo';
 function gerenciarCategorias(t){catTab=t||catTab||'insumo';dbCats();DB.fin=DB.fin||{};DB.fin.fornecedores=DB.fin.fornecedores||[];
-  const tabs=[['insumo','Insumos'],['prato','Pratos'],['fornecedor','Fornecedores']];
+  const tabs=[['insumo','Produtos'],['prato','Pratos'],['fornecedor','Fornecedores']];
   let body='';
   if(catTab==='fornecedor'){
     const fs=DB.fin.fornecedores;
@@ -1392,7 +1391,7 @@ function aplicarImportInsumos(rows){rows=(rows||[]).filter(r=>r&&r.some(c=>(c||'
     if(forn&&!DB.fin.fornecedores.some(f=>(f.nome||'').toLowerCase()===forn.toLowerCase()))DB.fin.fornecedores.push({id:uid(),nome:forn,contato:''});
     n++;}
   if(!n)return toast('Nenhuma linha válida encontrada');
-  save();viewInsumos();toast(n+' insumo(s) importado(s)');
+  save();viewInsumos();toast(n+' produto(s) importado(s)');
 }
 
 /* ----- Importar NF-e (XML) — cria/atualiza insumos + lança a compra ----- */
@@ -1440,13 +1439,13 @@ function nfeConfirmModal(d){
       <div class="dash-pill"><span>Total</span><b>${fmtBRL(d.total)}</b></div>
       <div class="dash-pill"><span>Itens</span><b>${d.itens.length}</b></div>
     </div>
-    <div class="field" style="max-width:280px;margin-bottom:6px"><label>Categoria dos novos insumos</label><select class="input" id="nfe_cat">${(cats.length?cats:['Mercearia']).map(c=>`<option ${c==='Mercearia'?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Confira cada item: vincule a um insumo existente (atualiza o preço) ou crie um novo. A despesa usa o <b>nome do insumo</b> na descrição — vincule sempre ao mesmo insumo para somar os gastos por produto sem duplicar.</div>
-    <div style="max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:12px"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg);color:var(--soft);font-size:10px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px">Produto na nota</th><th style="text-align:left;padding:8px;width:46%">Insumo no app</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="field" style="max-width:280px;margin-bottom:6px"><label>Categoria dos novos produtos</label><select class="input" id="nfe_cat">${(cats.length?cats:['Mercearia']).map(c=>`<option ${c==='Mercearia'?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Confira cada item: vincule a um produto existente (atualiza o preço) ou crie um novo. A despesa usa o <b>nome do produto</b> na descrição — vincule sempre ao mesmo produto para somar os gastos sem duplicar.</div>
+    <div style="max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:12px"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg);color:var(--soft);font-size:10px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px">Produto na nota</th><th style="text-align:left;padding:8px;width:46%">Produto no app</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="nfe_lanc" checked style="width:16px;height:16px"> Lançar a compra como despesa <b>(CMV · Entrada de Produtos)</b></label>
       <div style="display:flex;gap:18px;margin:9px 0 0 24px;font-size:12.5px;flex-wrap:wrap">
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="nfe_modo" value="item" checked> Uma linha por produto <span style="color:var(--soft)">(descrição = nome do insumo)</span></label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="nfe_modo" value="item" checked> Uma linha por produto <span style="color:var(--soft)">(descrição = nome do produto)</span></label>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="nfe_modo" value="total"> Uma linha total <span style="color:var(--soft)">(${fmtBRL(d.total)})</span></label>
       </div>
     </div>
@@ -1475,7 +1474,7 @@ function nfeAplicar(){
       DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:'CMV',sub:'Entrada de Produtos',descricao:(d.fornecedor||'Compra')+(d.nNF?' · NF '+d.nNF:''),valor:d.total,forma:'',fromNFe:true,nfe:d.nNF||''});
     }
   }
-  window._nfe=null;save();closeModal();viewInsumos();toast(`NF importada · ${cri} novo(s), ${upd} atualizado(s)`);
+  window._nfe=null;save();closeModal();(current==='insumos'?viewInsumos():viewFinanceiro());toast(`NF importada · ${cri} novo(s), ${upd} atualizado(s)`);
 }
 
 /* ===================== FICHAS TÉCNICAS ===================== */
@@ -1526,7 +1525,7 @@ function fichaCard(f,fixosPct){
       <button onclick="delFicha('${f.id}')">${icoTrash} Excluir</button>
       <button onclick="duplicarFicha('${f.id}')">${icoCopy} Duplicar</button>
       <a class="edit" onclick="editFicha('${f.id}')">Editar ↗</a></div>
-    <div class="frow"><span class="l">Insumos</span><b>${fmtBRL(insumos)}</b></div>
+    <div class="frow"><span class="l">Produtos</span><b>${fmtBRL(insumos)}</b></div>
     <div class="frow"><span class="l">Embalagem</span><b>${fmtBRL(emb)}</b></div>
     <div class="frow div"><span class="l">Rendimento</span><b>${rend}</b></div>
     <div class="frow"><span class="l">Custo</span><b>${fmtBRL(custo)}</b></div>
@@ -1818,14 +1817,14 @@ function renderInsumosPanel(){const el=$('#fx_left_custos');if(!el)return;
       <div class="ins-rm" onclick="draftComps.splice(${idx},1);fichaEditIdx=-1;renderInsumosPanel();recalcFicha()">Remover</div>
     </div>`;}).join('');
   el.innerHTML=`
-    <div class="fx-sublabel" style="margin-bottom:8px">Insumos</div>
+    <div class="fx-sublabel" style="margin-bottom:8px">Produtos</div>
     <input class="input" id="f_ins_search" placeholder="Encontrar Insumos" oninput="fichaInsumoSearch()" autocomplete="off">
     <div id="f_ins_results"></div>
     <div class="fx-sublabel" style="margin:14px 0 8px;color:var(--soft)">Insumos Adicionados</div>
-    <div id="f_ins_cards">${cards||`<div style="font-size:12.5px;color:var(--soft);padding:4px 0 8px">Nenhum insumo adicionado ainda.</div>`}</div>
+    <div id="f_ins_cards">${cards||`<div style="font-size:12.5px;color:var(--soft);padding:4px 0 8px">Nenhum produto adicionado ainda.</div>`}</div>
     <div class="ins-add" onclick="toggleNovoInsumo()">
       <div class="plus">${icoPlus}</div>
-      <div><b>Adicionar Insumo</b><small>Cadastre um novo insumo</small></div>
+      <div><b>Adicionar Produto</b><small>Cadastre um novo produto</small></div>
     </div>
     <div id="f_novo_box"></div>`;
 }
@@ -1840,7 +1839,7 @@ function fichaInsumoSearch(){const q=($('#f_ins_search').value||'').trim().toLow
   const usados=new Set(draftComps.map(c=>c[0]));
   const ms=Object.values(DB.insumos).filter(i=>!usados.has(i.id)&&(i.nome||'').toLowerCase().includes(q)).sort((a,b)=>a.nome.localeCompare(b.nome)).slice(0,8);
   box.innerHTML=ms.length?`<div class="ins-results">${ms.map(i=>`<div onclick="addCompById('${i.id}')">${esc(i.nome)}${i.tipo==='preparado'?' (preparado)':''} <span style="float:right;color:var(--soft)">${fmtBRL(custoInsumoBase(i))}/${bSym(i.uni)}</span></div>`).join('')}</div>`
-    :`<div style="font-size:12px;color:var(--soft);padding:6px 2px">Nenhum insumo encontrado. Use “Adicionar Insumo” para cadastrar.</div>`;
+    :`<div style="font-size:12px;color:var(--soft);padding:6px 2px">Nenhum produto encontrado. Use “Adicionar Produto” para cadastrar.</div>`;
 }
 function addCompById(id){const ins=DB.insumos[id];if(!ins)return;const b=BASE[ins.uni];const def=(b==='g'||b==='ml')?100:1;
   draftComps.push([id,def]);const s=$('#f_ins_search');if(s)s.value='';const r=$('#f_ins_results');if(r)r.innerHTML='';renderInsumosPanel();recalcFicha();}
@@ -1926,7 +1925,7 @@ function imprimirFicha(){
       <div class="fp-ing">
         <div class="fp-sec" style="border-top:0">Ingredientes e Porcionamento</div>
         <table class="fp-tb"><thead><tr><th>Ingrediente</th><th>Qtd (PL)</th><th>FC</th><th>Qtd (PB)</th></tr></thead>
-        <tbody>${ings||'<tr><td colspan="4" style="color:#777">Nenhum insumo cadastrado.</td></tr>'}</tbody></table>
+        <tbody>${ings||'<tr><td colspan="4" style="color:#777">Nenhum produto cadastrado.</td></tr>'}</tbody></table>
       </div>
     </div>
     <div class="fp-sec">Modo de Preparo e Montagem</div>
@@ -2268,7 +2267,8 @@ function finLancamentos(){
     <div class="section-head"><div><div class="ttl">Lançamentos</div><div class="desc">Receitas e despesas, alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="month" class="input" style="max-width:160px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()">
-        <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆ Importar<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarLancamentos(this)"></label>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">🧾 Importar NF-e<input type="file" accept=".xml" style="display:none" onchange="importarNFe(this)"></label>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆ Planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarLancamentos(this)"></label>
         <button class="btn btn-ghost btn-sm" onclick="modeloLancModal()">⬇ Modelo</button>
       </div></div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px">
@@ -2880,7 +2880,7 @@ function finParam(){
 }
 
 /* ===================== EQUIPE ===================== */
-const ACESSOS=[['dashboard','Dashboard'],['insumos','Insumos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['mapa','Mapa do Caminho'],['equipe','Equipe'],['conta','Configurações']];
+const ACESSOS=[['dashboard','Dashboard'],['insumos','Produtos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['mapa','Mapa do Caminho'],['equipe','Equipe'],['conta','Configurações']];
 const NIVEIS={
   admin:{label:'Administrador',desc:'Acesso total a tudo',perms:ACESSOS.map(a=>a[0])},
   gerente:{label:'Gerente',desc:'Operação + indicadores (sem equipe/config)',perms:['dashboard','insumos','fichas','estoque','engenharia','cmv','desperdicio','buffet','faturamento','dre','mapa']},
@@ -3483,7 +3483,7 @@ function viewEstoque(){
     <div class="card" style="margin-bottom:16px">
       <div class="card-pad" style="padding-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div class="ttl">${fn}</div><div style="font-weight:700">${fmtBRL(sub)}</div></div>
       <div class="scroll-x"><table>
-        <thead><tr><th>Insumo</th><th class="num">Un.</th><th class="num">Mínimo</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Qtd a pedir</th><th class="num">Custo un.</th><th class="num">Total previsto</th></tr></thead>
+        <thead><tr><th>Produto</th><th class="num">Un.</th><th class="num">Mínimo</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Qtd a pedir</th><th class="num">Custo un.</th><th class="num">Total previsto</th></tr></thead>
         <tbody>${arr.sort((a,b)=>a.nome.localeCompare(b.nome)).map(x=>`
           <tr>
             <td><b>${x.nome}</b></td><td class="num">${uSym(x.uni)}</td><td class="num">${fmtN(x.min,x.min%1?2:0)}</td><td class="num">${fmtN(x.atual,x.atual%1?2:0)}</td>
