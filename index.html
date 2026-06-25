@@ -1443,7 +1443,13 @@ function nfeConfirmModal(d){
     <div class="field" style="max-width:280px;margin-bottom:6px"><label>Categoria dos novos insumos</label><select class="input" id="nfe_cat">${(cats.length?cats:['Mercearia']).map(c=>`<option ${c==='Mercearia'?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Confira cada item: vincule a um insumo existente (atualiza o preço de compra) ou crie um novo.</div>
     <div style="max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:12px"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg);color:var(--soft);font-size:10px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px">Produto na nota</th><th style="text-align:left;padding:8px;width:46%">Insumo no app</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;cursor:pointer"><input type="checkbox" id="nfe_lanc" checked style="width:16px;height:16px"> Lançar a compra como despesa <b>(CMV · Entrada de Produtos)</b> de <b>${fmtBRL(d.total)}</b></label>
+    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="nfe_lanc" checked style="width:16px;height:16px"> Lançar a compra como despesa <b>(CMV · Entrada de Produtos)</b></label>
+      <div style="display:flex;gap:18px;margin:9px 0 0 24px;font-size:12.5px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="nfe_modo" value="item" checked> Uma linha por produto <span style="color:var(--soft)">(descrição = produto)</span></label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="nfe_modo" value="total"> Uma linha total <span style="color:var(--soft)">(${fmtBRL(d.total)})</span></label>
+      </div>
+    </div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="nfeAplicar()">Importar</button></div>`,true);
 }
@@ -1459,8 +1465,16 @@ function nfeAplicar(){
     else{const nid=uid();DB.insumos[nid]={id:nid,nome:it.desc||'Item NF',cat:novaCat,tipo:'pronto',uni:normUni(it.uCom),qtd:1,preco:it.vUn||0,fornecedor:d.fornecedor||''};cri++;}
   });
   if(novaCat&&!catList('insumo').includes(novaCat))dbCats().insumo.push(novaCat);
-  if($('#nfe_lanc')&&$('#nfe_lanc').checked&&d.total>0){DB.lancamentos=DB.lancamentos||[];
-    DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:'CMV',sub:'Entrada de Produtos',descricao:(d.fornecedor||'Compra')+(d.nNF?' · NF '+d.nNF:''),valor:d.total,forma:'',fromNFe:true});}
+  if($('#nfe_lanc')&&$('#nfe_lanc').checked){DB.lancamentos=DB.lancamentos||[];
+    const modo=(document.querySelector('input[name=nfe_modo]:checked')||{}).value||'item';
+    const refNF=d.nNF?' · NF '+d.nNF:'';
+    if(modo==='item'){
+      d.itens.forEach((it,idx)=>{const sel=$('#nfe_map_'+idx);if(sel&&sel.value==='ignorar')return;const v=it.vTotal||0;if(v<=0)return;
+        DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:'CMV',sub:'Entrada de Produtos',descricao:(it.desc||'Produto')+refNF,valor:v,forma:'',fromNFe:true});});
+    } else if(d.total>0){
+      DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:'CMV',sub:'Entrada de Produtos',descricao:(d.fornecedor||'Compra')+refNF,valor:d.total,forma:'',fromNFe:true});
+    }
+  }
   window._nfe=null;save();closeModal();viewInsumos();toast(`NF importada · ${cri} novo(s), ${upd} atualizado(s)`);
 }
 
