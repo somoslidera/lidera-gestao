@@ -3750,23 +3750,25 @@ function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=pro
       <div style="font-weight:700;font-size:18px;color:${pct>=100?'var(--green)':'var(--navy)'}">${pct}%</div>
     </div>
   </div>`;
-  fases.forEach(f=>{const done=f.itens.filter(x=>x.feito).length;const faseArg=f.nome.replace(/['"\\]/g,'');
-    html+=`<div class="card card-pad" style="margin-top:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-weight:700">${esc(f.nome)}</div><div style="font-size:12px;color:var(--soft)">${done}/${f.itens.length}</div></div>`;
+  fases.forEach(f=>{const done=f.itens.filter(x=>x.feito).length;const fa=esc(f.nome);const faseArg=f.nome.replace(/['"\\]/g,'');
+    html+=`<div class="card card-pad proj-fase" style="margin-top:12px" ondragover="projDragOver(event)" ondragleave="projDragLeave(event)" ondrop="projDropFase(event,'${fa}')">
+      <div draggable="true" ondragstart="projDragStart(event,'fase','${fa}')" ondragend="projDragEnd(event)" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span title="Arrastar etapa" style="color:var(--soft);font-size:15px;cursor:grab;flex:0 0 auto;user-select:none">⠿</span>
+        <input class="input" value="${fa}" onchange="projRenameFase('${fa}',this.value)" title="Editar nome da etapa" style="flex:1;min-width:120px;font-weight:700;font-family:'Fraunces',serif;font-size:16px;border-color:transparent;background:transparent;padding:3px 6px">
+        <span style="font-size:12px;color:var(--soft);flex:0 0 auto">${done}/${f.itens.length}</span>
+      </div>`;
     f.itens.forEach(t=>{const over=!t.feito&&t.prazo&&t.prazo<h;
-      html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
+      html+=`<div data-id="${t.id}" ondragover="projDragOver(event)" ondragleave="projDragLeave(event)" ondrop="projDropTask(event,'${t.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
+        <span draggable="true" ondragstart="projDragStart(event,'task','${t.id}')" ondragend="projDragEnd(event)" title="Arrastar tarefa" style="color:var(--soft);cursor:grab;flex:0 0 auto;user-select:none">⠿</span>
         <input type="checkbox" ${t.feito?'checked':''} onchange="projToggle('${t.id}')" style="width:18px;height:18px;flex:0 0 auto;cursor:pointer">
-        <div style="flex:1;min-width:140px">
-          <div style="font-size:13.5px;${t.feito?'text-decoration:line-through;color:var(--soft)':''}">${esc(t.titulo)}</div>
-          ${over?`<div style="font-size:11px;color:var(--red);font-weight:600">⚠ Atrasada</div>`:''}
-        </div>
+        <input class="input" value="${esc(t.titulo)}" onchange="projRename('${t.id}',this.value)" title="Editar descrição da tarefa" style="flex:1;min-width:150px;padding:6px 8px;${t.feito?'text-decoration:line-through;color:var(--soft)':''}">
+        ${over?`<span style="color:var(--red);font-size:11px;font-weight:600;flex:0 0 auto">⚠ Atrasada</span>`:''}
         <input type="date" class="input" value="${t.prazo||''}" onchange="projPrazo('${t.id}',this.value)" style="width:148px;flex:0 0 auto;padding:6px 8px;${over?'border-color:var(--red);color:var(--red)':''}">
-        <button class="btn btn-ghost btn-sm" title="Subir" onclick="projMove('${t.id}',-1)" style="padding:4px 8px">↑</button>
-        <button class="btn btn-ghost btn-sm" title="Descer" onclick="projMove('${t.id}',1)" style="padding:4px 8px">↓</button>
-        <button class="btn btn-ghost btn-sm" title="Excluir tarefa" onclick="projDel('${t.id}')" style="padding:4px 8px;color:var(--red)">✕</button>
+        <button class="btn btn-ghost btn-sm" title="Excluir tarefa" onclick="projDel('${t.id}')" style="padding:4px 8px;color:var(--red);flex:0 0 auto">✕</button>
       </div>`;});
     html+=`<button class="btn btn-ghost btn-sm" onclick="projAdd('${faseArg}')" style="margin-top:10px">+ Nova tarefa</button></div>`;});
-  html+=`<div style="margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="projAdd('')">+ Nova etapa / tarefa avulsa</button></div>`;
+  html+=`<div style="margin-top:12px;color:var(--soft);font-size:12px">Arraste o ícone ⠿ para reordenar tarefas e etapas. Clique nos textos para editar.</div>
+  <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="projAdd('')">+ Nova etapa / tarefa avulsa</button></div>`;
   return html;
 }
 function adminOverviewHTML(){const arqd=o=>!!(o.dados&&o.dados._arquivado);const ativosArr=ADMIN_ORGS.filter(o=>!arqd(o));const ativos=ativosArr.filter(o=>o.status!=='suspenso').length;const fatTot=ativosArr.reduce((s,o)=>s+kpisDe(o.dados).fat,0);
@@ -3782,7 +3784,22 @@ function adminOverviewHTML(){const arqd=o=>!!(o.dados&&o.dados._arquivado);const
 }
 function projToggle(id){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;t.feito=!t.feito;t.feitoEm=t.feito?hojeISO():'';renderAdminMain();renderAdminList();projSaveOrg(o);}
 function projPrazo(id,v){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;t.prazo=v||'';renderAdminMain();renderAdminList();projSaveOrg(o);}
-function projMove(id,dir){const o=projCur();if(!o)return;const p=projEnsure(o);const a=p.tarefas;const i=a.findIndex(x=>x.id===id);if(i<0)return;const fase=a[i].fase;let j=i+dir;while(j>=0&&j<a.length&&a[j].fase!==fase)j+=dir;if(j<0||j>=a.length)return;const tmp=a[i];a[i]=a[j];a[j]=tmp;renderAdminMain();projSaveOrg(o);}
+function projRename(id,val){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;const v=(val||'').trim();if(!v){renderAdminMain();return;}if(v===t.titulo)return;t.titulo=v;projSaveOrg(o);}
+function projRenameFase(oldName,val){const o=projCur();if(!o)return;const p=projEnsure(o);let v=(val||'').trim().replace(/['"\\]/g,'');if(!v||v===oldName){renderAdminMain();return;}p.tarefas.forEach(t=>{if(t.fase===oldName)t.fase=v;});renderAdminMain();renderAdminList();projSaveOrg(o);}
+let dragKind=null, dragVal=null;
+function projDragStart(e,kind,val){dragKind=kind;dragVal=val;try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',val);}catch(_){}}
+function projDragEnd(e){dragKind=null;dragVal=null;}
+function projDragOver(e){e.preventDefault();e.stopPropagation();try{e.dataTransfer.dropEffect='move';}catch(_){}const el=e.currentTarget;if(el)el.style.boxShadow='inset 0 2px 0 0 var(--gold)';}
+function projDragLeave(e){const el=e.currentTarget;if(el)el.style.boxShadow='';}
+function projReorderFases(p,fromFase,toFase){if(fromFase===toFase)return;const order=[];p.tarefas.forEach(t=>{if(order.indexOf(t.fase)<0)order.push(t.fase);});const fi=order.indexOf(fromFase);if(fi<0)return;order.splice(fi,1);let ti=order.indexOf(toFase);if(ti<0)ti=order.length;order.splice(ti,0,fromFase);const groups={};p.tarefas.forEach(t=>{(groups[t.fase]||(groups[t.fase]=[])).push(t);});p.tarefas=order.reduce((acc,f)=>acc.concat(groups[f]||[]),[]);}
+function projDropTask(e,targetId){e.preventDefault();e.stopPropagation();projDragLeave(e);const o=projCur();if(!o){dragKind=null;return;}const p=projEnsure(o);const a=p.tarefas;const tgt=a.find(x=>x.id===targetId);if(!tgt){dragKind=null;return;}
+  if(dragKind==='fase'){projReorderFases(p,dragVal,tgt.fase);}
+  else if(dragKind==='task'&&dragVal!==targetId){const fi=a.findIndex(x=>x.id===dragVal);if(fi>=0){const m=a.splice(fi,1)[0];m.fase=tgt.fase;const ti=a.findIndex(x=>x.id===targetId);a.splice(ti,0,m);}}
+  dragKind=null;dragVal=null;renderAdminMain();renderAdminList();projSaveOrg(o);}
+function projDropFase(e,targetFase){e.preventDefault();e.stopPropagation();projDragLeave(e);const o=projCur();if(!o){dragKind=null;return;}const p=projEnsure(o);
+  if(dragKind==='fase'){if(dragVal!==targetFase)projReorderFases(p,dragVal,targetFase);}
+  else if(dragKind==='task'){const a=p.tarefas;const fi=a.findIndex(x=>x.id===dragVal);if(fi>=0){const m=a.splice(fi,1)[0];m.fase=targetFase;let last=-1;a.forEach((x,i)=>{if(x.fase===targetFase)last=i;});a.splice(last+1,0,m);}}
+  dragKind=null;dragVal=null;renderAdminMain();renderAdminList();projSaveOrg(o);}
 function projDel(id){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;if(!confirm('Excluir a tarefa "'+t.titulo+'"?'))return;p.tarefas=p.tarefas.filter(x=>x.id!==id);renderAdminMain();renderAdminList();projSaveOrg(o);}
 function projAdd(fase){modal(`<div class="modal-head"><h3>Nova tarefa</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
