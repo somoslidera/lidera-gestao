@@ -3643,53 +3643,155 @@ function adminBox(){let b=document.getElementById('adminScreen');if(!b){b=docume
 function hideAdmin(){const b=document.getElementById('adminScreen');if(b)b.style.display='none';}
 function withDB(d,fn){const bak=DB;DB=d;try{return fn();}finally{DB=bak;}}
 function kpisDe(dados){return withDB((dados&&dados.insumos)?dados:emptyDB(),()=>{const t=totaisGerais();const regs=(DB.cmvRegistros||[]).map(cmvRegCalc).sort((a,b)=>(b.data||'').localeCompare(a.data||''));return {fat:t.faturamento,cmv:t.cmv,real:regs.length?regs[0].pct:null,lucro:t.lucro,nf:Object.keys(DB.fichas).length,ni:Object.keys(DB.insumos).length};});}
+/* ---- ADMIN · estado e projetos ---- */
+let adminSel=null, adminBusca='', adminProjTab='dados';
+let ADMIN_ORGS=[], ADMIN_PEND=[];
+const PROJETO_FASES=[
+ {nome:'Onboarding',tarefas:['Solicitar Dados de Contrato','Criar Contrato','Enviar Contrato Para Assinatura','Contrato Assinado','Enviar Link de Perfil Comportamental','Caso a negociação seja via boleto, pedir ao financeiro criar cobranças no Asaas','Criar Quadro do Cliente no Notion','Agendar reunião de Diagnóstico Inicial com consultor','Criar Plano de Guerra']},
+ {nome:'Etapa 01 · Gestão Financeira',tarefas:['Controle de estoque inicial (feito manualmente)','Cadastro de insumos no Flow, a partir da contagem inicial','Controle de compras e recebimento padronizado','Controle de estoque ativo','Apuração do CMV real (incluindo bebida e embalagem)','Definição da Curva ABC de compras','Início do controle de desperdício de insumo','Lançamentos financeiros em rotina (receitas, despesas, folha, resultado)','Separação de contas PF/PJ e definição do pró-labore','Fluxo de caixa e análise do primeiro DRE']},
+ {nome:'Etapa 02 · Engenharia de Cardápio',tarefas:['Fichas técnicas dos principais produtos no Flow','Curva ABC de vendas','Ajuste de precificação com base no custo real','Engenharia de menu (matriz popularidade × margem)','Análise do controle de desperdício iniciado na Etapa 1','Definição do carro-chefe']},
+ {nome:'Etapa 03 · Gestão de Equipes',tarefas:['Como fazer reuniões (ritual de gestão)','Rotinas de treinamento da equipe','Posicionamento do líder (perfil comportamental)','Definição da rotina e do papel do dono','Descrição de cargos de cada função, assinada','Processo de contratação e onboarding']},
+ {nome:'Etapa 04 · Processos e Rotinas',tarefas:['Checklist operacional (abertura, briefing de pré-turno, fechamento)','Checklist estratégico do dono','Rotinas operacionais da equipe por turno','POPs do "como fazer"','Padrão de montagem e exposição']},
+ {nome:'Etapa 05 · Delivery',tarefas:['Análise de mercado e concorrência no canal','Revisão do cardápio do delivery','Análise e ajuste das descrições e das fotos dos produtos','Combos e precificação de canal','Treinamento e instruções','Gestão de avaliações','Acompanhamento de performance']},
+ {nome:'Etapa 06 · Marketing e Vendas',tarefas:['Análise e otimização do Google Perfil da Empresa','Instagram: rotina de postagem','Direcionamento para tráfego pago','Análise e plano de crescimento do ticket médio','Estratégia de remarketing e base de relacionamento']}
+];
+function projSeed(){const arr=[];PROJETO_FASES.forEach((f,fi)=>f.tarefas.forEach((t,ti)=>arr.push({id:'f'+fi+'t'+ti,titulo:t,fase:f.nome,feito:false,prazo:''})));return arr;}
+function projEnsure(o){if(!o)return{tarefas:[]};o.dados=o.dados||{};if(!o.dados._projeto||!Array.isArray(o.dados._projeto.tarefas)){o.dados._projeto={tarefas:projSeed(),criadoEm:hojeISO()};}return o.dados._projeto;}
+function projPct(p){const t=(p&&p.tarefas)||[];if(!t.length)return 0;return Math.round(t.filter(x=>x.feito).length/t.length*100);}
+function projAtrasadas(p){const h=hojeISO();return ((p&&p.tarefas)||[]).filter(x=>!x.feito&&x.prazo&&x.prazo<h).length;}
+function projCur(){return ADMIN_ORGS.find(o=>o.id===adminSel);}
+async function projSaveOrg(o){if(!o)return;try{const cur=(await sb.from('organizacoes').select('dados').eq('id',o.id).single()).data;const dados=(cur&&cur.dados)||{};dados._projeto=o.dados._projeto;await sb.from('organizacoes').update({dados}).eq('id',o.id);o.dados=dados;}catch(e){toast('Erro ao salvar projeto');}}
+
 async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin();
-  b.innerHTML=`<div class="admin-wrap"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-    <div><div style="font-family:'Fraunces',serif;font-size:26px;font-weight:700">Flow <span style="font-size:14px;color:var(--gold)">· Painel Lidera</span></div>
-    <div style="font-size:13px;color:var(--muted)">Controle geral dos clientes</div></div>
-    <div style="display:flex;gap:10px"><button class="btn btn-primary" onclick="novoCliente()">${icoPlus} Novo cliente</button><button class="btn btn-ghost" onclick="logout()">Sair</button></div></div>
-    <div id="admin_kpis" style="margin:18px 0"></div>
-    <div id="admin_pend"></div>
-    <div id="admin_tabs" style="margin:18px 0 12px"></div>
-    <div id="admin_list" class="admin-grid"><div style="color:var(--muted)">Carregando…</div></div></div>`;
-  let orgs=[],pend=[];
-  try{orgs=(await sb.from('organizacoes').select('*').order('criado_em',{ascending:false})).data||[];}catch(e){}
-  try{pend=(await sb.from('perfis').select('*').eq('papel','cliente').is('org_id',null)).data||[];}catch(e){}
-  const arqd=o=>!!(o.dados&&o.dados._arquivado);
-  const arquivados=orgs.filter(arqd), ativosArr=orgs.filter(o=>!arqd(o));
-  const ativos=ativosArr.filter(o=>o.status!=='suspenso').length;
-  const fatTot=ativosArr.reduce((s,o)=>s+kpisDe(o.dados).fat,0);
-  $('#admin_kpis').innerHTML=`<div class="kpi-grid" style="margin:0">
-    <div class="kpi"><div class="k-lbl">Clientes</div><div class="k-val">${ativosArr.length}</div><div class="k-sub" style="color:var(--soft)">${ativos} ativos</div></div>
-    <div class="kpi"><div class="k-lbl">Faturamento somado</div><div class="k-val" style="font-size:21px">${fmtBRL(fatTot)}</div><div class="k-sub" style="color:var(--soft)">dos clientes ativos</div></div>
-    <div class="kpi"><div class="k-lbl">Aguardando vínculo</div><div class="k-val" style="color:${pend.length?'var(--amber)':'var(--green)'}">${pend.length}</div><div class="k-sub" style="color:var(--soft)">novos cadastros</div></div>
-    <div class="kpi"><div class="k-lbl">Arquivados</div><div class="k-val">${arquivados.length}</div><div class="k-sub" style="color:var(--soft)">fora de uso</div></div></div>`;
-  $('#admin_tabs').innerHTML=`<div class="pill-filter"><button class="${adminTab!=='arquivados'?'on':''}" onclick="adminTab='ativos';showAdmin()">Clientes (${ativosArr.length})</button><button class="${adminTab==='arquivados'?'on':''}" onclick="adminTab='arquivados';showAdmin()">Arquivados (${arquivados.length})</button></div>`;
-  $('#admin_pend').innerHTML=pend.length?`<div class="card card-pad" style="border-color:var(--amber)"><div class="ttl" style="margin-bottom:8px">⏳ Novos cadastros aguardando liberação</div>
-    ${pend.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${p.email||'(sem e-mail)'}</b></div>
-      <select class="input" style="max-width:260px" onchange="vincularPerfil('${p.id}',this.value)"><option value="">Vincular a um restaurante…</option>${orgs.map(o=>`<option value="${o.id}">${o.nome}</option>`).join('')}</select></div>`).join('')}</div>`:'';
-  const lista=adminTab==='arquivados'?arquivados:ativosArr;
-  $('#admin_list').innerHTML=lista.length?lista.map(o=>{const k=kpisDe(o.dados);const susp=o.status==='suspenso';const arq=adminTab==='arquivados';const nm=(o.nome||'').replace(/'/g,'');return`
-    <div class="client-card"${arq?' style="opacity:.85"':''}>
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><div style="font-weight:700;font-size:15px">${o.nome}</div><div style="font-size:12px;color:var(--soft)">${o.responsavel||''}</div></div>
-        <span class="tag ${arq?'tag-gray':susp?'tag-red':o.status==='teste'?'tag-amber':'tag-green'}">${arq?'arquivado':o.status}</span></div>
-      <div style="display:flex;gap:14px;margin:14px 0;font-size:12.5px">
-        <div><div style="color:var(--soft);font-size:11px">FATURAMENTO</div><b>${fmtBRL(k.fat)}</b></div>
-        <div><div style="color:var(--soft);font-size:11px">CMV</div><b>${k.real!=null?fmtPct(k.real):fmtPct(k.cmv)}</b></div>
-        <div><div style="color:var(--soft);font-size:11px">FICHAS</div><b>${k.nf}</b></div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${arq?`
-        <button class="btn btn-ghost btn-sm" onclick="abrirCliente('${o.id}')">Abrir app</button>
-        <button class="btn btn-primary btn-sm" onclick="arquivarCliente('${o.id}',false)">↩ Restaurar</button>
-        <button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirCliente('${o.id}','${nm}')">${icoTrash} Excluir</button>`
-        :`
-        <button class="btn btn-primary btn-sm" onclick="abrirCliente('${o.id}')">Abrir app</button>
-        <button class="btn btn-ghost btn-sm" onclick="atividadesCliente('${o.id}','${nm}')">Atividades</button>
-        <button class="btn btn-ghost btn-sm" onclick="arquivarCliente('${o.id}',true)">Arquivar</button>`}
-      </div>
-    </div>`;}).join(''):`<div style="color:var(--muted)">${adminTab==='arquivados'?'Nenhum cliente arquivado.':'Nenhum cliente ativo. Crie o primeiro com “Novo cliente”.'}</div>`;
+  b.innerHTML=`<div class="admin-wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div><div style="font-family:'Fraunces',serif;font-size:26px;font-weight:700">Flow <span style="font-size:14px;color:var(--gold)">· Painel Lidera</span></div>
+      <div style="font-size:13px;color:var(--muted)">Controle geral dos clientes e projetos</div></div>
+      <div style="display:flex;gap:10px"><button class="btn btn-primary" onclick="novoCliente()">${icoPlus} Novo cliente</button><button class="btn btn-ghost" onclick="logout()">Sair</button></div></div>
+    <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+      <aside id="admin_side" style="flex:0 0 300px;width:300px;max-width:100%"><div style="color:var(--muted)">Carregando…</div></aside>
+      <main id="admin_main" style="flex:1;min-width:280px"></main>
+    </div></div>`;
+  try{ADMIN_ORGS=(await sb.from('organizacoes').select('*').order('nome',{ascending:true})).data||[];}catch(e){ADMIN_ORGS=[];}
+  try{ADMIN_PEND=(await sb.from('perfis').select('*').eq('papel','cliente').is('org_id',null)).data||[];}catch(e){ADMIN_PEND=[];}
+  renderAdmin();
 }
+function renderAdmin(){renderAdminSide();renderAdminMain();}
+function renderAdminSide(){const el=$('#admin_side');if(!el)return;
+  const arqd=o=>!!(o.dados&&o.dados._arquivado);
+  const ativos=ADMIN_ORGS.filter(o=>!arqd(o)), arq=ADMIN_ORGS.filter(arqd);
+  el.innerHTML=`
+   <div class="pill-filter" style="margin-bottom:10px"><button class="${adminTab!=='arquivados'?'on':''}" onclick="adminTab='ativos';renderAdminSide();renderAdminMain()">Ativos (${ativos.length})</button><button class="${adminTab==='arquivados'?'on':''}" onclick="adminTab='arquivados';renderAdminSide();renderAdminMain()">Arquivados (${arq.length})</button></div>
+   <input class="input" id="admin_busca" placeholder="🔎 Buscar restaurante…" value="${esc(adminBusca)}" oninput="adminBusca=this.value;renderAdminList()" style="margin-bottom:10px">
+   <div id="admin_listc" class="card" style="padding:6px;max-height:68vh;overflow:auto"></div>`;
+  renderAdminList();
+}
+function renderAdminList(){const el=$('#admin_listc');if(!el)return;
+  const arqd=o=>!!(o.dados&&o.dados._arquivado);
+  let lista=adminTab==='arquivados'?ADMIN_ORGS.filter(arqd):ADMIN_ORGS.filter(o=>!arqd(o));
+  const q=adminBusca.trim().toLowerCase();
+  if(q)lista=lista.filter(o=>(o.nome||'').toLowerCase().includes(q));
+  lista=lista.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
+  el.innerHTML=lista.length?lista.map(o=>{const p=(o.dados&&o.dados._projeto)?o.dados._projeto:null;const pct=p?projPct(p):0;const atr=p?projAtrasadas(p):0;const sel=o.id===adminSel;const susp=o.status==='suspenso';return `
+    <div onclick="adminSelOrg('${o.id}')" style="cursor:pointer;padding:9px 10px;border-radius:9px;margin:2px 0;${sel?'background:var(--navy);color:#fff':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
+        <span style="font-weight:600;font-size:13.5px;${sel?'color:#fff':''}">${esc(o.nome||'')}</span>
+        ${atr?`<span title="${atr} atrasada(s)" style="color:${sel?'#ffb4b4':'var(--red)'};font-size:11px;font-weight:600">⚠ ${atr}</span>`:''}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:3px">
+        <span style="font-size:11px;${sel?'color:#cdd6ea':'color:var(--soft)'}">${susp?'suspenso':esc(o.responsavel||'')||'—'}</span>
+        <span style="font-size:11px;${sel?'color:#cdd6ea':'color:var(--soft)'}">${p?pct+'%':'—'}</span>
+      </div>
+      ${p?`<div style="height:4px;border-radius:3px;background:${sel?'rgba(255,255,255,.25)':'var(--line)'};margin-top:5px"><div style="height:4px;border-radius:3px;width:${pct}%;background:${pct>=100?'var(--green)':'var(--gold)'}"></div></div>`:''}
+    </div>`;}).join(''):`<div style="color:var(--muted);padding:12px;font-size:13px">${q?'Nada encontrado.':'Nenhum cliente.'}</div>`;
+}
+async function adminSelOrg(id){adminSel=id;adminProjTab='dados';renderAdminList();renderAdminMain();
+  const o=ADMIN_ORGS.find(x=>x.id===id);
+  if(o&&!(o.dados&&o.dados._projeto)){projEnsure(o);await projSaveOrg(o);renderAdminList();}}
+function renderAdminMain(){const el=$('#admin_main');if(!el)return;
+  if(!adminSel){el.innerHTML=adminOverviewHTML();return;}
+  const o=ADMIN_ORGS.find(x=>x.id===adminSel);
+  if(!o){adminSel=null;el.innerHTML=adminOverviewHTML();return;}
+  const k=kpisDe(o.dados);const susp=o.status==='suspenso';const arq=!!(o.dados&&o.dados._arquivado);const nm=(o.nome||'').replace(/'/g,'');
+  el.innerHTML=`
+   <div class="card card-pad">
+     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+       <div><div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700">${esc(o.nome||'')}</div>
+       <div style="font-size:12.5px;color:var(--soft);margin-top:2px">${esc(o.responsavel||'')||'sem responsável'} · <span class="tag ${arq?'tag-gray':susp?'tag-red':o.status==='teste'?'tag-amber':'tag-green'}">${arq?'arquivado':o.status}</span></div></div>
+       <button class="btn btn-ghost btn-sm" onclick="adminSel=null;renderAdmin()">✕ Fechar</button>
+     </div>
+     <div class="pill-filter" style="margin:14px 0 0"><button class="${adminProjTab==='dados'?'on':''}" onclick="adminProjTab='dados';renderAdminMain()">Dados de hoje</button><button class="${adminProjTab==='projeto'?'on':''}" onclick="adminProjTab='projeto';renderAdminMain()">Controle de projeto</button></div>
+   </div>
+   <div style="margin-top:14px">${adminProjTab==='projeto'?projetoHTML(o):dadosHTML(o,k,nm,arq)}</div>`;
+}
+function dadosHTML(o,k,nm,arq){return `<div class="card card-pad">
+  <div class="kpi-grid" style="margin:0 0 14px">
+   <div class="kpi"><div class="k-lbl">Faturamento</div><div class="k-val" style="font-size:20px">${fmtBRL(k.fat)}</div></div>
+   <div class="kpi"><div class="k-lbl">CMV</div><div class="k-val" style="font-size:20px">${k.real!=null?fmtPct(k.real):fmtPct(k.cmv)}</div></div>
+   <div class="kpi"><div class="k-lbl">Lucro</div><div class="k-val" style="font-size:20px;color:${k.lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(k.lucro)}</div></div>
+   <div class="kpi"><div class="k-lbl">Fichas / Produtos</div><div class="k-val" style="font-size:20px">${k.nf} / ${k.ni}</div></div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+   <button class="btn btn-primary btn-sm" onclick="abrirCliente('${o.id}')">Abrir app</button>
+   <button class="btn btn-ghost btn-sm" onclick="atividadesCliente('${o.id}','${nm}')">Atividades</button>
+   ${arq?`<button class="btn btn-primary btn-sm" onclick="arquivarCliente('${o.id}',false)">↩ Restaurar</button>
+     <button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirCliente('${o.id}','${nm}')">${icoTrash} Excluir</button>`
+     :`<button class="btn btn-ghost btn-sm" onclick="arquivarCliente('${o.id}',true)">Arquivar</button>`}
+  </div></div>`;}
+function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=projAtrasadas(p);const h=hojeISO();const feitas=p.tarefas.filter(x=>x.feito).length;
+  const fases=[];p.tarefas.forEach(t=>{let g=fases.find(f=>f.nome===t.fase);if(!g){g={nome:t.fase,itens:[]};fases.push(g);}g.itens.push(t);});
+  let html=`<div class="card card-pad">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <div style="font-weight:700">Progresso do projeto</div>
+      <div style="font-size:13px;color:var(--soft)">${feitas}/${p.tarefas.length} tarefas${atr?` · <span style="color:var(--red);font-weight:600">${atr} atrasada(s)</span>`:''}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="flex:1;height:12px;border-radius:7px;background:var(--line);overflow:hidden"><div style="height:12px;width:${pct}%;background:${pct>=100?'var(--green)':'var(--gold)'};transition:width .3s"></div></div>
+      <div style="font-weight:700;font-size:18px;color:${pct>=100?'var(--green)':'var(--navy)'}">${pct}%</div>
+    </div>
+  </div>`;
+  fases.forEach(f=>{const done=f.itens.filter(x=>x.feito).length;const faseArg=f.nome.replace(/['"\\]/g,'');
+    html+=`<div class="card card-pad" style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-weight:700">${esc(f.nome)}</div><div style="font-size:12px;color:var(--soft)">${done}/${f.itens.length}</div></div>`;
+    f.itens.forEach(t=>{const over=!t.feito&&t.prazo&&t.prazo<h;
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
+        <input type="checkbox" ${t.feito?'checked':''} onchange="projToggle('${t.id}')" style="width:18px;height:18px;flex:0 0 auto;cursor:pointer">
+        <div style="flex:1;min-width:140px">
+          <div style="font-size:13.5px;${t.feito?'text-decoration:line-through;color:var(--soft)':''}">${esc(t.titulo)}</div>
+          ${over?`<div style="font-size:11px;color:var(--red);font-weight:600">⚠ Atrasada</div>`:''}
+        </div>
+        <input type="date" class="input" value="${t.prazo||''}" onchange="projPrazo('${t.id}',this.value)" style="width:148px;flex:0 0 auto;padding:6px 8px;${over?'border-color:var(--red);color:var(--red)':''}">
+        <button class="btn btn-ghost btn-sm" title="Subir" onclick="projMove('${t.id}',-1)" style="padding:4px 8px">↑</button>
+        <button class="btn btn-ghost btn-sm" title="Descer" onclick="projMove('${t.id}',1)" style="padding:4px 8px">↓</button>
+        <button class="btn btn-ghost btn-sm" title="Excluir tarefa" onclick="projDel('${t.id}')" style="padding:4px 8px;color:var(--red)">✕</button>
+      </div>`;});
+    html+=`<button class="btn btn-ghost btn-sm" onclick="projAdd('${faseArg}')" style="margin-top:10px">+ Nova tarefa</button></div>`;});
+  html+=`<div style="margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="projAdd('')">+ Nova etapa / tarefa avulsa</button></div>`;
+  return html;
+}
+function adminOverviewHTML(){const arqd=o=>!!(o.dados&&o.dados._arquivado);const ativosArr=ADMIN_ORGS.filter(o=>!arqd(o));const ativos=ativosArr.filter(o=>o.status!=='suspenso').length;const fatTot=ativosArr.reduce((s,o)=>s+kpisDe(o.dados).fat,0);
+  const atrTot=ativosArr.reduce((s,o)=>s+((o.dados&&o.dados._projeto)?projAtrasadas(o.dados._projeto):0),0);
+  let html=`<div class="kpi-grid" style="margin:0">
+   <div class="kpi"><div class="k-lbl">Clientes</div><div class="k-val">${ativosArr.length}</div><div class="k-sub" style="color:var(--soft)">${ativos} ativos</div></div>
+   <div class="kpi"><div class="k-lbl">Faturamento somado</div><div class="k-val" style="font-size:21px">${fmtBRL(fatTot)}</div><div class="k-sub" style="color:var(--soft)">clientes ativos</div></div>
+   <div class="kpi"><div class="k-lbl">Aguardando vínculo</div><div class="k-val" style="color:${ADMIN_PEND.length?'var(--amber)':'var(--green)'}">${ADMIN_PEND.length}</div><div class="k-sub" style="color:var(--soft)">novos cadastros</div></div>
+   <div class="kpi"><div class="k-lbl">Tarefas atrasadas</div><div class="k-val" style="color:${atrTot?'var(--red)':'var(--green)'}">${atrTot}</div><div class="k-sub" style="color:var(--soft)">nos projetos</div></div></div>`;
+  if(ADMIN_PEND.length)html+=`<div class="card card-pad" style="border-color:var(--amber);margin-top:14px"><div class="ttl" style="margin-bottom:8px">⏳ Novos cadastros aguardando liberação</div>${ADMIN_PEND.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${esc(p.email||'(sem e-mail)')}</b></div><select class="input" style="max-width:260px" onchange="vincularPerfil('${p.id}',this.value)"><option value="">Vincular a um restaurante…</option>${ADMIN_ORGS.map(o=>`<option value="${o.id}">${esc(o.nome)}</option>`).join('')}</select></div>`).join('')}</div>`;
+  html+=`<div class="card card-pad" style="margin-top:14px;color:var(--muted);font-size:13.5px">👈 Selecione um restaurante na lista para ver os <b>dados de hoje</b> e o <b>controle de projeto</b> (tarefas, prazos e progresso).</div>`;
+  return html;
+}
+function projToggle(id){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;t.feito=!t.feito;t.feitoEm=t.feito?hojeISO():'';renderAdminMain();renderAdminList();projSaveOrg(o);}
+function projPrazo(id,v){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;t.prazo=v||'';renderAdminMain();renderAdminList();projSaveOrg(o);}
+function projMove(id,dir){const o=projCur();if(!o)return;const p=projEnsure(o);const a=p.tarefas;const i=a.findIndex(x=>x.id===id);if(i<0)return;const fase=a[i].fase;let j=i+dir;while(j>=0&&j<a.length&&a[j].fase!==fase)j+=dir;if(j<0||j>=a.length)return;const tmp=a[i];a[i]=a[j];a[j]=tmp;renderAdminMain();projSaveOrg(o);}
+function projDel(id){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;if(!confirm('Excluir a tarefa "'+t.titulo+'"?'))return;p.tarefas=p.tarefas.filter(x=>x.id!==id);renderAdminMain();renderAdminList();projSaveOrg(o);}
+function projAdd(fase){modal(`<div class="modal-head"><h3>Nova tarefa</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+   <div class="field"><label>Etapa</label><input class="input" id="pa_fase" value="${esc(fase||'')}" placeholder="Ex.: Etapa 01 · Gestão Financeira"></div>
+   <div class="field"><label>Tarefa</label><input class="input" id="pa_tit" placeholder="Descrição da tarefa"></div>
+   <div class="field"><label>Data de finalização (opcional)</label><input class="input" type="date" id="pa_prazo"></div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="projAddSave()">Adicionar</button></div>`);setTimeout(()=>{const e=$('#pa_tit');if(e)e.focus();},40);}
+function projAddSave(){const o=projCur();if(!o)return;const fase=(($('#pa_fase').value||'').trim().replace(/['"\\]/g,''))||'Outras';const tit=($('#pa_tit').value||'').trim();const prazo=$('#pa_prazo').value||'';if(!tit)return toast('Informe a tarefa');const p=projEnsure(o);p.tarefas.push({id:'c'+Date.now()+Math.floor(Math.random()*1000),titulo:tit,fase,feito:false,prazo});closeModal();renderAdminMain();renderAdminList();projSaveOrg(o);}
 async function arquivarCliente(orgId,arq){
   try{const o=(await sb.from('organizacoes').select('dados').eq('id',orgId).single()).data;const dados=(o&&o.dados)||{};dados._arquivado=!!arq;
     await sb.from('organizacoes').update({dados}).eq('id',orgId);}catch(e){return toast('Erro ao '+(arq?'arquivar':'restaurar'));}
