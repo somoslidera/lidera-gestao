@@ -3716,7 +3716,7 @@ function kpisDe(dados){return withDB((dados&&dados.insumos)?dados:emptyDB(),()=>
 let adminSel=null, adminBusca='', adminProjTab='dados';
 let ADMIN_ORGS=[], ADMIN_PEND=[];
 const PROJETO_FASES=[
- {nome:'Onboarding',tarefas:['Solicitar Dados de Contrato','Criar Contrato','Enviar Contrato Para Assinatura','Contrato Assinado','Enviar Link de Perfil Comportamental','Caso a negociação seja via boleto, pedir ao financeiro criar cobranças no Asaas','Criar Quadro do Cliente no Notion','Agendar reunião de Diagnóstico Inicial com consultor','Criar Plano de Guerra']},
+ {nome:'Onboarding',tarefas:['Solicitar ao Financeiro Criar Cobranças de Pagamento','Solicitar Dados de Contrato','Criar Contrato','Enviar Contrato Para Assinatura','Contrato Assinado','Criar Drive do Cliente','Enviar Link de Perfil Comportamental','Salvar Link do Perfil Comportamental no Drive','Reunião de Onboarding','Informações Restantes Onboarding','Reunião de Diagnóstico Inicial com Consultor','Apresentar Plano de Guerra']},
  {nome:'Etapa 01 · Gestão Financeira',tarefas:['Controle de estoque inicial (feito manualmente)','Cadastro de insumos no Flow, a partir da contagem inicial','Controle de compras e recebimento padronizado','Controle de estoque ativo','Apuração do CMV real (incluindo bebida e embalagem)','Definição da Curva ABC de compras','Início do controle de desperdício de insumo','Lançamentos financeiros em rotina (receitas, despesas, folha, resultado)','Separação de contas PF/PJ e definição do pró-labore','Fluxo de caixa e análise do primeiro DRE']},
  {nome:'Etapa 02 · Engenharia de Cardápio',tarefas:['Fichas técnicas dos principais produtos no Flow','Curva ABC de vendas','Ajuste de precificação com base no custo real','Engenharia de menu (matriz popularidade × margem)','Análise do controle de desperdício iniciado na Etapa 1','Definição do carro-chefe']},
  {nome:'Etapa 03 · Gestão de Equipes',tarefas:['Como fazer reuniões (ritual de gestão)','Rotinas de treinamento da equipe','Posicionamento do líder (perfil comportamental)','Definição da rotina e do papel do dono','Descrição de cargos de cada função, assinada','Processo de contratação e onboarding']},
@@ -3725,8 +3725,12 @@ const PROJETO_FASES=[
  {nome:'Etapa 06 · Marketing e Vendas',tarefas:['Análise e otimização do Google Perfil da Empresa','Instagram: rotina de postagem','Direcionamento para tráfego pago','Análise e plano de crescimento do ticket médio','Estratégia de remarketing e base de relacionamento']}
 ];
 function projSeed(){const arr=[];PROJETO_FASES.forEach((f,fi)=>f.tarefas.forEach((t,ti)=>arr.push({id:'f'+fi+'t'+ti,titulo:t,fase:f.nome,feito:false,prazo:''})));return arr;}
-function projEnsure(o){if(!o)return{tarefas:[]};o.dados=o.dados||{};if(!o.dados._projeto||!Array.isArray(o.dados._projeto.tarefas)){o.dados._projeto={tarefas:projSeed(),criadoEm:hojeISO()};}return o.dados._projeto;}
-function projPct(p){const t=(p&&p.tarefas)||[];if(!t.length)return 0;return Math.round(t.filter(x=>x.feito).length/t.length*100);}
+function projOnboardingSeed(){return PROJETO_FASES[0].tarefas.map((t,ti)=>({id:'f0t'+ti,titulo:t,fase:'Onboarding',feito:false,prazo:''}));}
+function projEnsure(o){if(!o)return{tarefas:[]};o.dados=o.dados||{};if(!o.dados._projeto||!Array.isArray(o.dados._projeto.tarefas)){o.dados._projeto={tarefas:projSeed(),criadoEm:hojeISO()};}
+  const p=o.dados._projeto;
+  if(!p._obV2){const ob=p.tarefas.filter(t=>t.fase==='Onboarding');if(!ob.length||ob.every(t=>!t.feito&&!t.prazo)){const resto=p.tarefas.filter(t=>t.fase!=='Onboarding');p.tarefas=projOnboardingSeed().concat(resto);}p._obV2=true;}
+  return p;}
+function projPct(p){const t=((p&&p.tarefas)||[]).filter(x=>x.fase!=='Onboarding');if(!t.length)return 0;return Math.round(t.filter(x=>x.feito).length/t.length*100);}
 function projAtrasadas(p){const h=hojeISO();return ((p&&p.tarefas)||[]).filter(x=>!x.feito&&x.prazo&&x.prazo<h).length;}
 function projCur(){return ADMIN_ORGS.find(o=>o.id===adminSel);}
 async function projSaveOrg(o){if(!o)return;try{const cur=(await sb.from('organizacoes').select('dados').eq('id',o.id).single()).data;const dados=(cur&&cur.dados)||{};dados._projeto=o.dados._projeto;await sb.from('organizacoes').update({dados}).eq('id',o.id);o.dados=dados;}catch(e){toast('Erro ao salvar projeto');}}
@@ -3775,8 +3779,9 @@ function renderAdminList(){const el=$('#admin_listc');if(!el)return;
     </div>`;}).join(''):`<div style="color:var(--muted);padding:12px;font-size:13px">${q?'Nada encontrado.':'Nenhum cliente.'}</div>`;
 }
 async function adminSelOrg(id){adminSel=id;adminProjTab='dados';renderAdminList();renderAdminMain();
-  const o=ADMIN_ORGS.find(x=>x.id===id);
-  if(o&&!(o.dados&&o.dados._projeto)){projEnsure(o);await projSaveOrg(o);renderAdminList();}}
+  const o=ADMIN_ORGS.find(x=>x.id===id);if(!o)return;
+  const antes=JSON.stringify((o.dados&&o.dados._projeto)||null);projEnsure(o);
+  if(JSON.stringify(o.dados._projeto)!==antes){await projSaveOrg(o);renderAdminList();}}
 function renderAdminMain(){const el=$('#admin_main');if(!el)return;
   if(!adminSel){el.innerHTML=adminOverviewHTML();return;}
   const o=ADMIN_ORGS.find(x=>x.id===adminSel);
@@ -3807,12 +3812,12 @@ function dadosHTML(o,k,nm,arq){return `<div class="card card-pad">
      <button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirCliente('${o.id}','${nm}')">${icoTrash} Excluir</button>`
      :`<button class="btn btn-ghost btn-sm" onclick="arquivarCliente('${o.id}',true)">Arquivar</button>`}
   </div></div>`;}
-function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=projAtrasadas(p);const h=hojeISO();const feitas=p.tarefas.filter(x=>x.feito).length;
+function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=projAtrasadas(p);const h=hojeISO();const cont=p.tarefas.filter(x=>x.fase!=='Onboarding');const feitas=cont.filter(x=>x.feito).length;
   const fases=[];p.tarefas.forEach(t=>{let g=fases.find(f=>f.nome===t.fase);if(!g){g={nome:t.fase,itens:[]};fases.push(g);}g.itens.push(t);});
   let html=`<div class="card card-pad">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-      <div style="font-weight:700">Progresso do projeto</div>
-      <div style="font-size:13px;color:var(--soft)">${feitas}/${p.tarefas.length} tarefas${atr?` · <span style="color:var(--red);font-weight:600">${atr} atrasada(s)</span>`:''}</div>
+      <div style="font-weight:700">Progresso do projeto <span style="font-size:11px;color:var(--soft);font-weight:500">(Onboarding não conta)</span></div>
+      <div style="font-size:13px;color:var(--soft)">${feitas}/${cont.length} tarefas${atr?` · <span style="color:var(--red);font-weight:600">${atr} atrasada(s)</span>`:''}</div>
     </div>
     <div style="display:flex;align-items:center;gap:12px">
       <div style="flex:1;height:12px;border-radius:7px;background:var(--line);overflow:hidden"><div style="height:12px;width:${pct}%;background:${pct>=100?'var(--green)':'var(--gold)'};transition:width .3s"></div></div>
@@ -3824,6 +3829,7 @@ function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=pro
       <div draggable="true" ondragstart="projDragStart(event,'fase','${fa}')" ondragend="projDragEnd(event)" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <span title="Arrastar etapa" style="color:var(--soft);font-size:15px;cursor:grab;flex:0 0 auto;user-select:none">⠿</span>
         <input class="input" value="${fa}" onchange="projRenameFase('${fa}',this.value)" title="Editar nome da etapa" style="flex:1;min-width:120px;font-weight:700;font-family:'Fraunces',serif;font-size:16px;border-color:transparent;background:transparent;padding:3px 6px">
+        ${f.nome==='Onboarding'?`<span class="tag tag-gray" style="flex:0 0 auto">não conta no %</span>`:''}
         <span style="font-size:12px;color:var(--soft);flex:0 0 auto">${done}/${f.itens.length}</span>
       </div>`;
     f.itens.forEach(t=>{const over=!t.feito&&t.prazo&&t.prazo<h;
