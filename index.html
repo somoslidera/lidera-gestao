@@ -588,6 +588,8 @@ thead th{letter-spacing:.7px}
     <a data-route="financeiro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18v13H3z"/><path d="M3 10h18M7 15h4"/></svg>Financeiro</a>
     <div class="lbl">PESSOAS</div>
     <a data-route="folha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M21 20a6 6 0 0 0-3-5"/></svg>Folha de Pagamento</a>
+    <div class="lbl">FORMAÇÃO</div>
+    <a data-route="formacao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-5"/><path d="M22 10v6"/></svg>Formação em Gestão</a>
     <div class="lbl">SUA CONTA</div>
     <a data-route="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>Mapa do Caminho</a>
     <a data-route="equipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M21 20a6 6 0 0 0-3-5"/></svg>Equipe</a>
@@ -958,6 +960,7 @@ const ROUTES={
   dre:{title:'DRE',render:viewDRE},
   financeiro:{title:'Financeiro',render:viewFinanceiro},
   folha:{title:'Folha de Pagamento',render:viewFolha},
+  formacao:{title:'Formação em Gestão',render:viewFormacao},
   mapa:{title:'Mapa do Caminho',render:viewMapa},
   equipe:{title:'Equipe',render:viewEquipe},
   conta:{title:'Configurações',render:viewConta},
@@ -2880,7 +2883,7 @@ function finParam(){
 }
 
 /* ===================== EQUIPE ===================== */
-const ACESSOS=[['dashboard','Dashboard'],['insumos','Produtos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['mapa','Mapa do Caminho'],['equipe','Equipe'],['conta','Configurações']];
+const ACESSOS=[['dashboard','Dashboard'],['insumos','Produtos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['formacao','Formação em Gestão'],['mapa','Mapa do Caminho'],['equipe','Equipe'],['conta','Configurações']];
 const NIVEIS={
   admin:{label:'Administrador',desc:'Acesso total a tudo',perms:ACESSOS.map(a=>a[0])},
   gerente:{label:'Gerente',desc:'Operação + indicadores (sem equipe/config)',perms:['dashboard','insumos','fichas','estoque','engenharia','cmv','desperdicio','buffet','faturamento','dre','mapa']},
@@ -2974,6 +2977,72 @@ function viewMapa(){
     </div>`).join('')}
   </div>`;
 }
+
+/* ===================== FORMAÇÃO EM GESTÃO (cliente · estilo Netflix) ===================== */
+let FORMACAO=null;
+function ytId(u){if(!u)return'';u=(''+u).trim();if(/^[\w-]{11}$/.test(u))return u;const m=u.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/);return m?m[1]:'';}
+async function loadFormacao(force){
+  if(FORMACAO&&!force)return {data:FORMACAO};
+  if(typeof sb==='undefined'||!sb)return {error:'sem-conexao'};
+  try{const r=await sb.from('formacao').select('dados').eq('id',1).single();
+    if(r.error)return {error:r.error};
+    FORMACAO=(r.data&&r.data.dados&&Array.isArray(r.data.dados.modulos))?r.data.dados:{modulos:[]};
+    return {data:FORMACAO};
+  }catch(e){return {error:e};}
+}
+async function viewFormacao(){
+  $('#view').innerHTML=`<div style="color:var(--muted)">Carregando formação…</div>`;
+  const r=await loadFormacao();
+  renderFormacaoView((r&&r.data)||{modulos:[]});
+}
+function renderFormacaoView(cat){
+  const mods=(cat.modulos||[]).map((m,mi)=>({m,mi})).filter(o=>o.m&&(o.m.videos||[]).some(v=>v&&ytId(v.yt)));
+  let html=`<style>
+    .fz-row{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 16px;scroll-snap-type:x proximity}
+    .fz-row::-webkit-scrollbar{height:8px}.fz-row::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+    .fz-card{flex:0 0 262px;width:262px;scroll-snap-align:start;cursor:pointer;border-radius:12px;overflow:hidden;background:#0c1322;box-shadow:0 2px 10px rgba(0,0,0,.12);transition:transform .18s,box-shadow .18s}
+    .fz-card:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 12px 26px rgba(0,0,0,.28)}
+    .fz-thumb{position:relative;width:100%;padding-top:56.25%;background:#0c1322 center/cover no-repeat}
+    .fz-ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(0,0,0,.02),rgba(0,0,0,.5));opacity:0;transition:opacity .18s}
+    .fz-card:hover .fz-ov{opacity:1}
+    .fz-ov span{width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;color:#1D3573;font-size:20px;padding-left:5px;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+    .fz-meta{padding:11px 13px}.fz-meta .t{color:#fff;font-weight:600;font-size:13.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:35px}
+    .fz-dur{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.82);color:#fff;font-size:11px;padding:2px 6px;border-radius:5px;font-weight:600}
+  </style>
+  <div class="card" style="padding:28px 30px;margin-bottom:24px;background:linear-gradient(120deg,#1D3573 0%,#162a5c 55%,#0f1f47 100%);border:none;position:relative;overflow:hidden">
+    <div style="position:absolute;right:-30px;top:-30px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(164,138,87,.35),transparent 70%)"></div>
+    <div style="font-family:'Fraunces',serif;font-size:25px;font-weight:700;color:#fff">Formação em Gestão</div>
+    <div style="font-size:14px;color:#cdd6ea;margin-top:7px;max-width:660px;line-height:1.5">Aulas e materiais para você dominar a gestão do seu restaurante: do financeiro à operação, no seu ritmo.</div>
+  </div>`;
+  if(!mods.length){html+=`<div class="card card-pad" style="color:var(--muted);text-align:center;padding:40px">🎬<div style="margin-top:10px">Os conteúdos da formação aparecerão aqui em breve.</div></div>`;$('#view').innerHTML=html;return;}
+  mods.forEach(({m,mi})=>{const vids=(m.videos||[]).map((v,vi)=>({v,vi})).filter(o=>o.v&&ytId(o.v.yt));
+    html+=`<div style="margin-bottom:28px">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap"><div style="font-family:'Fraunces',serif;font-size:19px;font-weight:700">${esc(m.titulo||'Módulo')}</div>${m.descricao?`<div style="font-size:12.5px;color:var(--muted)">${esc(m.descricao)}</div>`:''}</div>
+      <div class="fz-row">${vids.map(({v,vi})=>{const id=ytId(v.yt);return `
+        <div class="fz-card" onclick="abrirVideo(${mi},${vi})">
+          <div class="fz-thumb" style="background-image:url('https://i.ytimg.com/vi/${id}/hqdefault.jpg')"><div class="fz-ov"><span>▶</span></div>${v.dur?`<div class="fz-dur">${esc(v.dur)}</div>`:''}</div>
+          <div class="fz-meta"><div class="t">${esc(v.titulo||'Aula')}</div></div>
+        </div>`;}).join('')}</div>
+    </div>`;
+  });
+  $('#view').innerHTML=html;
+}
+function abrirVideo(mi,vi){const cat=FORMACAO||{modulos:[]};const m=(cat.modulos||[])[mi];if(!m)return;const v=(m.videos||[])[vi];if(!v)return;const id=ytId(v.yt);if(!id)return;
+  let ov=document.getElementById('vidOverlay');if(!ov){ov=document.createElement('div');ov.id='vidOverlay';document.body.appendChild(ov);}
+  ov.style.cssText='position:fixed;inset:0;z-index:400;background:rgba(8,12,24,.93);display:flex;align-items:flex-start;justify-content:center;padding:30px 18px;overflow:auto';
+  ov.onclick=e=>{if(e.target===ov)fecharVideo();};
+  const mats=(v.materiais||[]).filter(x=>x&&x.url);
+  ov.innerHTML=`<div style="width:100%;max-width:920px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px"><div style="color:#fff;font-family:'Fraunces',serif;font-size:21px;font-weight:700;line-height:1.2">${esc(v.titulo||'Vídeo')}</div><button onclick="fecharVideo()" style="background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:9px;padding:9px 14px;cursor:pointer;font-size:14px;flex:0 0 auto">✕ Fechar</button></div>
+    <div style="position:relative;width:100%;padding-top:56.25%;border-radius:14px;overflow:hidden;background:#000;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1" style="position:absolute;inset:0;width:100%;height:100%;border:0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>
+    </div>
+    ${v.desc?`<div style="color:#cdd6ea;font-size:14px;margin-top:14px;line-height:1.55">${esc(v.desc).replace(/\n/g,'<br>')}</div>`:''}
+    ${mats.length?`<div style="margin-top:16px"><div style="color:#8fa0c0;font-size:12px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Material de apoio</div><div style="display:flex;flex-wrap:wrap;gap:8px">${mats.map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:7px;background:var(--gold);color:#1b1304;text-decoration:none;font-weight:600;font-size:13px;padding:9px 13px;border-radius:9px">📄 ${esc(x.titulo||'Material')}</a>`).join('')}</div></div>`:''}
+  </div>`;
+  document.body.style.overflow='hidden';
+}
+function fecharVideo(){const ov=document.getElementById('vidOverlay');if(ov)ov.remove();document.body.style.overflow='';}
 
 /* ===================== CONFIGURAÇÕES / CONTA ===================== */
 let contaTab='conta';
@@ -3667,7 +3736,7 @@ async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin(
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
       <div><div style="font-family:'Fraunces',serif;font-size:26px;font-weight:700">Flow <span style="font-size:14px;color:var(--gold)">· Painel Lidera</span></div>
       <div style="font-size:13px;color:var(--muted)">Controle geral dos clientes e projetos</div></div>
-      <div style="display:flex;gap:10px"><button class="btn btn-primary" onclick="novoCliente()">${icoPlus} Novo cliente</button><button class="btn btn-ghost" onclick="logout()">Sair</button></div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="showFormacaoAdmin()">🎓 Formação</button><button class="btn btn-primary" onclick="novoCliente()">${icoPlus} Novo cliente</button><button class="btn btn-ghost" onclick="logout()">Sair</button></div></div>
     <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
       <aside id="admin_side" style="flex:0 0 300px;width:300px;max-width:100%"><div style="color:var(--muted)">Carregando…</div></aside>
       <main id="admin_main" style="flex:1;min-width:280px"></main>
@@ -3809,6 +3878,72 @@ function projAdd(fase){modal(`<div class="modal-head"><h3>Nova tarefa</h3><butto
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="projAddSave()">Adicionar</button></div>`);setTimeout(()=>{const e=$('#pa_tit');if(e)e.focus();},40);}
 function projAddSave(){const o=projCur();if(!o)return;const fase=(($('#pa_fase').value||'').trim().replace(/['"\\]/g,''))||'Outras';const tit=($('#pa_tit').value||'').trim();const prazo=$('#pa_prazo').value||'';if(!tit)return toast('Informe a tarefa');const p=projEnsure(o);p.tarefas.push({id:'c'+Date.now()+Math.floor(Math.random()*1000),titulo:tit,fase,feito:false,prazo});closeModal();renderAdminMain();renderAdminList();projSaveOrg(o);}
+
+/* ---- ADMIN · editor da Formação em Gestão ---- */
+let FORM_ADMIN=null, _formSaveT=null;
+function formBox(){let b=document.getElementById('formAdminScreen');if(!b){b=document.createElement('div');b.id='formAdminScreen';b.style.cssText='position:fixed;inset:0;z-index:260;background:var(--bg);overflow:auto';document.body.appendChild(b);}return b;}
+async function showFormacaoAdmin(){const b=formBox();b.style.display='block';hideAdmin();
+  b.innerHTML=`<div class="admin-wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div><div style="font-family:'Fraunces',serif;font-size:26px;font-weight:700">🎓 Formação em Gestão</div>
+      <div style="font-size:13px;color:var(--muted)">Vídeos e materiais que aparecem para todos os clientes no app</div></div>
+      <button class="btn btn-ghost" onclick="fecharFormacaoAdmin()">← Voltar ao painel</button></div>
+    <div id="form_admin_body"><div style="color:var(--muted)">Carregando…</div></div></div>`;
+  const r=await loadFormacao(true);
+  if(r&&r.error&&r.error!=='sem-conexao'){$('#form_admin_body').innerHTML=`<div class="card card-pad" style="border-color:var(--amber)"><div class="ttl" style="margin-bottom:6px">⚠ Tabela ainda não criada</div><div style="font-size:13.5px;color:var(--muted)">Rode uma vez o script <b>flow-formacao-setup.sql</b> no Supabase (SQL Editor) e recarregue esta tela. Sem isso não é possível salvar a formação.</div></div>`;return;}
+  FORM_ADMIN=JSON.parse(JSON.stringify(FORMACAO||{modulos:[]}));if(!Array.isArray(FORM_ADMIN.modulos))FORM_ADMIN.modulos=[];
+  renderFormAdmin();
+}
+function fecharFormacaoAdmin(){clearTimeout(_formSaveT);formSaveNow();const b=document.getElementById('formAdminScreen');if(b)b.style.display='none';showAdmin();}
+function renderFormAdmin(){const el=$('#form_admin_body');if(!el)return;const mods=FORM_ADMIN.modulos||[];
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+     <div style="font-size:13px;color:var(--soft)" id="form_status">Alterações salvas automaticamente.</div>
+     <button class="btn btn-primary btn-sm" onclick="formAddModulo()">+ Novo módulo</button></div>`
+   +(mods.length?mods.map((m,mi)=>moduloEditorHTML(m,mi)).join(''):`<div class="card card-pad" style="color:var(--muted)">Nenhum módulo ainda. Clique em “+ Novo módulo” para começar.</div>`);
+}
+function moduloEditorHTML(m,mi){const vids=m.videos||[];return `<div class="card card-pad" style="margin-bottom:14px">
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+    <input class="input" value="${esc(m.titulo||'')}" placeholder="Nome do módulo (ex.: Gestão Financeira)" oninput="formModField(${mi},'titulo',this.value)" style="flex:1;font-weight:700;font-family:'Fraunces',serif;font-size:16px">
+    <button class="btn btn-ghost btn-sm" title="Subir" onclick="formModMove(${mi},-1)" style="padding:4px 8px">↑</button>
+    <button class="btn btn-ghost btn-sm" title="Descer" onclick="formModMove(${mi},1)" style="padding:4px 8px">↓</button>
+    <button class="btn btn-ghost btn-sm" title="Excluir módulo" onclick="formModDel(${mi})" style="padding:4px 8px;color:var(--red)">✕</button>
+  </div>
+  <input class="input" value="${esc(m.descricao||'')}" placeholder="Descrição curta (opcional)" oninput="formModField(${mi},'descricao',this.value)" style="margin-bottom:12px;font-size:13px">
+  ${vids.map((v,vi)=>videoEditorHTML(mi,v,vi)).join('')}
+  <button class="btn btn-ghost btn-sm" onclick="formAddVideo(${mi})" style="margin-top:4px">+ Adicionar vídeo</button>
+</div>`;}
+function videoEditorHTML(mi,v,vi){const id=ytId(v.yt||'');const mats=v.materiais||[];return `<div style="display:flex;gap:12px;padding:12px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;flex-wrap:wrap">
+  <div style="flex:0 0 168px;width:168px">
+    <div style="position:relative;width:100%;padding-top:56.25%;border-radius:8px;overflow:hidden;background:#0c1322 center/cover no-repeat;${id?`background-image:url('https://i.ytimg.com/vi/${id}/hqdefault.jpg')`:''}">${id?'':`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--soft);font-size:11px;text-align:center;padding:8px">cole o link do YouTube abaixo</div>`}</div>
+  </div>
+  <div style="flex:1;min-width:230px">
+    <input class="input" value="${esc(v.titulo||'')}" placeholder="Título da aula" oninput="formVidField(${mi},${vi},'titulo',this.value)" style="margin-bottom:6px;font-weight:600">
+    <input class="input" value="${esc(v.yt||'')}" placeholder="Link ou ID do YouTube" onchange="formVidYt(${mi},${vi},this.value)" style="margin-bottom:6px;font-size:13px">
+    <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center"><input class="input" value="${esc(v.dur||'')}" placeholder="Duração (ex.: 12:30)" oninput="formVidField(${mi},${vi},'dur',this.value)" style="width:170px;font-size:13px"><div style="flex:1"></div>
+      <button class="btn btn-ghost btn-sm" title="Subir" onclick="formVidMove(${mi},${vi},-1)" style="padding:4px 8px">↑</button>
+      <button class="btn btn-ghost btn-sm" title="Descer" onclick="formVidMove(${mi},${vi},1)" style="padding:4px 8px">↓</button>
+      <button class="btn btn-ghost btn-sm" title="Excluir vídeo" onclick="formVidDel(${mi},${vi})" style="padding:4px 8px;color:var(--red)">✕</button>
+    </div>
+    <textarea class="input" placeholder="Descrição da aula (opcional)" oninput="formVidField(${mi},${vi},'desc',this.value)" style="margin-bottom:8px;font-size:13px;min-height:46px;resize:vertical">${esc(v.desc||'')}</textarea>
+    <div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Material de apoio (links)</div>
+    ${mats.map((x,ki)=>`<div style="display:flex;gap:6px;margin-bottom:5px"><input class="input" value="${esc(x.titulo||'')}" placeholder="Nome" oninput="formMatField(${mi},${vi},${ki},'titulo',this.value)" style="flex:0 0 150px;font-size:12.5px"><input class="input" value="${esc(x.url||'')}" placeholder="Link (PDF, planilha, drive…)" oninput="formMatField(${mi},${vi},${ki},'url',this.value)" style="flex:1;min-width:140px;font-size:12.5px"><button class="btn btn-ghost btn-sm" onclick="formMatDel(${mi},${vi},${ki})" style="padding:4px 8px;color:var(--red)">✕</button></div>`).join('')}
+    <button class="btn btn-ghost btn-sm" onclick="formAddMat(${mi},${vi})" style="font-size:12px;padding:4px 10px">+ Material</button>
+  </div>
+</div>`;}
+function formModField(mi,f,val){FORM_ADMIN.modulos[mi][f]=val;formSaveSoon();}
+function formModMove(mi,dir){const a=FORM_ADMIN.modulos;const j=mi+dir;if(j<0||j>=a.length)return;const t=a[mi];a[mi]=a[j];a[j]=t;renderFormAdmin();formSaveSoon();}
+function formModDel(mi){if(!confirm('Excluir este módulo e todos os seus vídeos?'))return;FORM_ADMIN.modulos.splice(mi,1);renderFormAdmin();formSaveSoon();}
+function formAddModulo(){FORM_ADMIN.modulos.push({id:'m'+Date.now(),titulo:'Novo módulo',descricao:'',videos:[]});renderFormAdmin();formSaveSoon();}
+function formAddVideo(mi){const m=FORM_ADMIN.modulos[mi];m.videos=m.videos||[];m.videos.push({id:'v'+Date.now(),titulo:'',yt:'',desc:'',dur:'',materiais:[]});renderFormAdmin();formSaveSoon();}
+function formVidField(mi,vi,f,val){FORM_ADMIN.modulos[mi].videos[vi][f]=val;formSaveSoon();}
+function formVidYt(mi,vi,val){const id=ytId(val);FORM_ADMIN.modulos[mi].videos[vi].yt=id||(''+val).trim();renderFormAdmin();formSaveSoon();}
+function formVidMove(mi,vi,dir){const a=FORM_ADMIN.modulos[mi].videos;const j=vi+dir;if(j<0||j>=a.length)return;const t=a[vi];a[vi]=a[j];a[j]=t;renderFormAdmin();formSaveSoon();}
+function formVidDel(mi,vi){if(!confirm('Excluir este vídeo?'))return;FORM_ADMIN.modulos[mi].videos.splice(vi,1);renderFormAdmin();formSaveSoon();}
+function formAddMat(mi,vi){const v=FORM_ADMIN.modulos[mi].videos[vi];v.materiais=v.materiais||[];v.materiais.push({titulo:'',url:''});renderFormAdmin();formSaveSoon();}
+function formMatField(mi,vi,ki,f,val){FORM_ADMIN.modulos[mi].videos[vi].materiais[ki][f]=val;formSaveSoon();}
+function formMatDel(mi,vi,ki){FORM_ADMIN.modulos[mi].videos[vi].materiais.splice(ki,1);renderFormAdmin();formSaveSoon();}
+function formSaveSoon(){const s=$('#form_status');if(s){s.textContent='Salvando…';s.style.color='var(--amber)';}clearTimeout(_formSaveT);_formSaveT=setTimeout(formSaveNow,700);}
+async function formSaveNow(){if(!FORM_ADMIN)return;if(typeof sb==='undefined'||!sb)return;try{const r=await sb.from('formacao').update({dados:FORM_ADMIN}).eq('id',1);const s=$('#form_status');if(r&&r.error){if(s){s.textContent='Erro ao salvar — confira se o SQL foi rodado.';s.style.color='var(--red)';}return;}FORMACAO=JSON.parse(JSON.stringify(FORM_ADMIN));if(s){s.textContent='Tudo salvo ✓';s.style.color='var(--green)';}}catch(e){const s=$('#form_status');if(s){s.textContent='Erro ao salvar.';s.style.color='var(--red)';}}}
 async function arquivarCliente(orgId,arq){
   try{const o=(await sb.from('organizacoes').select('dados').eq('id',orgId).single()).data;const dados=(o&&o.dados)||{};dados._arquivado=!!arq;
     await sb.from('organizacoes').update({dados}).eq('id',orgId);}catch(e){return toast('Erro ao '+(arq?'arquivar':'restaurar'));}
