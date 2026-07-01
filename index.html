@@ -1434,7 +1434,9 @@ function parseDanfePdf(pages){
   const lineText=r=>r.items.map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();
   const allText=rows.map(lineText).join('\n');const U=allText.toUpperCase();
   const cnpj=(allText.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/)||[])[0]||'';
-  let nNF='';{const m=U.match(/N[ºO°\.]{0,3}\s*([\d\.]{4,})\s*(?:S[ÉE]RIE|SERIE)/)||U.match(/N[ºO°]\.?\s*([\d\.]{5,})/);if(m)nNF=m[1].replace(/\D/g,'');}
+  let nNF='';{let chave='';for(const r of rows){const dg=lineText(r).replace(/\D/g,'');const mm=dg.match(/\d{44}/);if(mm){chave=mm[0];break;}}
+    if(chave)nNF=String(parseInt(chave.slice(25,34),10)||'');
+    if(!nNF){const m=U.match(/N[ºO°\.]{0,3}\s*([\d\.]{4,})\s*(?:S[ÉE]RIE|SERIE)/)||U.match(/N[ºO°]\.?\s*([\d\.]{5,})/);if(m)nNF=m[1].replace(/\D/g,'');}}
   let data='';{const m=allText.match(/(\d{2})\/(\d{2})\/(\d{4})/);if(m)data=m[3]+'-'+m[2]+'-'+m[1];}
   let total=0;{const idx=U.indexOf('VALOR TOTAL DA NOTA');if(idx>=0){const seg=allText.slice(idx,idx+140).match(/[\d\.]+,\d{2}/g);if(seg&&seg.length)total=nfeBrNum(seg[seg.length-1]);}}
   let start=-1,end=rows.length;
@@ -1445,7 +1447,7 @@ function parseDanfePdf(pages){
   let fornecedor='';{
     let cnpjRow=-1;for(let i=0;i<rows.length;i++){if(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/.test(lineText(rows[i]))){cnpjRow=i;break;}}
     const lim=Math.min(16,cnpjRow>=0?cnpjRow+1:(start>0?start:16));
-    const bad=/DANFE|RECEBEMOS|IDENTIFICA|DOCUMENTO AUXILIAR|CHAVE DE ACESSO|S[ÉE]RIE|FOLHA|SA[ÍI]DA|ENTRADA|PROTOCOLO|DESCRI|PRODUTO|C[ÓO]DIGO|QUANT|NCM|CFOP|VALOR|N[ºo°]|WWW\.|HTTP|@|\.COM|\.BR\b|\.NET|CEP|BAIRRO|INSCRI[ÇC]|TELEFONE|\bFONE\b|E-?MAIL|\bRUA\b|AVENIDA|\bAV\b|RODOVIA|\bROD\b|ESTRADA|PRA[ÇC]A|MUNIC[ÍI]PIO/i;
+    const bad=/DANFE|RECEBEMOS|RECEBEDOR|RECEBIMENTO|DESTINAT|REMETENTE|RAZ[ÃA]O|NOTA FISCAL|IDENTIFICA|DOCUMENTO AUXILIAR|CHAVE DE ACESSO|S[ÉE]RIE|FOLHA|SA[ÍI]DA|ENTRADA|PROTOCOLO|DESCRI|PRODUTO|C[ÓO]DIGO|QUANT|NCM|CFOP|VALOR|N[ºo°]|WWW\.|HTTP|@|\.COM|\.BR\b|\.NET|CEP|BAIRRO|INSCRI[ÇC]|TELEFONE|\bFONE\b|E-?MAIL|\bRUA\b|AVENIDA|\bAV\b|RODOVIA|\bROD\b|ESTRADA|PRA[ÇC]A|MUNIC[ÍI]PIO/i;
     const cands=rows.slice(0,lim).map(lineText).map(t=>t.trim()).filter(t=>t&&t.length>=4&&/[A-Za-zÀ-ú]{4,}/.test(t)&&!/^\d/.test(t)&&!bad.test(t));
     const razao=/\b(LTDA|EIRELI|EPP|S\/A|S\.?A\.?|ME|MEI|COM[ÉE]RCIO|COMERCIAL|IND[ÚU]STRIA|IND\b|DISTRIBUI|ALIMENTOS|SUPERMERCAD|ATACAD|MERCAD|RESTAURANTE|PADARIA|A[ÇC]OUGUE|HORTIFRUT|BEBIDAS|FRIGOR[ÍI]FICO)\b/i;
     fornecedor=(cands.find(t=>razao.test(t))||cands[0]||'').slice(0,80);}
