@@ -1484,7 +1484,7 @@ async function importarNFe(input){const f=input&&input.files&&input.files[0];if(
 function nfeEnsureCats(){DB.categorias=DB.categorias||{};if(!DB.categorias['CMV'])DB.categorias['CMV']={tipo:'despesa',subs:[]};if(!DB.categorias['CMV'].subs.includes('Entrada de Produtos'))DB.categorias['CMV'].subs.unshift('Entrada de Produtos');}
 function nfeSubRefresh(idx){const g=$('#nfe_grupo_'+idx),s=$('#nfe_sub_'+idx);if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=(c&&c.subs.length?c.subs:['(sem subcategoria)']).map(x=>`<option>${esc(x)}</option>`).join('');}
 function nfeMapChanged(idx){const sel=$('#nfe_map_'+idx),dEl=$('#nfe_desc_'+idx);if(!sel||!dEl)return;const v=sel.value;if(v&&v!=='novo'&&v!=='ignorar'&&DB.insumos[v])dEl.value=DB.insumos[v].nome;}
-function nfeRowTot(idx){const q=nfeBrNum(($('#nfe_qtd_'+idx)||{}).value),v=nfeBrNum(($('#nfe_vun_'+idx)||{}).value);const s=$('#nfe_tot_'+idx);if(s)s.textContent='= '+fmtBRL(q*v);}
+function nfeRowTot(idx){const q=nfeBrNum(($('#nfe_qtd_'+idx)||{}).value),v=nfeBrNum(($('#nfe_vun_'+idx)||{}).value);const s=$('#nfe_tot_'+idx);if(s)s.textContent=fmtBRL(q*v);}
 function nfeConfirmModal(d){
   nfeEnsureCats();
   const cats=catList('insumo'),insumos=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado');
@@ -1493,16 +1493,16 @@ function nfeConfirmModal(d){
   const subsDef=(DB.categorias[gDef]||{subs:[]}).subs;const subDef=subsDef.includes('Entrada de Produtos')?'Entrada de Produtos':(subsDef[0]||'');
   const cards=d.itens.map((it,idx)=>{const m=nfeMatch(it.desc);const preDesc=(m&&DB.insumos[m])?DB.insumos[m].nome:(it.desc||'');return `
     <div style="border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:9px">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-        <div class="field" style="flex:3 1 240px;margin:0"><label>Descrição</label><input class="input" id="nfe_desc_${idx}" value="${esc(preDesc)}"></div>
-        <div class="field" style="flex:2 1 180px;margin:0"><label>Produto no app</label><select class="input" id="nfe_map_${idx}" onchange="nfeMapChanged(${idx})"><option value="novo" ${!m?'selected':''}>＋ Criar novo produto</option><option value="ignorar">Ignorar este item</option>${insumos.map(i=>`<option value="${i.id}" ${m===i.id?'selected':''}>${esc(i.nome)}</option>`).join('')}</select></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div class="field" style="margin:0;min-width:0"><label>Descrição</label><input class="input" id="nfe_desc_${idx}" value="${esc(preDesc)}"></div>
+        <div class="field" style="margin:0;min-width:0"><label>Produto no app</label><select class="input" id="nfe_map_${idx}" onchange="nfeMapChanged(${idx})"><option value="novo" ${!m?'selected':''}>＋ Criar novo produto</option><option value="ignorar">Ignorar este item</option>${insumos.map(i=>`<option value="${i.id}" ${m===i.id?'selected':''}>${esc(i.nome)}</option>`).join('')}</select></div>
       </div>
-      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
-        <div class="field" style="flex:1 1 120px;margin:0"><label>Categoria (DRE)</label><select class="input" id="nfe_grupo_${idx}" onchange="nfeSubRefresh(${idx})">${gruposDesp.map(g=>`<option ${g===gDef?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
-        <div class="field" style="flex:1 1 120px;margin:0"><label>Subcategoria</label><select class="input" id="nfe_sub_${idx}">${(subsDef.length?subsDef:['(sem subcategoria)']).map(x=>`<option ${x===subDef?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
-        <div class="field" style="flex:0 0 auto;margin:0"><label>Qtd ${esc(it.uCom||'')}</label><input class="input" id="nfe_qtd_${idx}" value="${it.qtd||0}" oninput="nfeRowTot(${idx})" style="width:66px;padding:6px 7px"></div>
-        <div class="field" style="flex:0 0 auto;margin:0"><label>V. unit (R$)</label><input class="input" id="nfe_vun_${idx}" value="${it.vUn||0}" oninput="nfeRowTot(${idx})" style="width:90px;padding:6px 7px"></div>
-        <b id="nfe_tot_${idx}" style="color:var(--ink);margin:0 0 8px 2px;white-space:nowrap;font-size:13px">= ${fmtBRL(it.vTotal)}</b>
+      <div style="display:grid;grid-template-columns:1fr 1fr 90px 100px 104px;gap:8px;align-items:end">
+        <div class="field" style="margin:0;min-width:0"><label>Categoria (DRE)</label><select class="input" id="nfe_grupo_${idx}" onchange="nfeSubRefresh(${idx})">${gruposDesp.map(g=>`<option ${g===gDef?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
+        <div class="field" style="margin:0;min-width:0"><label>Subcategoria</label><select class="input" id="nfe_sub_${idx}">${(subsDef.length?subsDef:['(sem subcategoria)']).map(x=>`<option ${x===subDef?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+        <div class="field" style="margin:0;min-width:0"><label>Qtd ${esc(it.uCom||'')}</label><input class="input" id="nfe_qtd_${idx}" value="${it.qtd||0}" oninput="nfeRowTot(${idx})" style="width:100%;padding:6px 7px"></div>
+        <div class="field" style="margin:0;min-width:0"><label>V. unit</label><input class="input" id="nfe_vun_${idx}" value="${it.vUn||0}" oninput="nfeRowTot(${idx})" style="width:100%;padding:6px 7px"></div>
+        <div class="field" style="margin:0;min-width:0"><label style="text-align:right">Total</label><b id="nfe_tot_${idx}" style="color:var(--ink);white-space:nowrap;font-size:13px;display:block;text-align:right;padding:6px 0">${fmtBRL(it.vTotal)}</b></div>
       </div>
     </div>`;}).join('');
   modal(`<div class="modal-head"><h3>Importar NF-e</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
