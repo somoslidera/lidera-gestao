@@ -1418,16 +1418,72 @@ function parseNFe(text){
 function nfeMatch(desc){const n=normHdr(desc);if(!n)return '';let best='';
   Object.values(DB.insumos).filter(i=>i.tipo!=='preparado').forEach(i=>{const ni=normHdr(i.nome);if(ni&&(n.includes(ni)||ni.includes(n)))best=i.id;});
   return best;}
+/* ----- Importar NF-e (PDF / DANFE) via pdf.js — best-effort ----- */
+const NFE_UNIDS=['UN','UND','UNID','PC','PÇ','PCT','PECA','CX','CXA','KG','G','GR','GRS','L','LT','LTR','ML','MG','DZ','DUZIA','FD','FR','FRD','SC','SACO','PT','POTE','BD','BDJ','BJ','GL','GLS','TB','RL','ROLO','M','MT','M2','M3','CJ','JG','BR','LATA','GAR','GARRAFA','PAR','PARES'];
+function nfeBrNum(s){if(s==null)return 0;s=(''+s).trim().replace(/[^\d.,-]/g,'');if(!s)return 0;if(s.indexOf(',')>=0)s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isFinite(n)?n:0;}
+function ensurePdfJs(){return new Promise((res,rej)=>{if(window.pdfjsLib)return res(window.pdfjsLib);const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';s.onload=()=>{try{window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';res(window.pdfjsLib);}catch(e){rej(e);}};s.onerror=()=>rej(new Error('Falha ao carregar o leitor de PDF.'));document.head.appendChild(s);});}
+async function pdfRows(arrbuf){const lib=await ensurePdfJs();const pdf=await lib.getDocument({data:arrbuf}).promise;const pages=[];
+  for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p);const tc=await page.getTextContent();
+    const items=tc.items.filter(i=>i.str&&i.str.trim()!=='').map(i=>({str:i.str,x:i.transform[4],y:i.transform[5]}));
+    items.sort((a,b)=>(b.y-a.y)||(a.x-b.x));
+    const rows=[];let cur=null;items.forEach(it=>{if(!cur||Math.abs(cur.y-it.y)>3.2){cur={y:it.y,items:[it]};rows.push(cur);}else cur.items.push(it);});
+    rows.forEach(r=>r.items.sort((a,b)=>a.x-b.x));pages.push(rows);}
+  return pages;}
+function parseDanfePdf(pages){
+  let rows=[];pages.forEach(pr=>{rows=rows.concat(pr);});
+  const lineText=r=>r.items.map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();
+  const allText=rows.map(lineText).join('\n');const U=allText.toUpperCase();
+  const cnpj=(allText.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/)||[])[0]||'';
+  let nNF='';{const m=U.match(/N[ºO°\.]{0,3}\s*([\d\.]{4,})\s*(?:S[ÉE]RIE|SERIE)/)||U.match(/N[ºO°]\.?\s*([\d\.]{5,})/);if(m)nNF=m[1].replace(/\D/g,'');}
+  let data='';{const m=allText.match(/(\d{2})\/(\d{2})\/(\d{4})/);if(m)data=m[3]+'-'+m[2]+'-'+m[1];}
+  let total=0;{const idx=U.indexOf('VALOR TOTAL DA NOTA');if(idx>=0){const seg=allText.slice(idx,idx+140).match(/[\d\.]+,\d{2}/g);if(seg&&seg.length)total=nfeBrNum(seg[seg.length-1]);}}
+  let start=-1,end=rows.length;
+  for(let i=0;i<rows.length;i++){const t=lineText(rows[i]).toUpperCase();
+    if(start<0&&((t.includes('DESCRI')&&(t.includes('QUANT')||t.includes('QTD')||t.includes('CFOP')))||t.includes('DADOS DOS PRODUTOS')))start=i+1;
+    else if(start>=0&&/C[ÁA]LCULO DO ISSQN|DADOS ADICIONAIS|INFORMA[ÇC][ÕO]ES COMPLEMENTARES|RESERVADO AO FISCO/.test(t)){end=i;break;}}
+  if(start<0)start=0;
+  let fornecedor='';{const lim=Math.min(14,start>0?start:14);const top=rows.slice(0,lim).map(lineText).filter(t=>t&&/[A-Za-zÀ-ú]{4,}/.test(t)&&!/^\d/.test(t)&&!/DANFE|RECEBEMOS|IDENTIFICA|DOCUMENTO AUXILIAR|CHAVE DE ACESSO|S[ÉE]RIE|FOLHA|SA[ÍI]DA|ENTRADA|PROTOCOLO|DESCRI|PRODUTO|C[ÓO]DIGO|QUANT|NCM|CFOP|VALOR|N[ºo°]/i.test(t));fornecedor=(top[0]||'').slice(0,80);}
+  const itens=[];
+  for(let i=start;i<end;i++){
+    let toks=[];rows[i].items.forEach(it=>it.str.split(/\s+/).forEach(t=>{if(t.trim())toks.push(t.trim());}));
+    if(!toks.length)continue;
+    let ncmIdx=-1;for(let k=0;k<toks.length;k++){const d8=toks[k].replace(/\./g,'');if(/^\d{8}$/.test(d8)){ncmIdx=k;break;}}
+    if(ncmIdx<0){const jt=toks.join(' ');if(itens.length&&/[A-Za-zÀ-ú]/.test(jt)&&!/\d[.,]\d/.test(jt)&&jt.length>2&&!/^[\d\s]+$/.test(jt))itens[itens.length-1].desc=(itens[itens.length-1].desc+' '+jt).trim();continue;}
+    let unIdx=-1;for(let k=ncmIdx+1;k<Math.min(toks.length,ncmIdx+6);k++){const tk=toks[k].toUpperCase().replace(/[^A-ZÀ-Ú0-9]/g,'');if(NFE_UNIDS.includes(tk)){unIdx=k;break;}}
+    const numStart=unIdx>=0?unIdx+1:ncmIdx+3;
+    const nums=[];for(let k=numStart;k<toks.length;k++){if(/^\d[\d\.]*,\d+$/.test(toks[k])||/^\d+$/.test(toks[k]))nums.push(toks[k]);}
+    if(nums.length<3)continue;
+    const qtd=nfeBrNum(nums[0]),vUn=nfeBrNum(nums[1]),vTotal=nfeBrNum(nums[2]);
+    let descToks=toks.slice(1,ncmIdx);if(!descToks.join('').replace(/[^A-Za-zÀ-ú]/g,''))descToks=toks.slice(0,ncmIdx);
+    let desc=descToks.join(' ').replace(/\s+/g,' ').trim();
+    const uCom=unIdx>=0?toks[unIdx]:'';
+    if(!desc&&!qtd)continue;
+    itens.push({desc:desc||'Item',uCom,qtd,vUn,vTotal});
+  }
+  if(!itens.length)return null;
+  if(!total)total=itens.reduce((s,i)=>s+(i.vTotal||0),0);
+  return {fornecedor,cnpj,nNF,data,total,itens,_pdf:true};
+}
 async function importarNFe(input){const f=input&&input.files&&input.files[0];if(input)input.value='';if(!f)return;
+  const isPdf=/\.pdf$/i.test(f.name)||f.type==='application/pdf';
+  if(isPdf){let d;toast('Lendo o PDF da nota…');
+    try{const buf=await f.arrayBuffer();const pages=await pdfRows(buf);d=parseDanfePdf(pages);}catch(e){return toast('Não consegui ler o PDF. Se possível, use o XML (mais preciso).');}
+    if(!d||!d.itens.length)return toast('Não reconheci os itens no PDF do DANFE. Tente o XML da nota (mais preciso).');
+    window._nfe=d;nfeConfirmModal(d);return;}
   let text;try{text=await f.text();}catch(e){return toast('Não foi possível ler o arquivo.');}
   const d=parseNFe(text);
-  if(!d)return toast('Não reconheci a NF-e. Envie o arquivo .xml da nota (NF-e ou NFC-e).');
+  if(!d)return toast('Não reconheci a NF-e. Envie o .xml da nota, ou o PDF do DANFE.');
   window._nfe=d; nfeConfirmModal(d);
 }
 function nfeConfirmModal(d){
   const cats=catList('insumo'),insumos=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado');
   const rows=d.itens.map((it,idx)=>{const m=nfeMatch(it.desc);return `<tr style="border-top:1px solid var(--line)">
-    <td style="padding:7px 8px"><div style="font-size:12.5px;font-weight:600">${esc(it.desc||'Item')}</div><div style="font-size:11px;color:var(--soft)">${it.qtd} ${esc(it.uCom||'')} · unit ${fmtBRL(it.vUn)} · total ${fmtBRL(it.vTotal)}</div></td>
+    <td style="padding:7px 8px"><div style="font-size:12.5px;font-weight:600">${esc(it.desc||'Item')}</div>
+      <div style="display:flex;gap:5px;align-items:center;margin-top:5px;font-size:11px;color:var(--soft);flex-wrap:wrap">
+        <input class="input" id="nfe_qtd_${idx}" value="${it.qtd||0}" oninput="nfeRowTot(${idx})" title="Quantidade" style="width:70px;padding:4px 6px;font-size:12px">${esc(it.uCom||'')}
+        <span>×</span><input class="input" id="nfe_vun_${idx}" value="${it.vUn||0}" oninput="nfeRowTot(${idx})" title="Valor unitário" style="width:88px;padding:4px 6px;font-size:12px">
+        <b id="nfe_tot_${idx}" style="color:var(--ink)">= ${fmtBRL(it.vTotal)}</b>
+      </div></td>
     <td style="padding:7px 8px"><select class="input" id="nfe_map_${idx}">
       <option value="novo" ${!m?'selected':''}>＋ Criar novo insumo</option>
       <option value="ignorar">Ignorar este item</option>
@@ -1443,6 +1499,7 @@ function nfeConfirmModal(d){
       <div class="dash-pill"><span>Itens</span><b>${d.itens.length}</b></div>
     </div>
     <div class="field" style="max-width:280px;margin-bottom:6px"><label>Categoria dos novos produtos</label><select class="input" id="nfe_cat">${(cats.length?cats:['Mercearia']).map(c=>`<option ${c==='Mercearia'?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+    ${d._pdf?`<div style="font-size:12px;background:var(--amber-bg,#fff7e6);border:1px solid var(--amber);color:#8a5a00;padding:9px 11px;border-radius:10px;margin-bottom:10px">⚠ Itens lidos do <b>PDF do DANFE</b> (leitura automática). Confira e ajuste a <b>quantidade e o valor unitário</b> de cada item abaixo antes de importar — o <b>XML</b> da nota é sempre mais preciso.</div>`:''}
     <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Confira cada item: vincule a um produto existente (atualiza o preço) ou crie um novo. A despesa usa o <b>nome do produto</b> na descrição — vincule sempre ao mesmo produto para somar os gastos sem duplicar.</div>
     <div style="max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:12px"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg);color:var(--soft);font-size:10px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px">Produto na nota</th><th style="text-align:left;padding:8px;width:46%">Produto no app</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
@@ -1455,8 +1512,10 @@ function nfeConfirmModal(d){
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="nfeAplicar()">Importar</button></div>`,true);
 }
+function nfeRowTot(idx){const q=nfeBrNum(($('#nfe_qtd_'+idx)||{}).value),v=nfeBrNum(($('#nfe_vun_'+idx)||{}).value);const s=$('#nfe_tot_'+idx);if(s)s.textContent='= '+fmtBRL(q*v);}
 function nfeAplicar(){
   const d=window._nfe;if(!d)return closeModal();
+  d.itens.forEach((it,idx)=>{const qEl=$('#nfe_qtd_'+idx),vEl=$('#nfe_vun_'+idx);if(qEl)it.qtd=nfeBrNum(qEl.value);if(vEl)it.vUn=nfeBrNum(vEl.value);if(qEl||vEl)it.vTotal=+((it.qtd||0)*(it.vUn||0)).toFixed(2);});
   const novaCat=($('#nfe_cat')&&$('#nfe_cat').value)||'Mercearia';
   DB.fin=DB.fin||{};DB.fin.fornecedores=DB.fin.fornecedores||[];
   if(d.fornecedor&&!DB.fin.fornecedores.some(f=>(f.nome||'').toLowerCase()===d.fornecedor.toLowerCase()))DB.fin.fornecedores.push({id:uid(),nome:d.fornecedor,contato:d.cnpj||''});
@@ -2270,7 +2329,7 @@ function finLancamentos(){
     <div class="section-head"><div><div class="ttl">Lançamentos</div><div class="desc">Receitas e despesas, alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="month" class="input" style="max-width:160px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()">
-        <label class="btn btn-ghost btn-sm" style="cursor:pointer">🧾 Importar NF-e<input type="file" accept=".xml" style="display:none" onchange="importarNFe(this)"></label>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="XML (mais preciso) ou PDF do DANFE">🧾 Importar NF-e<input type="file" accept=".xml,.pdf" style="display:none" onchange="importarNFe(this)"></label>
         <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆ Planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarLancamentos(this)"></label>
         <button class="btn btn-ghost btn-sm" onclick="modeloLancModal()">⬇ Modelo</button>
       </div></div>
