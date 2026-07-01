@@ -1475,51 +1475,63 @@ async function importarNFe(input){const f=input&&input.files&&input.files[0];if(
   if(!d)return toast('Não reconheci a NF-e. Envie o .xml da nota, ou o PDF do DANFE.');
   window._nfe=d; nfeConfirmModal(d);
 }
+function nfeEnsureCats(){DB.categorias=DB.categorias||{};if(!DB.categorias['CMV'])DB.categorias['CMV']={tipo:'despesa',subs:[]};if(!DB.categorias['CMV'].subs.includes('Entrada de Produtos'))DB.categorias['CMV'].subs.unshift('Entrada de Produtos');}
+function nfeSubRefresh(idx){const g=$('#nfe_grupo_'+idx),s=$('#nfe_sub_'+idx);if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=(c&&c.subs.length?c.subs:['(sem subcategoria)']).map(x=>`<option>${esc(x)}</option>`).join('');}
+function nfeMapChanged(idx){const sel=$('#nfe_map_'+idx),dEl=$('#nfe_desc_'+idx);if(!sel||!dEl)return;const v=sel.value;if(v&&v!=='novo'&&v!=='ignorar'&&DB.insumos[v])dEl.value=DB.insumos[v].nome;}
+function nfeRowTot(idx){const q=nfeBrNum(($('#nfe_qtd_'+idx)||{}).value),v=nfeBrNum(($('#nfe_vun_'+idx)||{}).value);const s=$('#nfe_tot_'+idx);if(s)s.textContent='= '+fmtBRL(q*v);}
 function nfeConfirmModal(d){
+  nfeEnsureCats();
   const cats=catList('insumo'),insumos=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado');
-  const rows=d.itens.map((it,idx)=>{const m=nfeMatch(it.desc);return `<tr style="border-top:1px solid var(--line)">
-    <td style="padding:7px 8px"><div style="font-size:12.5px;font-weight:600">${esc(it.desc||'Item')}</div>
-      <div style="display:flex;gap:5px;align-items:center;margin-top:5px;font-size:11px;color:var(--soft);flex-wrap:wrap">
-        <input class="input" id="nfe_qtd_${idx}" value="${it.qtd||0}" oninput="nfeRowTot(${idx})" title="Quantidade" style="width:70px;padding:4px 6px;font-size:12px">${esc(it.uCom||'')}
-        <span>×</span><input class="input" id="nfe_vun_${idx}" value="${it.vUn||0}" oninput="nfeRowTot(${idx})" title="Valor unitário" style="width:88px;padding:4px 6px;font-size:12px">
-        <b id="nfe_tot_${idx}" style="color:var(--ink)">= ${fmtBRL(it.vTotal)}</b>
-      </div></td>
-    <td style="padding:7px 8px"><select class="input" id="nfe_map_${idx}">
-      <option value="novo" ${!m?'selected':''}>＋ Criar novo insumo</option>
-      <option value="ignorar">Ignorar este item</option>
-      ${insumos.map(i=>`<option value="${i.id}" ${m===i.id?'selected':''}>${esc(i.nome)}</option>`).join('')}
-    </select></td></tr>`;}).join('');
+  const gruposDesp=Object.keys(DB.categorias).filter(g=>grupoTipo(g)!=='receita');
+  const gDef=gruposDesp.includes('CMV')?'CMV':(gruposDesp[0]||'CMV');
+  const subsDef=(DB.categorias[gDef]||{subs:[]}).subs;const subDef=subsDef.includes('Entrada de Produtos')?'Entrada de Produtos':(subsDef[0]||'');
+  const cards=d.itens.map((it,idx)=>{const m=nfeMatch(it.desc);const preDesc=(m&&DB.insumos[m])?DB.insumos[m].nome:(it.desc||'');return `
+    <div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px">
+      <div class="field" style="margin:0 0 8px"><label>Descrição</label><input class="input" id="nfe_desc_${idx}" value="${esc(preDesc)}"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="field" style="flex:2 1 220px;margin:0"><label>Produto no app</label><select class="input" id="nfe_map_${idx}" onchange="nfeMapChanged(${idx})"><option value="novo" ${!m?'selected':''}>＋ Criar novo produto</option><option value="ignorar">Ignorar este item</option>${insumos.map(i=>`<option value="${i.id}" ${m===i.id?'selected':''}>${esc(i.nome)}</option>`).join('')}</select></div>
+        <div class="field" style="flex:1 1 150px;margin:0"><label>Categoria (DRE)</label><select class="input" id="nfe_grupo_${idx}" onchange="nfeSubRefresh(${idx})">${gruposDesp.map(g=>`<option ${g===gDef?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
+        <div class="field" style="flex:1 1 150px;margin:0"><label>Subcategoria</label><select class="input" id="nfe_sub_${idx}">${(subsDef.length?subsDef:['(sem subcategoria)']).map(x=>`<option ${x===subDef?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:12.5px;color:var(--soft);flex-wrap:wrap">
+        <span>Qtd</span><input class="input" id="nfe_qtd_${idx}" value="${it.qtd||0}" oninput="nfeRowTot(${idx})" style="width:74px;padding:5px 7px;font-size:12.5px">${esc(it.uCom||'')}
+        <span>× R$</span><input class="input" id="nfe_vun_${idx}" value="${it.vUn||0}" oninput="nfeRowTot(${idx})" style="width:94px;padding:5px 7px;font-size:12.5px">
+        <b id="nfe_tot_${idx}" style="color:var(--ink);margin-left:4px">= ${fmtBRL(it.vTotal)}</b>
+      </div>
+    </div>`;}).join('');
   modal(`<div class="modal-head"><h3>Importar NF-e</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-      <div class="dash-pill"><span>Fornecedor</span><b>${esc(d.fornecedor||'—')}</b></div>
-      ${d.nNF?`<div class="dash-pill"><span>NF nº</span><b>${esc(d.nNF)}</b></div>`:''}
-      ${d.data?`<div class="dash-pill"><span>Data</span><b>${fmtDataBR(d.data)}</b></div>`:''}
-      <div class="dash-pill"><span>Total</span><b>${fmtBRL(d.total)}</b></div>
-      <div class="dash-pill"><span>Itens</span><b>${d.itens.length}</b></div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+      <div class="field" style="flex:2 1 240px;margin:0"><label>Fornecedor</label><input class="input" id="nfe_forn" value="${esc(d.fornecedor||'')}"></div>
+      <div class="field" style="flex:1 1 110px;margin:0"><label>NF nº</label><input class="input" id="nfe_nnf" value="${esc(d.nNF||'')}"></div>
+      <div class="field" style="flex:1 1 150px;margin:0"><label>Data</label><input class="input" type="date" id="nfe_data" value="${d.data||''}"></div>
     </div>
-    <div class="field" style="max-width:280px;margin-bottom:6px"><label>Categoria dos novos produtos</label><select class="input" id="nfe_cat">${(cats.length?cats:['Mercearia']).map(c=>`<option ${c==='Mercearia'?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
-    ${d._pdf?`<div style="font-size:12px;background:var(--amber-bg,#fff7e6);border:1px solid var(--amber);color:#8a5a00;padding:9px 11px;border-radius:10px;margin-bottom:10px">⚠ Itens lidos do <b>PDF do DANFE</b> (leitura automática). Confira e ajuste a <b>quantidade e o valor unitário</b> de cada item abaixo antes de importar — o <b>XML</b> da nota é sempre mais preciso.</div>`:''}
-    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Confira cada item: vincule a um produto existente (atualiza o preço) ou crie um novo. A despesa usa o <b>nome do produto</b> na descrição — vincule sempre ao mesmo produto para somar os gastos sem duplicar.</div>
-    <div style="max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:12px"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg);color:var(--soft);font-size:10px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px">Produto na nota</th><th style="text-align:left;padding:8px;width:46%">Produto no app</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="nfe_lanc" checked style="width:16px;height:16px"> Lançar a compra como despesa <b>(CMV · Entrada de Produtos)</b></label>
+    <div class="field" style="max-width:300px;margin-bottom:8px"><label>Categoria do produto novo (catálogo de Produtos)</label><select class="input" id="nfe_cat">${(cats.length?cats:['Mercearia']).map(c=>`<option ${c==='Mercearia'?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+    ${d._pdf?`<div style="font-size:12px;background:var(--amber-bg,#fff7e6);border:1px solid var(--amber);color:#8a5a00;padding:9px 11px;border-radius:10px;margin-bottom:10px">⚠ Itens lidos do <b>PDF do DANFE</b> (leitura automática). Confira e ajuste os campos de cada item antes de importar — o <b>XML</b> da nota é sempre mais preciso.</div>`:''}
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Cada item é editável: descrição, produto vinculado (atualiza o preço), <b>categoria e subcategoria do DRE</b>, quantidade e valor. Vincule ao mesmo produto para somar os gastos sem duplicar.</div>
+    <div style="max-height:360px;overflow:auto">${cards}</div>
+    <div style="margin-top:6px;border-top:1px solid var(--line);padding-top:12px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="nfe_lanc" checked style="width:16px;height:16px"> Lançar a compra como despesa no DRE</label>
       <div style="display:flex;gap:18px;margin:9px 0 0 24px;font-size:12.5px;flex-wrap:wrap">
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="nfe_modo" value="item" checked> Uma linha por produto <span style="color:var(--soft)">(descrição = nome do produto)</span></label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="nfe_modo" value="total"> Uma linha total <span style="color:var(--soft)">(${fmtBRL(d.total)})</span></label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="nfe_modo" value="item" checked> Uma linha por produto <span style="color:var(--soft)">(cada um na sua categoria)</span></label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="nfe_modo" value="total"> Uma linha total <span style="color:var(--soft)">(${fmtBRL(d.total)} em CMV · Entrada de Produtos)</span></label>
       </div>
     </div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="nfeAplicar()">Importar</button></div>`,true);
 }
-function nfeRowTot(idx){const q=nfeBrNum(($('#nfe_qtd_'+idx)||{}).value),v=nfeBrNum(($('#nfe_vun_'+idx)||{}).value);const s=$('#nfe_tot_'+idx);if(s)s.textContent='= '+fmtBRL(q*v);}
 function nfeAplicar(){
-  const d=window._nfe;if(!d)return closeModal();
-  d.itens.forEach((it,idx)=>{const qEl=$('#nfe_qtd_'+idx),vEl=$('#nfe_vun_'+idx);if(qEl)it.qtd=nfeBrNum(qEl.value);if(vEl)it.vUn=nfeBrNum(vEl.value);if(qEl||vEl)it.vTotal=+((it.qtd||0)*(it.vUn||0)).toFixed(2);});
+  const d=window._nfe;if(!d)return closeModal();nfeEnsureCats();
+  if($('#nfe_forn'))d.fornecedor=($('#nfe_forn').value||'').trim();
+  if($('#nfe_nnf'))d.nNF=($('#nfe_nnf').value||'').trim();
+  if($('#nfe_data'))d.data=$('#nfe_data').value||d.data;
+  d.itens.forEach((it,idx)=>{const dEl=$('#nfe_desc_'+idx);if(dEl)it.desc=(dEl.value||'').trim()||it.desc;
+    const qEl=$('#nfe_qtd_'+idx),vEl=$('#nfe_vun_'+idx);if(qEl)it.qtd=nfeBrNum(qEl.value);if(vEl)it.vUn=nfeBrNum(vEl.value);it.vTotal=+((it.qtd||0)*(it.vUn||0)).toFixed(2);
+    const gEl=$('#nfe_grupo_'+idx),sEl=$('#nfe_sub_'+idx);it._grupo=gEl?gEl.value:'CMV';it._sub=sEl?sEl.value:'Entrada de Produtos';});
   const novaCat=($('#nfe_cat')&&$('#nfe_cat').value)||'Mercearia';
   DB.fin=DB.fin||{};DB.fin.fornecedores=DB.fin.fornecedores||[];
   if(d.fornecedor&&!DB.fin.fornecedores.some(f=>(f.nome||'').toLowerCase()===d.fornecedor.toLowerCase()))DB.fin.fornecedores.push({id:uid(),nome:d.fornecedor,contato:d.cnpj||''});
-  let cri=0,upd=0;const linkIds=[]; // por índice: insumo vinculado (garante nome canônico no lançamento)
+  let cri=0,upd=0;const linkIds=[];
   d.itens.forEach((it,idx)=>{const sel=$('#nfe_map_'+idx);const target=sel?sel.value:'novo';
     if(target==='ignorar'){linkIds[idx]=null;return;}
     if(target&&target!=='novo'&&DB.insumos[target]){const ins=DB.insumos[target];if(it.vUn>0)ins.preco=it.vUn;if(d.fornecedor)ins.fornecedor=d.fornecedor;upd++;linkIds[idx]=ins.id;}
@@ -1530,8 +1542,7 @@ function nfeAplicar(){
     const modo=(document.querySelector('input[name=nfe_modo]:checked')||{}).value||'item';
     if(modo==='item'){
       d.itens.forEach((it,idx)=>{const insId=linkIds[idx];if(!insId)return;const v=it.vTotal||0;if(v<=0)return;
-        const nome=(DB.insumos[insId]&&DB.insumos[insId].nome)||it.desc||'Produto'; // nome canônico do insumo (evita duplicar com nomes diferentes)
-        DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:'CMV',sub:'Entrada de Produtos',descricao:nome,valor:v,forma:'',fromNFe:true,insumoId:insId,nfe:d.nNF||''});});
+        DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:it._grupo||'CMV',sub:it._sub||'',descricao:it.desc||'Produto',valor:v,forma:'',fromNFe:true,insumoId:insId,nfe:d.nNF||''});});
     } else if(d.total>0){
       DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:'CMV',sub:'Entrada de Produtos',descricao:(d.fornecedor||'Compra')+(d.nNF?' · NF '+d.nNF:''),valor:d.total,forma:'',fromNFe:true,nfe:d.nNF||''});
     }
