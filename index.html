@@ -1486,17 +1486,17 @@ function nfeConfirmModal(d){
   const gDef=gruposDesp.includes('CMV')?'CMV':(gruposDesp[0]||'CMV');
   const subsDef=(DB.categorias[gDef]||{subs:[]}).subs;const subDef=subsDef.includes('Entrada de Produtos')?'Entrada de Produtos':(subsDef[0]||'');
   const cards=d.itens.map((it,idx)=>{const m=nfeMatch(it.desc);const preDesc=(m&&DB.insumos[m])?DB.insumos[m].nome:(it.desc||'');return `
-    <div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px">
-      <div class="field" style="margin:0 0 8px"><label>Descrição</label><input class="input" id="nfe_desc_${idx}" value="${esc(preDesc)}"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div class="field" style="flex:2 1 220px;margin:0"><label>Produto no app</label><select class="input" id="nfe_map_${idx}" onchange="nfeMapChanged(${idx})"><option value="novo" ${!m?'selected':''}>＋ Criar novo produto</option><option value="ignorar">Ignorar este item</option>${insumos.map(i=>`<option value="${i.id}" ${m===i.id?'selected':''}>${esc(i.nome)}</option>`).join('')}</select></div>
-        <div class="field" style="flex:1 1 150px;margin:0"><label>Categoria (DRE)</label><select class="input" id="nfe_grupo_${idx}" onchange="nfeSubRefresh(${idx})">${gruposDesp.map(g=>`<option ${g===gDef?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
-        <div class="field" style="flex:1 1 150px;margin:0"><label>Subcategoria</label><select class="input" id="nfe_sub_${idx}">${(subsDef.length?subsDef:['(sem subcategoria)']).map(x=>`<option ${x===subDef?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:9px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <div class="field" style="flex:3 1 240px;margin:0"><label>Descrição</label><input class="input" id="nfe_desc_${idx}" value="${esc(preDesc)}"></div>
+        <div class="field" style="flex:2 1 180px;margin:0"><label>Produto no app</label><select class="input" id="nfe_map_${idx}" onchange="nfeMapChanged(${idx})"><option value="novo" ${!m?'selected':''}>＋ Criar novo produto</option><option value="ignorar">Ignorar este item</option>${insumos.map(i=>`<option value="${i.id}" ${m===i.id?'selected':''}>${esc(i.nome)}</option>`).join('')}</select></div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:12.5px;color:var(--soft);flex-wrap:wrap">
-        <span>Qtd</span><input class="input" id="nfe_qtd_${idx}" value="${it.qtd||0}" oninput="nfeRowTot(${idx})" style="width:74px;padding:5px 7px;font-size:12.5px">${esc(it.uCom||'')}
-        <span>× R$</span><input class="input" id="nfe_vun_${idx}" value="${it.vUn||0}" oninput="nfeRowTot(${idx})" style="width:94px;padding:5px 7px;font-size:12.5px">
-        <b id="nfe_tot_${idx}" style="color:var(--ink);margin-left:4px">= ${fmtBRL(it.vTotal)}</b>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="field" style="flex:1 1 120px;margin:0"><label>Categoria (DRE)</label><select class="input" id="nfe_grupo_${idx}" onchange="nfeSubRefresh(${idx})">${gruposDesp.map(g=>`<option ${g===gDef?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
+        <div class="field" style="flex:1 1 120px;margin:0"><label>Subcategoria</label><select class="input" id="nfe_sub_${idx}">${(subsDef.length?subsDef:['(sem subcategoria)']).map(x=>`<option ${x===subDef?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+        <div class="field" style="flex:0 0 auto;margin:0"><label>Qtd ${esc(it.uCom||'')}</label><input class="input" id="nfe_qtd_${idx}" value="${it.qtd||0}" oninput="nfeRowTot(${idx})" style="width:66px;padding:6px 7px"></div>
+        <div class="field" style="flex:0 0 auto;margin:0"><label>V. unit (R$)</label><input class="input" id="nfe_vun_${idx}" value="${it.vUn||0}" oninput="nfeRowTot(${idx})" style="width:90px;padding:6px 7px"></div>
+        <b id="nfe_tot_${idx}" style="color:var(--ink);margin:0 0 8px 2px;white-space:nowrap;font-size:13px">= ${fmtBRL(it.vTotal)}</b>
       </div>
     </div>`;}).join('');
   modal(`<div class="modal-head"><h3>Importar NF-e</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
