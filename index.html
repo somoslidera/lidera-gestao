@@ -994,7 +994,7 @@ function normData(){
   // Lançamentos financeiros + categorias (DRE / Fluxo de Caixa)
   if(!DB.categorias||!Object.keys(DB.categorias).length){DB.categorias={};DRE_DEFAULT.forEach(([g,tipo,subs])=>{DB.categorias[g]={tipo,subs:subs.slice()};});}
   DB.lancamentos=DB.lancamentos||[];
-  if(!f._taxasSync){syncAllTaxas();f._taxasSync=true;} // gera taxas de cartão/PIX p/ receitas já lançadas (1x)
+  if(!f._taxasRemovidas){DB.lancamentos=DB.lancamentos.filter(l=>!l.autoTaxa);f._taxasRemovidas=true;} // remove as taxas automáticas de cartão/PIX já lançadas (1x)
   DB.desperdicios=DB.desperdicios||[];
   DB.despMotivos=(DB.despMotivos&&DB.despMotivos.length)?DB.despMotivos:DESP_MOTIVOS.slice();
   DB.formasPagamento=(DB.formasPagamento&&DB.formasPagamento.length)?DB.formasPagamento:FORMAS_DEFAULT.slice();
@@ -2277,16 +2277,11 @@ function taxaInfo(L){ // identifica a taxa pela forma de pagamento (ou pela subc
   return null;
 }
 function ensureTaxaSubs(){const g=DB.categorias&&DB.categorias['Despesas Financeiras'];if(!g)return;['Taxa de Débito','Taxa de Crédito','Taxa de PIX'].forEach(s=>{if(!g.subs.includes(s))g.subs.push(s);});}
-function syncTaxaLanc(L){ // cria/atualiza/remove a despesa de taxa vinculada a uma receita
-  DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromTaxa!==L.id);
-  if(!L||grupoTipo(L.grupo)!=='receita')return;
-  const t=taxaInfo(L);
-  if(t&&t.pct>0&&(L.valor||0)>0){ensureTaxaSubs();
-    DB.lancamentos.push({id:uid(),fromTaxa:L.id,autoTaxa:true,data:L.data,grupo:'Despesas Financeiras',sub:t.sub,descricao:`${t.sub} · ${L.descricao||L.forma||''}`,valor:Math.round(L.valor*t.pct/100*100)/100,forma:L.forma});}
+function syncTaxaLanc(L){ // lançamento automático de taxa desativado: apenas remove taxa antiga vinculada
+  if(!L)return;DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromTaxa!==L.id);
 }
-function syncAllTaxas(){ // recalcula todas as taxas (uso em importação, mudança de % e migração)
+function syncAllTaxas(){ // lançamento automático de taxa desativado: apenas limpa as taxas automáticas existentes
   DB.lancamentos=(DB.lancamentos||[]).filter(l=>!l.autoTaxa);
-  DB.lancamentos.slice().forEach(L=>{if(grupoTipo(L.grupo)==='receita')syncTaxaLanc(L);});
 }
 function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast('Informe o valor');
   const novo={id:uid(),data:$('#lc_data').value||hojeISO(),grupo:$('#lc_grupo').value,sub:$('#lc_sub').value||'',descricao:($('#lc_desc').value||'').trim(),valor,forma:$('#lc_forma').value||''};
