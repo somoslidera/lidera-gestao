@@ -3646,6 +3646,7 @@ function emptyState(t,d,action){return `<div class="empty"><svg viewBox="0 0 24 
 const SUPA_URL='https://fvcbxorfstqqeewocxkf.supabase.co', SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2J4b3Jmc3RxcWVld29jeGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzM5MjgsImV4cCI6MjA5Njg0OTkyOH0.X9gnZt535F1ASHpUaL24eEZysHHECwzfBwjaR4kVnyw';
 const sb=(window.supabase&&SUPA_URL.indexOf('http')===0)?window.supabase.createClient(SUPA_URL,SUPA_ANON):null;
 let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false, MEMBRO_PERMS=null;
+let IS_SUPER=false, MY_UID=null, MY_LIMITE=5, CONSULTORES=[], adminConsFiltro='';
 function emptyDB(){return {insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};}
 function pushCloud(){if(!CLOUD||!sb||!ORG)return;clearTimeout(window._cloudT);window._cloudT=setTimeout(()=>{sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id).then(()=>{},()=>{});},800);}
 async function chamarFn(nome,body){const s=(await sb.auth.getSession()).data.session;const r=await fetch(SUPA_URL+'/functions/v1/'+nome,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_ANON,'Authorization':'Bearer '+(s?s.access_token:'')},body:JSON.stringify(body||{})});let j={};try{j=await r.json();}catch(e){}return {status:r.status,data:j};}
@@ -3664,7 +3665,7 @@ async function afterAuth(){
   const uid=user.id, email=(user.email||'').toLowerCase();
   let perfil=null;try{perfil=(await sb.from('perfis').select('*').eq('id',uid).single()).data;}catch(e){}
   PERFIL=perfil||{papel:'cliente',org_id:null};
-  if(PERFIL.papel==='admin'){MEMBRO_PERMS=null;showAdmin();}
+  if(PERFIL.papel==='admin'||PERFIL.papel==='consultor'){IS_SUPER=(PERFIL.papel==='admin');MY_UID=uid;MY_LIMITE=(PERFIL.limite_clientes!=null?PERFIL.limite_clientes:5);MEMBRO_PERMS=null;showAdmin();}
   else{await entrarComoCliente(PERFIL.org_id,email);}
 }
 async function entrarComoCliente(orgId,email){
@@ -3809,24 +3810,30 @@ function projCur(){return ADMIN_ORGS.find(o=>o.id===adminSel);}
 async function projSaveOrg(o){if(!o)return;try{const cur=(await sb.from('organizacoes').select('dados').eq('id',o.id).single()).data;const dados=(cur&&cur.dados)||{};dados._projeto=o.dados._projeto;await sb.from('organizacoes').update({dados}).eq('id',o.id);o.dados=dados;}catch(e){toast('Erro ao salvar projeto');}}
 
 async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin();
+  const cs=document.getElementById('consScreen');if(cs)cs.style.display='none';
+  const titulo=IS_SUPER?`Flow <span style="font-size:14px;color:var(--gold)">· Painel Lidera</span>`:`Flow <span style="font-size:14px;color:var(--gold)">· Meu Painel</span>`;
+  const sub=IS_SUPER?'Controle geral de consultores, clientes e projetos':`Seus clientes${MY_LIMITE?` · limite ${MY_LIMITE}`:''}`;
   b.innerHTML=`<div class="admin-wrap">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-      <div><div style="font-family:'Fraunces',serif;font-size:26px;font-weight:700">Flow <span style="font-size:14px;color:var(--gold)">· Painel Lidera</span></div>
-      <div style="font-size:13px;color:var(--muted)">Controle geral dos clientes e projetos</div></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="showFormacaoAdmin()">🎓 Formação</button><button class="btn btn-primary" onclick="novoCliente()">${icoPlus} Novo cliente</button><button class="btn btn-ghost" onclick="logout()">Sair</button></div></div>
+      <div><div style="font-family:'Fraunces',serif;font-size:26px;font-weight:700">${titulo}</div>
+      <div style="font-size:13px;color:var(--muted)">${sub}</div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">${IS_SUPER?`<button class="btn btn-ghost" onclick="showConsultores()">👥 Consultores</button><button class="btn btn-ghost" onclick="showFormacaoAdmin()">🎓 Formação</button>`:''}<button class="btn btn-primary" onclick="novoCliente()">${icoPlus} Novo cliente</button><button class="btn btn-ghost" onclick="logout()">Sair</button></div></div>
     <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
       <aside id="admin_side" style="flex:0 0 300px;width:300px;max-width:100%"><div style="color:var(--muted)">Carregando…</div></aside>
       <main id="admin_main" style="flex:1;min-width:280px"></main>
     </div></div>`;
   try{ADMIN_ORGS=(await sb.from('organizacoes').select('*').order('nome',{ascending:true})).data||[];}catch(e){ADMIN_ORGS=[];}
   try{ADMIN_PEND=(await sb.from('perfis').select('*').eq('papel','cliente').is('org_id',null)).data||[];}catch(e){ADMIN_PEND=[];}
+  if(IS_SUPER){try{CONSULTORES=(await sb.from('perfis').select('*').eq('papel','consultor').order('nome',{ascending:true})).data||[];}catch(e){CONSULTORES=[];}}else{CONSULTORES=[];}
   renderAdmin();
 }
+function consNome(id){if(!id)return 'Lidera';const c=CONSULTORES.find(x=>x.id===id);return c?(c.nome||c.email||'Consultor'):'Consultor';}
 function renderAdmin(){renderAdminSide();renderAdminMain();}
 function renderAdminSide(){const el=$('#admin_side');if(!el)return;
   const arqd=o=>!!(o.dados&&o.dados._arquivado);
   const ativos=ADMIN_ORGS.filter(o=>!arqd(o)), arq=ADMIN_ORGS.filter(arqd);
   el.innerHTML=`
+   ${IS_SUPER&&CONSULTORES.length?`<select class="input" style="margin-bottom:10px" onchange="adminConsFiltro=this.value;renderAdminList()"><option value="" ${adminConsFiltro===''?'selected':''}>Todos os consultores</option><option value="__lidera__" ${adminConsFiltro==='__lidera__'?'selected':''}>Lidera (meus clientes)</option>${CONSULTORES.map(c=>`<option value="${c.id}" ${adminConsFiltro===c.id?'selected':''}>${esc(c.nome||c.email||'Consultor')}</option>`).join('')}</select>`:''}
    <div class="pill-filter" style="margin-bottom:10px"><button class="${adminTab!=='arquivados'?'on':''}" onclick="adminTab='ativos';renderAdminSide();renderAdminMain()">Ativos (${ativos.length})</button><button class="${adminTab==='arquivados'?'on':''}" onclick="adminTab='arquivados';renderAdminSide();renderAdminMain()">Arquivados (${arq.length})</button></div>
    <input class="input" id="admin_busca" placeholder="🔎 Buscar restaurante…" value="${esc(adminBusca)}" oninput="adminBusca=this.value;renderAdminList()" style="margin-bottom:10px">
    <div id="admin_listc" class="card" style="padding:6px;max-height:68vh;overflow:auto"></div>`;
@@ -3835,6 +3842,7 @@ function renderAdminSide(){const el=$('#admin_side');if(!el)return;
 function renderAdminList(){const el=$('#admin_listc');if(!el)return;
   const arqd=o=>!!(o.dados&&o.dados._arquivado);
   let lista=adminTab==='arquivados'?ADMIN_ORGS.filter(arqd):ADMIN_ORGS.filter(o=>!arqd(o));
+  if(IS_SUPER&&adminConsFiltro){if(adminConsFiltro==='__lidera__')lista=lista.filter(o=>!o.consultor_id);else lista=lista.filter(o=>o.consultor_id===adminConsFiltro);}
   const q=adminBusca.trim().toLowerCase();
   if(q)lista=lista.filter(o=>(o.nome||'').toLowerCase().includes(q));
   lista=lista.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
@@ -3845,7 +3853,7 @@ function renderAdminList(){const el=$('#admin_listc');if(!el)return;
         ${atr?`<span title="${atr} atrasada(s)" style="color:${sel?'#ffb4b4':'var(--red)'};font-size:11px;font-weight:600">⚠ ${atr}</span>`:''}
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:3px">
-        <span style="font-size:11px;${sel?'color:#cdd6ea':'color:var(--soft)'}">${susp?'suspenso':esc(o.responsavel||'')||'—'}</span>
+        <span style="font-size:11px;${sel?'color:#cdd6ea':'color:var(--soft)'}">${IS_SUPER?esc(consNome(o.consultor_id)):(susp?'suspenso':esc(o.responsavel||'')||'—')}</span>
         <span style="font-size:11px;${sel?'color:#cdd6ea':'color:var(--soft)'}">${p?pct+'%':'—'}</span>
       </div>
       ${p?`<div style="height:4px;border-radius:3px;background:${sel?'rgba(255,255,255,.25)':'var(--line)'};margin-top:5px"><div style="height:4px;border-radius:3px;width:${pct}%;background:${pct>=100?'var(--green)':'var(--gold)'}"></div></div>`:''}
@@ -3925,7 +3933,8 @@ function adminOverviewHTML(){const arqd=o=>!!(o.dados&&o.dados._arquivado);const
    <div class="kpi"><div class="k-lbl">Clientes</div><div class="k-val">${ativosArr.length}</div><div class="k-sub" style="color:var(--soft)">${ativos} ativos</div></div>
    <div class="kpi"><div class="k-lbl">Faturamento somado</div><div class="k-val" style="font-size:21px">${fmtBRL(fatTot)}</div><div class="k-sub" style="color:var(--soft)">clientes ativos</div></div>
    <div class="kpi"><div class="k-lbl">Aguardando vínculo</div><div class="k-val" style="color:${ADMIN_PEND.length?'var(--amber)':'var(--green)'}">${ADMIN_PEND.length}</div><div class="k-sub" style="color:var(--soft)">novos cadastros</div></div>
-   <div class="kpi"><div class="k-lbl">Tarefas atrasadas</div><div class="k-val" style="color:${atrTot?'var(--red)':'var(--green)'}">${atrTot}</div><div class="k-sub" style="color:var(--soft)">nos projetos</div></div></div>`;
+   <div class="kpi"><div class="k-lbl">Tarefas atrasadas</div><div class="k-val" style="color:${atrTot?'var(--red)':'var(--green)'}">${atrTot}</div><div class="k-sub" style="color:var(--soft)">nos projetos</div></div>
+   ${IS_SUPER?`<div class="kpi" onclick="showConsultores()" style="cursor:pointer"><div class="k-lbl">Consultores</div><div class="k-val">${CONSULTORES.length}</div><div class="k-sub" style="color:var(--soft)">gerenciar carteiras</div></div>`:''}</div>`;
   if(ADMIN_PEND.length)html+=`<div class="card card-pad" style="border-color:var(--amber);margin-top:14px"><div class="ttl" style="margin-bottom:8px">⏳ Novos cadastros aguardando liberação</div>${ADMIN_PEND.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${esc(p.email||'(sem e-mail)')}</b></div><select class="input" style="max-width:260px" onchange="vincularPerfil('${p.id}',this.value)"><option value="">Vincular a um restaurante…</option>${ADMIN_ORGS.map(o=>`<option value="${o.id}">${esc(o.nome)}</option>`).join('')}</select></div>`).join('')}</div>`;
   html+=`<div class="card card-pad" style="margin-top:14px;color:var(--muted);font-size:13.5px">👈 Selecione um restaurante na lista para ver os <b>dados de hoje</b> e o <b>controle de projeto</b> (tarefas, prazos e progresso).</div>`;
   return html;
@@ -4034,12 +4043,20 @@ async function excluirCliente(orgId,nome){
     for(const p of ps){try{await chamarFn('criar-membro',{acao:'remover',authId:p.id});}catch(e){}}
     await sb.from('organizacoes').delete().eq('id',orgId);}catch(e){return toast('Erro ao excluir');}
   toast('Cliente excluído');showAdmin();}
+function clientesDe(cid){return ADMIN_ORGS.filter(o=>o.consultor_id===cid&&!(o.dados&&o.dados._arquivado)).length;}
 function novoCliente(){
+  if(!IS_SUPER&&MY_LIMITE&&clientesDe(MY_UID)>=MY_LIMITE){
+    return modal(`<div class="modal-head"><h3>Limite atingido</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+    <div class="modal-body"><div style="font-size:13.5px;color:var(--muted)">Você atingiu o limite de <b>${MY_LIMITE} clientes</b> do seu plano. Para adicionar mais, fale com a Lidera para aumentar o seu limite.</div></div>
+    <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal()">Entendi</button></div>`);
+  }
+  const consSel=IS_SUPER&&CONSULTORES.length?`<div class="field"><label>Consultor responsável</label><select class="input" id="nc_cons"><option value="">Lidera (você)</option>${CONSULTORES.map(c=>`<option value="${c.id}">${esc(c.nome||c.email||'Consultor')} — ${clientesDe(c.id)}/${c.limite_clientes!=null?c.limite_clientes:5}</option>`).join('')}</select></div>`:'';
   modal(`<div class="modal-head"><h3>Novo cliente</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div id="nc_err" style="display:none;background:var(--red-bg);color:var(--red);font-size:13px;padding:10px 12px;border-radius:10px;margin-bottom:12px"></div>
     <div class="field"><label>Nome do restaurante</label><input class="input" id="nc_nome" placeholder="Ex.: Restaurante Lidera"></div>
     <div class="field"><label>Responsável</label><input class="input" id="nc_resp" placeholder="Nome do responsável"></div>
+    ${consSel}
     <div style="font-size:12px;color:var(--soft)">O acesso (login) você cria depois, em <b>Abrir app › Equipe › Adicionar membro</b>.</div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="doNovoCliente()">Criar cliente</button></div>`);
@@ -4049,8 +4066,11 @@ async function doNovoCliente(){
   const nome=$('#nc_nome').value.trim(),resp=$('#nc_resp').value.trim();
   const err=$('#nc_err');const showErr=m=>{if(err){err.style.display='block';err.textContent=m;}};
   if(!nome)return showErr('Informe o nome do restaurante.');
+  const consId=IS_SUPER?(($('#nc_cons')&&$('#nc_cons').value)||null):MY_UID;
+  if(consId){const c=CONSULTORES.find(x=>x.id===consId);const lim=consId===MY_UID&&!IS_SUPER?MY_LIMITE:(c?(c.limite_clientes!=null?c.limite_clientes:5):null);
+    if(lim&&clientesDe(consId)>=lim)return showErr('Limite de '+lim+' clientes atingido para '+(IS_SUPER?'esse consultor':'você')+'.');}
   const btn=document.querySelector('.modal-foot .btn-primary');if(btn){btn.disabled=true;btn.textContent='Criando…';}
-  let res;try{res=await sb.from('organizacoes').insert({nome,responsavel:resp,status:'ativo',dados:{}}).select('id').single();}catch(e){res={error:e};}
+  let res;try{res=await sb.from('organizacoes').insert({nome,responsavel:resp,status:'ativo',dados:{},consultor_id:consId||null}).select('id').single();}catch(e){res={error:e};}
   if(btn){btn.disabled=false;btn.textContent='Criar cliente';}
   if(res.error)return showErr('Não foi possível criar: '+(res.error.message||res.error));
   const novoId=res.data&&res.data.id;
@@ -4065,6 +4085,63 @@ async function abrirCliente(orgId){let org=null;try{org=(await sb.from('organiza
   ORG=org;DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();CLOUD=true;ADMIN_MODE=true;MEMBRO_PERMS=null;hideAdmin();bannerCloud();renderFoot();
   document.querySelectorAll('#nav a[data-route]').forEach(a=>a.style.display='');go('dashboard');}
 function voltarAdmin(){CLOUD=false;ADMIN_MODE=false;ORG=null;const bn=document.getElementById('cloudBanner');if(bn)bn.style.display='none';showAdmin();}
+
+/* ---- SUPER ADMIN · Consultores (revenda) ---- */
+function consBox(){let b=document.getElementById('consScreen');if(!b){b=document.createElement('div');b.id='consScreen';b.style.cssText='position:fixed;inset:0;z-index:260;background:var(--bg);overflow:auto';document.body.appendChild(b);}return b;}
+function fecharConsultores(){const b=document.getElementById('consScreen');if(b)b.style.display='none';showAdmin();}
+async function showConsultores(){if(!IS_SUPER)return;const b=consBox();b.style.display='block';hideAdmin();
+  b.innerHTML=`<div class="admin-wrap"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div><div style="font-family:'Fraunces',serif;font-size:26px;font-weight:700">👥 Consultores</div><div style="font-size:13px;color:var(--muted)">Parceiros que revendem o Flow e gerenciam a própria carteira</div></div>
+    <div style="display:flex;gap:10px"><button class="btn btn-primary" onclick="novoConsultor()">${icoPlus} Novo consultor</button><button class="btn btn-ghost" onclick="fecharConsultores()">← Voltar</button></div></div>
+    <div id="cons_body"><div style="color:var(--muted)">Carregando…</div></div></div>`;
+  try{CONSULTORES=(await sb.from('perfis').select('*').eq('papel','consultor').order('nome',{ascending:true})).data||[];}catch(e){CONSULTORES=[];}
+  try{const d=(await sb.from('organizacoes').select('*')).data;if(d)ADMIN_ORGS=d;}catch(e){}
+  renderConsultores();
+}
+function renderConsultores(){const el=$('#cons_body');if(!el)return;
+  if(!CONSULTORES.length){el.innerHTML=`<div class="card card-pad" style="color:var(--muted)">Nenhum consultor ainda. Clique em “Novo consultor” para cadastrar o primeiro parceiro.</div>`;return;}
+  el.innerHTML=`<div class="admin-grid">${CONSULTORES.map(c=>{const n=clientesDe(c.id);const lim=c.limite_clientes!=null?c.limite_clientes:5;const cheio=n>=lim;const nm=(c.nome||c.email||'').replace(/'/g,'');return `
+    <div class="client-card">
+      <div style="font-weight:700;font-size:15px">${esc(c.nome||'(sem nome)')}</div>
+      <div style="font-size:12px;color:var(--soft)">${esc(c.email||'')}</div>
+      <div style="margin:12px 0;font-size:13px">Clientes: <b style="color:${cheio?'var(--red)':'var(--navy)'}">${n}</b> <span style="color:var(--soft)">/ ${lim}</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="verClientesCons('${c.id}')">Ver clientes</button>
+        <button class="btn btn-ghost btn-sm" onclick="consEditarLimite('${c.id}')">Limite</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="consRemover('${c.id}','${nm}')">Remover</button>
+      </div>
+    </div>`;}).join('')}</div>`;
+}
+function verClientesCons(cid){adminConsFiltro=cid;fecharConsultores();}
+function novoConsultor(){modal(`<div class="modal-head"><h3>Novo consultor</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div id="ncs_err" style="display:none;background:var(--red-bg);color:var(--red);font-size:13px;padding:10px 12px;border-radius:10px;margin-bottom:12px"></div>
+    <div class="field"><label>Nome do consultor</label><input class="input" id="ncs_nome" placeholder="Ex.: João Consultoria"></div>
+    <div class="field"><label>E-mail (login)</label><input class="input" id="ncs_email" type="email" placeholder="email@consultor.com"></div>
+    <div class="field"><label>Senha provisória</label><input class="input" id="ncs_senha" placeholder="mín. 6 caracteres"></div>
+    <div class="field"><label>Limite de clientes</label><input class="input" id="ncs_limite" type="number" value="5" min="1" style="max-width:120px"></div>
+    <div style="font-size:12px;color:var(--soft)">Se o login já existir, deixe a senha em branco para apenas <b>promover</b> a conta a consultor.</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="doNovoConsultor()">Criar consultor</button></div>`);setTimeout(()=>{const e=$('#ncs_nome');if(e)e.focus();},40);}
+async function doNovoConsultor(){const nome=($('#ncs_nome').value||'').trim(),email=($('#ncs_email').value||'').trim().toLowerCase(),senha=($('#ncs_senha').value||'').trim(),limite=parseInt($('#ncs_limite').value)||5;
+  const err=$('#ncs_err');const showErr=m=>{if(err){err.style.display='block';err.textContent=m;}};
+  if(!email)return showErr('Informe o e-mail do consultor.');
+  const btn=document.querySelector('.modal-foot .btn-primary');if(btn){btn.disabled=true;btn.textContent='Criando…';}
+  const fim=()=>{if(btn){btn.disabled=false;btn.textContent='Criar consultor';}};
+  if(senha){if(senha.length<6){fim();return showErr('A senha precisa ter ao menos 6 caracteres.');}
+    let res;try{res=await chamarFn('criar-membro',{acao:'criar',email,senha,nome});}catch(e){res={data:{error:e.message}};}
+    const e2=res&&res.data&&res.data.error;
+    if(e2&&!/exist|already|duplic|registrad|cadastrad/i.test(''+e2)){fim();return showErr('Não foi possível criar o login: '+e2+'. Se preferir, crie a conta no Supabase e depois promova aqui (deixe a senha em branco).');}
+  }
+  let up;try{up=await sb.from('perfis').update({papel:'consultor',nome,limite_clientes:limite,org_id:null}).eq('email',email).select('id');}catch(e){up={error:e};}
+  fim();
+  if((up&&up.error)||!up.data||!up.data.length)return showErr('Não encontrei esse login. Informe uma senha para criar a conta, ou crie no Supabase e tente de novo.');
+  closeModal();toast('Consultor pronto ✓');showConsultores();}
+async function consEditarLimite(cid){const c=CONSULTORES.find(x=>x.id===cid);if(!c)return;const v=prompt('Limite de clientes para '+(c.nome||c.email)+':',c.limite_clientes!=null?c.limite_clientes:5);if(v==null)return;const n=parseInt(v);if(!(n>=1))return toast('Valor inválido');
+  try{await sb.from('perfis').update({limite_clientes:n}).eq('id',cid);}catch(e){return toast('Erro ao salvar');}c.limite_clientes=n;renderConsultores();toast('Limite atualizado para '+n);}
+async function consRemover(cid,nome){const n=clientesDe(cid);if(!confirm('Remover o consultor "'+nome+'"?\n\nA conta dele deixa de ser consultor (perde o painel) e os '+n+' cliente(s) dele passam para a Lidera. Os dados dos clientes NÃO são apagados.'))return;
+  try{await sb.from('organizacoes').update({consultor_id:null}).eq('consultor_id',cid);await sb.from('perfis').update({papel:'cliente'}).eq('id',cid);}catch(e){return toast('Erro ao remover');}
+  toast('Consultor removido');showConsultores();}
 async function atividadesCliente(orgId,nome){let ats=[];try{ats=(await sb.from('atividades').select('*').eq('org_id',orgId).order('criada_em',{ascending:false})).data||[];}catch(e){}
   modal(`<div class="modal-head"><h3>Atividades: ${nome}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">${ats.length?ats.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)"><div><b>${a.titulo}</b><div style="font-size:12px;color:var(--soft)">${a.descricao||''}${a.prazo?' · prazo '+a.prazo:''}</div></div><span class="tag ${a.status==='concluida'?'tag-green':a.status==='fazendo'?'tag-amber':'tag-navy'}">${a.status}</span></div>`).join(''):'<div style="font-size:13px;color:var(--soft);padding:6px 0">Nenhuma atividade ainda.</div>'}
