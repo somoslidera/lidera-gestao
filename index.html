@@ -1209,17 +1209,10 @@ function viewInsumos(){
 let editingInsId=null, draftInsTipo='pronto', draftInsComps=[];
 function editInsumo(id){
   const i=id?DB.insumos[id]:{nome:'',cat:'',tipo:'pronto',uni:'g',preco:'',qtd:'',rendimento:'',comps:[],fornecedor:''};
-  editingInsId=id||null; draftInsTipo=i.tipo||'pronto'; draftInsComps=JSON.parse(JSON.stringify(i.comps||[]));
+  editingInsId=id||null; draftInsTipo='pronto'; draftInsComps=[];
   modal(`<div class="modal-head"><h3>${id?'Editar produto':'Novo produto'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div class="field"><label>Nome</label><input class="input" id="i_nome" value="${(i.nome||'').replace(/"/g,'&quot;')}" placeholder="Ex.: Peito de frango"></div>
-    <div class="field"><label>Tipo de produto</label>
-      <div class="chan-tabs" style="margin:0">
-        <button type="button" id="tp_pronto" class="${draftInsTipo==='pronto'?'on':''}" onclick="setInsTipo('pronto')">Pronto</button>
-        <button type="button" id="tp_prep" class="${draftInsTipo==='preparado'?'on':''}" onclick="setInsTipo('preparado')">Preparado</button>
-      </div>
-      <div id="tp_hint" style="font-size:11.5px;color:var(--soft);margin-top:6px"></div>
-    </div>
     <div class="grid-2">
       <div class="field"><label>Categoria</label><select class="input" id="i_cat">${catOptions('insumo',i.cat)}</select></div>
       <div class="field"><label>Unidade</label><select class="input" id="i_uni" onchange="updUniLabels();updInsPreview()">${UNIDADES.map(u=>`<option value="${u}" ${u===i.uni?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
@@ -1234,16 +1227,10 @@ function editInsumo(id){
         </div>
       </div>
     </div>
-    <div id="prep_block">
-      <div class="field"><label>Rendimento da receita <span class="hint">na unidade <span class="u-sym">${uSym(i.uni)}</span></span></label><input class="input" id="i_rend" type="number" step="1" value="${i.rendimento||''}" oninput="updInsPreview()" placeholder="Ex.: 1000"></div>
-      <label style="display:block;font-size:13px;font-weight:600;margin:2px 0 10px">Ingredientes</label>
-      <div id="insCompList"></div>
-      <button type="button" class="btn btn-ghost btn-sm" onclick="addInsComp()" style="margin-top:4px">${icoPlus} Adicionar ingrediente</button>
-    </div>
     <div id="i_preview" style="font-size:13px;color:var(--muted);margin-top:12px"></div>
   </div>
-  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveInsumo('${id||''}')">Salvar insumo</button></div>`);
-  applyInsTipo(); renderInsCompList(); updUniLabels(); updInsPreview();
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveInsumo('${id||''}')">Salvar produto</button></div>`);
+  updUniLabels(); updInsPreview();
 }
 function updUniLabels(){const s=$('#i_uni');if(!s)return;const sym=uSym(s.value);document.querySelectorAll('.u-sym').forEach(e=>e.textContent=sym);}
 function updUniOptions(){const s=$('#i_uni');if(!s)return;const cur=s.value;
@@ -1622,7 +1609,7 @@ function preparadoCard(p){
     <div class="fcard-acts"><span>${(p.comps||[]).length} ingredientes</span>
       <button onclick="delInsumo('${p.id}')">${icoTrash} Excluir</button>
       <button onclick="duplicarPreparado('${p.id}')">${icoCopy} Duplicar</button>
-      <a class="edit" onclick="editInsumo('${p.id}')">Editar ↗</a></div>
+      <a class="edit" onclick="editPreparado('${p.id}')">Editar ↗</a></div>
     <div class="frow"><span class="l">Custo da receita</span><b>${fmtBRL(custoTotal)}</b></div>
     <div class="frow div"><span class="l">Rendimento</span><b>${fmtN(p.rendimento)} ${uSym(p.uni)}</b></div>
     <div class="frow"><span class="l">Custo por ${bSym(p.uni)}</span><b>${fmtBRL(custoUnit)}</b></div>
@@ -1631,7 +1618,75 @@ function preparadoCard(p){
 }
 function duplicarFicha(id){const f=DB.fichas[id];if(!f)return;const c=JSON.parse(JSON.stringify(f));c.id=uid();c.nome=f.nome+' (cópia)';c.criada=hoje();DB.fichas[c.id]=c;save();viewFichas();toast('Ficha duplicada');}
 function filtrarCards(input,sel){const q=(input.value||'').toLowerCase();document.querySelectorAll(sel+' > [data-nome]').forEach(el=>{el.style.display=(el.dataset.nome||'').toLowerCase().includes(q)?'':'none';});}
-function novoPreparado(){editInsumo();setInsTipo('preparado');}
+function novoPreparado(){editPreparado();}
+function prepTab(t){$('#ptab_c').classList.toggle('on',t==='c');$('#ptab_o').classList.toggle('on',t==='o');$('#ptab_custos').style.display=t==='c'?'block':'none';$('#ptab_op').style.display=t==='o'?'block':'none';const lc=$('#pp_left_custos'),lo=$('#pp_left_op');if(lc)lc.style.display=t==='c'?'flex':'none';if(lo)lo.style.display=t==='o'?'block':'none';}
+function editPreparado(id){
+  const p=id?DB.insumos[id]:{nome:'',cat:'',tipo:'preparado',uni:'g',rendimento:'',comps:[],fornecedor:'',tempoPreparo:'',utensilios:'',modoPreparo:[],foto:''};
+  editingInsId=id||null; draftInsTipo='preparado'; draftInsComps=JSON.parse(JSON.stringify(p.comps||[]));
+  draftModo=JSON.parse(JSON.stringify(p.modoPreparo||[])); draftFoto=p.foto||'';
+  modal(`<div class="ficha-split">
+    <div class="fx-left">
+      <div class="fx-left-body">
+        <div id="pp_left_custos" style="display:flex;flex-direction:column;flex:1">
+          <div class="fx-sublabel" style="margin-bottom:8px">Ingredientes</div>
+          <div id="insCompList"></div>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addInsComp()" style="margin-top:8px;align-self:flex-start">${icoPlus} Adicionar ingrediente</button>
+          <div id="i_preview" style="font-size:13px;color:var(--muted);margin-top:14px"></div>
+        </div>
+        <div id="pp_left_op" style="display:none;flex:1">
+          <div class="fx-sublabel" style="margin-bottom:10px">Foto do preparado pronto</div>
+          <div class="foto-drop" id="f_foto_area" onclick="document.getElementById('f_foto_in').click()"></div>
+          <input type="file" id="f_foto_in" accept="image/*" style="display:none" onchange="fichaFoto(this)">
+        </div>
+      </div>
+    </div>
+    <div class="fx-right">
+      <div class="fx-head"><h3>${id?'Editar Preparado':'Novo Preparado'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+      <div class="chan-tabs" style="margin:6px 26px 4px">
+        <button type="button" id="ptab_c" class="on" onclick="prepTab('c')">Ingredientes &amp; Rendimento</button>
+        <button type="button" id="ptab_o" onclick="prepTab('o')">Operacional</button>
+      </div>
+      <div class="fx-right-body">
+        <div id="ptab_custos">
+          <div class="field"><label>Nome</label><input class="input" id="pp_nome" value="${(p.nome||'').replace(/"/g,'&quot;')}" placeholder="Ex.: Molho da casa"></div>
+          <div class="fx-g2">
+            <div class="field"><label>Categoria</label><select class="input" id="pp_cat">${catOptions('insumo',p.cat)}</select></div>
+            <div class="field"><label>Fornecedor <span class="hint">opcional</span></label><select class="input" id="pp_forn">${fornOptions(p.fornecedor)}</select></div>
+          </div>
+          <div class="field"><label>Rendimento da receita</label><div style="display:flex;gap:6px"><input class="input" id="i_rend" type="number" step="0.001" value="${p.rendimento||''}" placeholder="Ex.: 1000" style="flex:1" oninput="updInsPreview()"><select class="input" id="i_uni" style="flex:0 0 90px" onchange="updUniLabels();updInsPreview()">${UNIDADES.map(u=>`<option value="${u}" ${u===p.uni?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div></div>
+          <div style="font-size:12px;color:var(--soft);margin-top:4px">O preparado é usado como ingrediente nas fichas técnicas e no Mapa do Buffet. O custo por unidade vem dos ingredientes ÷ rendimento.</div>
+        </div>
+        <div id="ptab_op" style="display:none">
+          <div class="fx-g2">
+            <div class="field"><label>Tempo de preparo <span class="hint">min</span></label><input class="input" id="pp_tempo" type="number" value="${p.tempoPreparo||''}" placeholder="Ex.: 30"></div>
+            <div class="field"><label>Utensílios</label><input class="input" id="pp_utens" value="${(p.utensilios||'').replace(/"/g,'&quot;')}" placeholder="Ex.: Panela, fouet"></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 10px">
+            <span class="fx-sublabel">Modo de preparo (passo a passo)</span>
+            <a onclick="addModo()" style="color:var(--gold);font-weight:700;font-size:13px;cursor:pointer">+ Adicionar passo</a>
+          </div>
+          <div id="modoList"></div>
+        </div>
+      </div>
+      <div class="fx-foot">
+        <button class="btn btn-ghost" onclick="closeModal()" style="color:var(--gold);border:0;background:transparent;padding-left:0">Cancelar</button>
+        <div style="flex:1"></div>
+        ${id?`<button class="btn btn-ghost" style="color:var(--red);border-color:var(--red)" onclick="delInsumo('${id}');closeModal();viewFichas()">Excluir</button>`:''}
+        <button class="btn btn-gold" onclick="savePreparado('${id||''}')">${id?'Atualizar Preparado':'Criar Preparado'}</button>
+      </div>
+    </div>
+  </div>`,true);
+  const mc=document.querySelector('#modalRoot .modal');if(mc)mc.classList.add('fichamodal');
+  renderInsCompList();renderModoList();renderFichaFoto();updUniLabels();updInsPreview();
+}
+function savePreparado(id){
+  const nome=($('#pp_nome').value||'').trim();if(!nome)return toast('Informe o nome do preparado');
+  const comps=draftInsComps.filter(c=>c[0]&&c[1]>0);if(!comps.length)return toast('Adicione ao menos um ingrediente');
+  const uni=$('#i_uni').value, cat=$('#pp_cat').value.trim()||'Preparado', forn=$('#pp_forn')?$('#pp_forn').value:'';
+  const obj={id:id||uid(),nome,cat,tipo:'preparado',uni,rendimento:parseFloat($('#i_rend').value)||1,comps,fornecedor:forn,
+    tempoPreparo:$('#pp_tempo').value||'',utensilios:($('#pp_utens').value||'').trim(),modoPreparo:draftModo.filter(s=>(s||'').trim()),foto:draftFoto||''};
+  DB.insumos[obj.id]=obj;save();closeModal();viewFichas();toast(id?'Preparado atualizado':'Preparado criado');
+}
 function duplicarPreparado(id){const p=DB.insumos[id];if(!p)return;const c=JSON.parse(JSON.stringify(p));c.id=uid();c.nome=p.nome+' (cópia)';DB.insumos[c.id]=c;save();viewFichas();toast('Preparado duplicado');}
 
 /* ===================== FICHA MODULAR (produto com variações) ===================== */
@@ -3174,12 +3229,17 @@ function viewConta(){
 /* ===================== MAPA DO BUFFET (nativo · usa nossas fichas) ===================== */
 const CMV_ALVO_BUFFET=0.30, REGRA_8020=0.80;
 let buffetSub='mapa', buffetSel=null, buffetDrag=null;
+function custoPorKgItem(item){ // custo de 1 Kg — funciona p/ ficha técnica ou preparado
+  if(!item)return 0;
+  if(item.tipo==='preparado'){const base=BASE[item.uni];const perBase=custoInsumoBase(item);return (base==='g'||base==='ml')?perBase*1000:perBase;}
+  return custoPorKgFicha(item);
+}
 function buffetData(){
   const b=DB.buffet||(DB.buffet={precoVendaKg:'',cubas:[]});
   const precoKg=parseFloat(b.precoVendaKg)||0;
   const cubas=(b.cubas||[]).map(c=>{
-    const ficha=DB.fichas[c.fichaId];
-    const ckg=ficha?custoPorKgFicha(ficha):0;
+    const ficha=DB.fichas[c.fichaId]||DB.insumos[c.fichaId];
+    const ckg=ficha?custoPorKgItem(ficha):0;
     const peso=parseFloat(c.pesoKg)||0;
     const custo=ckg*peso, receita=precoKg*peso, cmv=precoKg>0?ckg/precoKg:0;
     return {...c,ficha,ckg,peso,custo,receita,cmv,ok:precoKg>0&&cmv<=CMV_ALVO_BUFFET};
@@ -3197,6 +3257,7 @@ function cubaCol(c,precoKg){
 function viewBuffet(){
   $('#topActions').innerHTML=`<button class="btn btn-ghost" onclick="window.print()">🖨️ Imprimir</button>`;
   const d=buffetData(); const fichas=Object.values(DB.fichas).sort((a,b)=>a.nome.localeCompare(b.nome));
+  const prepsBuffet=Object.values(DB.insumos).filter(i=>i.tipo==='preparado').sort((a,b)=>a.nome.localeCompare(b.nome));
   const pctOf=v=>fmtN(v*100,1)+'%';
   const sel=d.cubas.find(c=>c.id===buffetSel);
   $('#view').innerHTML=`
@@ -3226,7 +3287,7 @@ function viewBuffet(){
       ${sel?`<div class="card card-pad" style="border-color:var(--gold)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:13px;color:var(--gold)">Cuba selecionada</b>
           <div style="display:flex;gap:12px"><button onclick="buffetRot('${sel.id}')" style="font-size:12px;color:var(--muted)">↻ Girar</button><button onclick="buffetDelCuba('${sel.id}')" style="font-size:12px;color:var(--red)">Remover</button></div></div>
-        <div class="field"><label>Prato (ficha técnica)</label><select class="input" onchange="buffetUpdCuba('${sel.id}',{fichaId:this.value});viewBuffet()"><option value="">— selecione —</option>${fichas.map(f=>`<option value="${f.id}" ${f.id===sel.fichaId?'selected':''}>${f.nome}</option>`).join('')}</select></div>
+        <div class="field"><label>Prato (ficha técnica ou preparado)</label><select class="input" onchange="buffetUpdCuba('${sel.id}',{fichaId:this.value});viewBuffet()"><option value="">— selecione —</option><optgroup label="Fichas técnicas">${fichas.map(f=>`<option value="${f.id}" ${f.id===sel.fichaId?'selected':''}>${esc(f.nome)}</option>`).join('')}</optgroup>${prepsBuffet.length?`<optgroup label="Preparados">${prepsBuffet.map(p=>`<option value="${p.id}" ${p.id===sel.fichaId?'selected':''}>${esc(p.nome)}</option>`).join('')}</optgroup>`:''}</select></div>
         <div class="field"><label>Quantidade na cuba <span class="hint">Kg</span></label><input class="input" type="number" step="0.1" value="${esc(sel.pesoKg)}" placeholder="3" onchange="buffetUpdCuba('${sel.id}',{pesoKg:this.value});viewBuffet()"></div>
         ${sel.ficha?`<div style="font-size:12.5px;border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:6px">
           <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Custo/Kg do prato</span><b>${fmtBRL(sel.ckg)}</b></div>
