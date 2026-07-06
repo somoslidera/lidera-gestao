@@ -643,10 +643,11 @@ const DEF_CAT_INSUMO=['Proteínas','Laticínios','Grãos','Legumes','Hortifruti'
 const DEF_CAT_PRATO=['Prato Principal','Entrada','Acompanhamento','Sobremesa','Drinks, Coquetéis e Sucos','Lanches'];
 const CAT_INSUMO=DEF_CAT_INSUMO, CAT_FICHA=DEF_CAT_PRATO;     // aliases (compat.)
 function dbCats(){DB.cats=DB.cats||{insumo:[],prato:[]};DB.cats.insumo=DB.cats.insumo||[];DB.cats.prato=DB.cats.prato||[];return DB.cats;}
-function catList(t){const def=t==='prato'?DEF_CAT_PRATO:DEF_CAT_INSUMO;const cst=dbCats()[t]||[];return [...def,...cst.filter(c=>!def.includes(c))];}
+const ordPt=arr=>(arr||[]).slice().sort((a,b)=>(''+a).localeCompare((''+b),'pt',{sensitivity:'base'}));
+function catList(t){const def=t==='prato'?DEF_CAT_PRATO:DEF_CAT_INSUMO;const cst=dbCats()[t]||[];return ordPt([...def,...cst.filter(c=>!def.includes(c))]);}
 function isCatPadrao(t,c){return (t==='prato'?DEF_CAT_PRATO:DEF_CAT_INSUMO).includes(c);}
 function catOptions(t,sel){const list=catList(t).slice();if(sel&&!list.includes(sel))list.unshift(sel);return `<option value="">— categoria —</option>`+list.map(c=>`<option ${c===sel?'selected':''}>${esc(c)}</option>`).join('');}
-function fornOptions(sel){const fs=(DB.fin&&DB.fin.fornecedores)||[];const names=fs.map(f=>f.nome).filter(Boolean);if(sel&&!names.includes(sel))names.unshift(sel);return `<option value="">— sem fornecedor —</option>`+names.map(nm=>`<option ${nm===sel?'selected':''}>${esc(nm)}</option>`).join('');}
+function fornOptions(sel){const fs=(DB.fin&&DB.fin.fornecedores)||[];let names=fs.map(f=>f.nome).filter(Boolean);if(sel&&!names.includes(sel))names.push(sel);names=ordPt(names);return `<option value="">— sem fornecedor —</option>`+names.map(nm=>`<option ${nm===sel?'selected':''}>${esc(nm)}</option>`).join('');}
 
 let DB=load();
 function load(){try{const d=JSON.parse(localStorage.getItem(STORE_KEY));if(d&&d.insumos)return d;}catch(e){}return seed();}
@@ -1471,15 +1472,15 @@ async function importarNFe(input){const f=input&&input.files&&input.files[0];if(
   window._nfe=d; nfeConfirmModal(d);
 }
 function nfeEnsureCats(){DB.categorias=DB.categorias||{};if(!DB.categorias['CMV'])DB.categorias['CMV']={tipo:'despesa',subs:[]};if(!DB.categorias['CMV'].subs.includes('Entrada de Produtos'))DB.categorias['CMV'].subs.unshift('Entrada de Produtos');}
-function nfeSubRefresh(idx){const g=$('#nfe_grupo_'+idx),s=$('#nfe_sub_'+idx);if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=(c&&c.subs.length?c.subs:['(sem subcategoria)']).map(x=>`<option>${esc(x)}</option>`).join('');}
+function nfeSubRefresh(idx){const g=$('#nfe_grupo_'+idx),s=$('#nfe_sub_'+idx);if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=ordPt(c&&c.subs.length?c.subs:['(sem subcategoria)']).map(x=>`<option>${esc(x)}</option>`).join('');}
 function nfeMapChanged(idx){const sel=$('#nfe_map_'+idx),dEl=$('#nfe_desc_'+idx);if(!sel||!dEl)return;const v=sel.value;if(v&&v!=='novo'&&v!=='ignorar'&&DB.insumos[v])dEl.value=DB.insumos[v].nome;}
 function nfeRowTot(idx){const q=nfeBrNum(($('#nfe_qtd_'+idx)||{}).value),v=nfeBrNum(($('#nfe_vun_'+idx)||{}).value);const s=$('#nfe_tot_'+idx);if(s)s.textContent=fmtBRL(q*v);}
 function nfeConfirmModal(d){
   nfeEnsureCats();
   const cats=catList('insumo'),insumos=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado');
-  const gruposDesp=Object.keys(DB.categorias).filter(g=>grupoTipo(g)!=='receita');
+  const gruposDesp=ordPt(Object.keys(DB.categorias).filter(g=>grupoTipo(g)!=='receita'));
   const gDef=gruposDesp.includes('CMV')?'CMV':(gruposDesp[0]||'CMV');
-  const subsDef=(DB.categorias[gDef]||{subs:[]}).subs;const subDef=subsDef.includes('Entrada de Produtos')?'Entrada de Produtos':(subsDef[0]||'');
+  const subsDef=ordPt((DB.categorias[gDef]||{subs:[]}).subs);const subDef=subsDef.includes('Entrada de Produtos')?'Entrada de Produtos':(subsDef[0]||'');
   const cards=d.itens.map((it,idx)=>{const m=nfeMatch(it.desc);const preDesc=(m&&DB.insumos[m])?DB.insumos[m].nome:(it.desc||'');return `
     <div style="border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:9px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
@@ -2316,7 +2317,7 @@ function viewDRE(){
   </div>`}`;
 }
 /* ----- Lançamentos ----- */
-function lancSubRefresh(){const g=$('#lc_grupo');const s=$('#lc_sub');if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=(c?c.subs:[]).map(x=>`<option>${esc(x)}</option>`).join('');}
+function lancSubRefresh(){const g=$('#lc_grupo');const s=$('#lc_sub');if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=ordPt(c?c.subs:[]).map(x=>`<option>${esc(x)}</option>`).join('');}
 /* ===== Taxas de cartão/PIX automáticas no DRE (sobre recebíveis) ===== */
 function taxaInfo(L){ // identifica a taxa pela forma de pagamento (ou pela subcategoria da receita)
   const cand=[L.forma||'',L.sub||''];
@@ -2341,7 +2342,7 @@ function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast
   save();viewFinanceiro();toast('Lançamento registrado');}
 function delLancamento(id){DB.lancamentos=DB.lancamentos.filter(l=>l.id!==id&&l.fromTaxa!==id);save();viewFinanceiro();}
 function formasRows(){return (DB.formasPagamento||[]).map((f,i)=>`<span class="cat-chip">${esc(f)}<button onclick="delForma(${i})">${icoX}</button></span>`).join('')||'<span style="color:var(--soft);font-size:12px">Nenhuma forma cadastrada.</span>';}
-function formaSelect(val,onchange){const fs=DB.formasPagamento||[];return `<select class="input" title="Forma de pagamento" onchange="${onchange}"><option value="">—</option>${fs.map(x=>`<option ${x===(val||'')?'selected':''}>${esc(x)}</option>`).join('')}</select>`;}
+function formaSelect(val,onchange){const fs=ordPt(DB.formasPagamento||[]);return `<select class="input" title="Forma de pagamento" onchange="${onchange}"><option value="">—</option>${fs.map(x=>`<option ${x===(val||'')?'selected':''}>${esc(x)}</option>`).join('')}</select>`;}
 function addForma(){const v=($('#fp_novo').value||'').trim();if(!v)return;DB.formasPagamento=DB.formasPagamento||[];if(DB.formasPagamento.includes(v))return toast('Essa forma já existe');DB.formasPagamento.push(v);save();$('#fp_novo').value='';$('#fp_list').innerHTML=formasRows();}
 function delForma(i){DB.formasPagamento.splice(i,1);save();$('#fp_list').innerHTML=formasRows();}
 function formasModal(){
@@ -2353,9 +2354,9 @@ function formasModal(){
   </div>
   <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal();viewFinanceiro()">Concluir</button></div>`);
   setTimeout(()=>{const el=$('#fp_novo');if(el)el.focus();},60);}
-function elSubRefresh(){const g=$('#el_grupo'),s=$('#el_sub');if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=(c?c.subs:[]).map(x=>`<option>${esc(x)}</option>`).join('');}
+function elSubRefresh(){const g=$('#el_grupo'),s=$('#el_sub');if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=ordPt(c?c.subs:[]).map(x=>`<option>${esc(x)}</option>`).join('');}
 function editLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)return;
-  const grupos=Object.keys(DB.categorias);
+  const grupos=ordPt(Object.keys(DB.categorias));
   modal(`<div class="modal-head"><h3>Editar lançamento</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     ${l.fromConta?`<div class="alert alert-amber" style="margin-bottom:12px">${icoWarn}<div>Este lançamento veio de uma <b>Conta a Pagar/Receber</b>. Editar aqui altera só o lançamento; o ideal é ajustar na conta de origem.</div></div>`:''}
@@ -2365,11 +2366,11 @@ function editLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!
     </div>
     <div class="grid-2">
       <div class="field"><label>Categoria</label><select class="input" id="el_grupo" onchange="elSubRefresh()">${grupos.map(g=>`<option ${g===l.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
-      <div class="field"><label>Subcategoria</label><select class="input" id="el_sub">${(DB.categorias[l.grupo]?DB.categorias[l.grupo].subs:[]).map(x=>`<option ${x===l.sub?'selected':''}>${esc(x)}</option>`).join('')||`<option value="">—</option>`}</select></div>
+      <div class="field"><label>Subcategoria</label><select class="input" id="el_sub">${ordPt(DB.categorias[l.grupo]?DB.categorias[l.grupo].subs:[]).map(x=>`<option ${x===l.sub?'selected':''}>${esc(x)}</option>`).join('')||`<option value="">—</option>`}</select></div>
     </div>
     <div class="field"><label>Descrição</label><input class="input" id="el_desc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" placeholder="Referência, nº NF..."></div>
     <div class="field"><label>Fornecedor</label><input class="input" id="el_fornecedor" list="el_forn_list" value="${(l.fornecedor||'').replace(/"/g,'&quot;')}" placeholder="opcional"><datalist id="el_forn_list">${((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('')}</datalist></div>
-    <div class="field"><label>Forma de pagamento</label><select class="input" id="el_forma"><option value="">—</option>${(DB.formasPagamento||[]).map(x=>`<option ${x===l.forma?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+    <div class="field"><label>Forma de pagamento</label><select class="input" id="el_forma"><option value="">—</option>${ordPt(DB.formasPagamento||[]).map(x=>`<option ${x===l.forma?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveLancamento('${id}')">Salvar</button></div>`);
 }
@@ -2389,9 +2390,9 @@ function finLancamentos(){
     (!fl.forma||(l.forma||'')===fl.forma)
   ).sort((a,b)=>(b.data||'').localeCompare(a.data||'')||0);
   const filtTot=ls.reduce((s,l)=>s+(grupoTipo(l.grupo)==='receita'?(l.valor||0):-(l.valor||0)),0);
-  const grupos=Object.keys(DB.categorias);
-  const subsG0=DB.categorias[grupos[0]]?DB.categorias[grupos[0]].subs:[];
-  const formas=DB.formasPagamento||[];
+  const grupos=ordPt(Object.keys(DB.categorias));
+  const subsG0=ordPt(DB.categorias[grupos[0]]?DB.categorias[grupos[0]].subs:[]);
+  const formas=ordPt(DB.formasPagamento||[]);
   return `<div class="card card-pad" style="max-width:1180px">
     <div class="section-head"><div><div class="ttl">Lançamentos</div><div class="desc">Receitas e despesas, alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -2407,7 +2408,7 @@ function finLancamentos(){
       <div class="field" style="margin:0;flex:2 1 180px"><label>Descrição</label><input class="input" id="lc_desc" placeholder="Referência, nº NF..."></div>
       <div class="field" style="margin:0;flex:1 1 150px"><label>Fornecedor</label><input class="input" id="lc_fornecedor" list="lc_forn_list" placeholder="opcional"><datalist id="lc_forn_list">${((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('')}</datalist></div>
       <div class="field" style="margin:0;flex:0 0 130px"><label>Valor</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="lc_valor" inputmode="numeric" placeholder="0,00" oninput="moneyMask(this)"></div></div>
-      <div class="field" style="margin:0;flex:1 1 130px"><label>Forma <a onclick="formasModal()" style="color:var(--gold);cursor:pointer;font-weight:600">· editar</a></label><select class="input" id="lc_forma">${(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
+      <div class="field" style="margin:0;flex:1 1 130px"><label>Forma <a onclick="formasModal()" style="color:var(--gold);cursor:pointer;font-weight:600">· editar</a></label><select class="input" id="lc_forma">${ordPt(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
       <button class="btn btn-primary btn-sm" style="flex:0 0 auto;height:40px" onclick="addLancamento()">${icoPlus} Lançar</button>
     </div>
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
@@ -2549,7 +2550,7 @@ function saveNovoGrupo(){const g=($('#ng_nome').value||'').trim();if(!g)return t
   DB.categorias[g]={tipo:ngTipoSel,subs};save();closeModal();viewFinanceiro();toast('Grupo criado');}
 function catDelGrupo(g){if(!confirm('Excluir o grupo "'+g+'" e suas subcategorias? Os lançamentos antigos continuam, mas sem grupo cadastrado.'))return;delete DB.categorias[g];save();viewFinanceiro();}
 function finCategorias(){
-  const grupos=Object.keys(DB.categorias);
+  const grupos=ordPt(Object.keys(DB.categorias));
   return `<div class="card card-pad" style="max-width:880px">
     <div class="section-head"><div><div class="ttl">Categorias</div><div class="desc">Grupos e subcategorias dos lançamentos, já vêm padrão e você pode personalizar</div></div>
       <button class="btn btn-ghost btn-sm" onclick="catAddGrupo()">${icoPlus} Novo grupo</button></div>
@@ -2803,13 +2804,13 @@ function finContas(key){
   const isPagar=key==='contasPagar';const cf=isPagar?'pago':'recebido';const fLabel=isPagar?'Pago':'Recebido';
   const ym=curYM();
   if(isPagar&&gerarRecorrentesMes(ym))save();
-  const all=DB.fin[key]||[];const grupos=Object.keys(DB.categorias);
+  const all=DB.fin[key]||[];const grupos=ordPt(Object.keys(DB.categorias));
   const noMes=all.filter(c=>!c.vencimento||ymOf(c.vencimento)===ym);
   const total=noMes.reduce((s,c)=>s+(c.valor||0),0);
   const aberto=noMes.filter(c=>!c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const feito=noMes.filter(c=>c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const gC='1.5fr 1.2fr 1.2fr 142px 124px 128px 108px 30px';
-  const linhas=all.map((row,i)=>{if(row.vencimento&&ymOf(row.vencimento)!==ym)return '';const subs=(DB.categorias[row.grupo]||{subs:[]}).subs;return `
+  const linhas=all.map((row,i)=>{if(row.vencimento&&ymOf(row.vencimento)!==ym)return '';const subs=ordPt((DB.categorias[row.grupo]||{subs:[]}).subs);return `
     <div class="comp-row" style="grid-template-columns:${gC};align-items:center">
       <input class="input" value="${(row.descricao||'').replace(/"/g,'&quot;')}" placeholder="Descrição" oninput="DB.fin.${key}[${i}].descricao=this.value;contaResync('${key}',${i})">
       <select class="input" onchange="contaSetGrupo('${key}',${i},this.value)">${grupos.map(g=>`<option ${g===row.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
@@ -2892,8 +2893,8 @@ function delRecAplicar(escopo){
 }
 function recSetGrupo(i,g){const r=DB.fin.custosFixos[i];r.grupo=g;const subs=(DB.categorias[g]||{subs:[]}).subs;if(!subs.includes(r.sub))r.sub=subs[0]||'';save();viewFinanceiro();}
 function finRecorrentes(){
-  const arr=DB.fin.custosFixos||[];const grupos=Object.keys(DB.categorias).filter(g=>grupoTipo(g)!=='receita');
-  return `${arr.length?arr.map((r,i)=>{const subs=(DB.categorias[r.grupo]||{subs:[]}).subs;return `
+  const arr=DB.fin.custosFixos||[];const grupos=ordPt(Object.keys(DB.categorias).filter(g=>grupoTipo(g)!=='receita'));
+  return `${arr.length?arr.map((r,i)=>{const subs=ordPt((DB.categorias[r.grupo]||{subs:[]}).subs);return `
     <div class="comp-row" style="grid-template-columns:1.5fr 1.1fr 1.1fr 78px 124px 124px 30px;align-items:center">
       <input class="input" ${r.auto?'title="Importado da anamnese, recalculado ao salvar a anamnese" style="border-left:3px solid var(--gold)"':''} value="${(r.nome||'').replace(/"/g,'&quot;')}" placeholder="Nome (ex.: Aluguel)" oninput="DB.fin.custosFixos[${i}].nome=this.value;finTouch()">
       <select class="input" onchange="recSetGrupo(${i},this.value)">${grupos.map(g=>`<option ${g===r.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
