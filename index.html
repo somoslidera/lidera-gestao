@@ -2436,12 +2436,12 @@ function finLancamentos(){
   return `<div class="card card-pad" style="max-width:1180px">
     <div class="section-head"><div><div class="ttl">Lançamentos</div><div class="desc">Receitas e despesas, alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="lancarModal()">${icoPlus} Lançar</button>
         <input type="month" class="input" style="max-width:160px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()">
         <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="XML (mais preciso) ou PDF do DANFE">🧾 Importar NF-e<input type="file" accept=".xml,.pdf" style="display:none" onchange="importarNFe(this)"></label>
         <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆ Planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarLancamentos(this)"></label>
         <button class="btn btn-ghost btn-sm" onclick="modeloLancModal()">⬇ Modelo</button>
       </div></div>
-    <div style="margin-bottom:14px"><button class="btn btn-primary" onclick="lancarModal()">${icoPlus} Lançar</button></div>
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
       <div class="dash-pill"><span>Receitas</span><b style="color:var(--green)">${fmtBRL(d.recTot)}</b></div>
       <div class="dash-pill"><span>Despesas</span><b style="color:var(--red)">${fmtBRL(d.despTot)}</b></div>
