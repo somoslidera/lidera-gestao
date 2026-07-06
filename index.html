@@ -3927,18 +3927,19 @@ async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin(
 function consNome(id){if(!id)return 'Lidera';const c=CONSULTORES.find(x=>x.id===id);return c?(c.nome||c.email||'Consultor'):'Consultor';}
 function renderAdmin(){renderAdminSide();renderAdminMain();}
 function renderAdminSide(){const el=$('#admin_side');if(!el)return;
-  const arqd=o=>!!(o.dados&&o.dados._arquivado);
-  const ativos=ADMIN_ORGS.filter(o=>!arqd(o)), arq=ADMIN_ORGS.filter(arqd);
+  const arqd=o=>!!(o.dados&&o.dados._arquivado), dem=o=>!!(o.dados&&o.dados._demo);
+  const ativos=ADMIN_ORGS.filter(o=>!arqd(o)&&!dem(o)), arq=ADMIN_ORGS.filter(o=>arqd(o)&&!dem(o)), demos=ADMIN_ORGS.filter(dem);
   el.innerHTML=`
    ${IS_SUPER&&CONSULTORES.length?`<select class="input" style="margin-bottom:10px" onchange="adminConsFiltro=this.value;adminSel=null;renderAdminList();renderAdminMain()"><option value="" ${adminConsFiltro===''?'selected':''}>Todos os consultores</option><option value="__lidera__" ${adminConsFiltro==='__lidera__'?'selected':''}>Lidera (meus clientes)</option>${CONSULTORES.map(c=>`<option value="${c.id}" ${adminConsFiltro===c.id?'selected':''}>${esc(c.nome||c.email||'Consultor')}</option>`).join('')}</select>`:''}
-   <div class="pill-filter" style="margin-bottom:10px"><button class="${adminTab!=='arquivados'?'on':''}" onclick="adminTab='ativos';renderAdminSide();renderAdminMain()">Ativos (${ativos.length})</button><button class="${adminTab==='arquivados'?'on':''}" onclick="adminTab='arquivados';renderAdminSide();renderAdminMain()">Arquivados (${arq.length})</button></div>
+   <div class="pill-filter" style="margin-bottom:10px;flex-wrap:wrap"><button class="${adminTab==='ativos'?'on':''}" onclick="adminTab='ativos';renderAdminSide();renderAdminMain()">Ativos (${ativos.length})</button><button class="${adminTab==='arquivados'?'on':''}" onclick="adminTab='arquivados';renderAdminSide();renderAdminMain()">Arquivados (${arq.length})</button>${IS_SUPER?`<button class="${adminTab==='demo'?'on':''}" onclick="adminTab='demo';adminSel=null;renderAdminSide();renderAdminMain()">Demo (${demos.length})</button>`:''}</div>
+   ${IS_SUPER&&adminTab==='demo'?`<button class="btn btn-primary btn-sm" onclick="criarDemos()" style="width:100%;margin-bottom:10px">${icoPlus} Gerar restaurantes demo</button>`:''}
    <input class="input" id="admin_busca" placeholder="🔎 Buscar restaurante…" value="${esc(adminBusca)}" oninput="adminBusca=this.value;renderAdminList()" style="margin-bottom:10px">
    <div id="admin_listc" class="card" style="padding:6px;max-height:68vh;overflow:auto"></div>`;
   renderAdminList();
 }
 function renderAdminList(){const el=$('#admin_listc');if(!el)return;
-  const arqd=o=>!!(o.dados&&o.dados._arquivado);
-  let lista=adminTab==='arquivados'?ADMIN_ORGS.filter(arqd):ADMIN_ORGS.filter(o=>!arqd(o));
+  const arqd=o=>!!(o.dados&&o.dados._arquivado), dem=o=>!!(o.dados&&o.dados._demo);
+  let lista=adminTab==='demo'?ADMIN_ORGS.filter(dem):adminTab==='arquivados'?ADMIN_ORGS.filter(o=>arqd(o)&&!dem(o)):ADMIN_ORGS.filter(o=>!arqd(o)&&!dem(o));
   if(IS_SUPER&&adminConsFiltro){if(adminConsFiltro==='__lidera__')lista=lista.filter(o=>!o.consultor_id);else lista=lista.filter(o=>o.consultor_id===adminConsFiltro);}
   const q=adminBusca.trim().toLowerCase();
   if(q)lista=lista.filter(o=>(o.nome||'').toLowerCase().includes(q));
@@ -4025,7 +4026,7 @@ function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=pro
   return html;
 }
 function adminOverviewHTML(){const arqd=o=>!!(o.dados&&o.dados._arquivado);
-  let ativosArr=ADMIN_ORGS.filter(o=>!arqd(o));
+  let ativosArr=ADMIN_ORGS.filter(o=>!arqd(o)&&!(o.dados&&o.dados._demo));
   const filtroAtivo=!!(IS_SUPER&&adminConsFiltro);
   if(filtroAtivo){if(adminConsFiltro==='__lidera__')ativosArr=ativosArr.filter(o=>!o.consultor_id);else ativosArr=ativosArr.filter(o=>o.consultor_id===adminConsFiltro);}
   const ativos=ativosArr.filter(o=>o.status!=='suspenso').length;const fatTot=ativosArr.reduce((s,o)=>s+kpisDe(o.dados).fat,0);
@@ -4246,6 +4247,121 @@ async function consEditarLimite(cid){const c=CONSULTORES.find(x=>x.id===cid);if(
 async function consRemover(cid,nome){const n=clientesDe(cid);if(!confirm('Remover o consultor "'+nome+'"?\n\nA conta dele deixa de ser consultor (perde o painel) e os '+n+' cliente(s) dele passam para a Lidera. Os dados dos clientes NÃO são apagados.'))return;
   try{await sb.from('organizacoes').update({consultor_id:null}).eq('consultor_id',cid);await sb.from('perfis').update({papel:'cliente'}).eq('id',cid);}catch(e){return toast('Erro ao remover');}
   toast('Consultor removido');showConsultores();}
+
+/* ---- DEMOS · restaurantes de demonstração por segmento ---- */
+function demoFunc(nome,cargo,salario,regime){return {id:uid(),regime:regime||'CLT',categoria:'',nome,cargo,salario,premio:0,porFora:0,vales:0,consumo:0,beneficios:0,vt:0,diasTrabalhados:0,qtdVales:0,custoRefeicaoDia:0,diaVenc:5,desde:ymNow(),ate:null,forma:'',pagosMes:{},observacao:''};}
+function buildDemoDados(s){
+  const ym=ymNow(), D=d=>ym+'-'+pad2(d);
+  const insumos={}, K={};
+  (s.insumos||[]).forEach(a=>{const id=uid();K[a[0]]=id;insumos[id]={id,nome:a[1],cat:a[2],tipo:'pronto',uni:a[3],preco:a[4],qtd:a[5]||1,fornecedor:a[6]||''};});
+  (s.preparados||[]).forEach(a=>{const id=uid();K[a[0]]=id;insumos[id]={id,nome:a[1],cat:a[2],tipo:'preparado',uni:a[3],rendimento:a[4],comps:(a[5]||[]).map(c=>[K[c[0]],c[1]]),fornecedor:'',modoPreparo:[],utensilios:'',tempoPreparo:'',foto:''};});
+  const fichas={}, fIds=[];
+  (s.fichas||[]).forEach(a=>{const id=uid();fIds.push(id);fichas[id]={id,nome:a[0],cat:a[1],porcoes:1,custoEmbalagem:a[5]||0,precoVenda:a[2],precoIfood:a[3]||0,vendasMes:a[4]||0,tempoPreparo:a[6]||0,utensilios:'',modoPreparo:[],padraoFinalizacao:'',foto:'',comps:(a[7]||[]).map(c=>[K[c[0]],c[1]])};});
+  const lanc=[], sem=[6,13,20,27];
+  (s.receitas||[]).forEach(r=>{const per=Math.round(r.v/4);sem.forEach((d,i)=>{const v=i===3?r.v-per*3:per;lanc.push({id:uid(),data:D(d),grupo:'Receita',sub:r.sub,descricao:'Vendas · '+r.sub,valor:v,forma:r.forma||'',fornecedor:''});});});
+  (s.cmv||[]).forEach(c=>lanc.push({id:uid(),data:D(c.d||10),grupo:'CMV',sub:c.sub,descricao:c.desc,valor:c.v,forma:'',fornecedor:c.forn||''}));
+  (s.desp||[]).forEach(x=>lanc.push({id:uid(),data:D(x.d||5),grupo:x.g,sub:x.sub,descricao:x.desc,valor:x.v,forma:x.forma||'',fornecedor:''}));
+  const desperdicios=(s.desperdicios||[]).map(x=>({id:uid(),data:D(x.d||12),tipo:'insumo',refId:K[x.key]||'',nome:x.nome,qtd:x.qtd,unidade:x.uni,custoUnit:x.cu,custoTotal:+((x.qtd||0)*(x.cu||0)).toFixed(2),motivo:x.motivo||'Perda',responsavel:'Equipe',acao:x.acao||'Descarte'}));
+  const custosFixos=(s.fixos||[]).map(a=>({id:uid(),nome:a[0],valor:a[1],grupo:a[2],sub:a[3]||'',diaVenc:a[4]||10,desde:ym,forma:''}));
+  const fin=Object.assign({regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:s.comissaoIfood||27,taxaDebito:1.99,taxaCartao:s.taxaCartao||3.2,taxaPix:0,provisoes:[],meiosPagamento:[],contasBancarias:[],contasPagar:[],contasReceber:[]},
+    {custosFixos,funcionarios:s.funcionarios||[],socios:[],fornecedores:(s.fornecedores||[]).map(n=>({id:uid(),nome:n}))});
+  const buffet=s.buffet?{precoVendaKg:''+s.buffet.kg,cubas:(s.buffet.cubas||[]).map((cb,i)=>({id:uid(),fichaId:fIds[cb[0]]||'',pesoKg:''+cb[1],x:24+(i%5)*118,y:44,w:104,h:74,rot:0}))}:{precoVendaKg:'',cubas:[]};
+  return {_demo:true,onboardingFeito:true,insumos,fichas,lancamentos:lanc,desperdicios,
+    cmvRegistros:s.cmvReg?[{id:uid(),data:D(26),ei:s.cmvReg.ei,compras:s.cmvReg.compras,ef:s.cmvReg.ef,vendas:s.cmvReg.vendas}]:[],
+    fin,fat:{lancado:0,mixIfood:s.mixIfood||0},cmvAlvo:s.cmvAlvo||30,equipe:[],buffet,categorias:{},
+    formasPagamento:['PIX','Cartão de Crédito','Cartão de Débito','Dinheiro','Ifood'],
+    conta:{restaurante:s.nome,nome:'',email:'',telefone:'',cpf:'',nascimento:''}};
+}
+const DEMO_SPECS=[
+ {nome:'Demo · Restaurante Self-Service',mixIfood:7,cmvAlvo:33,taxaCartao:3.2,
+  insumos:[['arroz','Arroz tipo 1','Grãos','kg',5.20,1,'Atacadão'],['feijao','Feijão preto','Grãos','kg',7.80,1,'Atacadão'],['contra','Contrafilé','Proteínas','kg',42.90,1,'Açougue Boi Bom'],['frango','Filé de frango','Proteínas','kg',18.90,1,'Açougue Boi Bom'],['batata','Batata inglesa','Hortifruti','kg',5.50,1,'Ceasa Central'],['tomate','Tomate','Hortifruti','kg',7.90,1,'Ceasa Central'],['oleo','Óleo de soja','Óleos','L',7.50,1,'Atacadão'],['queijo','Queijo mussarela','Frios e Laticínios','kg',39.90,1,'Frios Sul'],['refri','Refrigerante lata','Bebidas','un',3.20,1,'Distribuidora Sul']],
+  preparados:[['estrog','Estrogonofe de frango','Molhos','g',3000,[['frango',1200],['oleo',80],['tomate',200]]]],
+  fichas:[['Arroz branco','Acompanhamento',45.90,0,900,0,10,[['arroz',120],['oleo',5]]],['Feijão preto','Acompanhamento',45.90,0,700,0,20,[['feijao',90],['oleo',5]]],['Contrafilé grelhado','Prato Principal',45.90,0,520,0,12,[['contra',160]]],['Estrogonofe de frango','Prato Principal',45.90,0,680,0,15,[['estrog',220]]],['Batata frita','Acompanhamento',45.90,0,760,0,8,[['batata',150],['oleo',30]]]],
+  receitas:[{sub:'PIX',forma:'PIX',v:52000},{sub:'Cartão de Crédito',forma:'Cartão de Crédito',v:56000},{sub:'Cartão de Débito',forma:'Cartão de Débito',v:30000},{sub:'Dinheiro',forma:'Dinheiro',v:18000},{sub:'Ifood',forma:'Ifood',v:12000}],
+  cmv:[{sub:'Açougue',desc:'Açougue Boi Bom',v:19000,forn:'Açougue Boi Bom',d:8},{sub:'Ceasa e Sacolão',desc:'Hortifruti Ceasa',v:11000,forn:'Ceasa Central',d:9},{sub:'Mercado',desc:'Grãos e mercearia',v:13000,forn:'Atacadão',d:6},{sub:'Bebidas',desc:'Distribuidora de bebidas',v:8000,forn:'Distribuidora Sul',d:12},{sub:'Embalagens',desc:'Marmitas e descartáveis',v:4440,forn:'Embalar+',d:15}],
+  desp:[{g:'Mão-de-Obra',sub:'Salários',desc:'Folha CLT',v:36000,d:5},{g:'Mão-de-Obra',sub:'Pró-labore',desc:'Pró-labore sócios',v:12000,d:5},{g:'Encargos Sociais',sub:'FGTS',desc:'FGTS',v:2880,d:7},{g:'Encargos Sociais',sub:'INSS',desc:'INSS patronal',v:3200,d:7},{g:'Despesas Prediais',sub:'Aluguel',desc:'Aluguel do ponto',v:9500,d:10},{g:'Utilidades',sub:'Energia Elétrica',desc:'Energia',v:4200,d:15},{g:'Utilidades',sub:'Água / Esgoto',desc:'Água',v:1400,d:15},{g:'Utilidades',sub:'Gás',desc:'Gás GLP',v:2100,d:18},{g:'Impostos',sub:'Simples Nacional',desc:'DAS Simples',v:10080,d:20},{g:'Terceiros',sub:'Contabilidade',desc:'Escritório contábil',v:900,d:10},{g:'Despesas Financeiras',sub:'Taxas de Cartões',desc:'Taxas de cartão',v:2600,d:28}],
+  desperdicios:[{key:'contra',nome:'Contrafilé',qtd:2.5,uni:'kg',cu:42.90,motivo:'Ponto passado no self',acao:'Descarte',d:11},{key:'tomate',nome:'Tomate',qtd:4,uni:'kg',cu:7.90,motivo:'Maturação/perda',acao:'Descarte',d:19}],
+  cmvReg:{ei:9000,compras:55000,ef:8000,vendas:168000},
+  fixos:[['Aluguel',9500,'Despesas Prediais','Aluguel'],['Energia Elétrica',4200,'Utilidades','Energia Elétrica'],['Água / Esgoto',1400,'Utilidades','Água / Esgoto'],['Gás',2100,'Utilidades','Gás'],['Contabilidade',900,'Terceiros','Contabilidade']],
+  funcionarios:[demoFunc('Cozinheiro Chefe','Cozinha',3200),demoFunc('Auxiliar de Cozinha','Cozinha',2100),demoFunc('Atendente/Caixa','Salão',2000),demoFunc('Sócio-proprietário','Sócio',12000,'Sócio')],
+  fornecedores:['Atacadão','Açougue Boi Bom','Ceasa Central','Frios Sul','Distribuidora Sul','Embalar+'],
+  buffet:{kg:45.90,cubas:[[0,4],[1,3],[3,3.5],[4,2.5],[2,2]]}},
+
+ {nome:'Demo · Restaurante À la carte',mixIfood:10,cmvAlvo:34,taxaCartao:3.2,
+  insumos:[['file','Filé mignon','Proteínas','kg',68.90,1,'Casa de Carnes'],['salmao','Salmão fresco','Frutos do Mar','kg',79.90,1,'Peixaria Maré'],['camarao','Camarão limpo','Frutos do Mar','kg',89.90,1,'Peixaria Maré'],['massa','Massa fresca','Padaria','kg',18.00,1,'Massas & Cia'],['parmesao','Queijo parmesão','Frios e Laticínios','kg',64.00,1,'Frios Sul'],['creme','Creme de leite fresco','Frios e Laticínios','L',22.00,1,'Frios Sul'],['manteiga','Manteiga','Frios e Laticínios','kg',48.00,1,'Frios Sul'],['aspargo','Aspargos','Hortifruti','kg',34.00,1,'Ceasa Central'],['vinho','Vinho tinto (garrafa)','Bebidas','un',38.00,1,'Adega Central']],
+  preparados:[['molhoP','Molho parmesão','Molhos','g',1200,[['creme',600],['parmesao',300],['manteiga',80]]]],
+  fichas:[['Filé ao molho madeira','Prato Principal',72,84,320,1.5,20,[['file',220],['manteiga',20]]],['Risoto de camarão','Prato Principal',78,92,240,1.5,25,[['camarao',180],['creme',60],['parmesao',30]]],['Salmão grelhado','Prato Principal',86,98,210,1.5,18,[['salmao',220],['aspargo',80],['manteiga',15]]],['Fettuccine Alfredo','Prato Principal',58,68,300,1.2,16,[['massa',200],['molhoP',120]]],['Taça de vinho','Bebidas',26,0,520,0,2,[['vinho',0.2]]]],
+  receitas:[{sub:'Cartão de Crédito',forma:'Cartão de Crédito',v:62000},{sub:'PIX',forma:'PIX',v:34000},{sub:'Cartão de Débito',forma:'Cartão de Débito',v:22000},{sub:'Dinheiro',forma:'Dinheiro',v:12000},{sub:'Ifood',forma:'Ifood',v:15000}],
+  cmv:[{sub:'Açougue',desc:'Casa de Carnes',v:15500,forn:'Casa de Carnes',d:8},{sub:'Frutos do Mar',desc:'Peixaria Maré',v:16000,forn:'Peixaria Maré',d:9},{sub:'Frios e Laticínios',desc:'Frios e laticínios',v:6800,forn:'Frios Sul',d:7},{sub:'Ceasa e Sacolão',desc:'Hortifruti',v:4200,forn:'Ceasa Central',d:9},{sub:'Bebidas',desc:'Adega / bebidas',v:6800,forn:'Adega Central',d:12}],
+  desp:[{g:'Mão-de-Obra',sub:'Salários',desc:'Folha CLT (cozinha+salão)',v:33000,d:5},{g:'Mão-de-Obra',sub:'Pró-labore',desc:'Pró-labore',v:11000,d:5},{g:'Mão-de-Obra',sub:'Taxa de Serviço',desc:'10% repassado à equipe',v:9000,d:5},{g:'Encargos Sociais',sub:'FGTS',desc:'FGTS',v:2640,d:7},{g:'Despesas Prediais',sub:'Aluguel',desc:'Aluguel',v:12000,d:10},{g:'Utilidades',sub:'Energia Elétrica',desc:'Energia',v:3800,d:15},{g:'Utilidades',sub:'Gás',desc:'Gás',v:1600,d:18},{g:'Impostos',sub:'Simples Nacional',desc:'DAS Simples',v:8700,d:20},{g:'Publicidade',sub:'Marketing Digital',desc:'Gestão de redes',v:1800,d:10},{g:'Despesas Financeiras',sub:'Taxas de Cartões',desc:'Taxas de cartão',v:2900,d:28}],
+  desperdicios:[{key:'salmao',nome:'Salmão fresco',qtd:1.2,uni:'kg',cu:79.90,motivo:'Validade',acao:'Descarte',d:14},{key:'camarao',nome:'Camarão',qtd:0.8,uni:'kg',cu:89.90,motivo:'Sobra de mise',acao:'Descarte',d:22}],
+  cmvReg:{ei:11000,compras:49000,ef:10700,vendas:145000},
+  fixos:[['Aluguel',12000,'Despesas Prediais','Aluguel'],['Energia Elétrica',3800,'Utilidades','Energia Elétrica'],['Gás',1600,'Utilidades','Gás'],['Contabilidade',1100,'Terceiros','Contabilidade'],['Marketing Digital',1800,'Publicidade','Marketing Digital']],
+  funcionarios:[demoFunc('Chef de Cozinha','Cozinha',5200),demoFunc('Sous Chef','Cozinha',3200),demoFunc('Garçom 1','Salão',2000),demoFunc('Garçom 2','Salão',2000),demoFunc('Sócio-proprietário','Sócio',11000,'Sócio')],
+  fornecedores:['Casa de Carnes','Peixaria Maré','Massas & Cia','Frios Sul','Ceasa Central','Adega Central']},
+
+ {nome:'Demo · Pizzaria',mixIfood:45,cmvAlvo:28,taxaCartao:3.2,
+  insumos:[['farinha','Farinha de trigo','Grãos','kg',4.20,1,'Atacadão'],['molho','Molho de tomate','Mercearia','kg',9.50,1,'Atacadão'],['muss','Mussarela','Frios e Laticínios','kg',38.90,1,'Frios Sul'],['calab','Calabresa','Proteínas','kg',24.00,1,'Frios Sul'],['presunto','Presunto','Frios e Laticínios','kg',28.00,1,'Frios Sul'],['catupiry','Catupiry','Frios e Laticínios','kg',32.00,1,'Frios Sul'],['azeitona','Azeitona','Mercearia','kg',18.00,1,'Atacadão'],['refri','Refrigerante 2L','Bebidas','un',7.50,1,'Distribuidora Sul'],['caixa','Caixa de pizza','Embalagens','un',1.80,1,'Embalar+']],
+  preparados:[['massa','Massa de pizza','Padaria','g',4000,[['farinha',2400],['molho',200]]]],
+  fichas:[['Pizza Mussarela G','Prato Principal',49,55,900,1.8,18,[['massa',420],['molho',120],['muss',180]]],['Pizza Calabresa G','Prato Principal',52,58,760,1.8,18,[['massa',420],['molho',120],['muss',150],['calab',110]]],['Pizza Portuguesa G','Prato Principal',56,62,540,1.8,20,[['massa',420],['molho',120],['muss',140],['presunto',80],['azeitona',30]]],['Pizza Frango c/ Catupiry G','Prato Principal',56,62,610,1.8,20,[['massa',420],['molho',120],['muss',120],['catupiry',100]]],['Refrigerante 2L','Bebidas',12,14,880,0,1,[['refri',1]]]],
+  receitas:[{sub:'Ifood',forma:'Ifood',v:52000},{sub:'PIX',forma:'PIX',v:28000},{sub:'Cartão de Crédito',forma:'Cartão de Crédito',v:26000},{sub:'Cartão de Débito',forma:'Cartão de Débito',v:12000},{sub:'Dinheiro',forma:'Dinheiro',v:7000}],
+  cmv:[{sub:'Frios e Laticínios',desc:'Frios (mussarela, catupiry)',v:15000,forn:'Frios Sul',d:8},{sub:'Mercado',desc:'Farinha, molho, azeitona',v:9000,forn:'Atacadão',d:6},{sub:'Açougue',desc:'Calabresa / presunto',v:4500,forn:'Frios Sul',d:8},{sub:'Bebidas',desc:'Refrigerantes',v:3500,forn:'Distribuidora Sul',d:12},{sub:'Embalagens',desc:'Caixas de pizza',v:3000,forn:'Embalar+',d:15}],
+  desp:[{g:'Mão-de-Obra',sub:'Salários',desc:'Folha CLT (pizzaiolos+atend.)',v:22000,d:5},{g:'Mão-de-Obra',sub:'Pró-labore',desc:'Pró-labore',v:9000,d:5},{g:'Terceiros',sub:'Motoboy / Delivery',desc:'Entregadores',v:6800,d:5},{g:'Encargos Sociais',sub:'FGTS',desc:'FGTS',v:1760,d:7},{g:'Despesas Prediais',sub:'Aluguel',desc:'Aluguel',v:6500,d:10},{g:'Utilidades',sub:'Energia Elétrica',desc:'Energia',v:2600,d:15},{g:'Utilidades',sub:'Gás',desc:'Gás (forno)',v:2400,d:18},{g:'Impostos',sub:'Simples Nacional',desc:'DAS Simples',v:7500,d:20},{g:'Despesas Financeiras',sub:'Taxas de Cartões',desc:'Taxas cartão + comissão iFood na conta',v:3200,d:28},{g:'Publicidade',sub:'Marketing Digital',desc:'Anúncios',v:1500,d:10}],
+  desperdicios:[{key:'muss',nome:'Mussarela',qtd:1.5,uni:'kg',cu:38.90,motivo:'Sobra ralada',acao:'Descarte',d:16},{key:'massa',nome:'Massa de pizza',qtd:1.2,uni:'kg',cu:0,motivo:'Massa passou do ponto',acao:'Descarte',d:24}],
+  cmvReg:{ei:6000,compras:35500,ef:6500,vendas:125000},
+  fixos:[['Aluguel',6500,'Despesas Prediais','Aluguel'],['Energia Elétrica',2600,'Utilidades','Energia Elétrica'],['Gás',2400,'Utilidades','Gás'],['Contabilidade',800,'Terceiros','Contabilidade'],['Marketing Digital',1500,'Publicidade','Marketing Digital']],
+  funcionarios:[demoFunc('Pizzaiolo 1','Cozinha',2800),demoFunc('Pizzaiolo 2','Cozinha',2600),demoFunc('Atendente','Salão',2000),demoFunc('Sócio-proprietário','Sócio',9000,'Sócio')],
+  fornecedores:['Atacadão','Frios Sul','Distribuidora Sul','Embalar+']},
+
+ {nome:'Demo · Hamburgueria',mixIfood:48,cmvAlvo:31,taxaCartao:3.2,
+  insumos:[['blend','Blend bovino 180g','Proteínas','kg',36.90,1,'Casa de Carnes'],['pao','Pão brioche','Padaria','un',1.60,1,'Padaria Central'],['cheddar','Cheddar fatiado','Frios e Laticínios','kg',44.00,1,'Frios Sul'],['bacon','Bacon','Proteínas','kg',32.00,1,'Frios Sul'],['batata','Batata palito congelada','Congelados','kg',13.90,1,'Atacadão'],['alface','Alface','Hortifruti','kg',12.00,1,'Ceasa Central'],['tomate','Tomate','Hortifruti','kg',7.90,1,'Ceasa Central'],['maionese','Maionese','Mercearia','kg',14.00,1,'Atacadão'],['refri','Refrigerante lata','Bebidas','un',3.20,1,'Distribuidora Sul'],['embal','Embalagem burger','Embalagens','un',1.40,1,'Embalar+']],
+  preparados:[['molhoc','Molho da casa','Molhos','g',1000,[['maionese',700],['tomate',120]]]],
+  fichas:[['Cheeseburger','Lanches',28,34,1200,1.4,8,[['blend',180],['pao',1],['cheddar',40],['molhoc',20],['embal',1]]],['Bacon Burger','Lanches',34,40,980,1.4,9,[['blend',180],['pao',1],['cheddar',40],['bacon',30],['molhoc',20],['embal',1]]],['Smash Duplo','Lanches',38,44,760,1.4,10,[['blend',240],['pao',1],['cheddar',60],['molhoc',20],['embal',1]]],['Batata c/ Cheddar','Acompanhamento',24,28,900,0.9,6,[['batata',250],['cheddar',40]]],['Refrigerante lata','Bebidas',7,8,1050,0,1,[['refri',1]]]],
+  receitas:[{sub:'Ifood',forma:'Ifood',v:50000},{sub:'PIX',forma:'PIX',v:24000},{sub:'Cartão de Crédito',forma:'Cartão de Crédito',v:22000},{sub:'Cartão de Débito',forma:'Cartão de Débito',v:12000},{sub:'Dinheiro',forma:'Dinheiro',v:7000}],
+  cmv:[{sub:'Açougue',desc:'Blend e bacon',v:14000,forn:'Casa de Carnes',d:8},{sub:'Frios e Laticínios',desc:'Cheddar / frios',v:6500,forn:'Frios Sul',d:8},{sub:'Mercado',desc:'Pães, batata, molhos',v:7500,forn:'Atacadão',d:6},{sub:'Bebidas',desc:'Refrigerantes',v:3650,forn:'Distribuidora Sul',d:12},{sub:'Embalagens',desc:'Embalagens delivery',v:4000,forn:'Embalar+',d:15}],
+  desp:[{g:'Mão-de-Obra',sub:'Salários',desc:'Folha CLT',v:20000,d:5},{g:'Mão-de-Obra',sub:'Pró-labore',desc:'Pró-labore',v:8000,d:5},{g:'Terceiros',sub:'Motoboy / Delivery',desc:'Entregadores',v:6000,d:5},{g:'Encargos Sociais',sub:'FGTS',desc:'FGTS',v:1600,d:7},{g:'Despesas Prediais',sub:'Aluguel',desc:'Aluguel',v:6000,d:10},{g:'Utilidades',sub:'Energia Elétrica',desc:'Energia',v:2400,d:15},{g:'Utilidades',sub:'Gás',desc:'Gás',v:1400,d:18},{g:'Impostos',sub:'Simples Nacional',desc:'DAS Simples',v:6900,d:20},{g:'Publicidade',sub:'Marketing Digital',desc:'Anúncios e influencers',v:2500,d:10},{g:'Despesas Financeiras',sub:'Taxas de Cartões',desc:'Taxas cartão',v:2600,d:28}],
+  desperdicios:[{key:'blend',nome:'Blend bovino',qtd:2,uni:'kg',cu:36.90,motivo:'Ponto errado',acao:'Descarte',d:15},{key:'pao',nome:'Pão brioche',qtd:30,uni:'un',cu:1.60,motivo:'Ressecado',acao:'Descarte',d:23}],
+  cmvReg:{ei:5000,compras:35650,ef:5000,vendas:115000},
+  fixos:[['Aluguel',6000,'Despesas Prediais','Aluguel'],['Energia Elétrica',2400,'Utilidades','Energia Elétrica'],['Gás',1400,'Utilidades','Gás'],['Contabilidade',800,'Terceiros','Contabilidade'],['Marketing Digital',2500,'Publicidade','Marketing Digital']],
+  funcionarios:[demoFunc('Chapeiro 1','Cozinha',2600),demoFunc('Chapeiro 2','Cozinha',2400),demoFunc('Atendente','Salão',2000),demoFunc('Sócio-proprietário','Sócio',8000,'Sócio')],
+  fornecedores:['Casa de Carnes','Frios Sul','Atacadão','Padaria Central','Distribuidora Sul','Embalar+']},
+
+ {nome:'Demo · Sushi',mixIfood:40,cmvAlvo:36,taxaCartao:3.2,
+  insumos:[['salmao','Salmão sashimi','Frutos do Mar','kg',82.90,1,'Peixaria Maré'],['atum','Atum','Frutos do Mar','kg',89.00,1,'Peixaria Maré'],['arroz','Arroz japonês','Grãos','kg',9.90,1,'Oriental Imports'],['nori','Alga nori','Mercearia','un',0.90,1,'Oriental Imports'],['creamcheese','Cream cheese','Frios e Laticínios','kg',36.00,1,'Frios Sul'],['shoyu','Shoyu','Mercearia','L',14.00,1,'Oriental Imports'],['gergelim','Gergelim','Mercearia','kg',26.00,1,'Oriental Imports'],['pepino','Pepino japonês','Hortifruti','kg',9.00,1,'Ceasa Central'],['embal','Embalagem sushi','Embalagens','un',2.20,1,'Embalar+']],
+  preparados:[['arroztemp','Arroz temperado','Grãos','g',2500,[['arroz',1000],['shoyu',60]]]],
+  fichas:[['Combinado 20 peças','Prato Principal',72,84,620,2.2,20,[['arroztemp',300],['salmao',150],['nori',3],['creamcheese',40],['embal',1]]],['Combinado 30 peças','Prato Principal',98,112,480,2.5,25,[['arroztemp',450],['salmao',180],['atum',80],['nori',4],['creamcheese',50],['embal',1]]],['Hot Roll (8un)','Prato Principal',36,42,700,1.5,15,[['arroztemp',180],['salmao',60],['creamcheese',40],['nori',2],['embal',1]]],['Temaki Salmão','Prato Principal',32,38,540,1.2,8,[['arroztemp',120],['salmao',90],['nori',1],['creamcheese',20]]],['Sashimi Salmão (10)','Prato Principal',52,60,360,1.2,10,[['salmao',180]]]],
+  receitas:[{sub:'Ifood',forma:'Ifood',v:48000},{sub:'PIX',forma:'PIX',v:30000},{sub:'Cartão de Crédito',forma:'Cartão de Crédito',v:32000},{sub:'Cartão de Débito',forma:'Cartão de Débito',v:14000},{sub:'Dinheiro',forma:'Dinheiro',v:11000}],
+  cmv:[{sub:'Frutos do Mar',desc:'Salmão e atum',v:33000,forn:'Peixaria Maré',d:8},{sub:'Mercado',desc:'Arroz, nori, shoyu (importados)',v:7000,forn:'Oriental Imports',d:6},{sub:'Frios e Laticínios',desc:'Cream cheese',v:3600,forn:'Frios Sul',d:8},{sub:'Ceasa e Sacolão',desc:'Hortifruti',v:1400,forn:'Ceasa Central',d:9},{sub:'Embalagens',desc:'Embalagens delivery',v:3600,forn:'Embalar+',d:15}],
+  desp:[{g:'Mão-de-Obra',sub:'Salários',desc:'Folha (sushimen+atend.)',v:26000,d:5},{g:'Mão-de-Obra',sub:'Pró-labore',desc:'Pró-labore',v:9000,d:5},{g:'Terceiros',sub:'Motoboy / Delivery',desc:'Entregadores',v:5200,d:5},{g:'Encargos Sociais',sub:'FGTS',desc:'FGTS',v:2080,d:7},{g:'Despesas Prediais',sub:'Aluguel',desc:'Aluguel',v:8000,d:10},{g:'Utilidades',sub:'Energia Elétrica',desc:'Energia',v:3000,d:15},{g:'Impostos',sub:'Simples Nacional',desc:'DAS Simples',v:8100,d:20},{g:'Publicidade',sub:'Marketing Digital',desc:'Anúncios',v:2000,d:10},{g:'Despesas Financeiras',sub:'Taxas de Cartões',desc:'Taxas cartão',v:2800,d:28}],
+  desperdicios:[{key:'salmao',nome:'Salmão sashimi',qtd:1.5,uni:'kg',cu:82.90,motivo:'Aparas/oxidação',acao:'Descarte',d:13},{key:'arroztemp',nome:'Arroz temperado',qtd:1.8,uni:'kg',cu:0,motivo:'Sobra do dia',acao:'Descarte',d:21}],
+  cmvReg:{ei:12000,compras:48600,ef:12000,vendas:135000},
+  fixos:[['Aluguel',8000,'Despesas Prediais','Aluguel'],['Energia Elétrica',3000,'Utilidades','Energia Elétrica'],['Contabilidade',1000,'Terceiros','Contabilidade'],['Marketing Digital',2000,'Publicidade','Marketing Digital']],
+  funcionarios:[demoFunc('Sushiman Chefe','Cozinha',4500),demoFunc('Sushiman','Cozinha',3000),demoFunc('Atendente','Salão',2000),demoFunc('Sócio-proprietário','Sócio',9000,'Sócio')],
+  fornecedores:['Peixaria Maré','Oriental Imports','Frios Sul','Ceasa Central','Embalar+']},
+
+ {nome:'Demo · Bar e Pub',mixIfood:12,cmvAlvo:30,taxaCartao:3.2,
+  insumos:[['chopp','Chopp (barril litro)','Bebidas','L',9.80,1,'Distribuidora Sul'],['cerveja','Cerveja long neck','Bebidas','un',4.20,1,'Distribuidora Sul'],['gin','Gin (dose)','Bebidas','L',68.00,1,'Adega Central'],['tonica','Água tônica','Bebidas','un',3.50,1,'Distribuidora Sul'],['frango','Tulipa de frango','Proteínas','kg',16.90,1,'Casa de Carnes'],['batata','Batata palito','Congelados','kg',13.90,1,'Atacadão'],['queijo','Queijo coalho','Frios e Laticínios','kg',36.00,1,'Frios Sul'],['calab','Calabresa','Proteínas','kg',24.00,1,'Frios Sul'],['limao','Limão','Hortifruti','kg',6.00,1,'Ceasa Central']],
+  preparados:[['molhob','Molho barbecue da casa','Molhos','g',1000,[['limao',60]]]],
+  fichas:[['Chopp 500ml','Bebidas',14,0,3200,0,1,[['chopp',500]]],['Cerveja Long Neck','Bebidas',12,0,2400,0,1,[['cerveja',1]]],['Gin Tônica','Bebidas',28,0,760,0,3,[['gin',50],['tonica',1],['limao',20]]],['Porção Tulipa (12)','Petiscos',48,54,640,0.9,18,[['frango',700],['molhob',40]]],['Batata c/ Calabresa','Petiscos',42,48,720,0.9,12,[['batata',350],['calab',150],['queijo',80]]]],
+  receitas:[{sub:'Cartão de Crédito',forma:'Cartão de Crédito',v:38000},{sub:'PIX',forma:'PIX',v:26000},{sub:'Cartão de Débito',forma:'Cartão de Débito',v:18000},{sub:'Dinheiro',forma:'Dinheiro',v:10000},{sub:'Ifood',forma:'Ifood',v:6000}],
+  cmv:[{sub:'Bebidas',desc:'Chopp, cervejas e destilados',v:16000,forn:'Distribuidora Sul',d:8},{sub:'Açougue',desc:'Frango e calabresa',v:5200,forn:'Casa de Carnes',d:8},{sub:'Mercado',desc:'Batata, insumos petiscos',v:4200,forn:'Atacadão',d:6},{sub:'Frios e Laticínios',desc:'Queijo coalho',v:2600,forn:'Frios Sul',d:8},{sub:'Embalagens',desc:'Copos e descartáveis',v:1400,forn:'Embalar+',d:15}],
+  desp:[{g:'Mão-de-Obra',sub:'Salários',desc:'Folha (bar+cozinha+salão)',v:19000,d:5},{g:'Mão-de-Obra',sub:'Pró-labore',desc:'Pró-labore',v:8000,d:5},{g:'Mão-de-Obra',sub:'Free (Diária)',desc:'Freelancers fim de semana',v:3200,d:5},{g:'Encargos Sociais',sub:'FGTS',desc:'FGTS',v:1520,d:7},{g:'Despesas Prediais',sub:'Aluguel',desc:'Aluguel',v:7500,d:10},{g:'Utilidades',sub:'Energia Elétrica',desc:'Energia',v:3200,d:15},{g:'Impostos',sub:'Simples Nacional',desc:'DAS Simples',v:5880,d:20},{g:'Publicidade',sub:'Publicidade e Propaganda',desc:'Música ao vivo/eventos',v:3000,d:10},{g:'Despesas Financeiras',sub:'Taxas de Cartões',desc:'Taxas cartão',v:2400,d:28}],
+  desperdicios:[{key:'chopp',nome:'Chopp',qtd:8,uni:'L',cu:9.80,motivo:'Perda de barril/espuma',acao:'Descarte',d:17},{key:'frango',nome:'Tulipa de frango',qtd:2,uni:'kg',cu:16.90,motivo:'Sobra não vendida',acao:'Descarte',d:25}],
+  cmvReg:{ei:8000,compras:29400,ef:8000,vendas:98000},
+  fixos:[['Aluguel',7500,'Despesas Prediais','Aluguel'],['Energia Elétrica',3200,'Utilidades','Energia Elétrica'],['Contabilidade',800,'Terceiros','Contabilidade'],['Publicidade e Propaganda',3000,'Publicidade','Publicidade e Propaganda']],
+  funcionarios:[demoFunc('Bartender','Bar',2800),demoFunc('Cozinheiro','Cozinha',2400),demoFunc('Garçom','Salão',2000),demoFunc('Sócio-proprietário','Sócio',8000,'Sócio')],
+  fornecedores:['Distribuidora Sul','Adega Central','Casa de Carnes','Atacadão','Frios Sul','Ceasa Central']}
+];
+async function criarDemos(){
+  if(!IS_SUPER)return;
+  const existentes=new Set(ADMIN_ORGS.filter(o=>o.dados&&o.dados._demo).map(o=>(o.nome||'').toLowerCase()));
+  const faltando=DEMO_SPECS.filter(s=>!existentes.has(s.nome.toLowerCase()));
+  if(!faltando.length){toast('Todos os restaurantes demo já existem');return;}
+  if(!confirm('Gerar '+faltando.length+' restaurante(s) de demonstração?\n\nCada um vem com produtos, preparados, fichas técnicas, lançamentos, desperdício, DRE e CMV real preenchidos.'))return;
+  toast('Gerando demos…');let n=0;
+  for(const s of faltando){try{const dados=buildDemoDados(s);const r=await sb.from('organizacoes').insert({nome:s.nome,responsavel:'Demonstração',status:'ativo',dados,consultor_id:null});if(!r.error)n++;else console.log('demo err',s.nome,r.error);}catch(e){console.log('demo',s.nome,e);}}
+  toast(n?(n+' restaurante(s) demo criado(s) ✓'):'Não foi possível criar (veja o console)');adminTab='demo';showAdmin();
+}
 async function atividadesCliente(orgId,nome){let ats=[];try{ats=(await sb.from('atividades').select('*').eq('org_id',orgId).order('criada_em',{ascending:false})).data||[];}catch(e){}
   modal(`<div class="modal-head"><h3>Atividades: ${nome}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">${ats.length?ats.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)"><div><b>${a.titulo}</b><div style="font-size:12px;color:var(--soft)">${a.descricao||''}${a.prazo?' · prazo '+a.prazo:''}</div></div><span class="tag ${a.status==='concluida'?'tag-green':a.status==='fazendo'?'tag-amber':'tag-navy'}">${a.status}</span></div>`).join(''):'<div style="font-size:13px;color:var(--soft);padding:6px 0">Nenhuma atividade ainda.</div>'}
