@@ -3800,9 +3800,11 @@ const PROJETO_FASES=[
 ];
 function projSeed(){const arr=[];PROJETO_FASES.forEach((f,fi)=>f.tarefas.forEach((t,ti)=>arr.push({id:'f'+fi+'t'+ti,titulo:t,fase:f.nome,feito:false,prazo:''})));return arr;}
 function projOnboardingSeed(){return PROJETO_FASES[0].tarefas.map((t,ti)=>({id:'f0t'+ti,titulo:t,fase:'Onboarding',feito:false,prazo:''}));}
-function projEnsure(o){if(!o)return{tarefas:[]};o.dados=o.dados||{};if(!o.dados._projeto||!Array.isArray(o.dados._projeto.tarefas)){o.dados._projeto={tarefas:projSeed(),criadoEm:hojeISO()};}
+function projEnsure(o){if(!o)return{tarefas:[]};o.dados=o.dados||{};
+  const deConsultor=!!o.consultor_id; // cliente de consultor: projeto vazio (metodologia própria)
+  if(!o.dados._projeto||!Array.isArray(o.dados._projeto.tarefas)){o.dados._projeto=deConsultor?{tarefas:[],criadoEm:hojeISO(),_obV2:true}:{tarefas:projSeed(),criadoEm:hojeISO()};}
   const p=o.dados._projeto;
-  if(!p._obV2){const ob=p.tarefas.filter(t=>t.fase==='Onboarding');if(!ob.length||ob.every(t=>!t.feito&&!t.prazo)){const resto=p.tarefas.filter(t=>t.fase!=='Onboarding');p.tarefas=projOnboardingSeed().concat(resto);}p._obV2=true;}
+  if(!p._obV2){if(!deConsultor){const ob=p.tarefas.filter(t=>t.fase==='Onboarding');if(!ob.length||ob.every(t=>!t.feito&&!t.prazo)){const resto=p.tarefas.filter(t=>t.fase!=='Onboarding');p.tarefas=projOnboardingSeed().concat(resto);}}p._obV2=true;}
   return p;}
 function projPct(p){const t=((p&&p.tarefas)||[]).filter(x=>x.fase!=='Onboarding');if(!t.length)return 0;return Math.round(t.filter(x=>x.feito).length/t.length*100);}
 function projAtrasadas(p){const h=hojeISO();return ((p&&p.tarefas)||[]).filter(x=>!x.feito&&x.prazo&&x.prazo<h).length;}
@@ -3833,7 +3835,7 @@ function renderAdminSide(){const el=$('#admin_side');if(!el)return;
   const arqd=o=>!!(o.dados&&o.dados._arquivado);
   const ativos=ADMIN_ORGS.filter(o=>!arqd(o)), arq=ADMIN_ORGS.filter(arqd);
   el.innerHTML=`
-   ${IS_SUPER&&CONSULTORES.length?`<select class="input" style="margin-bottom:10px" onchange="adminConsFiltro=this.value;renderAdminList()"><option value="" ${adminConsFiltro===''?'selected':''}>Todos os consultores</option><option value="__lidera__" ${adminConsFiltro==='__lidera__'?'selected':''}>Lidera (meus clientes)</option>${CONSULTORES.map(c=>`<option value="${c.id}" ${adminConsFiltro===c.id?'selected':''}>${esc(c.nome||c.email||'Consultor')}</option>`).join('')}</select>`:''}
+   ${IS_SUPER&&CONSULTORES.length?`<select class="input" style="margin-bottom:10px" onchange="adminConsFiltro=this.value;adminSel=null;renderAdminList();renderAdminMain()"><option value="" ${adminConsFiltro===''?'selected':''}>Todos os consultores</option><option value="__lidera__" ${adminConsFiltro==='__lidera__'?'selected':''}>Lidera (meus clientes)</option>${CONSULTORES.map(c=>`<option value="${c.id}" ${adminConsFiltro===c.id?'selected':''}>${esc(c.nome||c.email||'Consultor')}</option>`).join('')}</select>`:''}
    <div class="pill-filter" style="margin-bottom:10px"><button class="${adminTab!=='arquivados'?'on':''}" onclick="adminTab='ativos';renderAdminSide();renderAdminMain()">Ativos (${ativos.length})</button><button class="${adminTab==='arquivados'?'on':''}" onclick="adminTab='arquivados';renderAdminSide();renderAdminMain()">Arquivados (${arq.length})</button></div>
    <input class="input" id="admin_busca" placeholder="🔎 Buscar restaurante…" value="${esc(adminBusca)}" oninput="adminBusca=this.value;renderAdminList()" style="margin-bottom:10px">
    <div id="admin_listc" class="card" style="padding:6px;max-height:68vh;overflow:auto"></div>`;
@@ -3927,15 +3929,22 @@ function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=pro
   <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="projAdd('')">+ Nova etapa / tarefa avulsa</button></div>`;
   return html;
 }
-function adminOverviewHTML(){const arqd=o=>!!(o.dados&&o.dados._arquivado);const ativosArr=ADMIN_ORGS.filter(o=>!arqd(o));const ativos=ativosArr.filter(o=>o.status!=='suspenso').length;const fatTot=ativosArr.reduce((s,o)=>s+kpisDe(o.dados).fat,0);
+function adminOverviewHTML(){const arqd=o=>!!(o.dados&&o.dados._arquivado);
+  let ativosArr=ADMIN_ORGS.filter(o=>!arqd(o));
+  const filtroAtivo=!!(IS_SUPER&&adminConsFiltro);
+  if(filtroAtivo){if(adminConsFiltro==='__lidera__')ativosArr=ativosArr.filter(o=>!o.consultor_id);else ativosArr=ativosArr.filter(o=>o.consultor_id===adminConsFiltro);}
+  const ativos=ativosArr.filter(o=>o.status!=='suspenso').length;const fatTot=ativosArr.reduce((s,o)=>s+kpisDe(o.dados).fat,0);
   const atrTot=ativosArr.reduce((s,o)=>s+((o.dados&&o.dados._projeto)?projAtrasadas(o.dados._projeto):0),0);
-  let html=`<div class="kpi-grid" style="margin:0">
+  const quem=!filtroAtivo?'':(adminConsFiltro==='__lidera__'?'Lidera (seus clientes)':consNome(adminConsFiltro));
+  let html='';
+  if(quem)html+=`<div style="font-size:13px;color:var(--muted);margin-bottom:10px">Resultados de <b>${esc(quem)}</b> — carteira individual</div>`;
+  html+=`<div class="kpi-grid" style="margin:0">
    <div class="kpi"><div class="k-lbl">Clientes</div><div class="k-val">${ativosArr.length}</div><div class="k-sub" style="color:var(--soft)">${ativos} ativos</div></div>
    <div class="kpi"><div class="k-lbl">Faturamento somado</div><div class="k-val" style="font-size:21px">${fmtBRL(fatTot)}</div><div class="k-sub" style="color:var(--soft)">clientes ativos</div></div>
-   <div class="kpi"><div class="k-lbl">Aguardando vínculo</div><div class="k-val" style="color:${ADMIN_PEND.length?'var(--amber)':'var(--green)'}">${ADMIN_PEND.length}</div><div class="k-sub" style="color:var(--soft)">novos cadastros</div></div>
    <div class="kpi"><div class="k-lbl">Tarefas atrasadas</div><div class="k-val" style="color:${atrTot?'var(--red)':'var(--green)'}">${atrTot}</div><div class="k-sub" style="color:var(--soft)">nos projetos</div></div>
-   ${IS_SUPER?`<div class="kpi" onclick="showConsultores()" style="cursor:pointer"><div class="k-lbl">Consultores</div><div class="k-val">${CONSULTORES.length}</div><div class="k-sub" style="color:var(--soft)">gerenciar carteiras</div></div>`:''}</div>`;
-  if(ADMIN_PEND.length)html+=`<div class="card card-pad" style="border-color:var(--amber);margin-top:14px"><div class="ttl" style="margin-bottom:8px">⏳ Novos cadastros aguardando liberação</div>${ADMIN_PEND.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${esc(p.email||'(sem e-mail)')}</b></div><select class="input" style="max-width:260px" onchange="vincularPerfil('${p.id}',this.value)"><option value="">Vincular a um restaurante…</option>${ADMIN_ORGS.map(o=>`<option value="${o.id}">${esc(o.nome)}</option>`).join('')}</select></div>`).join('')}</div>`;
+   ${(!filtroAtivo&&IS_SUPER)?`<div class="kpi" onclick="showConsultores()" style="cursor:pointer"><div class="k-lbl">Consultores</div><div class="k-val">${CONSULTORES.length}</div><div class="k-sub" style="color:var(--soft)">gerenciar carteiras</div></div>`:''}
+   ${!filtroAtivo?`<div class="kpi"><div class="k-lbl">Aguardando vínculo</div><div class="k-val" style="color:${ADMIN_PEND.length?'var(--amber)':'var(--green)'}">${ADMIN_PEND.length}</div><div class="k-sub" style="color:var(--soft)">novos cadastros</div></div>`:''}</div>`;
+  if(!filtroAtivo&&ADMIN_PEND.length)html+=`<div class="card card-pad" style="border-color:var(--amber);margin-top:14px"><div class="ttl" style="margin-bottom:8px">⏳ Novos cadastros aguardando liberação</div>${ADMIN_PEND.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${esc(p.email||'(sem e-mail)')}</b></div><select class="input" style="max-width:260px" onchange="vincularPerfil('${p.id}',this.value)"><option value="">Vincular a um restaurante…</option>${ADMIN_ORGS.map(o=>`<option value="${o.id}">${esc(o.nome)}</option>`).join('')}</select></div>`).join('')}</div>`;
   html+=`<div class="card card-pad" style="margin-top:14px;color:var(--muted);font-size:13.5px">👈 Selecione um restaurante na lista para ver os <b>dados de hoje</b> e o <b>controle de projeto</b> (tarefas, prazos e progresso).</div>`;
   return html;
 }
