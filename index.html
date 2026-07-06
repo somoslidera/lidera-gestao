@@ -2342,33 +2342,35 @@ function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast
   save();viewFinanceiro();toast('Lançamento registrado');}
 /* ----- Popup de lançamento (uma ou várias linhas) ----- */
 let lancDraft=[];
+const LM_GC='140px 128px 148px minmax(150px,1fr) 130px 118px 118px 34px';
 function lmBlank(){return {data:hojeISO(),grupo:'',sub:'',desc:'',fornecedor:'',valorStr:'',forma:''};}
 function subOptions(grupo,sel){const subs=ordPt((DB.categorias[grupo]||{subs:[]}).subs);return `<option value="">—</option>`+subs.map(s=>`<option ${s===sel?'selected':''}>${esc(s)}</option>`).join('');}
 function lancarModal(){lancDraft=[lmBlank()];
   const fornList=((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('');
   modal(`<div class="modal-head"><h3>Novo lançamento</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Preencha um ou mais itens. Use o <b>+</b> para adicionar linhas e lançar vários de uma vez.</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Preencha um ou mais itens e use <b>+ Adicionar linha</b> para lançar vários de uma vez.</div>
     <datalist id="lm_forn">${fornList}</datalist>
-    <div id="lm_rows"></div>
-    <button class="btn btn-ghost btn-sm" onclick="lmAddRow()" style="margin-top:2px">${icoPlus} Adicionar linha</button>
+    <div style="overflow-x:auto"><div style="min-width:1030px">
+      <div style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span>Categoria</span><span>Subcategoria</span><span>Descrição</span><span>Fornecedor</span><span>Valor</span><span>Forma</span><span></span></div>
+      <div id="lm_rows"></div>
+    </div></div>
+    <button class="btn btn-ghost btn-sm" onclick="lmAddRow()" style="margin-top:8px">${icoPlus} Adicionar linha</button>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="lancarModalSalvar()">Lançar</button></div>`,true);
+  const mc=document.querySelector('#modalRoot .modal');if(mc){mc.style.maxWidth='1180px';mc.style.width='min(1180px,96vw)';}
   renderLmRows();}
 function renderLmRows(){const el=$('#lm_rows');if(!el)return;const grupos=ordPt(Object.keys(DB.categorias));const formas=ordPt(DB.formasPagamento||[]);
   el.innerHTML=lancDraft.map((r,i)=>`
-   <div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-     <div class="field" style="margin:0;flex:0 0 128px"><label>Data</label><input type="date" class="input" value="${r.data||''}" onchange="lancDraft[${i}].data=this.value"></div>
-     <div class="field" style="margin:0;flex:1 1 140px"><label>Categoria</label><select class="input" onchange="lancDraft[${i}].grupo=this.value;lancDraft[${i}].sub='';lmSubRefresh(${i})"><option value="" ${!r.grupo?'selected':''}>— categoria —</option>${grupos.map(g=>`<option ${g===r.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
-     <div class="field" style="margin:0;flex:1 1 150px"><label>Subcategoria</label><select class="input" id="lm_sub_${i}" onchange="lancDraft[${i}].sub=this.value">${subOptions(r.grupo,r.sub)}</select></div>
-     <div class="field" style="margin:0;flex:2 1 160px"><label>Descrição</label><input class="input" value="${esc(r.desc)}" placeholder="Referência, nº NF..." oninput="lancDraft[${i}].desc=this.value"></div>
-     <div class="field" style="margin:0;flex:1 1 140px"><label>Fornecedor</label><input class="input" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value"></div>
-     <div class="field" style="margin:0;flex:0 0 120px"><label>Valor</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${r.valorStr||''}" placeholder="0,00" oninput="moneyMask(this);lancDraft[${i}].valorStr=this.value"></div></div>
-     <div class="field" style="margin:0;flex:1 1 120px"><label>Forma</label><select class="input" onchange="lancDraft[${i}].forma=this.value"><option value="" ${!r.forma?'selected':''}>—</option>${formas.map(x=>`<option ${x===r.forma?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
-     <div style="display:flex;gap:4px;padding-bottom:2px;flex:0 0 auto">
-       <button class="btn btn-ghost btn-sm" title="Adicionar linha" onclick="lmAddRow()" style="padding:6px 10px">${icoPlus}</button>
-       ${lancDraft.length>1?`<button class="btn btn-ghost btn-sm" title="Remover linha" style="color:var(--red);padding:6px 10px" onclick="lmRemoveRow(${i})">${icoX}</button>`:''}
-     </div>
+   <div style="display:grid;grid-template-columns:${LM_GC};gap:8px;align-items:center;margin-bottom:6px">
+     <input type="date" class="input" style="min-width:0" value="${r.data||''}" onchange="lancDraft[${i}].data=this.value">
+     <select class="input" style="min-width:0" onchange="lancDraft[${i}].grupo=this.value;lancDraft[${i}].sub='';lmSubRefresh(${i})"><option value="" ${!r.grupo?'selected':''}>—</option>${grupos.map(g=>`<option ${g===r.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
+     <select class="input" style="min-width:0" id="lm_sub_${i}" onchange="lancDraft[${i}].sub=this.value">${subOptions(r.grupo,r.sub)}</select>
+     <input class="input" style="min-width:0" value="${esc(r.desc)}" placeholder="Referência, nº NF..." oninput="lancDraft[${i}].desc=this.value">
+     <input class="input" style="min-width:0" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value">
+     <div class="money-wrap" style="min-width:0"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${r.valorStr||''}" placeholder="0,00" oninput="moneyMask(this);lancDraft[${i}].valorStr=this.value"></div>
+     <select class="input" style="min-width:0" onchange="lancDraft[${i}].forma=this.value"><option value="" ${!r.forma?'selected':''}>—</option>${formas.map(x=>`<option ${x===r.forma?'selected':''}>${esc(x)}</option>`).join('')}</select>
+     <button class="btn btn-ghost btn-sm" title="Remover linha" style="color:var(--red);padding:6px 6px;${lancDraft.length>1?'':'visibility:hidden'}" onclick="lmRemoveRow(${i})">${icoX}</button>
    </div>`).join('');}
 function lmSubRefresh(i){const s=$('#lm_sub_'+i);if(s)s.innerHTML=subOptions(lancDraft[i].grupo,lancDraft[i].sub);}
 function lmAddRow(){lancDraft.push(lmBlank());renderLmRows();}
