@@ -1550,9 +1550,9 @@ function nfeAplicar(){
     const modo=(document.querySelector('input[name=nfe_modo]:checked')||{}).value||'item';
     if(modo==='item'){
       d.itens.forEach((it,idx)=>{const insId=linkIds[idx];if(!insId)return;const v=it.vTotal||0;if(v<=0)return;
-        DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:it._grupo||'CMV',sub:it._sub||'',descricao:it.desc||'Produto',valor:v,forma:'',fromNFe:true,insumoId:insId,nfe:d.nNF||''});});
+        DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:it._grupo||'CMV',sub:it._sub||'',descricao:it.desc||'Produto',fornecedor:d.fornecedor||'',valor:v,forma:'',fromNFe:true,insumoId:insId,nfe:d.nNF||''});});
     } else if(d.total>0){
-      DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:'CMV',sub:'Entrada de Produtos',descricao:(d.fornecedor||'Compra')+(d.nNF?' · NF '+d.nNF:''),valor:d.total,forma:'',fromNFe:true,nfe:d.nNF||''});
+      DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:'CMV',sub:'Entrada de Produtos',descricao:(d.fornecedor||'Compra')+(d.nNF?' · NF '+d.nNF:''),fornecedor:d.fornecedor||'',valor:d.total,forma:'',fromNFe:true,nfe:d.nNF||''});
     }
   }
   window._nfe=null;save();closeModal();(current==='insumos'?viewInsumos():viewFinanceiro());toast(`NF importada · ${cri} novo(s), ${upd} atualizado(s)`);
@@ -2203,10 +2203,10 @@ function hojeISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMon
 function ymOf(d){return (d||'').slice(0,7);}
 function fmtDataBR(iso){if(!iso)return '—';const p=iso.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:iso;}
 function ymLabel(ym){const p=(ym||'').split('-');return p.length===2?`${MESES_PT[(+p[1])-1]||''} / ${p[0]}`:ym;}
-let lancYM=null, lancFiltro={data:'',grupo:'',sub:'',desc:'',forma:''};
+let lancYM=null, lancFiltro={data:'',grupo:'',sub:'',desc:'',fornecedor:'',forma:''};
 function lancSetFiltro(k,v){lancFiltro[k]=v;viewFinanceiro();}
 function lancSetFiltroData(v){lancFiltro.data=v;if(v)lancYM=ymOf(v);viewFinanceiro();}
-function lancLimparFiltro(){lancFiltro={data:'',grupo:'',sub:'',desc:'',forma:''};viewFinanceiro();}
+function lancLimparFiltro(){lancFiltro={data:'',grupo:'',sub:'',desc:'',fornecedor:'',forma:''};viewFinanceiro();}
 function curYM(){return lancYM||ymOf(hojeISO());}
 function ymNow(){return ymOf(hojeISO());} // mês-calendário atual (AAAA-MM)
 function ymMinus1(ym){let y=+ym.slice(0,4),m=+ym.slice(5,7)-1;if(m<1){m=12;y--;}return y+'-'+String(m).padStart(2,'0');}
@@ -2284,7 +2284,7 @@ function syncAllTaxas(){ // lançamento automático de taxa desativado: apenas l
   DB.lancamentos=(DB.lancamentos||[]).filter(l=>!l.autoTaxa);
 }
 function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast('Informe o valor');
-  const novo={id:uid(),data:$('#lc_data').value||hojeISO(),grupo:$('#lc_grupo').value,sub:$('#lc_sub').value||'',descricao:($('#lc_desc').value||'').trim(),valor,forma:$('#lc_forma').value||''};
+  const novo={id:uid(),data:$('#lc_data').value||hojeISO(),grupo:$('#lc_grupo').value,sub:$('#lc_sub').value||'',descricao:($('#lc_desc').value||'').trim(),fornecedor:($('#lc_fornecedor')?($('#lc_fornecedor').value||'').trim():''),valor,forma:$('#lc_forma').value||''};
   DB.lancamentos.push(novo);syncTaxaLanc(novo);
   if(ymOf($('#lc_data').value)!==curYM())lancYM=ymOf($('#lc_data').value);
   save();viewFinanceiro();toast('Lançamento registrado');}
@@ -2313,33 +2313,35 @@ function editLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!
       <div class="field"><label>Valor</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="el_valor" inputmode="numeric" value="${fmtMoneyInput(l.valor||0)}" oninput="moneyMask(this)"></div></div>
     </div>
     <div class="grid-2">
-      <div class="field"><label>Grupo</label><select class="input" id="el_grupo" onchange="elSubRefresh()">${grupos.map(g=>`<option ${g===l.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
+      <div class="field"><label>Categoria</label><select class="input" id="el_grupo" onchange="elSubRefresh()">${grupos.map(g=>`<option ${g===l.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
       <div class="field"><label>Subcategoria</label><select class="input" id="el_sub">${(DB.categorias[l.grupo]?DB.categorias[l.grupo].subs:[]).map(x=>`<option ${x===l.sub?'selected':''}>${esc(x)}</option>`).join('')||`<option value="">—</option>`}</select></div>
     </div>
-    <div class="field"><label>Descrição</label><input class="input" id="el_desc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" placeholder="Fornecedor, nº NF, referência..."></div>
+    <div class="field"><label>Descrição</label><input class="input" id="el_desc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" placeholder="Referência, nº NF..."></div>
+    <div class="field"><label>Fornecedor</label><input class="input" id="el_fornecedor" list="el_forn_list" value="${(l.fornecedor||'').replace(/"/g,'&quot;')}" placeholder="opcional"><datalist id="el_forn_list">${((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('')}</datalist></div>
     <div class="field"><label>Forma de pagamento</label><select class="input" id="el_forma"><option value="">—</option>${(DB.formasPagamento||[]).map(x=>`<option ${x===l.forma?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveLancamento('${id}')">Salvar</button></div>`);
 }
 function saveLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)return closeModal();
   const valor=moneyVal('el_valor');if(!valor)return toast('Informe o valor');
-  l.data=$('#el_data').value||l.data;l.grupo=$('#el_grupo').value;l.sub=$('#el_sub').value||'';l.descricao=($('#el_desc').value||'').trim();l.valor=valor;l.forma=$('#el_forma').value||'';
+  l.data=$('#el_data').value||l.data;l.grupo=$('#el_grupo').value;l.sub=$('#el_sub').value||'';l.descricao=($('#el_desc').value||'').trim();l.fornecedor=($('#el_fornecedor')?($('#el_fornecedor').value||'').trim():(l.fornecedor||''));l.valor=valor;l.forma=$('#el_forma').value||'';
   syncTaxaLanc(l);save();closeModal();viewFinanceiro();toast('Lançamento atualizado');}
 function finLancamentos(){
   const ym=curYM(); const d=dreLanc(ym);
-  const fl=lancFiltro, ativo=fl.data||fl.grupo||fl.sub||fl.desc||fl.forma;
+  const fl=lancFiltro, ativo=fl.data||fl.grupo||fl.sub||fl.desc||fl.fornecedor||fl.forma;
   const ls=lancMes(ym).filter(l=>
     (!fl.data||l.data===fl.data)&&
     (!fl.grupo||l.grupo===fl.grupo)&&
     (!fl.sub||(l.sub||'').toLowerCase().includes(fl.sub.toLowerCase()))&&
     (!fl.desc||(l.descricao||'').toLowerCase().includes(fl.desc.toLowerCase()))&&
+    (!fl.fornecedor||(l.fornecedor||'').toLowerCase().includes(fl.fornecedor.toLowerCase()))&&
     (!fl.forma||(l.forma||'')===fl.forma)
   ).sort((a,b)=>(b.data||'').localeCompare(a.data||'')||0);
   const filtTot=ls.reduce((s,l)=>s+(grupoTipo(l.grupo)==='receita'?(l.valor||0):-(l.valor||0)),0);
   const grupos=Object.keys(DB.categorias);
   const subsG0=DB.categorias[grupos[0]]?DB.categorias[grupos[0]].subs:[];
   const formas=DB.formasPagamento||[];
-  return `<div class="card card-pad" style="max-width:1000px">
+  return `<div class="card card-pad" style="max-width:1180px">
     <div class="section-head"><div><div class="ttl">Lançamentos</div><div class="desc">Receitas e despesas, alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="month" class="input" style="max-width:160px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()">
@@ -2349,9 +2351,10 @@ function finLancamentos(){
       </div></div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px">
       <div class="field" style="margin:0;flex:0 0 140px"><label>Data</label><input type="date" class="input" id="lc_data" value="${hojeISO()}"></div>
-      <div class="field" style="margin:0;flex:1 1 150px"><label>Grupo</label><select class="input" id="lc_grupo" onchange="lancSubRefresh()">${grupos.map(g=>`<option>${esc(g)}</option>`).join('')}</select></div>
+      <div class="field" style="margin:0;flex:1 1 150px"><label>Categoria</label><select class="input" id="lc_grupo" onchange="lancSubRefresh()">${grupos.map(g=>`<option>${esc(g)}</option>`).join('')}</select></div>
       <div class="field" style="margin:0;flex:1 1 160px"><label>Subcategoria</label><select class="input" id="lc_sub">${subsG0.map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
-      <div class="field" style="margin:0;flex:2 1 200px"><label>Descrição</label><input class="input" id="lc_desc" placeholder="Fornecedor, nº NF, referência..."></div>
+      <div class="field" style="margin:0;flex:2 1 180px"><label>Descrição</label><input class="input" id="lc_desc" placeholder="Referência, nº NF..."></div>
+      <div class="field" style="margin:0;flex:1 1 150px"><label>Fornecedor</label><input class="input" id="lc_fornecedor" list="lc_forn_list" placeholder="opcional"><datalist id="lc_forn_list">${((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('')}</datalist></div>
       <div class="field" style="margin:0;flex:0 0 130px"><label>Valor</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="lc_valor" inputmode="numeric" placeholder="0,00" oninput="moneyMask(this)"></div></div>
       <div class="field" style="margin:0;flex:1 1 130px"><label>Forma <a onclick="formasModal()" style="color:var(--gold);cursor:pointer;font-weight:600">· editar</a></label><select class="input" id="lc_forma">${(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
       <button class="btn btn-primary btn-sm" style="flex:0 0 auto;height:40px" onclick="addLancamento()">${icoPlus} Lançar</button>
@@ -2366,20 +2369,21 @@ function finLancamentos(){
       ${ativo?`<a onclick="lancLimparFiltro()" style="color:var(--gold);font-weight:600;font-size:12.5px;cursor:pointer">Limpar filtros ✕</a>`:''}
     </div>
     <div class="scroll-x"><table><thead>
-      <tr><th>Data</th><th>Grupo</th><th>Subcategoria</th><th>Descrição</th><th>Forma</th><th class="num">Valor</th><th></th></tr>
+      <tr><th>Data</th><th>Categoria</th><th>Subcategoria</th><th>Descrição</th><th>Fornecedor</th><th>Forma</th><th class="num">Valor</th><th></th></tr>
       <tr class="lanc-filtro">
         <th><input type="date" class="input" value="${fl.data||''}" title="Filtrar por dia" onchange="lancSetFiltroData(this.value)"></th>
         <th><select class="input" onchange="lancSetFiltro('grupo',this.value)"><option value="">Todos</option>${grupos.map(g=>`<option ${fl.grupo===g?'selected':''}>${esc(g)}</option>`).join('')}</select></th>
         <th><input class="input" placeholder="filtrar..." value="${(fl.sub||'').replace(/"/g,'&quot;')}" oninput="clearTimeout(window._lf1);window._lf1=setTimeout(()=>lancSetFiltro('sub',this.value),350)"></th>
         <th><input class="input" placeholder="filtrar..." value="${(fl.desc||'').replace(/"/g,'&quot;')}" oninput="clearTimeout(window._lf2);window._lf2=setTimeout(()=>lancSetFiltro('desc',this.value),350)"></th>
+        <th><input class="input" placeholder="filtrar..." value="${(fl.fornecedor||'').replace(/"/g,'&quot;')}" oninput="clearTimeout(window._lf3);window._lf3=setTimeout(()=>lancSetFiltro('fornecedor',this.value),350)"></th>
         <th><select class="input" onchange="lancSetFiltro('forma',this.value)"><option value="">Todas</option>${formas.map(x=>`<option ${fl.forma===x?'selected':''}>${esc(x)}</option>`).join('')}</select></th>
         <th></th><th></th>
       </tr></thead>
     <tbody>${ls.length?ls.map(l=>{const rec=grupoTipo(l.grupo)==='receita';const auto=l.autoTaxa;return `<tr${auto?' style="background:var(--bg)"':''}>
-      <td>${fmtDataBR(l.data)}</td><td>${esc(l.grupo)}</td><td>${esc(l.sub||'—')}${auto?' <span style="font-size:9.5px;color:var(--soft);border:1px solid var(--line);border-radius:5px;padding:0 4px;letter-spacing:.3px">AUTO</span>':''}</td><td>${esc(l.descricao||'—')}</td><td style="color:var(--soft)">${esc(l.forma||'—')}</td>
+      <td>${fmtDataBR(l.data)}</td><td>${esc(l.grupo)}</td><td>${esc(l.sub||'—')}${auto?' <span style="font-size:9.5px;color:var(--soft);border:1px solid var(--line);border-radius:5px;padding:0 4px;letter-spacing:.3px">AUTO</span>':''}</td><td>${esc(l.descricao||'—')}</td><td style="color:var(--soft)">${esc(l.fornecedor||'—')}</td><td style="color:var(--soft)">${esc(l.forma||'—')}</td>
       <td class="num" style="color:${rec?'var(--green)':'var(--red)'};font-weight:600;white-space:nowrap">${rec?'+':'−'} ${fmtBRL(l.valor)}</td>
-      <td class="num">${auto?`<span style="font-size:10.5px;color:var(--soft)" title="Taxa calculada automaticamente sobre o recebível. Ajuste o % em Parâmetros.">automático</span>`:`<div style="display:inline-flex;gap:6px"><button class="icon-btn" title="Editar" onclick="editLancamento('${l.id}')">${icoEdit}</button><button class="icon-btn" title="Excluir" style="color:var(--red)" onclick="delLancamento('${l.id}')">${icoX}</button></div>`}</td></tr>`;}).join(''):`<tr><td colspan="7" style="color:var(--soft);text-align:center;padding:14px">${ativo?'Nenhum lançamento com esse filtro.':'Nenhum lançamento neste mês. Use o formulário acima.'}</td></tr>`}</tbody>
-    ${ativo&&ls.length?`<tfoot><tr><td colspan="5" style="text-align:right;font-weight:600;border-top:2px solid var(--navy)">Total filtrado</td><td class="num" style="font-weight:700;color:${filtTot>=0?'var(--green)':'var(--red)'};border-top:2px solid var(--navy)">${fmtBRL(filtTot)}</td><td style="border-top:2px solid var(--navy)"></td></tr></tfoot>`:''}</table></div>
+      <td class="num">${auto?`<span style="font-size:10.5px;color:var(--soft)" title="Taxa calculada automaticamente sobre o recebível. Ajuste o % em Parâmetros.">automático</span>`:`<div style="display:inline-flex;gap:6px"><button class="icon-btn" title="Editar" onclick="editLancamento('${l.id}')">${icoEdit}</button><button class="icon-btn" title="Excluir" style="color:var(--red)" onclick="delLancamento('${l.id}')">${icoX}</button></div>`}</td></tr>`;}).join(''):`<tr><td colspan="8" style="color:var(--soft);text-align:center;padding:14px">${ativo?'Nenhum lançamento com esse filtro.':'Nenhum lançamento neste mês. Use o formulário acima.'}</td></tr>`}</tbody>
+    ${ativo&&ls.length?`<tfoot><tr><td colspan="6" style="text-align:right;font-weight:600;border-top:2px solid var(--navy)">Total filtrado</td><td class="num" style="font-weight:700;color:${filtTot>=0?'var(--green)':'var(--red)'};border-top:2px solid var(--navy)">${fmtBRL(filtTot)}</td><td style="border-top:2px solid var(--navy)"></td></tr></tfoot>`:''}</table></div>
   </div>`;
 }
 /* ----- Fluxo de Caixa ----- */
