@@ -2340,6 +2340,46 @@ function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast
   DB.lancamentos.push(novo);syncTaxaLanc(novo);
   if(ymOf($('#lc_data').value)!==curYM())lancYM=ymOf($('#lc_data').value);
   save();viewFinanceiro();toast('Lançamento registrado');}
+/* ----- Popup de lançamento (uma ou várias linhas) ----- */
+let lancDraft=[];
+function lmBlank(){return {data:hojeISO(),grupo:'',sub:'',desc:'',fornecedor:'',valorStr:'',forma:''};}
+function subOptions(grupo,sel){const subs=ordPt((DB.categorias[grupo]||{subs:[]}).subs);return `<option value="">—</option>`+subs.map(s=>`<option ${s===sel?'selected':''}>${esc(s)}</option>`).join('');}
+function lancarModal(){lancDraft=[lmBlank()];
+  const fornList=((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('');
+  modal(`<div class="modal-head"><h3>Novo lançamento</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Preencha um ou mais itens. Use o <b>+</b> para adicionar linhas e lançar vários de uma vez.</div>
+    <datalist id="lm_forn">${fornList}</datalist>
+    <div id="lm_rows"></div>
+    <button class="btn btn-ghost btn-sm" onclick="lmAddRow()" style="margin-top:2px">${icoPlus} Adicionar linha</button>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="lancarModalSalvar()">Lançar</button></div>`,true);
+  renderLmRows();}
+function renderLmRows(){const el=$('#lm_rows');if(!el)return;const grupos=ordPt(Object.keys(DB.categorias));const formas=ordPt(DB.formasPagamento||[]);
+  el.innerHTML=lancDraft.map((r,i)=>`
+   <div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+     <div class="field" style="margin:0;flex:0 0 128px"><label>Data</label><input type="date" class="input" value="${r.data||''}" onchange="lancDraft[${i}].data=this.value"></div>
+     <div class="field" style="margin:0;flex:1 1 140px"><label>Categoria</label><select class="input" onchange="lancDraft[${i}].grupo=this.value;lancDraft[${i}].sub='';lmSubRefresh(${i})"><option value="" ${!r.grupo?'selected':''}>— categoria —</option>${grupos.map(g=>`<option ${g===r.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
+     <div class="field" style="margin:0;flex:1 1 150px"><label>Subcategoria</label><select class="input" id="lm_sub_${i}" onchange="lancDraft[${i}].sub=this.value">${subOptions(r.grupo,r.sub)}</select></div>
+     <div class="field" style="margin:0;flex:2 1 160px"><label>Descrição</label><input class="input" value="${esc(r.desc)}" placeholder="Referência, nº NF..." oninput="lancDraft[${i}].desc=this.value"></div>
+     <div class="field" style="margin:0;flex:1 1 140px"><label>Fornecedor</label><input class="input" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value"></div>
+     <div class="field" style="margin:0;flex:0 0 120px"><label>Valor</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${r.valorStr||''}" placeholder="0,00" oninput="moneyMask(this);lancDraft[${i}].valorStr=this.value"></div></div>
+     <div class="field" style="margin:0;flex:1 1 120px"><label>Forma</label><select class="input" onchange="lancDraft[${i}].forma=this.value"><option value="" ${!r.forma?'selected':''}>—</option>${formas.map(x=>`<option ${x===r.forma?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+     <div style="display:flex;gap:4px;padding-bottom:2px;flex:0 0 auto">
+       <button class="btn btn-ghost btn-sm" title="Adicionar linha" onclick="lmAddRow()" style="padding:6px 10px">${icoPlus}</button>
+       ${lancDraft.length>1?`<button class="btn btn-ghost btn-sm" title="Remover linha" style="color:var(--red);padding:6px 10px" onclick="lmRemoveRow(${i})">${icoX}</button>`:''}
+     </div>
+   </div>`).join('');}
+function lmSubRefresh(i){const s=$('#lm_sub_'+i);if(s)s.innerHTML=subOptions(lancDraft[i].grupo,lancDraft[i].sub);}
+function lmAddRow(){lancDraft.push(lmBlank());renderLmRows();}
+function lmRemoveRow(i){lancDraft.splice(i,1);if(!lancDraft.length)lancDraft.push(lmBlank());renderLmRows();}
+function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];let n=0,lastYM=null;
+  lancDraft.forEach(r=>{const valor=nfeBrNum(r.valorStr);if(!valor||!r.grupo)return;
+    const nv={id:uid(),data:r.data||hojeISO(),grupo:r.grupo,sub:r.sub||'',descricao:(r.desc||'').trim(),fornecedor:(r.fornecedor||'').trim(),valor,forma:r.forma||''};
+    DB.lancamentos.push(nv);n++;lastYM=ymOf(nv.data);});
+  if(!n)return toast('Preencha ao menos um item com categoria e valor');
+  if(lastYM&&lastYM!==curYM())lancYM=lastYM;
+  save();closeModal();viewFinanceiro();toast(n===1?'Lançamento registrado':n+' lançamentos registrados');}
 function delLancamento(id){DB.lancamentos=DB.lancamentos.filter(l=>l.id!==id&&l.fromTaxa!==id);save();viewFinanceiro();}
 function formasRows(){return (DB.formasPagamento||[]).map((f,i)=>`<span class="cat-chip">${esc(f)}<button onclick="delForma(${i})">${icoX}</button></span>`).join('')||'<span style="color:var(--soft);font-size:12px">Nenhuma forma cadastrada.</span>';}
 function formaSelect(val,onchange){const fs=ordPt(DB.formasPagamento||[]);return `<select class="input" title="Forma de pagamento" onchange="${onchange}"><option value="">—</option>${fs.map(x=>`<option ${x===(val||'')?'selected':''}>${esc(x)}</option>`).join('')}</select>`;}
@@ -2401,16 +2441,7 @@ function finLancamentos(){
         <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆ Planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarLancamentos(this)"></label>
         <button class="btn btn-ghost btn-sm" onclick="modeloLancModal()">⬇ Modelo</button>
       </div></div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px">
-      <div class="field" style="margin:0;flex:0 0 140px"><label>Data</label><input type="date" class="input" id="lc_data" value="${hojeISO()}"></div>
-      <div class="field" style="margin:0;flex:1 1 150px"><label>Categoria</label><select class="input" id="lc_grupo" onchange="lancSubRefresh()">${grupos.map(g=>`<option>${esc(g)}</option>`).join('')}</select></div>
-      <div class="field" style="margin:0;flex:1 1 160px"><label>Subcategoria</label><select class="input" id="lc_sub">${subsG0.map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
-      <div class="field" style="margin:0;flex:2 1 180px"><label>Descrição</label><input class="input" id="lc_desc" placeholder="Referência, nº NF..."></div>
-      <div class="field" style="margin:0;flex:1 1 150px"><label>Fornecedor</label><input class="input" id="lc_fornecedor" list="lc_forn_list" placeholder="opcional"><datalist id="lc_forn_list">${((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('')}</datalist></div>
-      <div class="field" style="margin:0;flex:0 0 130px"><label>Valor</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="lc_valor" inputmode="numeric" placeholder="0,00" oninput="moneyMask(this)"></div></div>
-      <div class="field" style="margin:0;flex:1 1 130px"><label>Forma <a onclick="formasModal()" style="color:var(--gold);cursor:pointer;font-weight:600">· editar</a></label><select class="input" id="lc_forma">${ordPt(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select></div>
-      <button class="btn btn-primary btn-sm" style="flex:0 0 auto;height:40px" onclick="addLancamento()">${icoPlus} Lançar</button>
-    </div>
+    <div style="margin-bottom:14px"><button class="btn btn-primary" onclick="lancarModal()">${icoPlus} Lançar</button></div>
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
       <div class="dash-pill"><span>Receitas</span><b style="color:var(--green)">${fmtBRL(d.recTot)}</b></div>
       <div class="dash-pill"><span>Despesas</span><b style="color:var(--red)">${fmtBRL(d.despTot)}</b></div>
