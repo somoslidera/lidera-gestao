@@ -1552,9 +1552,9 @@ function hoje(){try{return new Date().toLocaleDateString('pt-BR');}catch(e){retu
 let fichaFiltro='Todas';
 function viewFichas(){
   $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editFicha()">${icoPlus} Nova ficha</button>`
+    +`<button class="btn btn-primary" onclick="novoPreparado()">${icoPlus} Novo preparado</button>`
     +`<button class="btn btn-ghost" onclick="simularPreco()">${ico('mc')} Simular preço</button>`
     +`<button class="btn btn-ghost" onclick="editModular()">${icoPlus} Nova modular</button>`
-    +`<button class="btn btn-ghost" onclick="novoPreparado()">${icoPlus} Novo preparado</button>`
     +`<button class="btn btn-ghost" onclick="gerenciarCategorias('prato')">≡ Categorias</button>`
     +`<button class="btn btn-ghost" onclick="baixarModeloFichas()">⬇ Baixar modelo</button>`
     +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Importar<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarFichas(this)"></label>`;
@@ -1619,27 +1619,21 @@ function preparadoCard(p){
 function duplicarFicha(id){const f=DB.fichas[id];if(!f)return;const c=JSON.parse(JSON.stringify(f));c.id=uid();c.nome=f.nome+' (cópia)';c.criada=hoje();DB.fichas[c.id]=c;save();viewFichas();toast('Ficha duplicada');}
 function filtrarCards(input,sel){const q=(input.value||'').toLowerCase();document.querySelectorAll(sel+' > [data-nome]').forEach(el=>{el.style.display=(el.dataset.nome||'').toLowerCase().includes(q)?'':'none';});}
 function novoPreparado(){editPreparado();}
-function prepTab(t){$('#ptab_c').classList.toggle('on',t==='c');$('#ptab_o').classList.toggle('on',t==='o');$('#ptab_custos').style.display=t==='c'?'block':'none';$('#ptab_op').style.display=t==='o'?'block':'none';const lc=$('#pp_left_custos'),lo=$('#pp_left_op');if(lc)lc.style.display=t==='c'?'flex':'none';if(lo)lo.style.display=t==='o'?'block':'none';}
+function prepTab(t){$('#ptab_c').classList.toggle('on',t==='c');$('#ptab_o').classList.toggle('on',t==='o');$('#ptab_custos').style.display=t==='c'?'block':'none';$('#ptab_op').style.display=t==='o'?'block':'none';const lc=$('#fx_left_custos'),lo=$('#fx_left_op');if(lc)lc.style.display=t==='c'?'flex':'none';if(lo)lo.style.display=t==='o'?'block':'none';}
+function updPrepPreview(){const el=$('#i_preview');if(!el)return;const uni=($('#i_uni')||{}).value||'g';let total=0;draftComps.forEach(c=>{const ins=DB.insumos[c[0]];if(ins)total+=custoInsumoBase(ins)*(c[1]||0);});const rend=parseFloat(($('#i_rend')||{}).value)||1;el.innerHTML=`Custo da receita: <b>${fmtBRL(total)}</b> · Custo por ${uSym(uni)}: <b style="color:var(--navy)">${fmtBRLp(total/(rend||1))}</b>`;}
 function editPreparado(id){
   const p=id?DB.insumos[id]:{nome:'',cat:'',tipo:'preparado',uni:'g',rendimento:'',comps:[],fornecedor:'',tempoPreparo:'',utensilios:'',modoPreparo:[],foto:''};
-  editingInsId=id||null; draftInsTipo='preparado'; draftInsComps=JSON.parse(JSON.stringify(p.comps||[]));
+  editingInsId=id||null; draftComps=JSON.parse(JSON.stringify(p.comps||[])); fichaEditIdx=-1;
   draftModo=JSON.parse(JSON.stringify(p.modoPreparo||[])); draftFoto=p.foto||'';
   modal(`<div class="ficha-split">
-    <div class="fx-left">
-      <div class="fx-left-body">
-        <div id="pp_left_custos" style="display:flex;flex-direction:column;flex:1">
-          <div class="fx-sublabel" style="margin-bottom:8px">Ingredientes</div>
-          <div id="insCompList"></div>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="addInsComp()" style="margin-top:8px;align-self:flex-start">${icoPlus} Adicionar ingrediente</button>
-          <div id="i_preview" style="font-size:13px;color:var(--muted);margin-top:14px"></div>
-        </div>
-        <div id="pp_left_op" style="display:none;flex:1">
-          <div class="fx-sublabel" style="margin-bottom:10px">Foto do preparado pronto</div>
-          <div class="foto-drop" id="f_foto_area" onclick="document.getElementById('f_foto_in').click()"></div>
-          <input type="file" id="f_foto_in" accept="image/*" style="display:none" onchange="fichaFoto(this)">
-        </div>
+    <div class="fx-left"><div class="fx-left-body">
+      <div id="fx_left_custos" style="display:flex;flex-direction:column;flex:1"></div>
+      <div id="fx_left_op" style="display:none;flex:1">
+        <div class="fx-sublabel" style="margin-bottom:10px">Foto do preparado pronto</div>
+        <div class="foto-drop" id="f_foto_area" onclick="document.getElementById('f_foto_in').click()"></div>
+        <input type="file" id="f_foto_in" accept="image/*" style="display:none" onchange="fichaFoto(this)">
       </div>
-    </div>
+    </div></div>
     <div class="fx-right">
       <div class="fx-head"><h3>${id?'Editar Preparado':'Novo Preparado'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
       <div class="chan-tabs" style="margin:6px 26px 4px">
@@ -1653,8 +1647,9 @@ function editPreparado(id){
             <div class="field"><label>Categoria</label><select class="input" id="pp_cat">${catOptions('insumo',p.cat)}</select></div>
             <div class="field"><label>Fornecedor <span class="hint">opcional</span></label><select class="input" id="pp_forn">${fornOptions(p.fornecedor)}</select></div>
           </div>
-          <div class="field"><label>Rendimento da receita</label><div style="display:flex;gap:6px"><input class="input" id="i_rend" type="number" step="0.001" value="${p.rendimento||''}" placeholder="Ex.: 1000" style="flex:1" oninput="updInsPreview()"><select class="input" id="i_uni" style="flex:0 0 90px" onchange="updUniLabels();updInsPreview()">${UNIDADES.map(u=>`<option value="${u}" ${u===p.uni?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div></div>
-          <div style="font-size:12px;color:var(--soft);margin-top:4px">O preparado é usado como ingrediente nas fichas técnicas e no Mapa do Buffet. O custo por unidade vem dos ingredientes ÷ rendimento.</div>
+          <div class="field" style="max-width:260px"><label>Rendimento da receita</label><div style="display:flex;gap:6px"><input class="input" id="i_rend" type="number" step="0.001" value="${p.rendimento||''}" placeholder="Ex.: 1000" style="flex:1;min-width:0" oninput="updPrepPreview()"><select class="input" id="i_uni" style="flex:0 0 84px" onchange="updPrepPreview()">${UNIDADES.map(u=>`<option value="${u}" ${u===p.uni?'selected':''}>${uSym(u)}</option>`).join('')}</select></div></div>
+          <div id="i_preview" style="font-size:13px;color:var(--muted);margin-top:8px"></div>
+          <div style="font-size:12px;color:var(--soft);margin-top:8px">O preparado é usado como ingrediente nas fichas técnicas e no Mapa do Buffet. O custo por unidade vem dos ingredientes ÷ rendimento.</div>
         </div>
         <div id="ptab_op" style="display:none">
           <div class="fx-g2">
@@ -1677,11 +1672,11 @@ function editPreparado(id){
     </div>
   </div>`,true);
   const mc=document.querySelector('#modalRoot .modal');if(mc)mc.classList.add('fichamodal');
-  renderInsCompList();renderModoList();renderFichaFoto();updUniLabels();updInsPreview();
+  renderInsumosPanel();renderModoList();renderFichaFoto();updPrepPreview();
 }
 function savePreparado(id){
   const nome=($('#pp_nome').value||'').trim();if(!nome)return toast('Informe o nome do preparado');
-  const comps=draftInsComps.filter(c=>c[0]&&c[1]>0);if(!comps.length)return toast('Adicione ao menos um ingrediente');
+  const comps=draftComps.filter(c=>c[0]&&c[1]>0).map(c=>[c[0],c[1]]);if(!comps.length)return toast('Adicione ao menos um ingrediente');
   const uni=$('#i_uni').value, cat=$('#pp_cat').value.trim()||'Preparado', forn=$('#pp_forn')?$('#pp_forn').value:'';
   const obj={id:id||uid(),nome,cat,tipo:'preparado',uni,rendimento:parseFloat($('#i_rend').value)||1,comps,fornecedor:forn,
     tempoPreparo:$('#pp_tempo').value||'',utensilios:($('#pp_utens').value||'').trim(),modoPreparo:draftModo.filter(s=>(s||'').trim()),foto:draftFoto||''};
@@ -2012,6 +2007,7 @@ function renderModoList(){const el=$('#modoList');if(!el)return;
 function addModo(){draftModo.push('');renderModoList();}
 function fichaCustoAtual(){let bruto=0;draftComps.forEach(([cid,q])=>{const ins=DB.insumos[cid];if(ins)bruto+=custoInsumoBase(ins)*(q||0);});return bruto+(moneyVal('f_emb')||0);}
 function recalcFicha(){
+  if($('#ptab_c')){updPrepPreview();return;} // editor de preparado usa o mesmo painel de ingredientes
   const custo=fichaCustoAtual();
   const preco=moneyVal('f_preco')||0;
   const precoIf=moneyVal('f_precoIf')||preco;
