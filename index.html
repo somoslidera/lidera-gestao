@@ -68,6 +68,12 @@ input,select,textarea{font-family:inherit}
 .kpi .k-lbl{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.2px;text-transform:uppercase}
 .kpi .k-val{font-size:24px;font-weight:700;letter-spacing:-.6px;margin-top:2px;font-family:'Fraunces',serif;line-height:1.05}
 .kpi .k-sub{font-size:11.5px;margin-top:4px;display:flex;align-items:center;gap:5px;font-weight:600;color:var(--soft)}
+.kpi-grid.kpi5{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi-grid.kpi5 .kpi{padding:13px 13px}
+.kpi-grid.kpi5 .k-val{font-size:19px}
+.kpi-grid.kpi5 .k-lbl{font-size:10.5px}
+.kpi-grid.kpi5 .ic{width:34px;height:34px;margin-bottom:8px}
+@media(max-width:860px){.kpi-grid.kpi5{grid-template-columns:repeat(2,1fr)}}
 /* com ícone: layout horizontal (ícone à esquerda), melhor uso da largura, menos espaço vazio */
 .kpi:has(.ic){display:grid;grid-template-columns:44px 1fr;column-gap:15px;align-items:center;padding:15px 18px}
 .kpi:has(.ic) .ic{grid-column:1;grid-row:1 / 4;align-self:center;margin-bottom:0}
@@ -281,7 +287,7 @@ body.dark .empty svg{opacity:.4}
   .sidebar,.topbar,.no-print,#toastRoot,#modalRoot,.backdrop{display:none!important}
   body{display:block;background:#fff}
   .main{display:block}
-  .content{padding:0!important;max-width:none!important;margin:0!important}
+  .content{padding:8mm 12mm!important;max-width:none!important;margin:0!important}
   .card{box-shadow:none!important;border:1px solid #ccc;break-inside:avoid}
   .print-only{display:block!important}
   table{font-size:12px}
@@ -396,7 +402,7 @@ body.dark .wiz-foot{background:#0E1626}
 /* folha de contagem de estoque (impressão em 2 colunas) */
 #printArea{display:none}
 @media print{
-  @page{margin:0}
+  @page{margin:0 0 14mm}
   body.print-contagem .sidebar,body.print-contagem .main,body.print-contagem #modalRoot,body.print-contagem #toastRoot{display:none!important}
   body.print-contagem #printArea{display:block!important;padding:12mm}
   #printArea{color:#000;font-family:'Inter',sans-serif}
@@ -3675,7 +3681,7 @@ function viewEstoque(){
       <button class="${estoqueTab==='contagem'?'on':''}" onclick="estoqueTab='contagem';viewEstoque()">Contagem de Estoque</button>
       <button class="${estoqueTab==='compras'?'on':''}" onclick="estoqueTab='compras';viewEstoque()">Lista de Compras</button>
     </div>
-    <div class="kpi-grid">
+    <div class="kpi-grid kpi5">
       <div class="kpi"><div class="ic ic-navy">${ico('cash')}</div><div class="k-lbl">Valor em estoque</div><div class="k-val">${fmtBRL(valorTotal)}</div><div class="k-sub" style="color:var(--soft)">${items.length} insumos</div></div>
       <div class="kpi"><div class="ic ic-gold">${ico('cash')}</div><div class="k-lbl">Estoque no último registro</div><div class="k-val">${ultReg?fmtBRL(+ultReg.ef||0):'—'}</div><div class="k-sub" style="color:var(--soft)">${ultReg?('em '+fmtDataBR(ultReg.data)):'nenhum registro ainda'}</div></div>
       <div class="kpi"><div class="ic ${comprarList.length?'ic-red':'ic-green'}">${ico('cmv')}</div><div class="k-lbl">Itens a comprar</div><div class="k-val" style="color:${comprarList.length?'var(--red)':'var(--green)'}">${comprarList.length}</div><div class="k-sub" style="color:var(--soft)">abaixo do mínimo</div></div>
