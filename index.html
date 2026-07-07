@@ -1172,7 +1172,7 @@ function ico(k){const m={
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${m[k]||''}</svg>`;}
 
 /* ===================== INSUMOS ===================== */
-let insumoFiltro='Todos';
+let insumoFiltro='Todos', buscaProd='';
 /* ---- ordenação clicável de tabelas ---- */
 const SORT={insumos:{k:'nome',d:1},estoque:{k:'comprar',d:-1}};
 const SORTCOLS={
@@ -1193,7 +1193,7 @@ function viewInsumos(){
   const filt=applySort('insumos',insumoFiltro==='Todos'?list:list.filter(i=>i.cat===insumoFiltro));
   $('#view').innerHTML=`
   <div class="section-head"><select class="input" style="max-width:220px" onchange="insumoFiltro=this.value;viewInsumos()">${cats.map(c=>`<option ${c===insumoFiltro?'selected':''}>${c}</option>`).join('')}</select>
-    <input class="input" style="max-width:240px" placeholder="🔎 Buscar produto..." oninput="filtrarLinhas(this,'#insumosTbody')"></div>
+    <input class="input" id="prodBusca" value="${esc(buscaProd)}" style="max-width:240px" placeholder="🔎 Buscar produto..." oninput="buscaProd=this.value;filtrarLinhas(this,'#insumosTbody')"></div>
   <div class="card">${list.length?`<div class="scroll-x"><table>
     <thead><tr>${thS('insumos','Produto','nome')}${thS('insumos','Categoria','cat')}${thS('insumos','Fornecedor','fornecedor')}${thS('insumos','Valor','preco',1)}${thS('insumos','Quantidade','qtd',1)}${thS('insumos','Custo por unidade','custo',1)}${thS('insumos','Estoque','noEstoque',1)}<th></th></tr></thead>
     <tbody id="insumosTbody">${filt.map(i=>`
@@ -1206,6 +1206,7 @@ function viewInsumos(){
       <td class="num"><input type="checkbox" ${i.noEstoque!==false?'checked':''} title="Incluir na contagem de estoque" onclick="DB.insumos['${i.id}'].noEstoque=this.checked;save()" style="width:17px;height:17px;cursor:pointer;accent-color:var(--navy)"></td>
       <td><div class="row-actions"><button class="icon-btn" onclick="editInsumo('${i.id}')">${icoEdit}</button><button class="icon-btn del" onclick="delInsumo('${i.id}')">${icoTrash}</button></div></td></tr>`).join('')}</tbody></table></div>`
   :emptyState('Nenhum produto cadastrado','Cadastre os produtos que você compra. Os preparados ficam nas Fichas Técnicas.','editInsumo()')}</div>`;
+  if(buscaProd){const _e=$('#prodBusca');if(_e)filtrarLinhas(_e,'#insumosTbody');}
 }
 let editingInsId=null, draftInsTipo='pronto', draftInsComps=[];
 function editInsumo(id){
@@ -1550,7 +1551,7 @@ function nfeAplicar(){
 const icoFicha=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>`;
 const icoCopy=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`;
 function hoje(){try{return new Date().toLocaleDateString('pt-BR');}catch(e){return '';}}
-let fichaFiltro='Todas';
+let fichaFiltro='Todas', buscaFicha='';
 function viewFichas(){
   $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editFicha()">${icoPlus} Nova ficha</button>`
     +`<button class="btn btn-primary" onclick="novoPreparado()">${icoPlus} Novo preparado</button>`
@@ -1577,8 +1578,9 @@ function viewFichas(){
   const temAlgo=cards!=='';
   $('#view').innerHTML=`
   <div class="section-head"><div class="pill-filter">${cats.map(c=>`<button class="${c===fichaFiltro?'on':''}" onclick="fichaFiltro='${c}';viewFichas()">${c}</button>`).join('')}</div>
-    <input class="input" style="max-width:260px" placeholder="🔎 Buscar ficha por nome..." oninput="filtrarCards(this,'#fgrid')"></div>
+    <input class="input" id="fichaBusca" value="${esc(buscaFicha)}" style="max-width:260px" placeholder="🔎 Buscar ficha por nome..." oninput="buscaFicha=this.value;filtrarCards(this,'#fgrid')"></div>
   ${temAlgo?`<div class="fgrid" id="fgrid">${cards}</div>`:emptyState('Nenhuma ficha técnica','Monte seus pratos a partir dos insumos.','editFicha()')}`;
+  if(buscaFicha){const _e=$('#fichaBusca');if(_e)filtrarCards(_e,'#fgrid');}
 }
 function fichaCard(f,fixosPct){
   const m=metricasFicha(f);
@@ -3577,6 +3579,7 @@ function viewCMV(){
     </table></div></div>`:''}`;
 }
 function editCmvReg(id,prefill){
+  _cmvZeraEstoque=!!(prefill&&prefill._est);
   const last=(DB.cmvRegistros||[]).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];
   const estTot=Math.round(estoqueValorTotal()*100)/100;
   const hoje=new Date().toISOString().slice(0,10);
@@ -3612,11 +3615,12 @@ function saveCmvReg(id){const data=$('#cr_data').value;if(!data)return toast('In
   const obj={id:id||uid(),data,ei:parseFloat($('#cr_ei').value)||0,compras:parseFloat($('#cr_compras').value)||0,ef:parseFloat($('#cr_ef').value)||0,vendas:parseFloat($('#cr_vendas').value)||0};
   DB.cmvRegistros=DB.cmvRegistros||[];const i=DB.cmvRegistros.findIndex(x=>x.id===obj.id);
   if(i>=0)DB.cmvRegistros[i]=obj;else DB.cmvRegistros.push(obj);
-  save();closeModal();viewCMV();toast(id?'Contagem atualizada':'Contagem registrada');}
+  const zerou=_cmvZeraEstoque;if(zerou){Object.values(DB.insumos).forEach(ins=>{ins.estoqueAtual=0;});_cmvZeraEstoque=false;}
+  save();closeModal();viewCMV();toast(id?'Contagem atualizada':('Contagem registrada'+(zerou?' · estoque atual zerado':'')));}
 function delCmvReg(id){if(!confirm('Remover esta contagem?'))return;DB.cmvRegistros=(DB.cmvRegistros||[]).filter(x=>x.id!==id);save();viewCMV();toast('Contagem removida');}
 
 /* ===================== ESTOQUE & COMPRAS ===================== */
-let estoqueTab='contagem', estoqueFiltro='Todos';
+let estoqueTab='contagem', estoqueFiltro='Todos', buscaEst='', _cmvZeraEstoque=false;
 function custoUnitCompra(ins){return ins.qtd?ins.preco/ins.qtd:0;} // custo por unidade de compra
 function estoqueItens(){
   return Object.values(DB.insumos).filter(i=>i.tipo!=='preparado'&&i.noEstoque!==false).map(i=>{
@@ -3631,7 +3635,7 @@ function estoqueItens(){
   });
 }
 function estoqueValorTotal(){return estoqueItens().reduce((s,x)=>s+x.valorEstoque,0);}
-function lancarCmvDoEstoque(){const v=Math.round(estoqueValorTotal()*100)/100;editCmvReg(null,{ef:v});toast('Estoque atual ('+fmtBRL(v)+') lançado como estoque final, informe compras e vendas');}
+function lancarCmvDoEstoque(){const v=Math.round(estoqueValorTotal()*100)/100;editCmvReg(null,{ef:v,_est:true});toast('Estoque atual ('+fmtBRL(v)+') lançado como estoque final. Ao salvar, o estoque atual será zerado para a próxima contagem.');}
 function imprimirContagem(){
   const items=estoqueItens().slice().sort((a,b)=>(a.cat||'').localeCompare(b.cat||'')||a.nome.localeCompare(b.nome));
   if(!items.length)return toast('Nenhum insumo marcado para contagem');
@@ -3655,6 +3659,7 @@ function imprimirContagem(){
 function viewEstoque(){
   const items=estoqueItens();
   const valorTotal=items.reduce((s,x)=>s+x.valorEstoque,0);
+  const ultReg=(DB.cmvRegistros||[]).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];
   const comprarList=items.filter(x=>x.comprar);
   const totalCompras=comprarList.reduce((s,x)=>s+x.totalPrevisto,0);
   $('#topActions').innerHTML = estoqueTab==='compras'
@@ -3672,12 +3677,13 @@ function viewEstoque(){
     </div>
     <div class="kpi-grid">
       <div class="kpi"><div class="ic ic-navy">${ico('cash')}</div><div class="k-lbl">Valor em estoque</div><div class="k-val">${fmtBRL(valorTotal)}</div><div class="k-sub" style="color:var(--soft)">${items.length} insumos</div></div>
+      <div class="kpi"><div class="ic ic-gold">${ico('cash')}</div><div class="k-lbl">Estoque no último registro</div><div class="k-val">${ultReg?fmtBRL(+ultReg.ef||0):'—'}</div><div class="k-sub" style="color:var(--soft)">${ultReg?('em '+fmtDataBR(ultReg.data)):'nenhum registro ainda'}</div></div>
       <div class="kpi"><div class="ic ${comprarList.length?'ic-red':'ic-green'}">${ico('cmv')}</div><div class="k-lbl">Itens a comprar</div><div class="k-val" style="color:${comprarList.length?'var(--red)':'var(--green)'}">${comprarList.length}</div><div class="k-sub" style="color:var(--soft)">abaixo do mínimo</div></div>
       <div class="kpi"><div class="ic ic-gold">${ico('mc')}</div><div class="k-lbl">Compra prevista</div><div class="k-val">${fmtBRL(totalCompras)}</div><div class="k-sub" style="color:var(--soft)">para repor o mínimo</div></div>
       <div class="kpi"><div class="ic ic-navy">${ico('profit')}</div><div class="k-lbl">Cobertura</div><div class="k-val">${items.length?fmtPct(items.filter(x=>!x.comprar).length/items.length*100):'—'}</div><div class="k-sub" style="color:var(--soft)">itens no nível</div></div>
     </div>
     <div class="section-head no-print"><select class="input" style="max-width:220px" onchange="estoqueFiltro=this.value;viewEstoque()">${cats.map(c=>`<option ${c===estoqueFiltro?'selected':''}>${c}</option>`).join('')}</select>
-      <input class="input" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="filtrarLinhas(this,'#estoqueTbody')"></div>
+      <input class="input" id="estBusca" value="${esc(buscaEst)}" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="buscaEst=this.value;filtrarLinhas(this,'#estoqueTbody')"></div>
     <div class="card"><div class="scroll-x"><table>
       <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Categoria','cat')}${thS('estoque','Fornecedor','fornecedor')}${thS('estoque','Custo un.','custo',1)}${thS('estoque','Unid.','uni',1)}${thS('estoque','Mínimo','min',1)}${thS('estoque','Atual','atual',1)}${thS('estoque','Necessid.','necessidade',1)}${thS('estoque','Valor estoque','valorEstoque',1)}${thS('estoque','Status','comprar',1)}</tr></thead>
       <tbody id="estoqueTbody">${filt.map(x=>`
@@ -3695,6 +3701,7 @@ function viewEstoque(){
         </tr>`).join('')}</tbody>
       <tfoot><tr style="border-top:2px solid var(--navy);font-weight:700"><td colspan="8" style="padding:12px 13px">Valor total em estoque</td><td class="num" style="padding:12px 13px">${fmtBRL(valorTotal)}</td><td></td></tr></tfoot>
     </table></div></div>`;
+    if(buscaEst){const _e=$('#estBusca');if(_e)filtrarLinhas(_e,'#estoqueTbody');}
     return;
   }
 
