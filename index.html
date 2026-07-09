@@ -2263,9 +2263,10 @@ function hojeISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMon
 function ymOf(d){return (d||'').slice(0,7);}
 function fmtDataBR(iso){if(!iso)return '—';const p=iso.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:iso;}
 function ymLabel(ym){const p=(ym||'').split('-');return p.length===2?`${MESES_PT[(+p[1])-1]||''} / ${p[0]}`:ym;}
-let lancYM=null, lancFiltro={de:'',ate:'',grupo:'',sub:'',desc:'',fornecedor:'',forma:''};
-function lancSetFiltro(k,v){lancFiltro[k]=v;if(k==='de'&&v)lancYM=ymOf(v);viewFinanceiro();}
-function lancLimparFiltro(){lancFiltro={de:'',ate:'',grupo:'',sub:'',desc:'',fornecedor:'',forma:''};viewFinanceiro();}
+let lancYM=null, lancFiltro={data:'',grupo:'',sub:'',desc:'',fornecedor:'',forma:''};
+function lancSetFiltro(k,v){lancFiltro[k]=v;viewFinanceiro();}
+function lancSetFiltroData(v){lancFiltro.data=v;if(v)lancYM=ymOf(v);viewFinanceiro();}
+function lancLimparFiltro(){lancFiltro={data:'',grupo:'',sub:'',desc:'',fornecedor:'',forma:''};viewFinanceiro();}
 function curYM(){return lancYM||ymOf(hojeISO());}
 function ymNow(){return ymOf(hojeISO());} // mês-calendário atual (AAAA-MM)
 function ymMinus1(ym){let y=+ym.slice(0,4),m=+ym.slice(5,7)-1;if(m<1){m=12;y--;}return y+'-'+String(m).padStart(2,'0');}
@@ -2492,11 +2493,9 @@ function saveLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!
   syncTaxaLanc(l);save();closeModal();viewFinanceiro();toast('Lançamento atualizado');}
 function finLancamentos(){
   const ym=curYM(); const d=dreLanc(ym);
-  const fl=lancFiltro, periodo=fl.de||fl.ate, ativo=periodo||fl.grupo||fl.sub||fl.desc||fl.fornecedor||fl.forma;
-  const base=periodo?(DB.lancamentos||[]):lancMes(ym); // com período, busca em todos os meses
-  const ls=base.filter(l=>
-    (!fl.de||(l.data||'')>=fl.de)&&
-    (!fl.ate||(l.data||'')<=fl.ate)&&
+  const fl=lancFiltro, ativo=fl.data||fl.grupo||fl.sub||fl.desc||fl.fornecedor||fl.forma;
+  const ls=lancMes(ym).filter(l=>
+    (!fl.data||l.data===fl.data)&&
     (!fl.grupo||l.grupo===fl.grupo)&&
     (!fl.sub||(l.sub||'').toLowerCase().includes(fl.sub.toLowerCase()))&&
     (!fl.desc||(l.descricao||'').toLowerCase().includes(fl.desc.toLowerCase()))&&
@@ -2528,10 +2527,7 @@ function finLancamentos(){
     <div class="scroll-x"><table><thead>
       <tr><th>Data</th><th>Categoria</th><th>Subcategoria</th><th>Descrição</th><th>Fornecedor</th><th>Forma</th><th class="num">Valor</th><th></th></tr>
       <tr class="lanc-filtro">
-        <th style="min-width:132px"><div style="display:flex;flex-direction:column;gap:3px">
-          <div style="display:flex;align-items:center;gap:3px"><span style="font-size:9px;color:var(--soft);width:22px">De</span><input type="date" class="input" style="padding:3px 5px;font-size:10.5px" value="${fl.de||''}" title="Data inicial" onchange="lancSetFiltro('de',this.value)"></div>
-          <div style="display:flex;align-items:center;gap:3px"><span style="font-size:9px;color:var(--soft);width:22px">Até</span><input type="date" class="input" style="padding:3px 5px;font-size:10.5px" value="${fl.ate||''}" title="Data final" onchange="lancSetFiltro('ate',this.value)"></div>
-        </div></th>
+        <th><input type="date" class="input" value="${fl.data||''}" title="Filtrar por dia" onchange="lancSetFiltroData(this.value)"></th>
         <th><select class="input" onchange="lancSetFiltro('grupo',this.value)"><option value="">Todos</option>${grupos.map(g=>`<option ${fl.grupo===g?'selected':''}>${esc(g)}</option>`).join('')}</select></th>
         <th><input class="input" placeholder="filtrar..." value="${(fl.sub||'').replace(/"/g,'&quot;')}" oninput="clearTimeout(window._lf1);window._lf1=setTimeout(()=>lancSetFiltro('sub',this.value),350)"></th>
         <th><input class="input" placeholder="filtrar..." value="${(fl.desc||'').replace(/"/g,'&quot;')}" oninput="clearTimeout(window._lf2);window._lf2=setTimeout(()=>lancSetFiltro('desc',this.value),350)"></th>
