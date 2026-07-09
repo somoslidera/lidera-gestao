@@ -2354,15 +2354,31 @@ function lmBlank(){return {data:hojeISO(),grupo:'',sub:'',desc:'',fornecedor:'',
 function subOptions(grupo,sel){const subs=ordPt((DB.categorias[grupo]||{subs:[]}).subs);return `<option value="">—</option>`+subs.map(s=>`<option ${s===sel?'selected':''}>${esc(s)}</option>`).join('');}
 function lancarModal(){lancDraft=[lmBlank()];
   const fornList=((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('');
+  const iaBtn=(typeof CLOUD!=='undefined'&&CLOUD&&sb)?`<button class="btn btn-ghost btn-sm" id="lm_nota_btn" style="flex:0 0 auto" onclick="document.getElementById('lm_nota_file').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Ler nota (IA)</button><input type="file" id="lm_nota_file" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="lmLerNota(this)">`:'';
   modal(`<div class="modal-head"><h3>Novo lançamento</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Preencha um ou mais itens e use <b>+ Adicionar linha</b> para lançar vários de uma vez.</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="font-size:12.5px;color:var(--muted)">Preencha um ou mais itens e use <b>+ Adicionar linha</b> para lançar vários de uma vez.</div>
+      ${iaBtn}
+    </div>
+    <div id="lm_ia_status" style="display:none;font-size:12.5px;margin-bottom:10px;padding:9px 12px;border-radius:10px"></div>
     <datalist id="lm_forn">${fornList}</datalist>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700">Aplicar a todas</span>
+      <input type="date" class="input" style="width:138px;padding:7px 9px" id="lm_bulk_data" title="Mesma data em todas as linhas" onchange="lmAplicarTodas('data',this.value)">
+      <select class="input" style="width:150px;padding:7px 9px" id="lm_bulk_grupo" title="Mesma categoria em todas" onchange="lmAplicarTodas('grupo',this.value)"><option value="">Categoria…</option>${ordPt(Object.keys(DB.categorias||{})).map(g=>`<option>${esc(g)}</option>`).join('')}</select>
+      <select class="input" style="width:150px;padding:7px 9px" id="lm_bulk_sub" title="Mesma subcategoria em todas" onchange="lmAplicarTodas('sub',this.value)"><option value="">Subcategoria…</option></select>
+      <input class="input" style="width:150px;padding:7px 9px" list="lm_forn" id="lm_bulk_forn" placeholder="Fornecedor…" title="Mesmo fornecedor em todas" onchange="lmAplicarTodas('fornecedor',this.value)">
+      <select class="input" style="width:130px;padding:7px 9px" id="lm_bulk_forma" title="Mesma forma em todas" onchange="lmAplicarTodas('forma',this.value)"><option value="">Forma…</option>${ordPt(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select>
+    </div>
     <div style="overflow-x:auto"><div style="min-width:1030px">
       <div style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span>Categoria</span><span>Subcategoria</span><span>Descrição</span><span>Fornecedor</span><span>Valor</span><span>Forma</span><span></span></div>
       <div id="lm_rows"></div>
     </div></div>
-    <button class="btn btn-ghost btn-sm" onclick="lmAddRow()" style="margin-top:8px">${icoPlus} Adicionar linha</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="lmAddRow()">${icoPlus} Adicionar linha</button>
+      <div style="font-size:12.5px;color:var(--muted)">Total dos itens: <b id="lm_total" class="serif" style="font-size:18px;color:var(--navy);margin-left:4px">R$ 0,00</b></div>
+    </div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="lancarModalSalvar()">Lançar</button></div>`,true);
   const mc=document.querySelector('#modalRoot .modal');if(mc){mc.style.maxWidth='1180px';mc.style.width='min(1180px,96vw)';}
@@ -2375,13 +2391,60 @@ function renderLmRows(){const el=$('#lm_rows');if(!el)return;const grupos=ordPt(
      <select class="input" style="min-width:0" id="lm_sub_${i}" onchange="lancDraft[${i}].sub=this.value">${subOptions(r.grupo,r.sub)}</select>
      <input class="input" style="min-width:0" value="${esc(r.desc)}" placeholder="Referência, nº NF..." oninput="lancDraft[${i}].desc=this.value">
      <input class="input" style="min-width:0" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value">
-     <div class="money-wrap" style="min-width:0"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${r.valorStr||''}" placeholder="0,00" oninput="moneyMask(this);lancDraft[${i}].valorStr=this.value"></div>
+     <div class="money-wrap" style="min-width:0"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${r.valorStr||''}" placeholder="0,00" oninput="moneyMask(this);lancDraft[${i}].valorStr=this.value;lmAtualizaTotal()"></div>
      <select class="input" style="min-width:0" onchange="lancDraft[${i}].forma=this.value"><option value="" ${!r.forma?'selected':''}>—</option>${formas.map(x=>`<option ${x===r.forma?'selected':''}>${esc(x)}</option>`).join('')}</select>
      <button class="btn btn-ghost btn-sm" title="Remover linha" style="color:var(--red);padding:6px 6px;${lancDraft.length>1?'':'visibility:hidden'}" onclick="lmRemoveRow(${i})">${icoX}</button>
-   </div>`).join('');}
+   </div>`).join('');lmAtualizaTotal();}
+function lmAplicarTodas(campo,valor){
+  if(campo==='grupo'){lancDraft.forEach(r=>{r.grupo=valor;const subs=((DB.categorias[valor]||{subs:[]}).subs)||[];if(!lmFuzzyFind(subs,r.sub))r.sub='';});const bs=$('#lm_bulk_sub');if(bs)bs.innerHTML=`<option value="">Subcategoria…</option>`+ordPt(((DB.categorias[valor]||{subs:[]}).subs)||[]).map(s=>`<option>${esc(s)}</option>`).join('');}
+  else{lancDraft.forEach(r=>{r[campo]=valor;});}
+  renderLmRows();}
+function lmAtualizaTotal(){const el=$('#lm_total');if(!el)return;const t=lancDraft.reduce((s,r)=>s+(nfeBrNum(r.valorStr)||0),0);el.textContent=fmtBRL(t);}
 function lmSubRefresh(i){const s=$('#lm_sub_'+i);if(s)s.innerHTML=subOptions(lancDraft[i].grupo,lancDraft[i].sub);}
 function lmAddRow(){lancDraft.push(lmBlank());renderLmRows();}
 function lmRemoveRow(i){lancDraft.splice(i,1);if(!lancDraft.length)lancDraft.push(lmBlank());renderLmRows();}
+/* ----- Ler nota via IA (Gemini, através da Edge Function) ----- */
+function lmIaStatus(msg,tipo){const el=$('#lm_ia_status');if(!el)return;if(!msg){el.style.display='none';return;}el.style.display='';el.textContent=msg;el.style.background=tipo==='erro'?'var(--red-bg)':tipo==='ok'?'var(--green-bg)':'var(--blue-bg)';el.style.color=tipo==='erro'?'var(--red)':tipo==='ok'?'var(--green)':'var(--navy)';}
+function lmFileToB64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res((''+r.result).split(',')[1]||'');r.onerror=()=>rej(new Error('falha ao ler arquivo'));r.readAsDataURL(file);});}
+function lmComprimeImg(file){return new Promise((res)=>{const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{const max=1600;const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;const sc=Math.min(1,max/Math.max(w,h));const cw=Math.max(1,Math.round(w*sc)),ch=Math.max(1,Math.round(h*sc));const c=document.createElement('canvas');c.width=cw;c.height=ch;c.getContext('2d').drawImage(img,0,0,cw,ch);URL.revokeObjectURL(url);try{res({mime:'image/jpeg',b64:c.toDataURL('image/jpeg',.85).split(',')[1]});}catch(e){res(null);}};img.onerror=()=>{URL.revokeObjectURL(url);res(null);};img.src=url;});}
+function lmNorm(s){return (''+(s==null?'':s)).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim();}
+function lmFuzzyFind(list,nome){const alvo=lmNorm(nome);if(!alvo)return '';let hit=list.find(x=>lmNorm(x)===alvo);if(hit)return hit;hit=list.find(x=>{const n=lmNorm(x);return n&&(n.includes(alvo)||alvo.includes(n));});return hit||'';}
+function lmMatchCat(nome){return lmFuzzyFind(Object.keys(DB.categorias||{}),nome);}
+function lmMatchSub(grupo,nome){if(!grupo)return '';return lmFuzzyFind(((DB.categorias[grupo]||{subs:[]}).subs)||[],nome);}
+function lmInferGrupo(cat,sub){ // acha o grupo mesmo se a IA mandar uma subcategoria no lugar, senão cai em CMV
+  let g=lmMatchCat(cat);if(g)return g;
+  for(const nome of [cat,sub]){const alvo=lmNorm(nome);if(!alvo)continue;
+    for(const k of Object.keys(DB.categorias||{})){const subs=(DB.categorias[k].subs||[]);
+      if(subs.some(s=>{const n=lmNorm(s);return n&&(n===alvo||n.includes(alvo)||alvo.includes(n));}))return k;}}
+  return (DB.categorias&&DB.categorias['CMV'])?'CMV':'';
+}
+async function lmLerNota(input){const file=input&&input.files&&input.files[0];if(input)input.value='';if(!file)return;
+  if(file.size>18*1024*1024)return lmIaStatus('Arquivo muito grande (máx. ~18MB). Tire uma foto menor.','erro');
+  const btn=$('#lm_nota_btn');if(btn){btn.disabled=true;btn.style.opacity='.6';}
+  lmIaStatus('Lendo a nota com a IA… pode levar alguns segundos.','info');
+  try{
+    let mime=file.type||'application/octet-stream',b64;
+    if(mime.indexOf('image/')===0){const c=await lmComprimeImg(file);if(c){mime=c.mime;b64=c.b64;}else{b64=await lmFileToB64(file);}}
+    else{b64=await lmFileToB64(file);}
+    if(!b64)return lmIaStatus('Não consegui ler o arquivo. Tente outra foto.','erro');
+    if(typeof normData==='function')normData();
+    const categorias=Object.keys(DB.categorias||{}).map(k=>({nome:k,tipo:(DB.categorias[k].tipo||'despesa'),subs:(DB.categorias[k].subs||[])}));
+    const fornecedores=((DB.fin&&DB.fin.fornecedores)||[]).map(f=>f.nome).filter(Boolean);
+    const {status,data}=await chamarFn('ler-nota',{mime,dataB64:b64,categorias,fornecedores});
+    if(status!==200||!data||data.error)return lmIaStatus('A IA não conseguiu ler a nota'+(data&&data.error?': '+data.error:'')+'. Você pode lançar manualmente.','erro');
+    const itens=(data.itens||[]).filter(it=>it&&(it.valor||it.descricao));
+    if(!itens.length)return lmIaStatus('Não encontrei itens na nota. Tente uma foto mais nítida ou lance manualmente.','erro');
+    const dataNota=(data.data&&/^\d{4}-\d{2}-\d{2}$/.test(data.data))?data.data:hojeISO();
+    const forn=(data.fornecedor||'').trim();
+    const novas=itens.map(it=>{const grupo=lmInferGrupo(it.categoria,it.subcategoria);const sub=lmMatchSub(grupo,it.subcategoria)||lmMatchSub(grupo,it.categoria);return {data:dataNota,grupo,sub,desc:(it.descricao||'').trim(),fornecedor:forn,valorStr:it.valor?fmtMoneyInput(Math.abs(+it.valor)):'',forma:''};});
+    const vazio=lancDraft.length===1&&!lancDraft[0].grupo&&!lancDraft[0].desc&&!lancDraft[0].valorStr;
+    lancDraft=vazio?novas:lancDraft.concat(novas);
+    renderLmRows();
+    const semCat=novas.filter(r=>!r.grupo).length;
+    lmIaStatus(itens.length+(itens.length===1?' item lido':' itens lidos')+'. Revise categoria'+(semCat?' ('+semCat+' sem categoria — escolha manualmente)':'')+' e valores antes de lançar.',semCat?'info':'ok');
+  }catch(e){lmIaStatus('Erro ao processar a nota: '+((e&&e.message)||e)+'.','erro');}
+  finally{if(btn){btn.disabled=false;btn.style.opacity='';}}
+}
 function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];let n=0,lastYM=null;
   lancDraft.forEach(r=>{const valor=nfeBrNum(r.valorStr);if(!valor||!r.grupo)return;
     const nv={id:uid(),data:r.data||hojeISO(),grupo:r.grupo,sub:r.sub||'',descricao:(r.desc||'').trim(),fornecedor:(r.fornecedor||'').trim(),valor,forma:r.forma||''};
