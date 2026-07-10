@@ -61,6 +61,8 @@ Deno.serve(async (req: Request) => {
 Extraia CADA produto/item comprado como uma linha separada. Para cada item retorne:
 - descricao: nome do produto como aparece na nota (limpo e legível)
 - valor: valor TOTAL do item em reais (quantidade x preço unitário), como número. Use ponto como separador decimal. Nunca negativo.
+- quantidade: quantidade comprada do item, como número. Ex.: 2 para "2 x ...", ou 0.435 para "0,435 kg". Se não conseguir identificar, use 1.
+- unidade: unidade de medida do item. Use EXATAMENTE uma destas: kg, g, L, ml, un. Peso a granel = kg ou g; líquidos = L ou ml; peças/pacotes = un. Se não identificar, use "un".
 - categoria: escolha EXATAMENTE UMA das categorias da lista abaixo (copie o nome idêntico). Compra de mercado / insumos normalmente é a categoria de CMV / custo de mercadoria.
 - subcategoria: escolha uma das subcategorias daquela categoria, se alguma combinar; senão deixe vazio.
 
@@ -98,6 +100,8 @@ Regras:
               properties: {
                 descricao: { type: "STRING" },
                 valor: { type: "NUMBER" },
+                quantidade: { type: "NUMBER" },
+                unidade: { type: "STRING" },
                 categoria: { type: "STRING" },
                 subcategoria: { type: "STRING" },
               },
@@ -134,6 +138,8 @@ Regras:
     ? parsed.itens.map((it: any) => ({
         descricao: String(it.descricao || "").slice(0, 120),
         valor: Math.abs(Number(it.valor) || 0),
+        quantidade: Math.abs(Number(it.quantidade) || 0) || 1,
+        unidade: ["kg", "g", "L", "ml", "un"].includes(String(it.unidade || "")) ? String(it.unidade) : "un",
         categoria: String(it.categoria || ""),
         subcategoria: String(it.subcategoria || ""),
       })).filter((it: any) => it.descricao || it.valor)
