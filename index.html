@@ -612,6 +612,7 @@ thead th{letter-spacing:.7px}
   <header class="topbar">
     <button class="menu-btn" onclick="toggleSidebar(true)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
     <h1 id="pageTitle">Dashboard</h1>
+    <div id="saveStatus" style="display:none;align-items:center;gap:5px;font-size:12px;font-weight:600;margin-left:auto;margin-right:10px;white-space:nowrap"></div>
     <div id="topActions"></div>
   </header>
   <main class="content" id="view"></main>
@@ -659,9 +660,20 @@ let DB=load();
 function load(){try{const d=JSON.parse(localStorage.getItem(STORE_KEY));if(d&&d.insumos)return d;}catch(e){}return seed();}
 function save(){if(typeof CLOUD!=='undefined'&&CLOUD){pushCloud();renderFoot();return;}try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){if(window.toast)toast('Não foi possível salvar (armazenamento cheio ou bloqueado)');}renderFoot();}
 async function saveNow(){clearTimeout(window._cloudT);renderFoot();
-  try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){}
   if(typeof CLOUD!=='undefined'&&CLOUD&&typeof sb!=='undefined'&&sb&&typeof ORG!=='undefined'&&ORG){
-    try{const {error}=await sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id);return !error;}catch(e){return false;}}
+    try{localStorage.setItem(localBackupKey(),JSON.stringify({dados:DB,ts:Date.now()}));}catch(e){}
+    if(CLOUD_CONFLICT){setSaveStatus('conflict');avisarConflito();return false;}
+    setSaveStatus('saving');
+    try{
+      let q=sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id);
+      if(CLOUD_TS)q=q.eq('atualizado_em',CLOUD_TS);
+      const {data,error}=await q.select('atualizado_em').maybeSingle();
+      if(error){setSaveStatus('error');scheduleRetry();return false;}
+      if(!data){if(await reconcileSalvo())return true;CLOUD_CONFLICT=true;setSaveStatus('conflict');avisarConflito();return false;}
+      CLOUD_TS=data.atualizado_em;try{localStorage.removeItem(localBackupKey());}catch(e){}setSaveStatus('saved');return true;
+    }catch(e){setSaveStatus('error');scheduleRetry();return false;}
+  }
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){}
   return true;}
 function seed(){
   const i={};
@@ -3828,9 +3840,81 @@ function emptyState(t,d,action){return `<div class="empty"><svg viewBox="0 0 24 
 const SUPA_URL='https://fvcbxorfstqqeewocxkf.supabase.co', SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2J4b3Jmc3RxcWVld29jeGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzM5MjgsImV4cCI6MjA5Njg0OTkyOH0.X9gnZt535F1ASHpUaL24eEZysHHECwzfBwjaR4kVnyw';
 const sb=(window.supabase&&SUPA_URL.indexOf('http')===0)?window.supabase.createClient(SUPA_URL,SUPA_ANON):null;
 let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false, MEMBRO_PERMS=null;
+let CLOUD_TS=null, SAVE_STATE='idle', SAVE_RETRY=0, CLOUD_CONFLICT=false;
 let IS_SUPER=false, MY_UID=null, MY_LIMITE=5, CONSULTORES=[], adminConsFiltro='';
 function emptyDB(){return {insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};}
-function pushCloud(){if(!CLOUD||!sb||!ORG)return;clearTimeout(window._cloudT);window._cloudT=setTimeout(()=>{sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id).then(()=>{},()=>{});},800);}
+function localBackupKey(){return 'flow_bkp_'+((ORG&&ORG.id)||'x');}
+function setSaveStatus(state){
+  SAVE_STATE=state;const el=document.getElementById('saveStatus');if(!el)return;
+  if(!CLOUD){el.style.display='none';return;}
+  const hhmm=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
+  const map={
+    pending:['●','Salvando…','var(--soft)'],
+    saving:['●','Salvando…','var(--soft)'],
+    saved:['✓','Salvo '+hhmm(),'var(--green)'],
+    error:['⚠','Sem conexão · salvo neste aparelho','var(--amber)'],
+    conflict:['⚠','Conflito — não foi salvo','var(--red)']
+  };
+  const m=map[state]||map.saved;el.style.display='inline-flex';el.style.color=m[2];
+  el.innerHTML='<span style="font-size:13px">'+m[0]+'</span> '+m[1];
+}
+function pushCloud(){
+  if(!CLOUD||!sb||!ORG)return;
+  // backup local IMEDIATO: sobrevive a reload mesmo se a nuvem falhar
+  try{localStorage.setItem(localBackupKey(),JSON.stringify({dados:DB,ts:Date.now()}));}catch(e){}
+  if(CLOUD_CONFLICT){setSaveStatus('conflict');return;} // aguarda decisão do usuário
+  clearTimeout(window._cloudT);setSaveStatus('pending');
+  window._cloudT=setTimeout(cloudFlush,800);
+}
+async function reconcileSalvo(){ // true se o estado do servidor JÁ é o nosso (adota ts e marca salvo) — evita falso-conflito
+  try{const cur=await sb.from('organizacoes').select('atualizado_em,dados').eq('id',ORG.id).maybeSingle();
+    if(cur&&cur.data&&JSON.stringify(cur.data.dados)===JSON.stringify(DB)){
+      CLOUD_TS=cur.data.atualizado_em;try{localStorage.removeItem(localBackupKey());}catch(e){}setSaveStatus('saved');return true;}
+  }catch(e){}
+  return false;
+}
+async function cloudFlush(){
+  if(!CLOUD||!sb||!ORG||CLOUD_CONFLICT)return;
+  setSaveStatus('saving');
+  try{
+    let q=sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id);
+    if(CLOUD_TS)q=q.eq('atualizado_em',CLOUD_TS);           // guarda de versão otimista
+    const {data,error}=await q.select('atualizado_em').maybeSingle();
+    if(error){setSaveStatus('error');scheduleRetry();return;}
+    if(!data){                                              // 0 linhas → conferir se é conflito real
+      if(await reconcileSalvo())return;
+      CLOUD_CONFLICT=true;setSaveStatus('conflict');avisarConflito();return;
+    }
+    CLOUD_TS=data.atualizado_em;SAVE_RETRY=0;
+    try{localStorage.removeItem(localBackupKey());}catch(e){}
+    setSaveStatus('saved');
+  }catch(e){setSaveStatus('error');scheduleRetry();}
+}
+function scheduleRetry(){
+  SAVE_RETRY=Math.min(SAVE_RETRY+1,6);
+  const delay=Math.min(30000,1000*Math.pow(2,SAVE_RETRY));
+  clearTimeout(window._cloudRetry);window._cloudRetry=setTimeout(cloudFlush,delay);
+}
+function avisarConflito(){
+  modal(`<div class="modal-head"><h3>Alterações não salvas</h3></div>
+  <div class="modal-body">
+    <div class="alert alert-amber" style="margin-bottom:12px">${typeof icoWarn!=='undefined'?icoWarn:''}<div>Este restaurante foi <b>editado em outra sessão ou aparelho</b> depois que você abriu esta tela. Para não apagar o que a outra pessoa fez, não gravamos as suas mudanças automaticamente.</div></div>
+    <div style="font-size:13px;color:var(--muted)">Suas mudanças estão <b>guardadas neste aparelho</b>. Escolha:</div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="conflitoRecarregar()">Descartar as minhas e recarregar</button>
+    <button class="btn btn-primary" onclick="conflitoSobrescrever()">Salvar as minhas (sobrescreve a outra)</button>
+  </div>`,true);
+}
+function conflitoRecarregar(){try{localStorage.removeItem(localBackupKey());}catch(e){}location.reload();}
+async function conflitoSobrescrever(){
+  closeModal();CLOUD_CONFLICT=false;setSaveStatus('saving');
+  try{
+    const {data,error}=await sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id).select('atualizado_em').maybeSingle();
+    if(error||!data){setSaveStatus('error');scheduleRetry();return;}
+    CLOUD_TS=data.atualizado_em;try{localStorage.removeItem(localBackupKey());}catch(e){}setSaveStatus('saved');
+  }catch(e){setSaveStatus('error');scheduleRetry();}
+}
 async function chamarFn(nome,body){const s=(await sb.auth.getSession()).data.session;const r=await fetch(SUPA_URL+'/functions/v1/'+nome,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_ANON,'Authorization':'Bearer '+(s?s.access_token:'')},body:JSON.stringify(body||{})});let j={};try{j=await r.json();}catch(e){}return {status:r.status,data:j};}
 
 /* ---- BOOT ---- */
@@ -3854,7 +3938,7 @@ async function entrarComoCliente(orgId,email){
   if(!orgId){telaMensagem('Conta sem restaurante vinculado','Sua conta foi criada, mas ainda não está liberada por um administrador. Aguarde a liberação.');return;}
   let org=null;try{org=(await sb.from('organizacoes').select('*').eq('id',orgId).single()).data;}catch(e){}
   if(!org){telaMensagem('Acesso indisponível','Não foi possível carregar seu restaurante. Tente novamente mais tarde.');return;}
-  ORG=org;
+  ORG=org;CLOUD_TS=org.atualizado_em||null;CLOUD_CONFLICT=false;SAVE_RETRY=0;
   if(org.status==='suspenso'){telaMensagem('Acesso suspenso','Seu acesso está temporariamente suspenso. Fale com a Lidera para reativar.');return;}
   DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();
   CLOUD=true;ADMIN_MODE=false;hideAdmin();
@@ -3865,9 +3949,32 @@ async function entrarComoCliente(orgId,email){
     MEMBRO_PERMS=(membro.permissoes||[]).slice();
     if(!MEMBRO_PERMS.length){telaMensagem('Acesso não configurado','Seu acesso ainda não tem áreas liberadas. Fale com o responsável pela conta.');return;}
   }
-  bannerCloud();renderFoot();
+  bannerCloud();renderFoot();setSaveStatus('saved');
   if(MEMBRO_PERMS){aplicarAcessoMembro();go(MEMBRO_PERMS[0]);}
   else{go('dashboard');if(!DB.onboardingFeito)setTimeout(()=>abrirWizard(1),350);}
+  setTimeout(checarBackupPendente,600);
+}
+// Se a sessão anterior fechou/caiu com alterações não confirmadas na nuvem, oferece restaurá-las
+function checarBackupPendente(){
+  if(!CLOUD||!ORG)return;
+  let bkp=null;try{bkp=JSON.parse(localStorage.getItem(localBackupKey()));}catch(e){}
+  if(!bkp||!bkp.dados)return;
+  modal(`<div class="modal-head"><h3>Alterações não enviadas</h3></div>
+  <div class="modal-body">
+    <div class="alert alert-amber" style="margin-bottom:12px">${typeof icoWarn!=='undefined'?icoWarn:''}<div>Encontramos alterações feitas neste aparelho que <b>não chegaram a ser salvas na nuvem</b> (provavelmente a conexão caiu numa sessão anterior).</div></div>
+    <div style="font-size:13px;color:var(--muted)">Restaurar vai <b>substituir a versão atual da nuvem</b> por essas alterações locais. Se você já editou em outro lugar depois, prefira descartar.</div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="descartarBackup()">Descartar</button>
+    <button class="btn btn-primary" onclick="restaurarBackup()">Restaurar minhas alterações</button>
+  </div>`,true);
+}
+function descartarBackup(){try{localStorage.removeItem(localBackupKey());}catch(e){}closeModal();}
+function restaurarBackup(){
+  let bkp=null;try{bkp=JSON.parse(localStorage.getItem(localBackupKey()));}catch(e){}
+  closeModal();if(!bkp||!bkp.dados)return;
+  DB=bkp.dados;CLOUD_CONFLICT=false;renderFoot();go('dashboard');
+  cloudFlush();toast('Alterações restauradas e sendo salvas');
 }
 function aplicarAcessoMembro(){
   document.querySelectorAll('#nav a[data-route]').forEach(a=>{a.style.display=(MEMBRO_PERMS&&MEMBRO_PERMS.includes(a.dataset.route))?'':'none';});
@@ -4274,9 +4381,9 @@ async function doNovoCliente(){
 async function vincularPerfil(perfilId,orgId){if(!orgId)return;await sb.from('perfis').update({org_id:orgId}).eq('id',perfilId);toast('Cliente vinculado');showAdmin();}
 async function toggleStatus(orgId,status){const novo=status==='suspenso'?'ativo':'suspenso';await sb.from('organizacoes').update({status:novo}).eq('id',orgId);toast(novo==='ativo'?'Acesso reativado':'Acesso suspenso');showAdmin();}
 async function abrirCliente(orgId){let org=null;try{org=(await sb.from('organizacoes').select('*').eq('id',orgId).single()).data;}catch(e){}if(!org)return toast('Erro ao abrir');
-  ORG=org;DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();CLOUD=true;ADMIN_MODE=true;MEMBRO_PERMS=null;hideAdmin();bannerCloud();renderFoot();
+  ORG=org;CLOUD_TS=org.atualizado_em||null;CLOUD_CONFLICT=false;SAVE_RETRY=0;DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();CLOUD=true;ADMIN_MODE=true;MEMBRO_PERMS=null;hideAdmin();bannerCloud();renderFoot();setSaveStatus('saved');
   document.querySelectorAll('#nav a[data-route]').forEach(a=>a.style.display='');go('dashboard');}
-function voltarAdmin(){CLOUD=false;ADMIN_MODE=false;ORG=null;const bn=document.getElementById('cloudBanner');if(bn)bn.style.display='none';showAdmin();}
+function voltarAdmin(){CLOUD=false;ADMIN_MODE=false;ORG=null;CLOUD_TS=null;CLOUD_CONFLICT=false;const ss=document.getElementById('saveStatus');if(ss)ss.style.display='none';const bn=document.getElementById('cloudBanner');if(bn)bn.style.display='none';showAdmin();}
 
 /* ---- SUPER ADMIN · Consultores (revenda) ---- */
 function consBox(){let b=document.getElementById('consScreen');if(!b){b=document.createElement('div');b.id='consScreen';b.style.cssText='position:fixed;inset:0;z-index:260;background:var(--bg);overflow:auto';document.body.appendChild(b);}return b;}
