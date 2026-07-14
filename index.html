@@ -2365,7 +2365,7 @@ function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast
 /* ----- Popup de lançamento (uma ou várias linhas) ----- */
 let lancDraft=[];
 const LM_GC='112px 116px 132px minmax(130px,1fr) 124px 112px 104px 74px 110px 102px 30px';
-function lmBlank(){return {data:hojeISO(),grupo:'',sub:'',desc:'',fornecedor:'',vunStr:'',vun:0,qtd:1,forma:'',insumoId:'',uni:'',descOrig:'',fromIA:false};}
+function lmBlank(){return {data:hojeISO(),grupo:'',sub:'',desc:'',fornecedor:'',vunStr:'',vun:0,qtd:1,forma:'',insumoId:'',insSugerido:'',uni:'',descOrig:'',fromIA:false};}
 function lmTotalLinha(r){const q=+r.qtd||0,v=+r.vun||0;return Math.round(q*v*100)/100;}
 function lmAgrupar(rows){const map=new Map();
   rows.forEach(r=>{const key=lmNorm(r.descOrig||r.desc)+'|'+Math.round((+r.vun||0)*100);
@@ -2444,36 +2444,88 @@ function lmLoading(on,msg){let el=document.getElementById('lmLoad');
     <div style="font-size:14.5px;font-weight:600;color:var(--ink);text-align:center">${esc(msg||'Lendo a nota…')}</div>
     <div style="font-size:12px;color:var(--muted);text-align:center">Isso pode levar alguns segundos. Não feche a janela.</div>
   </div>`;}
+/* Acha o insumo pelo nome OU por um apelido já aprendido de notas anteriores.
+   Fornecedor diferente => produto diferente (não vincula sozinho, mas sugere). */
+function lmAcharInsumo(desc,fornecedor){
+  const alvo=lmNorm(desc);if(!alvo)return null;
+  const fn=lmNorm(fornecedor);const cands=[];
+  Object.values(DB.insumos||{}).forEach(ins=>{if(ins.tipo==='preparado')return;
+    const nm=lmNorm(ins.nome);
+    let hit=!!(nm&&(nm===alvo||nm.includes(alvo)||alvo.includes(nm)));
+    if(!hit)hit=(ins.apelidos||[]).some(a=>lmNorm(a)===alvo);
+    if(hit)cands.push(ins);});
+  if(!cands.length)return null;
+  if(!fn)return {id:cands[0].id,mesmoForn:true};              // nota sem fornecedor: não aplica a regra
+  const mesmo=cands.find(ins=>lmNorm(ins.fornecedor)===fn);
+  if(mesmo)return {id:mesmo.id,mesmoForn:true};
+  return {id:cands[0].id,mesmoForn:false};                    // existe, mas de outro fornecedor
+}
 function lmProdutoCel(r,i){const ins=r.insumoId&&DB.insumos[r.insumoId];
   if(ins)return `<div title="Vinculado ao produto: ${esc(ins.nome)}" style="display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;color:var(--green);background:var(--green-bg);border-radius:9px;padding:7px 8px"><span style="flex:0 0 auto">✓</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)}</span><button title="Desvincular" onclick="lmDesvincular(${i})" style="flex:0 0 auto;margin-left:auto;color:var(--soft);font-size:14px;line-height:1">×</button></div>`;
-  if(!r.fromIA)return `<button class="btn btn-ghost btn-sm" title="Vincular a um produto do catálogo (opcional)" style="min-width:0;color:var(--soft);padding:7px 8px;font-size:11.5px;white-space:nowrap" onclick="lmNovoProduto(${i})">＋ produto</button>`;
-  return `<button class="btn btn-ghost btn-sm" title="Produto ainda não cadastrado — clique para cadastrar" style="min-width:0;color:var(--amber);border-color:var(--amber);background:var(--amber-bg);padding:7px 8px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="lmNovoProduto(${i})">＋ não cadastrado</button>`;}
+  if(!r.fromIA)return `<button class="btn btn-ghost btn-sm" title="Vincular a um produto do catálogo (opcional)" style="min-width:0;color:var(--soft);padding:7px 8px;font-size:11.5px;white-space:nowrap" onclick="lmVincularModal(${i})">＋ produto</button>`;
+  const sug=r.insSugerido&&DB.insumos[r.insSugerido];
+  if(sug)return `<button class="btn btn-ghost btn-sm" title="Existe '${esc(sug.nome)}', mas de outro fornecedor. Clique para vincular ou cadastrar novo." style="min-width:0;color:var(--amber);border-color:var(--amber);background:var(--amber-bg);padding:7px 8px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="lmVincularModal(${i})">⚠ outro fornec.</button>`;
+  return `<button class="btn btn-ghost btn-sm" title="Produto não encontrado — clique para vincular a um existente ou cadastrar" style="min-width:0;color:var(--amber);border-color:var(--amber);background:var(--amber-bg);padding:7px 8px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="lmVincularModal(${i})">＋ não cadastrado</button>`;}
 function lmDesvincular(i){const r=lancDraft[i];if(!r)return;r.insumoId='';if(r.descOrig)r.desc=r.descOrig;renderLmRows();}
-function lmNovoProduto(i){const r=lancDraft[i];if(!r)return;
-  modal(`<div class="modal-head"><h3>Cadastrar produto</h3><button class="x" onclick="lmVoltarLanc()">${icoX}</button></div>
-  <div class="modal-body">
-    <div style="font-size:12.5px;color:var(--muted);margin-bottom:14px">Produto lido da nota. Confira os dados — ele entra no catálogo de <b>Produtos</b> e fica vinculado a este lançamento.</div>
-    <div class="field"><label>Nome</label><input class="input" id="lp_nome" value="${esc(r.desc||'')}" placeholder="Ex.: Detergente"></div>
-    <div class="grid-2">
-      <div class="field"><label>Categoria</label><select class="input" id="lp_cat">${catOptions('insumo','')}</select></div>
-      <div class="field"><label>Unidade</label><select class="input" id="lp_uni">${UNIDADES.map(u=>`<option value="${u}" ${u===(r.uni||'un')?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
-    </div>
-    <div class="grid-2">
-      <div class="field"><label>Quantidade comprada</label><input class="input" id="lp_qtd" type="number" step="0.001" value="${r.qtd||1}"></div>
-      <div class="field"><label>Valor pago <span class="hint">total</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="lp_preco" inputmode="numeric" value="${fmtMoneyInput(lmTotalLinha(r))}" oninput="moneyMask(this)"></div></div>
-    </div>
-    <div class="field"><label>Fornecedor <span class="hint">opcional</span></label><select class="input" id="lp_forn">${fornOptions(r.fornecedor||'')}</select></div>
-  </div>
-  <div class="modal-foot"><button class="btn btn-ghost" onclick="lmVoltarLanc()">Cancelar</button><button class="btn btn-primary" onclick="lmSalvarNovoProduto(${i})">Salvar produto</button></div>`);}
 function lmVoltarLanc(){lancarModal(true);}
+function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
+  const orig=r.descOrig||r.desc||'';
+  const lista=Object.values(DB.insumos||{}).filter(x=>x.tipo!=='preparado').sort((a,b)=>ordPt([a.nome,b.nome])[0]===a.nome?-1:1);
+  const sel=r.insSugerido||'';
+  modal(`<div class="modal-head"><h3>Produto da nota</h3><button class="x" onclick="lmVoltarLanc()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:16px;font-size:12.5px">
+      Na nota veio: <b>${esc(orig)}</b> · ${fmtBRL(lmTotalLinha(r))}${r.fornecedor?' · '+esc(r.fornecedor):''}
+    </div>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">Vincular a um produto já cadastrado</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">O apelido <b>${esc(orig)}</b> fica memorizado — nas próximas notas ele já vem vinculado sozinho. O <b>valor pago e o fornecedor do produto serão atualizados</b> com os dados desta nota.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select class="input" id="lv_ins" style="flex:1 1 220px;min-width:0">${lista.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${esc(x.nome)}${x.fornecedor?' · '+esc(x.fornecedor):''}</option>`).join('')}</select>
+        <button class="btn btn-primary" style="flex:0 0 auto" onclick="lmVincularExistente(${i})">Vincular</button>
+      </div>
+    </div>
+    <div style="text-align:center;font-size:11px;color:var(--soft);letter-spacing:1px;margin-bottom:14px">— OU —</div>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">Cadastrar como produto novo</div>
+      <div class="field"><label>Nome</label><input class="input" id="lp_nome" value="${esc(r.desc||'')}" placeholder="Ex.: Detergente"></div>
+      <div class="grid-2">
+        <div class="field"><label>Categoria</label><select class="input" id="lp_cat">${catOptions('insumo','')}</select></div>
+        <div class="field"><label>Unidade</label><select class="input" id="lp_uni">${UNIDADES.map(u=>`<option value="${u}" ${u===(r.uni||'un')?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label>Quantidade comprada</label><input class="input" id="lp_qtd" type="number" step="0.001" value="${r.qtd||1}"></div>
+        <div class="field"><label>Valor pago <span class="hint">total</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="lp_preco" inputmode="numeric" value="${fmtMoneyInput(lmTotalLinha(r))}" oninput="moneyMask(this)"></div></div>
+      </div>
+      <div class="field" style="margin-bottom:0"><label>Fornecedor <span class="hint">opcional</span></label><select class="input" id="lp_forn">${fornOptions(r.fornecedor||'')}</select></div>
+    </div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="lmVoltarLanc()">Cancelar</button><button class="btn btn-gold" onclick="lmSalvarNovoProduto(${i})">Cadastrar novo</button></div>`,true);}
+/* Aplica o vínculo a TODAS as linhas com a mesma descrição da nota e atualiza o custo do insumo */
+function lmAplicarVinculo(i,insId){const r=lancDraft[i],ins=DB.insumos[insId];if(!r||!ins)return 0;
+  const alvo=lmNorm(r.descOrig||r.desc);let n=0;
+  lancDraft.forEach(x=>{if(x.insumoId)return;const xd=lmNorm(x.descOrig||x.desc);
+    if(xd&&xd===alvo){x.insumoId=insId;x.desc=ins.nome;n++;}});
+  // memoriza o apelido para as próximas notas
+  const orig=(r.descOrig||'').trim();
+  if(orig&&lmNorm(orig)!==lmNorm(ins.nome)){ins.apelidos=ins.apelidos||[];
+    if(!ins.apelidos.some(a=>lmNorm(a)===lmNorm(orig)))ins.apelidos.push(orig);}
+  return n;}
+function lmVincularExistente(i){const r=lancDraft[i];if(!r)return lmVoltarLanc();
+  const insId=$('#lv_ins')&&$('#lv_ins').value;const ins=insId&&DB.insumos[insId];
+  if(!ins)return toast('Selecione um produto');
+  const n=lmAplicarVinculo(i,insId);
+  save();lancarModal(true);
+  toast(n>1?('Vinculado a '+ins.nome+' · '+n+' linhas'):('Vinculado a '+ins.nome));}
 function lmSalvarNovoProduto(i){const r=lancDraft[i];if(!r)return lmVoltarLanc();
   const nome=($('#lp_nome').value||'').trim();if(!nome)return toast('Informe o nome do produto');
   const cat=$('#lp_cat').value||'',uni=$('#lp_uni').value||'un';
   const qtd=parseFloat($('#lp_qtd').value)||1,preco=moneyVal('lp_preco'),forn=$('#lp_forn').value||'';
-  const nid=uid();DB.insumos[nid]={id:nid,nome,cat,tipo:'pronto',uni,qtd,preco,fornecedor:forn};
+  const nid=uid();const orig=(r.descOrig||'').trim();
+  DB.insumos[nid]={id:nid,nome,cat,tipo:'pronto',uni,qtd,preco,fornecedor:forn,apelidos:(orig&&lmNorm(orig)!==lmNorm(nome))?[orig]:[]};
   if(cat&&!catList('insumo').includes(cat))dbCats().insumo.push(cat);
   // vincula TODAS as linhas com a descrição idêntica da nota (mantém "AGUA ... C/" e "AGUA ... S/" separadas)
-  const alvo=lmNorm(r.descOrig||r.desc);let n=0;
+  const alvo=lmNorm(orig||r.desc);let n=0;
   lancDraft.forEach(x=>{if(x.insumoId)return;const xd=lmNorm(x.descOrig||x.desc);
     if(xd&&xd===alvo){x.insumoId=nid;x.desc=nome;if(!x.qtd)x.qtd=qtd;if(!x.uni)x.uni=uni;if(forn&&!x.fornecedor)x.fornecedor=forn;n++;}});
   save();lancarModal(true);
@@ -2516,15 +2568,15 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
     const dataNota=(data.data&&/^\d{4}-\d{2}-\d{2}$/.test(data.data))?data.data:hojeISO();
     const forn=(data.fornecedor||'').trim();
     const lidas=itens.map(it=>{const grupo=lmInferGrupo(it.categoria,it.subcategoria);const sub=lmMatchSub(grupo,it.subcategoria)||lmMatchSub(grupo,it.categoria);
-      const raw=(it.descricao||'').trim();const insId=nfeMatch(raw);const ins=insId&&DB.insumos[insId];
+      const raw=(it.descricao||'').trim();const m=lmAcharInsumo(raw,forn);const ins=(m&&m.mesmoForn)?DB.insumos[m.id]:null;
       const qtd=Math.abs(+it.quantidade)||1,tot=Math.abs(+it.valor)||0,vun=qtd>0?tot/qtd:tot;
-      return {data:dataNota,grupo,sub,desc:ins?ins.nome:raw,descOrig:raw,fromIA:true,fornecedor:forn,vun,vunStr:fmtMoneyInput(vun),qtd,forma:'',insumoId:ins?insId:'',uni:normUni(it.unidade||'')};});
+      return {data:dataNota,grupo,sub,desc:ins?ins.nome:raw,descOrig:raw,fromIA:true,fornecedor:forn,vun,vunStr:fmtMoneyInput(vun),qtd,forma:'',insumoId:ins?ins.id:'',insSugerido:(m&&!m.mesmoForn)?m.id:'',uni:normUni(it.unidade||'')};});
     const novas=lmAgrupar(lidas);
     const vazio=lancDraft.length===1&&!lancDraft[0].grupo&&!lancDraft[0].desc&&!lancDraft[0].vunStr;
     lancDraft=vazio?novas:lancDraft.concat(novas);
     renderLmRows();
-    const semCat=novas.filter(r=>!r.grupo).length,semProd=novas.filter(r=>!r.insumoId).length;
-    const avisos=[];if(semCat)avisos.push(semCat+' sem categoria');if(semProd)avisos.push(semProd+' produto(s) não cadastrado(s) — clique no ＋');
+    const semCat=novas.filter(r=>!r.grupo).length,semProd=novas.filter(r=>!r.insumoId&&!r.insSugerido).length,outroF=novas.filter(r=>!r.insumoId&&r.insSugerido).length;
+    const avisos=[];if(semCat)avisos.push(semCat+' sem categoria');if(semProd)avisos.push(semProd+' produto(s) não cadastrado(s)');if(outroF)avisos.push(outroF+' já existe(m) com outro fornecedor — clique pra vincular ou cadastrar');
     const agr=(novas.length<lidas.length)?(' agrupados em '+novas.length+' linha'+(novas.length===1?'':'s')):'';
     lmIaStatus(lidas.length+(lidas.length===1?' item lido':' itens lidos')+agr+'. '+(avisos.length?avisos.join(' · ')+'. ':'')+'Revise categoria e valores antes de lançar.',avisos.length?'info':'ok');
   }catch(e){lmIaStatus('Erro ao processar a nota: '+((e&&e.message)||e)+'.','erro');}
@@ -2536,8 +2588,8 @@ function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];let n=0,lastYM=nu
     if((+r.qtd||1)!==1){nv.qtd=+r.qtd;if(r.uni)nv.uni=r.uni;}
     const ins=r.insumoId&&DB.insumos[r.insumoId];
     if(ins){nv.insumoId=r.insumoId;
-      // só atualiza o custo se a unidade da nota bate com a do cadastro (evita corromper o custo por unidade)
-      if(valor>0&&r.qtd>0&&(!r.uni||!ins.uni||r.uni===ins.uni)){ins.preco=valor;ins.qtd=r.qtd;if(!ins.uni&&r.uni)ins.uni=r.uni;prodAtu++;}
+      // atualiza o custo real pago: preço, qtd e unidade sempre juntos (trio coerente = custo/unidade correto)
+      if(valor>0&&r.qtd>0){ins.preco=valor;ins.qtd=r.qtd;if(r.uni)ins.uni=r.uni;prodAtu++;}
       if(nv.fornecedor)ins.fornecedor=nv.fornecedor;}
     DB.lancamentos.push(nv);n++;lastYM=ymOf(nv.data);});
   if(!n)return toast('Preencha ao menos um item com categoria e valor');
