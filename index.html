@@ -567,6 +567,8 @@ thead th{letter-spacing:.7px}
 .modal{border-top:4px solid var(--gold)}
 .calc-box{background:linear-gradient(135deg,#24417F,#16294F)}
 .cloud-banner{background:linear-gradient(90deg,#A48A57,#8d743f)}
+@keyframes lmspin{to{transform:rotate(360deg)}}
+.lm-spin{width:36px;height:36px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--navy);animation:lmspin .8s linear infinite}
 </style>
 </head>
 <body>
@@ -2375,10 +2377,18 @@ function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast
   save();viewFinanceiro();toast('Lançamento registrado');}
 /* ----- Popup de lançamento (uma ou várias linhas) ----- */
 let lancDraft=[];
-const LM_GC='140px 128px 148px minmax(150px,1fr) 130px 118px 118px 34px';
-function lmBlank(){return {data:hojeISO(),grupo:'',sub:'',desc:'',fornecedor:'',valorStr:'',forma:''};}
+const LM_GC='112px 116px 132px minmax(130px,1fr) 124px 112px 104px 74px 110px 102px 30px';
+function lmBlank(){return {data:hojeISO(),grupo:'',sub:'',desc:'',fornecedor:'',vunStr:'',vun:0,qtd:1,forma:'',insumoId:'',insSugerido:'',uni:'',descOrig:'',fromIA:false};}
+function lmTotalLinha(r){const q=+r.qtd||0,v=+r.vun||0;return Math.round(q*v*100)/100;}
+function lmAgrupar(rows){const map=new Map();
+  rows.forEach(r=>{const key=lmNorm(r.descOrig||r.desc)+'|'+Math.round((+r.vun||0)*100);
+    const g=map.get(key);
+    if(g){g.qtd=(+g.qtd||0)+(+r.qtd||0);g._tot+=lmTotalLinha(r);}
+    else{const c=Object.assign({},r);c._tot=lmTotalLinha(r);map.set(key,c);}});
+  return Array.from(map.values()).map(g=>{const q=+g.qtd||0;
+    g.vun=q>0?(g._tot/q):g._tot;g.vunStr=fmtMoneyInput(g.vun);delete g._tot;return g;});}
 function subOptions(grupo,sel){const subs=ordPt((DB.categorias[grupo]||{subs:[]}).subs);return `<option value="">—</option>`+subs.map(s=>`<option ${s===sel?'selected':''}>${esc(s)}</option>`).join('');}
-function lancarModal(){lancDraft=[lmBlank()];
+function lancarModal(manterRascunho){if(!manterRascunho||!lancDraft.length)lancDraft=[lmBlank()];
   const fornList=((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('');
   const iaBtn=(typeof CLOUD!=='undefined'&&CLOUD&&sb)?`<button class="btn btn-ghost btn-sm" id="lm_nota_btn" style="flex:0 0 auto" onclick="document.getElementById('lm_nota_file').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Ler nota (IA)</button><input type="file" id="lm_nota_file" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="lmLerNota(this)">`:'';
   modal(`<div class="modal-head"><h3>Novo lançamento</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
@@ -2397,8 +2407,8 @@ function lancarModal(){lancDraft=[lmBlank()];
       <input class="input" style="width:150px;padding:7px 9px" list="lm_forn" id="lm_bulk_forn" placeholder="Fornecedor…" title="Mesmo fornecedor em todas" onchange="lmAplicarTodas('fornecedor',this.value)">
       <select class="input" style="width:130px;padding:7px 9px" id="lm_bulk_forma" title="Mesma forma em todas" onchange="lmAplicarTodas('forma',this.value)"><option value="">Forma…</option>${ordPt(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select>
     </div>
-    <div style="overflow-x:auto"><div style="min-width:1030px">
-      <div style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span>Categoria</span><span>Subcategoria</span><span>Descrição</span><span>Fornecedor</span><span>Valor</span><span>Forma</span><span></span></div>
+    <div style="overflow-x:auto"><div style="min-width:1240px">
+      <div style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span>Categoria</span><span>Subcategoria</span><span>Descrição</span><span>Produto</span><span>Fornecedor</span><span>Valor</span><span>Qtd</span><span style="text-align:right">Total</span><span>Forma</span><span></span></div>
       <div id="lm_rows"></div>
     </div></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px">
@@ -2407,7 +2417,7 @@ function lancarModal(){lancDraft=[lmBlank()];
     </div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="lancarModalSalvar()">Lançar</button></div>`,true);
-  const mc=document.querySelector('#modalRoot .modal');if(mc){mc.style.maxWidth='1180px';mc.style.width='min(1180px,96vw)';}
+  const mc=document.querySelector('#modalRoot .modal');if(mc){mc.style.maxWidth='1340px';mc.style.width='min(1340px,96vw)';}
   renderLmRows();}
 function renderLmRows(){const el=$('#lm_rows');if(!el)return;const grupos=ordPt(Object.keys(DB.categorias));const formas=ordPt(DB.formasPagamento||[]);
   el.innerHTML=lancDraft.map((r,i)=>`
@@ -2415,9 +2425,12 @@ function renderLmRows(){const el=$('#lm_rows');if(!el)return;const grupos=ordPt(
      <input type="date" class="input" style="min-width:0" value="${r.data||''}" onchange="lancDraft[${i}].data=this.value">
      <select class="input" style="min-width:0" onchange="lancDraft[${i}].grupo=this.value;lancDraft[${i}].sub='';lmSubRefresh(${i})"><option value="" ${!r.grupo?'selected':''}>—</option>${grupos.map(g=>`<option ${g===r.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
      <select class="input" style="min-width:0" id="lm_sub_${i}" onchange="lancDraft[${i}].sub=this.value">${subOptions(r.grupo,r.sub)}</select>
-     <input class="input" style="min-width:0" value="${esc(r.desc)}" placeholder="Referência, nº NF..." oninput="lancDraft[${i}].desc=this.value">
+     ${lmDescCel(r,i)}
+     ${lmProdutoCel(r,i)}
      <input class="input" style="min-width:0" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value">
-     <div class="money-wrap" style="min-width:0"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${r.valorStr||''}" placeholder="0,00" oninput="moneyMask(this);lancDraft[${i}].valorStr=this.value;lmAtualizaTotal()"></div>
+     <div class="money-wrap" style="min-width:0"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${r.vunStr||''}" placeholder="0,00" title="Valor unitário" oninput="lancDraft[${i}].vun=moneyMask(this);lancDraft[${i}].vunStr=this.value;lmRecalc(${i})"></div>
+     <input class="input" style="min-width:0;text-align:center" type="number" step="0.001" min="0" value="${r.qtd||1}" title="Quantidade${r.uni?' ('+esc(r.uni)+')':''}" oninput="lancDraft[${i}].qtd=parseFloat(this.value)||0;lmRecalc(${i})">
+     <div id="lm_tot_${i}" title="Total = quantidade × valor unitário" style="min-width:0;text-align:right;font-weight:600;font-size:13px;color:var(--ink);padding:9px 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${fmtBRL(lmTotalLinha(r))}</div>
      <select class="input" style="min-width:0" onchange="lancDraft[${i}].forma=this.value"><option value="" ${!r.forma?'selected':''}>—</option>${formas.map(x=>`<option ${x===r.forma?'selected':''}>${esc(x)}</option>`).join('')}</select>
      <button class="btn btn-ghost btn-sm" title="Remover linha" style="color:var(--red);padding:6px 6px;${lancDraft.length>1?'':'visibility:hidden'}" onclick="lmRemoveRow(${i})">${icoX}</button>
    </div>`).join('');lmAtualizaTotal();}
@@ -2425,7 +2438,111 @@ function lmAplicarTodas(campo,valor){
   if(campo==='grupo'){lancDraft.forEach(r=>{r.grupo=valor;const subs=((DB.categorias[valor]||{subs:[]}).subs)||[];if(!lmFuzzyFind(subs,r.sub))r.sub='';});const bs=$('#lm_bulk_sub');if(bs)bs.innerHTML=`<option value="">Subcategoria…</option>`+ordPt(((DB.categorias[valor]||{subs:[]}).subs)||[]).map(s=>`<option>${esc(s)}</option>`).join('');}
   else{lancDraft.forEach(r=>{r[campo]=valor;});}
   renderLmRows();}
-function lmAtualizaTotal(){const el=$('#lm_total');if(!el)return;const t=lancDraft.reduce((s,r)=>s+(nfeBrNum(r.valorStr)||0),0);el.textContent=fmtBRL(t);}
+function lmAtualizaTotal(){const el=$('#lm_total');if(!el)return;const t=lancDraft.reduce((s,r)=>s+lmTotalLinha(r),0);el.textContent=fmtBRL(t);}
+function lmRecalc(i){const r=lancDraft[i];if(!r)return;const el=$('#lm_tot_'+i);if(el)el.textContent=fmtBRL(lmTotalLinha(r));lmAtualizaTotal();}
+/* ----- Vínculo com o catálogo de Produtos ----- */
+function lmDescCel(r,i){
+  // linha manual (aluguel, energia...) continua com texto livre
+  if(!r.fromIA)return `<input class="input" style="min-width:0" value="${esc(r.desc)}" placeholder="Referência, nº NF..." oninput="lancDraft[${i}].desc=this.value">`;
+  const ins=r.insumoId&&DB.insumos[r.insumoId];
+  if(ins)return `<div class="input" title="${esc(ins.nome)}" style="min-width:0;display:flex;align-items:center;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)}</span></div>`;
+  const orig=r.descOrig||r.desc;
+  return `<div class="input" title="Produto não cadastrado: ${esc(orig)}" style="min-width:0;display:flex;align-items:center;gap:6px;background:var(--bg);color:var(--muted);overflow:hidden"><span style="color:var(--red);font-weight:700;flex:0 0 auto">✕</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(orig)}</span></div>`;}
+function lmLoading(on,msg){let el=document.getElementById('lmLoad');
+  if(!on){if(el)el.remove();return;}
+  if(!el){el=document.createElement('div');el.id='lmLoad';document.body.appendChild(el);}
+  el.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(16,32,63,.55);display:flex;align-items:center;justify-content:center;cursor:wait';
+  el.innerHTML=`<div style="background:var(--card);border-radius:16px;padding:28px 34px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;align-items:center;gap:14px;min-width:260px">
+    <div class="lm-spin"></div>
+    <div style="font-size:14.5px;font-weight:600;color:var(--ink);text-align:center">${esc(msg||'Lendo a nota…')}</div>
+    <div style="font-size:12px;color:var(--muted);text-align:center">Isso pode levar alguns segundos. Não feche a janela.</div>
+  </div>`;}
+/* Acha o insumo pelo nome OU por um apelido já aprendido de notas anteriores.
+   Fornecedor diferente => produto diferente (não vincula sozinho, mas sugere). */
+function lmAcharInsumo(desc,fornecedor){
+  const alvo=lmNorm(desc);if(!alvo)return null;
+  const fn=lmNorm(fornecedor);const cands=[];
+  Object.values(DB.insumos||{}).forEach(ins=>{if(ins.tipo==='preparado')return;
+    const nm=lmNorm(ins.nome);
+    let hit=!!(nm&&(nm===alvo||nm.includes(alvo)||alvo.includes(nm)));
+    if(!hit)hit=(ins.apelidos||[]).some(a=>lmNorm(a)===alvo);
+    if(hit)cands.push(ins);});
+  if(!cands.length)return null;
+  if(!fn)return {id:cands[0].id,mesmoForn:true};              // nota sem fornecedor: não aplica a regra
+  const mesmo=cands.find(ins=>lmNorm(ins.fornecedor)===fn);
+  if(mesmo)return {id:mesmo.id,mesmoForn:true};
+  return {id:cands[0].id,mesmoForn:false};                    // existe, mas de outro fornecedor
+}
+function lmProdutoCel(r,i){const ins=r.insumoId&&DB.insumos[r.insumoId];
+  if(ins)return `<div title="Vinculado ao produto: ${esc(ins.nome)}" style="display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;color:var(--green);background:var(--green-bg);border-radius:9px;padding:7px 8px"><span style="flex:0 0 auto">✓</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)}</span><button title="Desvincular" onclick="lmDesvincular(${i})" style="flex:0 0 auto;margin-left:auto;color:var(--soft);font-size:14px;line-height:1">×</button></div>`;
+  if(!r.fromIA)return `<button class="btn btn-ghost btn-sm" title="Vincular a um produto do catálogo (opcional)" style="min-width:0;color:var(--soft);padding:7px 8px;font-size:11.5px;white-space:nowrap" onclick="lmVincularModal(${i})">＋ produto</button>`;
+  const sug=r.insSugerido&&DB.insumos[r.insSugerido];
+  if(sug)return `<button class="btn btn-ghost btn-sm" title="Existe '${esc(sug.nome)}', mas de outro fornecedor. Clique para vincular ou cadastrar novo." style="min-width:0;color:var(--amber);border-color:var(--amber);background:var(--amber-bg);padding:7px 8px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="lmVincularModal(${i})">⚠ outro fornec.</button>`;
+  return `<button class="btn btn-ghost btn-sm" title="Produto não encontrado — clique para vincular a um existente ou cadastrar" style="min-width:0;color:var(--amber);border-color:var(--amber);background:var(--amber-bg);padding:7px 8px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="lmVincularModal(${i})">＋ não cadastrado</button>`;}
+function lmDesvincular(i){const r=lancDraft[i];if(!r)return;r.insumoId='';if(r.descOrig)r.desc=r.descOrig;renderLmRows();}
+function lmVoltarLanc(){lancarModal(true);}
+function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
+  const orig=r.descOrig||r.desc||'';
+  const lista=Object.values(DB.insumos||{}).filter(x=>x.tipo!=='preparado').sort((a,b)=>ordPt([a.nome,b.nome])[0]===a.nome?-1:1);
+  const sel=r.insSugerido||'';
+  modal(`<div class="modal-head"><h3>Produto da nota</h3><button class="x" onclick="lmVoltarLanc()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:16px;font-size:12.5px">
+      Na nota veio: <b>${esc(orig)}</b> · ${fmtBRL(lmTotalLinha(r))}${r.fornecedor?' · '+esc(r.fornecedor):''}
+    </div>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">Vincular a um produto já cadastrado</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">O apelido <b>${esc(orig)}</b> fica memorizado — nas próximas notas ele já vem vinculado sozinho. O <b>valor pago e o fornecedor do produto serão atualizados</b> com os dados desta nota.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select class="input" id="lv_ins" style="flex:1 1 220px;min-width:0">${lista.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${esc(x.nome)}${x.fornecedor?' · '+esc(x.fornecedor):''}</option>`).join('')}</select>
+        <button class="btn btn-primary" style="flex:0 0 auto" onclick="lmVincularExistente(${i})">Vincular</button>
+      </div>
+    </div>
+    <div style="text-align:center;font-size:11px;color:var(--soft);letter-spacing:1px;margin-bottom:14px">— OU —</div>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">Cadastrar como produto novo</div>
+      <div class="field"><label>Nome</label><input class="input" id="lp_nome" value="${esc(r.desc||'')}" placeholder="Ex.: Detergente"></div>
+      <div class="grid-2">
+        <div class="field"><label>Categoria</label><select class="input" id="lp_cat">${catOptions('insumo','')}</select></div>
+        <div class="field"><label>Unidade</label><select class="input" id="lp_uni">${UNIDADES.map(u=>`<option value="${u}" ${u===(r.uni||'un')?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label>Quantidade comprada</label><input class="input" id="lp_qtd" type="number" step="0.001" value="${r.qtd||1}"></div>
+        <div class="field"><label>Valor pago <span class="hint">total</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="lp_preco" inputmode="numeric" value="${fmtMoneyInput(lmTotalLinha(r))}" oninput="moneyMask(this)"></div></div>
+      </div>
+      <div class="field" style="margin-bottom:0"><label>Fornecedor <span class="hint">opcional</span></label><select class="input" id="lp_forn">${fornOptions(r.fornecedor||'')}</select></div>
+    </div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="lmVoltarLanc()">Cancelar</button><button class="btn btn-gold" onclick="lmSalvarNovoProduto(${i})">Cadastrar novo</button></div>`,true);}
+/* Aplica o vínculo a TODAS as linhas com a mesma descrição da nota e atualiza o custo do insumo */
+function lmAplicarVinculo(i,insId){const r=lancDraft[i],ins=DB.insumos[insId];if(!r||!ins)return 0;
+  const alvo=lmNorm(r.descOrig||r.desc);let n=0;
+  lancDraft.forEach(x=>{if(x.insumoId)return;const xd=lmNorm(x.descOrig||x.desc);
+    if(xd&&xd===alvo){x.insumoId=insId;x.desc=ins.nome;n++;}});
+  // memoriza o apelido para as próximas notas
+  const orig=(r.descOrig||'').trim();
+  if(orig&&lmNorm(orig)!==lmNorm(ins.nome)){ins.apelidos=ins.apelidos||[];
+    if(!ins.apelidos.some(a=>lmNorm(a)===lmNorm(orig)))ins.apelidos.push(orig);}
+  return n;}
+function lmVincularExistente(i){const r=lancDraft[i];if(!r)return lmVoltarLanc();
+  const insId=$('#lv_ins')&&$('#lv_ins').value;const ins=insId&&DB.insumos[insId];
+  if(!ins)return toast('Selecione um produto');
+  const n=lmAplicarVinculo(i,insId);
+  save();lancarModal(true);
+  toast(n>1?('Vinculado a '+ins.nome+' · '+n+' linhas'):('Vinculado a '+ins.nome));}
+function lmSalvarNovoProduto(i){const r=lancDraft[i];if(!r)return lmVoltarLanc();
+  const nome=($('#lp_nome').value||'').trim();if(!nome)return toast('Informe o nome do produto');
+  const cat=$('#lp_cat').value||'',uni=$('#lp_uni').value||'un';
+  const qtd=parseFloat($('#lp_qtd').value)||1,preco=moneyVal('lp_preco'),forn=$('#lp_forn').value||'';
+  const nid=uid();const orig=(r.descOrig||'').trim();
+  DB.insumos[nid]={id:nid,nome,cat,tipo:'pronto',uni,qtd,preco,fornecedor:forn,apelidos:(orig&&lmNorm(orig)!==lmNorm(nome))?[orig]:[]};
+  if(cat&&!catList('insumo').includes(cat))dbCats().insumo.push(cat);
+  // vincula TODAS as linhas com a descrição idêntica da nota (mantém "AGUA ... C/" e "AGUA ... S/" separadas)
+  const alvo=lmNorm(orig||r.desc);let n=0;
+  lancDraft.forEach(x=>{if(x.insumoId)return;const xd=lmNorm(x.descOrig||x.desc);
+    if(xd&&xd===alvo){x.insumoId=nid;x.desc=nome;if(!x.qtd)x.qtd=qtd;if(!x.uni)x.uni=uni;if(forn&&!x.fornecedor)x.fornecedor=forn;n++;}});
+  save();lancarModal(true);
+  toast(n>1?('Produto cadastrado · '+n+' linhas vinculadas'):'Produto cadastrado e vinculado');}
 function lmSubRefresh(i){const s=$('#lm_sub_'+i);if(s)s.innerHTML=subOptions(lancDraft[i].grupo,lancDraft[i].sub);}
 function lmAddRow(){lancDraft.push(lmBlank());renderLmRows();}
 function lmRemoveRow(i){lancDraft.splice(i,1);if(!lancDraft.length)lancDraft.push(lmBlank());renderLmRows();}
@@ -2447,6 +2564,7 @@ function lmInferGrupo(cat,sub){ // acha o grupo mesmo se a IA mandar uma subcate
 async function lmLerNota(input){const file=input&&input.files&&input.files[0];if(input)input.value='';if(!file)return;
   if(file.size>18*1024*1024)return lmIaStatus('Arquivo muito grande (máx. ~18MB). Tire uma foto menor.','erro');
   const btn=$('#lm_nota_btn');if(btn){btn.disabled=true;btn.style.opacity='.6';}
+  lmLoading(true,'Lendo a nota com a IA…');
   lmIaStatus('Lendo a nota com a IA… pode levar alguns segundos.','info');
   try{
     let mime=file.type||'application/octet-stream',b64;
@@ -2462,22 +2580,35 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
     if(!itens.length)return lmIaStatus('Não encontrei itens na nota. Tente uma foto mais nítida ou lance manualmente.','erro');
     const dataNota=(data.data&&/^\d{4}-\d{2}-\d{2}$/.test(data.data))?data.data:hojeISO();
     const forn=(data.fornecedor||'').trim();
-    const novas=itens.map(it=>{const grupo=lmInferGrupo(it.categoria,it.subcategoria);const sub=lmMatchSub(grupo,it.subcategoria)||lmMatchSub(grupo,it.categoria);return {data:dataNota,grupo,sub,desc:(it.descricao||'').trim(),fornecedor:forn,valorStr:it.valor?fmtMoneyInput(Math.abs(+it.valor)):'',forma:''};});
-    const vazio=lancDraft.length===1&&!lancDraft[0].grupo&&!lancDraft[0].desc&&!lancDraft[0].valorStr;
+    const lidas=itens.map(it=>{const grupo=lmInferGrupo(it.categoria,it.subcategoria);const sub=lmMatchSub(grupo,it.subcategoria)||lmMatchSub(grupo,it.categoria);
+      const raw=(it.descricao||'').trim();const m=lmAcharInsumo(raw,forn);const ins=(m&&m.mesmoForn)?DB.insumos[m.id]:null;
+      const qtd=Math.abs(+it.quantidade)||1,tot=Math.abs(+it.valor)||0,vun=qtd>0?tot/qtd:tot;
+      return {data:dataNota,grupo,sub,desc:ins?ins.nome:raw,descOrig:raw,fromIA:true,fornecedor:forn,vun,vunStr:fmtMoneyInput(vun),qtd,forma:'',insumoId:ins?ins.id:'',insSugerido:(m&&!m.mesmoForn)?m.id:'',uni:normUni(it.unidade||'')};});
+    const novas=lmAgrupar(lidas);
+    const vazio=lancDraft.length===1&&!lancDraft[0].grupo&&!lancDraft[0].desc&&!lancDraft[0].vunStr;
     lancDraft=vazio?novas:lancDraft.concat(novas);
     renderLmRows();
-    const semCat=novas.filter(r=>!r.grupo).length;
-    lmIaStatus(itens.length+(itens.length===1?' item lido':' itens lidos')+'. Revise categoria'+(semCat?' ('+semCat+' sem categoria — escolha manualmente)':'')+' e valores antes de lançar.',semCat?'info':'ok');
+    const semCat=novas.filter(r=>!r.grupo).length,semProd=novas.filter(r=>!r.insumoId&&!r.insSugerido).length,outroF=novas.filter(r=>!r.insumoId&&r.insSugerido).length;
+    const avisos=[];if(semCat)avisos.push(semCat+' sem categoria');if(semProd)avisos.push(semProd+' produto(s) não cadastrado(s)');if(outroF)avisos.push(outroF+' já existe(m) com outro fornecedor — clique pra vincular ou cadastrar');
+    const agr=(novas.length<lidas.length)?(' agrupados em '+novas.length+' linha'+(novas.length===1?'':'s')):'';
+    lmIaStatus(lidas.length+(lidas.length===1?' item lido':' itens lidos')+agr+'. '+(avisos.length?avisos.join(' · ')+'. ':'')+'Revise categoria e valores antes de lançar.',avisos.length?'info':'ok');
   }catch(e){lmIaStatus('Erro ao processar a nota: '+((e&&e.message)||e)+'.','erro');}
-  finally{if(btn){btn.disabled=false;btn.style.opacity='';}}
+  finally{lmLoading(false);if(btn){btn.disabled=false;btn.style.opacity='';}}
 }
-function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];let n=0,lastYM=null;
-  lancDraft.forEach(r=>{const valor=nfeBrNum(r.valorStr);if(!valor||!r.grupo)return;
+function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];let n=0,lastYM=null,prodAtu=0;
+  lancDraft.forEach(r=>{const valor=lmTotalLinha(r);if(!valor||!r.grupo)return;
     const nv={id:uid(),data:r.data||hojeISO(),grupo:r.grupo,sub:r.sub||'',descricao:(r.desc||'').trim(),fornecedor:(r.fornecedor||'').trim(),valor,forma:r.forma||''};
+    if((+r.qtd||1)!==1){nv.qtd=+r.qtd;if(r.uni)nv.uni=r.uni;}
+    const ins=r.insumoId&&DB.insumos[r.insumoId];
+    if(ins){nv.insumoId=r.insumoId;
+      // atualiza o custo real pago: preço, qtd e unidade sempre juntos (trio coerente = custo/unidade correto)
+      if(valor>0&&r.qtd>0){ins.preco=valor;ins.qtd=r.qtd;if(r.uni)ins.uni=r.uni;prodAtu++;}
+      if(nv.fornecedor)ins.fornecedor=nv.fornecedor;}
     DB.lancamentos.push(nv);n++;lastYM=ymOf(nv.data);});
   if(!n)return toast('Preencha ao menos um item com categoria e valor');
   if(lastYM&&lastYM!==curYM())lancYM=lastYM;
-  save();closeModal();viewFinanceiro();toast(n===1?'Lançamento registrado':n+' lançamentos registrados');}
+  save();closeModal();viewFinanceiro();
+  toast((n===1?'Lançamento registrado':n+' lançamentos registrados')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':''));}
 function delLancamento(id){DB.lancamentos=DB.lancamentos.filter(l=>l.id!==id&&l.fromTaxa!==id);save();viewFinanceiro();}
 function formasRows(){return (DB.formasPagamento||[]).map((f,i)=>`<span class="cat-chip">${esc(f)}<button onclick="delForma(${i})">${icoX}</button></span>`).join('')||'<span style="color:var(--soft);font-size:12px">Nenhuma forma cadastrada.</span>';}
 function formaSelect(val,onchange){const fs=ordPt(DB.formasPagamento||[]);return `<select class="input" title="Forma de pagamento" onchange="${onchange}"><option value="">—</option>${fs.map(x=>`<option ${x===(val||'')?'selected':''}>${esc(x)}</option>`).join('')}</select>`;}
