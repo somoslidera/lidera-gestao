@@ -193,7 +193,7 @@ th.num{text-align:right}
 .alert-green{background:var(--green-bg);color:#13633f}
 .alert b{font-weight:700}
 
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy-900);color:#fff;padding:13px 22px;border-radius:12px;font-size:13.5px;font-weight:500;box-shadow:var(--shadow-lg);z-index:200;display:flex;align-items:center;gap:9px;animation:pop .2s}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy-900);color:#fff;padding:13px 22px;border-radius:12px;font-size:13.5px;font-weight:500;box-shadow:var(--shadow-lg);z-index:1200;display:flex;align-items:center;gap:9px;animation:pop .2s}
 .toast svg{width:17px;height:17px;color:var(--gold-soft)}
 .pill-filter{display:flex;gap:6px;flex-wrap:wrap}
 .pill-filter button{padding:7px 13px;border-radius:20px;font-size:12.5px;font-weight:600;background:#fff;border:1px solid var(--line);color:var(--muted)}
@@ -3315,6 +3315,7 @@ let editMembroId=null;
 function editMembro(id){editMembroId=id;const m=normMembro(DB.equipe.find(x=>x.id===id));if(!m)return;
   modal(`<div class="modal-head"><h3>Membro da equipe</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
+    <div id="mb_erro" class="alert alert-red" style="display:none;margin-bottom:12px"></div>
     <div class="grid-2">
       <div class="field"><label>Nome</label><input class="input" id="mb_nome" value="${esc(m.nome)}" placeholder="Nome do membro"></div>
       <div class="field"><label>E-mail de login</label><input class="input" id="mb_email" type="email" value="${esc(m.email)}" placeholder="membro@restaurante.com"></div>
@@ -3330,7 +3331,9 @@ function editMembro(id){editMembroId=id;const m=normMembro(DB.equipe.find(x=>x.i
 function membroSetNivel(nivel){const checks=document.querySelectorAll('#mb_perms input[data-perm]');const perms=(NIVEIS[nivel]||{perms:[]}).perms;
   if(nivel!=='personalizado')checks.forEach(c=>c.checked=perms.includes(c.dataset.perm));}
 function membroTogglePerm(){const sel=document.getElementById('mb_nivel');if(sel)sel.value='personalizado';}
+function membroErro(msg){const el=document.getElementById('mb_erro');if(el){el.textContent=msg||'';el.style.display=msg?'block':'none';}if(msg)toast(msg);}
 async function saveMembro(){const m=DB.equipe.find(x=>x.id===editMembroId);if(!m)return;
+  membroErro('');
   const nome=$('#mb_nome').value.trim(),email=$('#mb_email').value.trim().toLowerCase(),senha=$('#mb_senha').value;
   m.nome=nome;m.email=email;m.senha=senha;m.nivel=$('#mb_nivel').value;
   m.permissoes=[...document.querySelectorAll('#mb_perms input[data-perm]:checked')].map(c=>c.dataset.perm);
@@ -3338,14 +3341,15 @@ async function saveMembro(){const m=DB.equipe.find(x=>x.id===editMembroId);if(!m
   const btn=document.querySelector('.modal-foot .btn-primary');
   // cria a conta de login real na 1ª vez (precisa estar na nuvem)
   if(sb&&CLOUD&&!m.authId){
-    if(!email||senha.length<6){return toast('Informe e-mail e senha de ao menos 6 caracteres para criar o acesso');}
+    if(!email||senha.length<6){return membroErro('Informe e-mail e senha de ao menos 6 caracteres para criar o acesso.');}
     if(btn){btn.disabled=true;btn.textContent='Criando acesso...';}
-    let res;try{res=await chamarFn('criar-membro',{acao:'criar',email,senha,nome,orgId:(ORG&&ORG.id)});}catch(e){res={data:{error:e.message}};}
+    let res;try{res=await chamarFn('criar-membro',{acao:'criar',email,senha,nome,orgId:(ORG&&ORG.id)});}catch(e){res={data:{error:(e&&e.message)||'Falha de conexão'}};}
     if(btn){btn.disabled=false;btn.textContent='Salvar membro';}
-    if(!res.data||!res.data.ok)return toast(res.data&&res.data.error||'Não foi possível criar o acesso');
+    if(!res||!res.data||!res.data.ok)return membroErro((res&&res.data&&res.data.error)||'Não foi possível criar o acesso. Tente novamente.');
     m.authId=res.data.authId;m.criado=true;
     save();closeModal();viewEquipe();toast('Acesso criado! O membro já entra com o e-mail e a senha.');return;
   }
+  if(sb&&CLOUD&&!ORG){return membroErro('Abra o restaurante antes de criar o acesso.');}
   save();closeModal();viewEquipe();toast('Membro atualizado');}
 async function removerMembro(id){const m=DB.equipe.find(x=>x.id===id);if(!m)return;
   if(!confirm('Remover este membro? O acesso dele será desativado.'))return;
