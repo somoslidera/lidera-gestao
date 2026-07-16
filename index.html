@@ -1196,8 +1196,8 @@ let insumoFiltro='Todos', buscaProd='';
 /* ---- ordenação clicável de tabelas ---- */
 const SORT={insumos:{k:'nome',d:1},estoque:{k:'comprar',d:-1}};
 const SORTCOLS={
- insumos:{nome:i=>i.nome,cat:i=>i.cat,fornecedor:i=>i.fornecedor||'',preco:i=>i.preco||0,qtd:i=>i.qtd||0,custo:i=>custoInsumoBase(i)*(TO_BASE[i.uni]||1),noEstoque:i=>i.noEstoque!==false?1:0},
- estoque:{nome:x=>x.nome,cat:x=>x.cat,uni:x=>x.uni,fornecedor:x=>x.fornecedor,custo:x=>x.custo,min:x=>x.min,atual:x=>x.atual,necessidade:x=>x.necessidade,valorEstoque:x=>x.valorEstoque,comprar:x=>x.comprar?1:0}};
+ insumos:{nome:i=>i.nome,cat:i=>i.cat,grupo:i=>i.grupo||'',sub:i=>i.sub||i.cat||'',fornecedor:i=>i.fornecedor||'',preco:i=>i.preco||0,qtd:i=>i.qtd||0,custo:i=>custoInsumoBase(i)*(TO_BASE[i.uni]||1),noEstoque:i=>i.noEstoque!==false?1:0},
+ estoque:{nome:x=>x.nome,cat:x=>x.cat,grupo:x=>x.grupo||'',sub:x=>x.sub||x.cat||'',uni:x=>x.uni,fornecedor:x=>x.fornecedor,custo:x=>x.custo,min:x=>x.min,atual:x=>x.atual,necessidade:x=>x.necessidade,valorEstoque:x=>x.valorEstoque,comprar:x=>x.comprar?1:0}};
 function setSort(tab,k){const s=SORT[tab];if(s.k===k)s.d=-s.d;else{s.k=k;s.d=1;}tab==='insumos'?viewInsumos():viewEstoque();}
 function applySort(tab,arr){const s=SORT[tab],acc=SORTCOLS[tab][s.k];if(!acc)return arr;return arr.slice().sort((a,b)=>{let x=acc(a),y=acc(b);if(typeof x==='string'||typeof y==='string'){x=(x||'').toString().toLowerCase();y=(y||'').toString().toLowerCase();return x<y?-s.d:x>y?s.d:0;}return ((x||0)-(y||0))*s.d;});}
 function thS(tab,label,k,num){const s=SORT[tab],a=s.k===k?(s.d>0?' ↑':' ↓'):'';return `<th class="${num?'num ':''}th-sort" onclick="setSort('${tab}','${k}')">${label}${a}</th>`;}
@@ -1215,10 +1215,11 @@ function viewInsumos(){
   <div class="section-head"><select class="input" style="max-width:220px" onchange="insumoFiltro=this.value;viewInsumos()">${cats.map(c=>`<option ${c===insumoFiltro?'selected':''}>${c}</option>`).join('')}</select>
     <input class="input" id="prodBusca" value="${esc(buscaProd)}" style="max-width:240px" placeholder="🔎 Buscar produto..." oninput="buscaProd=this.value;filtrarLinhas(this,'#insumosTbody')"></div>
   <div class="card">${list.length?`<div class="scroll-x"><table>
-    <thead><tr>${thS('insumos','Produto','nome')}${thS('insumos','Categoria','cat')}${thS('insumos','Fornecedor','fornecedor')}${thS('insumos','Valor','preco',1)}${thS('insumos','Quantidade','qtd',1)}${thS('insumos','Custo por unidade','custo',1)}${thS('insumos','Estoque','noEstoque',1)}<th></th></tr></thead>
+    <thead><tr>${thS('insumos','Produto','nome')}${thS('insumos','Categoria','grupo')}${thS('insumos','Subcategoria','sub')}${thS('insumos','Fornecedor','fornecedor')}${thS('insumos','Valor','preco',1)}${thS('insumos','Quantidade','qtd',1)}${thS('insumos','Custo por unidade','custo',1)}${thS('insumos','Estoque','noEstoque',1)}<th></th></tr></thead>
     <tbody id="insumosTbody">${filt.map(i=>`
       <tr><td><b>${i.nome}</b></td>
-      <td><span class="tag tag-gray">${esc(i.sub||i.cat||'—')}</span>${i.grupo&&i.grupo!==(i.sub||i.cat)?`<div style="font-size:10px;color:var(--soft);margin-top:2px;text-transform:uppercase;letter-spacing:.3px">${esc(i.grupo)}</div>`:''}</td>
+      <td>${i.grupo?`<span class="tag tag-gray">${esc(i.grupo)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
+      <td>${(i.sub||i.cat)?`<span style="font-size:12.5px">${esc(i.sub||i.cat)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
       <td>${i.fornecedor?`<span style="font-size:12.5px">${esc(i.fornecedor)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
       <td class="num">${fmtBRL(i.preco)}</td>
       <td class="num">${fmtN(i.qtd,i.qtd%1?2:0)} ${uSym(i.uni)}</td>
@@ -3867,7 +3868,7 @@ function estoqueItens(){
     const qtdPedir=(i.qtdPedir!=null&&i.qtdPedir!=='')?(+i.qtdPedir||0):necessidade;
     const totalPrevisto=custo*qtdPedir;
     const comprar=atual<min;
-    return {ins:i,nome:i.nome,cat:i.cat,uni:i.uni,fornecedor:i.fornecedor||'Sem fornecedor',custo,min,atual,necessidade,valorEstoque,qtdPedir,totalPrevisto,comprar};
+    return {ins:i,nome:i.nome,cat:i.cat,grupo:i.grupo||'',sub:i.sub||i.cat||'',uni:i.uni,fornecedor:i.fornecedor||'Sem fornecedor',custo,min,atual,necessidade,valorEstoque,qtdPedir,totalPrevisto,comprar};
   });
 }
 function estoqueValorTotal(){return estoqueItens().reduce((s,x)=>s+x.valorEstoque,0);}
@@ -3921,11 +3922,12 @@ function viewEstoque(){
     <div class="section-head no-print"><select class="input" style="max-width:220px" onchange="estoqueFiltro=this.value;viewEstoque()">${cats.map(c=>`<option ${c===estoqueFiltro?'selected':''}>${c}</option>`).join('')}</select>
       <input class="input" id="estBusca" value="${esc(buscaEst)}" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="buscaEst=this.value;filtrarLinhas(this,'#estoqueTbody')"></div>
     <div class="card"><div class="scroll-x"><table>
-      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Categoria','cat')}${thS('estoque','Fornecedor','fornecedor')}${thS('estoque','Custo un.','custo',1)}${thS('estoque','Unid.','uni',1)}${thS('estoque','Mínimo','min',1)}${thS('estoque','Atual','atual',1)}${thS('estoque','Necessid.','necessidade',1)}${thS('estoque','Valor estoque','valorEstoque',1)}${thS('estoque','Status','comprar',1)}</tr></thead>
+      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Categoria','grupo')}${thS('estoque','Subcategoria','sub')}${thS('estoque','Fornecedor','fornecedor')}${thS('estoque','Custo un.','custo',1)}${thS('estoque','Unid.','uni',1)}${thS('estoque','Mínimo','min',1)}${thS('estoque','Atual','atual',1)}${thS('estoque','Necessid.','necessidade',1)}${thS('estoque','Valor estoque','valorEstoque',1)}${thS('estoque','Status','comprar',1)}</tr></thead>
       <tbody id="estoqueTbody">${filt.map(x=>`
         <tr>
           <td><b>${x.nome}</b></td>
-          <td><span class="tag tag-gray">${x.cat}</span></td>
+          <td>${x.grupo?`<span class="tag tag-gray">${esc(x.grupo)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
+          <td>${(x.sub||x.cat)?`<span style="font-size:12.5px">${esc(x.sub||x.cat)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
           <td><input class="input" style="min-width:130px" value="${esc(x.ins.fornecedor)}" placeholder="Fornecedor" oninput="DB.insumos['${x.ins.id}'].fornecedor=this.value;finTouch()"></td>
           <td class="num">${fmtBRL(x.custo)}</td>
           <td class="num">${uSym(x.uni)}</td>
@@ -3935,7 +3937,7 @@ function viewEstoque(){
           <td class="num">${fmtBRL(x.valorEstoque)}</td>
           <td class="num"><span class="tag ${x.comprar?'tag-red':'tag-green'}">${x.comprar?'COMPRAR':'OK'}</span></td>
         </tr>`).join('')}</tbody>
-      <tfoot><tr style="border-top:2px solid var(--navy);font-weight:700"><td colspan="8" style="padding:12px 13px">Valor total em estoque</td><td class="num" style="padding:12px 13px">${fmtBRL(valorTotal)}</td><td></td></tr></tfoot>
+      <tfoot><tr style="border-top:2px solid var(--navy);font-weight:700"><td colspan="9" style="padding:12px 13px">Valor total em estoque</td><td class="num" style="padding:12px 13px">${fmtBRL(valorTotal)}</td><td></td></tr></tfoot>
     </table></div></div>`;
     if(buscaEst){const _e=$('#estBusca');if(_e)filtrarLinhas(_e,'#estoqueTbody');}
     return;
