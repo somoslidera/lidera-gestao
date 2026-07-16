@@ -3320,13 +3320,26 @@ function editMembro(id){editMembroId=id;const m=normMembro(DB.equipe.find(x=>x.i
       <div class="field"><label>Nome</label><input class="input" id="mb_nome" value="${esc(m.nome)}" placeholder="Nome do membro"></div>
       <div class="field"><label>E-mail de login</label><input class="input" id="mb_email" type="email" value="${esc(m.email)}" placeholder="membro@restaurante.com"></div>
     </div>
-    <div class="field"><label>Senha provisória</label><input class="input" id="mb_senha" value="${esc(m.senha)}" placeholder="defina uma senha"></div>
+    <div class="field"><label>Senha ${m.authId?'<span class="hint">· digite uma nova e clique em Redefinir senha</span>':'provisória'}</label><input class="input" id="mb_senha" value="${esc(m.senha)}" placeholder="${m.authId?'nova senha (mín. 6 caracteres)':'defina uma senha'}"></div>
     <div class="field"><label>Nível de acesso</label>
       <select class="input" id="mb_nivel" onchange="membroSetNivel(this.value)">${Object.entries(NIVEIS).map(([k,v])=>`<option value="${k}" ${m.nivel===k?'selected':''}>${v.label} · ${v.desc}</option>`).join('')}</select></div>
     <div style="font-size:12px;font-weight:600;color:var(--muted);margin:6px 0 8px">Áreas que este membro pode acessar</div>
     <div id="mb_perms" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px">${ACESSOS.map(([k,l])=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" data-perm="${k}" ${m.permissoes.includes(k)?'checked':''} onchange="membroTogglePerm()" style="width:16px;height:16px;accent-color:var(--navy)"> ${l}</label>`).join('')}</div>
   </div>
-  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveMembro()">Salvar membro</button></div>`);
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>${m.authId?`<button class="btn btn-ghost" onclick="redefinirSenhaMembro()">🔑 Redefinir senha</button>`:''}<button class="btn btn-primary" onclick="saveMembro()">Salvar membro</button></div>`);
+}
+async function redefinirSenhaMembro(){
+  const m=DB.equipe.find(x=>x.id===editMembroId);if(!m||!m.authId)return;
+  membroErro('');
+  const senha=$('#mb_senha').value;
+  if(senha.length<6)return membroErro('A nova senha precisa ter ao menos 6 caracteres.');
+  if(!(sb&&CLOUD))return membroErro('Você precisa estar conectado à nuvem para redefinir a senha.');
+  const btn=[...document.querySelectorAll('.modal-foot .btn')].find(b=>/Redefinir/.test(b.textContent));
+  if(btn){btn.disabled=true;btn.textContent='Redefinindo...';}
+  let res;try{res=await chamarFn('criar-membro',{acao:'redefinir',authId:m.authId,senha,orgId:(ORG&&ORG.id)});}catch(e){res={data:{error:(e&&e.message)||'Falha de conexão'}};}
+  if(btn){btn.disabled=false;btn.textContent='🔑 Redefinir senha';}
+  if(!res||!res.data||!res.data.ok)return membroErro((res&&res.data&&res.data.error)||'Não foi possível redefinir a senha. Tente novamente.');
+  m.senha=senha;save();toast('Senha redefinida! O membro já entra com a nova senha.');
 }
 function membroSetNivel(nivel){const checks=document.querySelectorAll('#mb_perms input[data-perm]');const perms=(NIVEIS[nivel]||{perms:[]}).perms;
   if(nivel!=='personalizado')checks.forEach(c=>c.checked=perms.includes(c.dataset.perm));}
