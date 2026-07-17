@@ -1037,7 +1037,7 @@ function applyTheme(t){document.body.classList.toggle('dark',t==='dark');try{loc
 function toggleTheme(){applyTheme(document.body.classList.contains('dark')?'light':'dark');}
 
 function toast(msg){const el=document.createElement('div');el.className='toast';el.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>${msg}`;$('#toastRoot').appendChild(el);setTimeout(()=>{el.style.opacity='0';el.style.transition='.3s';setTimeout(()=>el.remove(),300);},2200);}
-function modal(html,wide){$('#modalRoot').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal ${wide?'wide':''}">${html}</div></div>`;}
+function modal(html,wide,noBg){$('#modalRoot').innerHTML=`<div class="modal-overlay"${noBg?'':' onclick="if(event.target===this)closeModal()"'}><div class="modal ${wide?'wide':''}">${html}</div></div>`;}
 function closeModal(){$('#modalRoot').innerHTML='';}
 const icoX=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
 const icoPlus=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>`;
@@ -2417,7 +2417,7 @@ function lancarModal(manterRascunho){if(!manterRascunho||!lancDraft.length)lancD
       <div style="font-size:12.5px;color:var(--muted)">Total dos itens: <b id="lm_total" class="serif" style="font-size:18px;color:var(--navy);margin-left:4px">R$ 0,00</b></div>
     </div>
   </div>
-  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="lancarModalSalvar()">Lançar</button></div>`,true);
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="lancarModalSalvar()">Lançar</button></div>`,true,true);
   const mc=document.querySelector('#modalRoot .modal');if(mc){mc.style.maxWidth='1340px';mc.style.width='min(1340px,96vw)';}
   renderLmRows();}
 function renderLmRows(){const el=$('#lm_rows');if(!el)return;const grupos=ordPt(Object.keys(DB.categorias));const formas=ordPt(DB.formasPagamento||[]);
@@ -2514,7 +2514,7 @@ function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
       <div class="field" style="margin-bottom:0"><label>Fornecedor <span class="hint">opcional</span></label><select class="input" id="lp_forn">${fornOptions(r.fornecedor||'')}</select></div>
     </div>
   </div>
-  <div class="modal-foot"><button class="btn btn-ghost" onclick="lmVoltarLanc()">Cancelar</button><button class="btn btn-gold" onclick="lmSalvarNovoProduto(${i})">Cadastrar novo</button></div>`,true);}
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="lmVoltarLanc()">Cancelar</button><button class="btn btn-gold" onclick="lmSalvarNovoProduto(${i})">Cadastrar novo</button></div>`,true,true);}
 /* Aplica o vínculo a TODAS as linhas com a mesma descrição da nota e atualiza o custo do insumo */
 function lmAplicarVinculo(i,insId){const r=lancDraft[i],ins=DB.insumos[insId];if(!r||!ins)return 0;
   const alvo=lmNorm(r.descOrig||r.desc);let n=0;
@@ -2596,7 +2596,11 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
   }catch(e){lmIaStatus('Erro ao processar a nota: '+((e&&e.message)||e)+'.','erro');}
   finally{lmLoading(false);if(btn){btn.disabled=false;btn.style.opacity='';}}
 }
-function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];let n=0,lastYM=null,prodAtu=0;
+function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
+  // itens de CMV que serão lançados sem produto vinculado (amarelo) → confirma antes
+  const semProd=lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo==='CMV'&&!(r.insumoId&&DB.insumos[r.insumoId])).length;
+  if(semProd>0 && !confirm('Atenção: '+semProd+(semProd===1?' item de CMV não está vinculado a um produto cadastrado (aparece em amarelo).':' itens de CMV não estão vinculados a produtos cadastrados (aparecem em amarelo).')+'\n\nSem o vínculo, o gasto não atualiza o custo do produto nem o estoque. Deseja lançar mesmo assim?')) return;
+  let n=0,lastYM=null,prodAtu=0;
   lancDraft.forEach(r=>{const valor=lmTotalLinha(r);if(!valor||!r.grupo)return;
     const nv={id:uid(),data:r.data||hojeISO(),grupo:r.grupo,sub:r.sub||'',descricao:(r.desc||'').trim(),fornecedor:(r.fornecedor||'').trim(),valor,forma:r.forma||''};
     if((+r.qtd||1)!==1){nv.qtd=+r.qtd;if(r.uni)nv.uni=r.uni;}
