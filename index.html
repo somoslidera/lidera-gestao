@@ -1269,49 +1269,42 @@ function chkBuildDefaults(){ // IDs DETERMINÍSTICOS: dois usuários geram estru
     return {id:cs,setor,periodicidade:'Diária',secoes};
   });
 }
-let chkSel=null,chkDate=null,chkEdit=false;
+let chkSel=null,chkPrintYM=null,chkEdit=false;
 function chkReg(cid,d){DB.checklistReg=DB.checklistReg||{};DB.checklistReg[cid]=DB.checklistReg[cid]||{};DB.checklistReg[cid][d]=DB.checklistReg[cid][d]||{st:{},obs:''};return DB.checklistReg[cid][d];}
 function chkStats(cl,d){let tot=0,ok=0,pend=0;const st=chkReg(cl.id,d).st||{};(cl.secoes||[]).forEach(s=>(s.tarefas||[]).forEach(t=>{tot++;const v=st[t.id]||'';if(v==='ok')ok++;if(!v)pend++;}));return {tot,ok,pend};}
 function viewChecklists(){
-  DB.checklists=DB.checklists&&DB.checklists.length?DB.checklists:chkBuildDefaults();DB.checklistReg=DB.checklistReg||{};
+  DB.checklists=DB.checklists&&DB.checklists.length?DB.checklists:chkBuildDefaults();
   if(!chkSel||!DB.checklists.find(c=>c.id===chkSel))chkSel=DB.checklists[0].id;
-  if(!chkDate)chkDate=hojeISO();
+  if(!chkPrintYM)chkPrintYM=hojeISO().slice(0,7);
   const cl=DB.checklists.find(c=>c.id===chkSel);
-  $('#topActions').innerHTML=`<button class="btn btn-primary btn-sm" onclick="chkImprimir()">🖨 Imprimir</button><button class="btn btn-ghost btn-sm" onclick="chkNova()">${icoPlus} Nova checklist</button><button class="btn ${chkEdit?'btn-primary':'btn-ghost'} btn-sm" onclick="chkEdit=!chkEdit;viewChecklists()">${chkEdit?'✓ Concluir edição':'✎ Editar'}</button>`;
+  $('#topActions').innerHTML=`<button class="btn btn-primary btn-sm" onclick="chkImprimir()">🖨 Imprimir</button><button class="btn btn-ghost btn-sm" onclick="chkNova()">${icoPlus} Nova checklist</button><button class="btn ${chkEdit?'btn-primary':'btn-ghost'} btn-sm" onclick="chkEdit=!chkEdit;viewChecklists()">${chkEdit?'✓ Concluir edição':'✎ Editar tarefas'}</button>`;
   const pills=DB.checklists.map(c=>`<button class="${c.id===chkSel?'on':''}" onclick="chkSel='${c.id}';viewChecklists()">${esc(c.setor)}</button>`).join('');
-  const s=chkStats(cl,chkDate),pct=s.tot?Math.round(s.ok/s.tot*100):0;
+  const nTar=(cl.secoes||[]).reduce((n,s)=>n+(s.tarefas||[]).length,0);
   $('#view').innerHTML=`
    <div class="pill-filter" style="margin-bottom:14px;flex-wrap:wrap">${pills}</div>
-   <div class="card card-pad" style="max-width:1080px">
+   <div class="card card-pad" style="max-width:940px">
      <div class="section-head" style="align-items:flex-start">
        <div style="flex:1;min-width:0">
          ${chkEdit?`<input class="input" style="font-size:17px;font-weight:700;max-width:420px" value="${esc(cl.setor)}" onchange="chkRenChecklist('${cl.id}',this.value)">`:`<div class="ttl">${esc(cl.setor)}</div>`}
-         <div class="desc">Periodicidade: ${esc(cl.periodicidade||'Diária')}${chkEdit?'':' · toque na tarefa p/ alternar: OK → Insatisfatório → Não realizado → Sem necessidade'}</div>
+         <div class="desc">${nTar} tarefa(s) em ${(cl.secoes||[]).length} seç(ões) · ${chkEdit?'edite os nomes, adicione ou remova tarefas e seções':'clique em <b>Imprimir</b> para a folha em paisagem (grade do mês, para preencher à mão)'}</div>
        </div>
-       ${chkEdit?`<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="chkExcluirChecklist('${cl.id}')">🗑 Excluir</button>`:`<input type="date" class="input" style="max-width:170px" value="${chkDate}" onchange="chkDate=this.value;viewChecklists()">`}
+       ${chkEdit?`<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="chkExcluirChecklist('${cl.id}')">🗑 Excluir checklist</button>`:`<label style="font-size:11px;color:var(--soft);display:flex;flex-direction:column;gap:3px;text-transform:uppercase;letter-spacing:.4px">Mês da impressão<input type="month" class="input" style="max-width:160px" value="${chkPrintYM}" onchange="chkPrintYM=this.value"></label>`}
      </div>
-     ${chkEdit?'':`<div style="display:flex;align-items:center;gap:12px;margin:8px 0 6px;flex-wrap:wrap">
-        <div style="flex:1;min-width:160px;height:9px;background:var(--bg);border-radius:6px;overflow:hidden"><div id="chkBar" style="height:100%;width:${pct}%;background:var(--green);transition:.3s"></div></div>
-        <div style="font-size:12.5px;color:var(--soft)"><b id="chkProg" style="color:var(--ink)">${s.ok}/${s.tot}</b> concluídas · <span id="chkPend">${s.pend}</span> pendentes</div>
-     </div>`}
      ${(cl.secoes||[]).map(sec=>chkSecaoHTML(cl,sec)).join('')}
-     ${chkEdit?`<button class="btn btn-ghost btn-sm" style="margin-top:14px" onclick="chkAddSecao('${cl.id}')">${icoPlus} Adicionar seção</button>`:`<div class="field" style="margin-top:18px"><label>Observações do dia</label><textarea class="input" rows="2" placeholder="Justifique registros diferentes de OK, faltas, etc." onchange="chkReg('${cl.id}','${chkDate}').obs=this.value;save()">${esc(chkReg(cl.id,chkDate).obs||'')}</textarea></div>`}
+     ${chkEdit?`<button class="btn btn-ghost btn-sm" style="margin-top:16px" onclick="chkAddSecao('${cl.id}')">${icoPlus} Adicionar seção</button>`:''}
    </div>`;
 }
 function chkSecaoHTML(cl,sec){
-  const linhas=(sec.tarefas||[]).map(t=>{
-    if(chkEdit)return `<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px"><input class="input" style="flex:1" value="${esc(t.nome)}" onchange="chkRenTarefa('${cl.id}','${sec.id}','${t.id}',this.value)"><button class="icon-btn del" title="Remover tarefa" onclick="chkDelTarefa('${cl.id}','${sec.id}','${t.id}')">${icoX}</button></div>`;
-    const cur=(chkReg(cl.id,chkDate).st||{})[t.id]||'',m=CHK_ST.find(x=>x.k===cur)||CHK_ST[0];
-    return `<button class="chk-task" onclick="chkCycle('${t.id}',this)" title="${m.lbl}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid ${m.bd};background:var(--card);border-radius:10px;padding:9px 12px;margin-bottom:5px;cursor:pointer;font-size:13.5px;color:var(--ink)">
-        <span class="chk-ic" style="flex:0 0 22px;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:${m.col};border:1.5px solid ${m.bd}">${m.ic}</span>
-        <span class="chk-nm" style="flex:1;${cur==='sn'?'text-decoration:line-through;color:var(--soft)':''}">${esc(t.nome)}</span></button>`;
-  }).join('')||(chkEdit?'':'<div style="font-size:12.5px;color:var(--soft);padding:2px 0 8px">Sem tarefas nesta seção.</div>');
+  const linhas=(sec.tarefas||[]).map((t,i)=>{
+    if(chkEdit)return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:5px"><span style="width:24px;text-align:right;color:var(--soft);font-size:12px">${i+1}</span><input class="input" style="flex:1" value="${esc(t.nome)}" onchange="chkRenTarefa('${cl.id}','${sec.id}','${t.id}',this.value)"><button class="icon-btn del" title="Remover tarefa" onclick="chkDelTarefa('${cl.id}','${sec.id}','${t.id}')">${icoX}</button></div>`;
+    return `<div style="display:flex;gap:12px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line);font-size:13.5px"><span style="width:24px;text-align:right;color:var(--soft);font-size:12px">${i+1}</span><span>${esc(t.nome)}</span></div>`;
+  }).join('')||(chkEdit?'<div style="font-size:12.5px;color:var(--soft);padding:2px 0 6px">Sem tarefas — use “Adicionar tarefa”.</div>':'<div style="font-size:12.5px;color:var(--soft);padding:2px 0 8px">Sem tarefas nesta seção.</div>');
   return `<div style="margin-top:16px">
-     <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
+     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
        ${chkEdit?`<input class="input" style="font-weight:700;max-width:340px" value="${esc(sec.titulo)}" onchange="chkRenSecao('${cl.id}','${sec.id}',this.value)"><button class="icon-btn del" title="Remover seção" onclick="chkDelSecao('${cl.id}','${sec.id}')">${icoX}</button>`:`<div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--gold)">${esc(sec.titulo)}</div>`}
      </div>
      ${linhas}
-     ${chkEdit?`<button class="btn btn-ghost btn-sm" style="margin-top:2px" onclick="chkAddTarefa('${cl.id}','${sec.id}')">${icoPlus} Adicionar tarefa</button>`:''}
+     ${chkEdit?`<button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="chkAddTarefa('${cl.id}','${sec.id}')">${icoPlus} Adicionar tarefa</button>`:''}
    </div>`;
 }
 function chkCycle(tid,btn){
@@ -1376,7 +1369,7 @@ function chkInjectPrintCss(){
 }
 function chkImprimir(){
   const cl=DB.checklists.find(c=>c.id===chkSel);if(!cl)return;
-  const ym=(chkDate||hojeISO()).slice(0,7),Y=+ym.slice(0,4),M=+ym.slice(5,7),nd=new Date(Y,M,0).getDate();
+  const ym=(chkPrintYM||hojeISO().slice(0,7)),Y=+ym.slice(0,4),M=+ym.slice(5,7),nd=new Date(Y,M,0).getDate();
   const meses=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const wd=['D','S','T','Q','Q','S','S'],pad=n=>String(n).padStart(2,'0');
   const nome=(DB.conta&&DB.conta.restaurante)||'Restaurante';
