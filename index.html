@@ -1258,14 +1258,15 @@ Guardar envelope
 Chavear gavetas
 Conferir bebidas`
 };
-function chkBuildDefaults(){
+function _chkSlug(s){return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');}
+function chkBuildDefaults(){ // IDs DETERMINÍSTICOS: dois usuários geram estruturas idênticas → o merge não duplica
   return Object.keys(CHK_RAW).map(setor=>{
-    const secoes=[];let cur=null;
+    const cs='chk-'+_chkSlug(setor);const secoes=[];let cur=null,si=0,ti=0;
     CHK_RAW[setor].split('\n').map(l=>l.trim()).filter(Boolean).forEach(l=>{
-      if(l[0]==='#'){cur={id:uid(),titulo:l.replace(/^#\s*/,''),tarefas:[]};secoes.push(cur);}
-      else if(cur){cur.tarefas.push({id:uid(),nome:l});}
+      if(l[0]==='#'){si++;ti=0;cur={id:cs+'-s'+si,titulo:l.replace(/^#\s*/,''),tarefas:[]};secoes.push(cur);}
+      else if(cur){ti++;cur.tarefas.push({id:cs+'-s'+si+'-t'+ti,nome:l});}
     });
-    return {id:uid(),setor,periodicidade:'Diária',secoes};
+    return {id:cs,setor,periodicidade:'Diária',secoes};
   });
 }
 let chkSel=null,chkDate=null,chkEdit=false;
@@ -1276,7 +1277,7 @@ function viewChecklists(){
   if(!chkSel||!DB.checklists.find(c=>c.id===chkSel))chkSel=DB.checklists[0].id;
   if(!chkDate)chkDate=hojeISO();
   const cl=DB.checklists.find(c=>c.id===chkSel);
-  $('#topActions').innerHTML=`<button class="btn btn-ghost btn-sm" onclick="chkNova()">${icoPlus} Nova checklist</button><button class="btn ${chkEdit?'btn-primary':'btn-ghost'} btn-sm" onclick="chkEdit=!chkEdit;viewChecklists()">${chkEdit?'✓ Concluir edição':'✎ Editar'}</button>`;
+  $('#topActions').innerHTML=`<button class="btn btn-primary btn-sm" onclick="chkImprimir()">🖨 Imprimir</button><button class="btn btn-ghost btn-sm" onclick="chkNova()">${icoPlus} Nova checklist</button><button class="btn ${chkEdit?'btn-primary':'btn-ghost'} btn-sm" onclick="chkEdit=!chkEdit;viewChecklists()">${chkEdit?'✓ Concluir edição':'✎ Editar'}</button>`;
   const pills=DB.checklists.map(c=>`<button class="${c.id===chkSel?'on':''}" onclick="chkSel='${c.id}';viewChecklists()">${esc(c.setor)}</button>`).join('');
   const s=chkStats(cl,chkDate),pct=s.tot?Math.round(s.ok/s.tot*100):0;
   $('#view').innerHTML=`
@@ -1334,6 +1335,79 @@ function chkDelSecao(cid,sid){const c=DB.checklists.find(x=>x.id===cid);if(!c)re
 function chkAddTarefa(cid,sid){const c=DB.checklists.find(x=>x.id===cid),s=c&&c.secoes.find(x=>x.id===sid);if(!s)return;s.tarefas.push({id:uid(),nome:'Nova tarefa'});save();viewChecklists();}
 function chkRenTarefa(cid,sid,tid,v){const c=DB.checklists.find(x=>x.id===cid),s=c&&c.secoes.find(x=>x.id===sid),t=s&&s.tarefas.find(x=>x.id===tid);if(t){t.nome=(v||'').trim()||t.nome;save();}}
 function chkDelTarefa(cid,sid,tid){const c=DB.checklists.find(x=>x.id===cid),s=c&&c.secoes.find(x=>x.id===sid);if(!s)return;s.tarefas=s.tarefas.filter(x=>x.id!==tid);save();viewChecklists();}
+/* ---- Impressão paisagem (grade mensal, design premium) ---- */
+function chkInjectPrintCss(){
+  if(document.getElementById('chkPrintCss'))return;
+  const st=document.createElement('style');st.id='chkPrintCss';st.textContent=`
+  #chkPrintArea{display:none}
+  @media print{
+    @page chklist{size:A4 landscape;margin:6mm}
+    body.print-chk .sidebar,body.print-chk .topbar,body.print-chk .main,body.print-chk #modalRoot,body.print-chk #toastRoot,body.print-chk .backdrop,body.print-chk #adminScreen,body.print-chk #authScreen,body.print-chk #wizScreen,body.print-chk #formAdminScreen{display:none!important}
+    body.print-chk #chkPrintArea{display:block!important;page:chklist}
+  }
+  #chkPrintArea *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;box-sizing:border-box}
+  #chkPrintArea{font-family:'Inter',system-ui,Arial,sans-serif;color:#16233f}
+  #chkPrintArea .chk-head{display:flex;justify-content:space-between;align-items:center;gap:16px;background:linear-gradient(100deg,#1D3573,#0F1D3A);color:#fff;border-radius:11px;padding:12px 20px;border-bottom:4px solid #A48A57;margin-bottom:9px}
+  #chkPrintArea .chk-brand{font-size:9.5px;letter-spacing:2px;text-transform:uppercase;color:#A9BAD8;margin-bottom:3px;font-weight:700}
+  #chkPrintArea .chk-title h1{font-size:25px;font-weight:800;letter-spacing:4px;margin:0;font-family:'Fraunces',Georgia,serif}
+  #chkPrintArea .chk-setor{font-size:12.5px;color:#CBB88E;font-weight:600;margin-top:1px}
+  #chkPrintArea .chk-meta{display:flex;gap:20px}
+  #chkPrintArea .chk-meta div{display:flex;flex-direction:column}
+  #chkPrintArea .chk-meta span{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#9FB0D0}
+  #chkPrintArea .chk-meta b{font-size:12.5px;margin-top:1px}
+  #chkPrintArea .chk-grid{width:100%;border-collapse:collapse;table-layout:fixed}
+  #chkPrintArea .chk-grid th,#chkPrintArea .chk-grid td{border:.5px solid #C7D0E2;text-align:center;height:13px;line-height:1.05;padding:0;overflow:hidden}
+  #chkPrintArea .chk-grid thead th{background:#1D3573;color:#fff;font-weight:700;padding:3px 1px;line-height:1.05}
+  #chkPrintArea .chk-grid th.c-n,#chkPrintArea .chk-grid td.c-n{width:22px;font-size:7.5px;color:#8391a8}
+  #chkPrintArea .chk-grid th.c-t{width:172px}
+  #chkPrintArea .chk-grid td.c-t{text-align:left;padding:2px 8px;font-size:9px;white-space:nowrap;text-overflow:ellipsis;color:#1e2c4a}
+  #chkPrintArea .chk-grid th.d .dn{font-size:8.5px;font-weight:700}
+  #chkPrintArea .chk-grid th.d .dw{font-size:6px;opacity:.75;letter-spacing:.5px}
+  #chkPrintArea .chk-grid td.cell{font-size:9px}
+  #chkPrintArea .chk-grid tbody tr:nth-child(even) td.cell{background:#F7F9FC}
+  #chkPrintArea .chk-grid td.wk{background:#EDF0F6}
+  #chkPrintArea .chk-grid tr.sec td{background:#F0E8D7;border-color:#DCCEAE;height:16px}
+  #chkPrintArea .chk-grid tr.sec td.c-t{color:#7A5F2E;font-weight:800;text-transform:uppercase;letter-spacing:.6px;font-size:8.5px}
+  #chkPrintArea .chk-grid tr.sec td.wk{background:#E8DCC2}
+  #chkPrintArea .chk-leg{display:flex;gap:15px;align-items:center;margin-top:9px;font-size:9px;color:#40506e;flex-wrap:wrap}
+  #chkPrintArea .chk-leg i{font-style:normal;font-weight:800;margin-right:3px}
+  #chkPrintArea .chk-leg .chk-note{margin-left:auto;color:#93a0b8;font-style:italic}
+  `;document.head.appendChild(st);
+}
+function chkImprimir(){
+  const cl=DB.checklists.find(c=>c.id===chkSel);if(!cl)return;
+  const ym=(chkDate||hojeISO()).slice(0,7),Y=+ym.slice(0,4),M=+ym.slice(5,7),nd=new Date(Y,M,0).getDate();
+  const meses=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const wd=['D','S','T','Q','Q','S','S'],pad=n=>String(n).padStart(2,'0');
+  const nome=(DB.conta&&DB.conta.restaurante)||'Restaurante';
+  const reg=(DB.checklistReg&&DB.checklistReg[cl.id])||{};
+  const wknd=d=>{const g=new Date(Y,M-1,d).getDay();return g===0||g===6;};
+  const dias=[];for(let d=1;d<=nd;d++)dias.push(d);
+  const cell=(tid,d)=>{const s=(reg[ym+'-'+pad(d)]&&reg[ym+'-'+pad(d)].st&&reg[ym+'-'+pad(d)].st[tid])||'',m=CHK_ST.find(x=>x.k===s);return s&&m?`<span style="color:${m.col};font-weight:800">${m.ic}</span>`:'';};
+  const dayHead=dias.map(d=>`<th class="d${wknd(d)?' wk':''}"><div class="dn">${pad(d)}</div><div class="dw">${wd[new Date(Y,M-1,d).getDay()]}</div></th>`).join('');
+  let n=0;const rows=(cl.secoes||[]).map(s=>{
+    const sh=`<tr class="sec"><td class="c-n"></td><td class="c-t">${esc(s.titulo)}</td>${dias.map(d=>`<td class="${wknd(d)?'wk':''}"></td>`).join('')}</tr>`;
+    const tr=(s.tarefas||[]).map(t=>{n++;return `<tr><td class="c-n">${n}</td><td class="c-t" title="${esc(t.nome)}">${esc(t.nome)}</td>${dias.map(d=>`<td class="cell${wknd(d)?' wk':''}">${cell(t.id,d)}</td>`).join('')}</tr>`;}).join('');
+    return sh+tr;
+  }).join('');
+  const html=`<div class="chk-doc">
+     <div class="chk-head">
+       <div><div class="chk-brand">Flow · by Lidera</div><div class="chk-title"><h1>CHECKLIST</h1></div><div class="chk-setor">${esc(cl.setor)}</div></div>
+       <div class="chk-meta"><div><span>Restaurante</span><b>${esc(nome)}</b></div><div><span>Mês / Ano</span><b>${meses[M]} / ${Y}</b></div><div><span>Periodicidade</span><b>${esc(cl.periodicidade||'Diária')}</b></div></div>
+     </div>
+     <table class="chk-grid"><thead><tr><th class="c-n">Nº</th><th class="c-t" style="text-align:left;padding-left:8px">TAREFA</th>${dayHead}</tr></thead><tbody>${rows}</tbody></table>
+     <div class="chk-leg"><b>Legenda:</b>
+       <span><i style="color:#1E9E6A">✓</i>OK · Realizado</span>
+       <span><i style="color:#C9892A">!</i>IN · Insatisfatório</span>
+       <span><i style="color:#D2483F">✕</i>NO · Não realizado</span>
+       <span><i style="color:#8391a8">–</i>SN · Sem necessidade</span>
+       <span class="chk-note">Justifique registros diferentes de OK nas observações.</span>
+     </div>
+   </div>`;
+  let area=document.getElementById('chkPrintArea');if(!area){area=document.createElement('div');area.id='chkPrintArea';document.body.appendChild(area);}
+  area.innerHTML=html;chkInjectPrintCss();document.body.classList.add('print-chk');
+  setTimeout(()=>{window.print();setTimeout(()=>document.body.classList.remove('print-chk'),500);},80);
+}
 
 /* ===================== ROTEADOR ===================== */
 const ROUTES={
