@@ -586,6 +586,7 @@ thead th{letter-spacing:.7px}
     <a data-route="insumos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Produtos</a>
     <a data-route="fichas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2v6M15 2v6M7 8h10l-1 12a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2L7 8z"/></svg>Fichas Técnicas</a>
     <a data-route="estoque"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>Estoque &amp; Compras</a>
+    <a data-route="checklists"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Checklists</a>
     <div class="lbl">INTELIGÊNCIA</div>
     <a data-route="engenharia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/></svg>Engenharia de Menu</a>
     <a data-route="cmv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h18v4H3zM3 10h18v10H3z"/><path d="M7 14h4M7 17h7"/></svg>Controle de CMV</a>
@@ -963,12 +964,384 @@ function totaisGerais(R){
     despLancGrupos,despLancTot,cmvLancRS,pessoalLancRS,outrasLancRS,lucroReal,margemReal};
 }
 
+/* ===================== CHECKLISTS ===================== */
+const CHK_ST=[
+  {k:'',  ic:'○',lbl:'Pendente',        col:'var(--soft)', bd:'var(--line)'},
+  {k:'ok',ic:'✓',lbl:'OK · Realizado',  col:'var(--green)',bd:'var(--green)'},
+  {k:'in',ic:'!',lbl:'Insatisfatório',  col:'var(--amber)',bd:'var(--amber)'},
+  {k:'no',ic:'✕',lbl:'Não realizado',   col:'var(--red)',  bd:'var(--red)'},
+  {k:'sn',ic:'–',lbl:'Sem necessidade', col:'var(--soft)', bd:'var(--line)'}
+];
+const CHK_ORDER=['','ok','in','no','sn'];
+const CHK_RAW={
+'Salão / Atendimento':`# ABERTURA DA CASA
+Baixar cadeiras
+Passar pano nas mesas
+Montar as mesas
+Reabastecer guardanapos
+Reabastecer palitos
+Reabastecer sal
+Reabastecer azeite
+Limpar azeiteiros
+Limpar caixinhas
+Posicionar caixinhas
+Polir os copos
+Polir pratos
+Polir talheres
+Reabastecer Catchup
+Reabastecer Mostarda
+Reabastecer Maionese
+Organizar panos
+Organizar aparadores
+Disponibilizar 2 panos para o salão
+# FECHAMENTO
+Polir talheres
+Polir jogos americanos
+Escorrer pratos
+Limpar mesas (c/ escova e pano)
+Desmontar mesas da rua
+Escorrer últimos pratos
+Levantar cadeiras`,
+'Cozinha':`# ABERTURA DA CASA
+Verificar níveis de insumos
+Verificar validade insumos
+Solicitar ao ger. prod. Depósito até 19h
+Comunicar ao ger. falta insumos até 19h
+Produzir insumos necessários até 19h
+Preparar cardápio do dia
+Organizar e limpar ambiente
+Organizar mesa montagem
+# FECHAMENTO
+Armazenar insumos na refrigeração
+Limpar mesa de montagem
+Retirar o lixo e limpar lixeiras
+Armazenar corretamente o lixo
+Informar necessidades reposição prod.
+Limpar/higienizar ambiente
+Lavar toda a louça`,
+'Limpeza':`# ABERTURA DA CASA
+Limpar salão inferior
+Limpar salão superior
+Limpar Deck
+Limpar calçada
+Limpar áreas de acesso
+Limpar fundos
+Limpar sala de funcionários e banheiro
+Limpar banheiros
+Verificar necessidades de reposição
+# FECHAMENTO
+Limpar banheiros
+Verificar necessidades de reposição
+Limpar áreas de acesso`,
+'Área Externa':`# ABERTURA DA CASA
+Organização da Lenha
+Retirada Lixo
+Limpeza Vestiário
+Limpeza áreas de acesso
+Solicitação de materiais
+Limpeza Deck
+Colocação Mesas e Cadeiras Deck
+# FECHAMENTO
+Guardar insumos na refrigeração
+Limpar mesa de montagem
+Retirar o lixo
+Informar necessidades reposição
+Limpar ambiente
+Lavar toda a louça`,
+'Operacional':`# ABERTURA SALÃO
+Varrer o chão
+Passar Mop úmido
+Limpar mesas
+Limpar jogo americano
+Limpar numeração de mesas
+Limpar galheteiros
+Abastecer Azeites
+Abastecer Palito de dente
+Abastecer sal sachê
+Verificar Tabasco
+Verificar montagem de mesas
+Varrer WC
+Passar Mop úmido no WC
+Abastecer papel toalha
+Abastecer papel higiênico
+Abastecer sabonete líquido
+Limpar lixeiras do WC
+Higienizar vaso sanitário
+Varrer calçada
+Limpar vidros
+Limpar cadeiras
+Abastecer guardanapos
+Providenciar panos
+Verificar guardanapos de pano
+Verificar itens em falta
+Abastecer açúcar sachê
+Abastecer adoçantes
+Abastecer condimentos
+Limpar tesourinhas
+Verificar Aceto Balsâmico
+Verificar Azeites especiais
+# ABERTURA COPA
+Ligar chopeira
+Conferir freezers
+Preparar frutas
+Fazer suco de laranja
+Abastecer gelo
+Abastecer canudos
+Conferir copos e taças
+Conferir falta de produtos
+Limpar balcão
+Limpar bandejas
+Organizar frutas de caipira
+Providenciar facas
+Providenciar tábuas de corte
+Providenciar pegador de gelo
+Providenciar pegador de fruta
+Providenciar socador
+Providenciar coqueteleiras
+Providenciar pano
+Conferir liquidificador
+Lavar baldes de gelo
+# ABERTURA FORNO
+Acender fornos
+Abastecer lenhas
+Providenciar panos
+Providenciar tábuas
+Providenciar espátulas
+Providenciar cortadores
+Providenciar potes de calda
+Ligar banho maria
+Preparar calda
+Cortar morango
+Bater gemada
+Despencar manjericão
+Abastecer tomate seco
+Abastecer mm's
+Preparar entradas cortesias
+Colocar água na bruxa
+Verificar temperatura do forno
+Dobrar caixas de tele entrega
+Abastecer Azeites
+Verificar licor de chocolate
+# ABERTURA MASSA
+Abastecer sal
+Verificar azeite
+Limpar balcão
+Providenciar faca
+Providenciar pano úmido
+Providenciar pano seco
+Bater massa
+Organizar massa batida
+Preparar entradas
+Abastecer farinha de milho
+Verificar falta de itens
+# ABERTURA COZINHA
+Bater ponto
+Vestir uniforme
+Lavar as mãos
+Ligar o gás
+Ligar exaustor
+Organizar mercadorias do dia
+Abastecer bancada de pizzas
+Conferir insumos
+Produzir insumos
+Botar data em produtos feitos
+Armazenar corretamente
+Fazer janta de funcionários
+Avisar sobre alguma falta
+Organizar freezers
+Organizar mesa in place
+Verificar máquina a vácuo
+# ABERTURA CAIXA
+Abrir Caixa
+Conferir troco
+Lançar troco
+Conferir redução Z
+Conferir venda de cartões
+Conferir refrigerantes
+Testar impressoras
+Testar telefone
+# FECHAMENTO SALÃO
+Remontar mesas
+Retirar lixos
+Polir talheres
+Polir pratos
+Polir copos
+Guardar copos
+Guardar talheres
+Guardar pratos
+Desligar computadores
+Desligar ar condicionado
+Abastecer vinhos
+Separar panos sujos
+Separar guardanapo de pano
+Fechar janelas
+# FECHAMENTO COPA
+Abastecer bebidas
+Organizar freezers
+Organizar depósito
+Verificar vasilhames
+Recolher lixo
+Lavar suqueira
+Lavar liquidificador
+Lavar utensílios
+Guardar utensílios
+Recondicionar gelo
+Lavar caixa de gelo
+Dispensar frutas cítricas
+Recondicionar morango
+Limpar freezers
+Limpar balcão
+Limpar chopeira
+Verificar e avisar faltas
+Passar pano no chão
+Limpar dispenser de chopp
+Preencher relatório de abastecimento
+# FECHAMENTO FORNO
+Guardar tomate seco
+Guardar manjericão
+Guardar gemada
+Guardar morango
+Guardar calda
+Desligar banho maria
+Limpar banho maria
+Varrer o forno
+Varrer o chão
+Tirar água da bruxa
+Lavar balde da bruxa
+Reabastecer cortadores
+Reabastecer espátulas
+Limpar prateleira de tábuas
+Organizar tábuas
+Limpar balcões
+Devolver panos para lavagem
+# FECHAMENTO MASSA
+Guardar massa na geladeira
+Limpar masseira
+Limpar cilindro
+Limpar bancada
+Limpar gavetas
+Varrer chão
+Devolver panos para lavagem
+# FECHAMENTO COZINHA
+Diminuir tamanho de potes
+Armazenar na geladeira
+Desligar gás
+Desligar exaustor
+Limpar fogão
+Varrer chão
+Limpar balcões
+Lavar louça
+Guardar louças
+Lavar potes
+Guardar potes
+Lavar panos
+Estender panos
+Verificar freezers
+Verificar porta de freezer
+Limpar banheiro
+Fazer lista de faltas
+Fazer lista de sacolão
+Tirar uniforme
+Bater ponto
+# FECHAMENTO CAIXA
+Organizar cartões
+Organizar dinheiro
+Pagar diárias
+Lançar diárias
+Lançar vales
+Pagar vales
+Organizar cheques
+Lançamento na planilha
+Conferência do gerente
+Fechar caixa
+Guardar envelope
+Chavear gavetas
+Conferir bebidas`
+};
+function chkBuildDefaults(){
+  return Object.keys(CHK_RAW).map(setor=>{
+    const secoes=[];let cur=null;
+    CHK_RAW[setor].split('\n').map(l=>l.trim()).filter(Boolean).forEach(l=>{
+      if(l[0]==='#'){cur={id:uid(),titulo:l.replace(/^#\s*/,''),tarefas:[]};secoes.push(cur);}
+      else if(cur){cur.tarefas.push({id:uid(),nome:l});}
+    });
+    return {id:uid(),setor,periodicidade:'Diária',secoes};
+  });
+}
+let chkSel=null,chkDate=null,chkEdit=false;
+function chkReg(cid,d){DB.checklistReg=DB.checklistReg||{};DB.checklistReg[cid]=DB.checklistReg[cid]||{};DB.checklistReg[cid][d]=DB.checklistReg[cid][d]||{st:{},obs:''};return DB.checklistReg[cid][d];}
+function chkStats(cl,d){let tot=0,ok=0,pend=0;const st=chkReg(cl.id,d).st||{};(cl.secoes||[]).forEach(s=>(s.tarefas||[]).forEach(t=>{tot++;const v=st[t.id]||'';if(v==='ok')ok++;if(!v)pend++;}));return {tot,ok,pend};}
+function viewChecklists(){
+  DB.checklists=DB.checklists&&DB.checklists.length?DB.checklists:chkBuildDefaults();DB.checklistReg=DB.checklistReg||{};
+  if(!chkSel||!DB.checklists.find(c=>c.id===chkSel))chkSel=DB.checklists[0].id;
+  if(!chkDate)chkDate=hojeISO();
+  const cl=DB.checklists.find(c=>c.id===chkSel);
+  $('#topActions').innerHTML=`<button class="btn btn-ghost btn-sm" onclick="chkNova()">${icoPlus} Nova checklist</button><button class="btn ${chkEdit?'btn-primary':'btn-ghost'} btn-sm" onclick="chkEdit=!chkEdit;viewChecklists()">${chkEdit?'✓ Concluir edição':'✎ Editar'}</button>`;
+  const pills=DB.checklists.map(c=>`<button class="${c.id===chkSel?'on':''}" onclick="chkSel='${c.id}';viewChecklists()">${esc(c.setor)}</button>`).join('');
+  const s=chkStats(cl,chkDate),pct=s.tot?Math.round(s.ok/s.tot*100):0;
+  $('#view').innerHTML=`
+   <div class="pill-filter" style="margin-bottom:14px;flex-wrap:wrap">${pills}</div>
+   <div class="card card-pad" style="max-width:1080px">
+     <div class="section-head" style="align-items:flex-start">
+       <div style="flex:1;min-width:0">
+         ${chkEdit?`<input class="input" style="font-size:17px;font-weight:700;max-width:420px" value="${esc(cl.setor)}" onchange="chkRenChecklist('${cl.id}',this.value)">`:`<div class="ttl">${esc(cl.setor)}</div>`}
+         <div class="desc">Periodicidade: ${esc(cl.periodicidade||'Diária')}${chkEdit?'':' · toque na tarefa p/ alternar: OK → Insatisfatório → Não realizado → Sem necessidade'}</div>
+       </div>
+       ${chkEdit?`<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="chkExcluirChecklist('${cl.id}')">🗑 Excluir</button>`:`<input type="date" class="input" style="max-width:170px" value="${chkDate}" onchange="chkDate=this.value;viewChecklists()">`}
+     </div>
+     ${chkEdit?'':`<div style="display:flex;align-items:center;gap:12px;margin:8px 0 6px;flex-wrap:wrap">
+        <div style="flex:1;min-width:160px;height:9px;background:var(--bg);border-radius:6px;overflow:hidden"><div id="chkBar" style="height:100%;width:${pct}%;background:var(--green);transition:.3s"></div></div>
+        <div style="font-size:12.5px;color:var(--soft)"><b id="chkProg" style="color:var(--ink)">${s.ok}/${s.tot}</b> concluídas · <span id="chkPend">${s.pend}</span> pendentes</div>
+     </div>`}
+     ${(cl.secoes||[]).map(sec=>chkSecaoHTML(cl,sec)).join('')}
+     ${chkEdit?`<button class="btn btn-ghost btn-sm" style="margin-top:14px" onclick="chkAddSecao('${cl.id}')">${icoPlus} Adicionar seção</button>`:`<div class="field" style="margin-top:18px"><label>Observações do dia</label><textarea class="input" rows="2" placeholder="Justifique registros diferentes de OK, faltas, etc." onchange="chkReg('${cl.id}','${chkDate}').obs=this.value;save()">${esc(chkReg(cl.id,chkDate).obs||'')}</textarea></div>`}
+   </div>`;
+}
+function chkSecaoHTML(cl,sec){
+  const linhas=(sec.tarefas||[]).map(t=>{
+    if(chkEdit)return `<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px"><input class="input" style="flex:1" value="${esc(t.nome)}" onchange="chkRenTarefa('${cl.id}','${sec.id}','${t.id}',this.value)"><button class="icon-btn del" title="Remover tarefa" onclick="chkDelTarefa('${cl.id}','${sec.id}','${t.id}')">${icoX}</button></div>`;
+    const cur=(chkReg(cl.id,chkDate).st||{})[t.id]||'',m=CHK_ST.find(x=>x.k===cur)||CHK_ST[0];
+    return `<button class="chk-task" onclick="chkCycle('${t.id}',this)" title="${m.lbl}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid ${m.bd};background:var(--card);border-radius:10px;padding:9px 12px;margin-bottom:5px;cursor:pointer;font-size:13.5px;color:var(--ink)">
+        <span class="chk-ic" style="flex:0 0 22px;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:${m.col};border:1.5px solid ${m.bd}">${m.ic}</span>
+        <span class="chk-nm" style="flex:1;${cur==='sn'?'text-decoration:line-through;color:var(--soft)':''}">${esc(t.nome)}</span></button>`;
+  }).join('')||(chkEdit?'':'<div style="font-size:12.5px;color:var(--soft);padding:2px 0 8px">Sem tarefas nesta seção.</div>');
+  return `<div style="margin-top:16px">
+     <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
+       ${chkEdit?`<input class="input" style="font-weight:700;max-width:340px" value="${esc(sec.titulo)}" onchange="chkRenSecao('${cl.id}','${sec.id}',this.value)"><button class="icon-btn del" title="Remover seção" onclick="chkDelSecao('${cl.id}','${sec.id}')">${icoX}</button>`:`<div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--gold)">${esc(sec.titulo)}</div>`}
+     </div>
+     ${linhas}
+     ${chkEdit?`<button class="btn btn-ghost btn-sm" style="margin-top:2px" onclick="chkAddTarefa('${cl.id}','${sec.id}')">${icoPlus} Adicionar tarefa</button>`:''}
+   </div>`;
+}
+function chkCycle(tid,btn){
+  const r=chkReg(chkSel,chkDate),cur=r.st[tid]||'',nx=CHK_ORDER[(CHK_ORDER.indexOf(cur)+1)%CHK_ORDER.length];
+  if(nx)r.st[tid]=nx;else delete r.st[tid];
+  const m=CHK_ST.find(x=>x.k===nx)||CHK_ST[0],ic=btn.querySelector('.chk-ic'),nm=btn.querySelector('.chk-nm');
+  if(ic){ic.textContent=m.ic;ic.style.color=m.col;ic.style.borderColor=m.bd;}
+  btn.style.borderColor=m.bd;btn.title=m.lbl;
+  if(nm)nm.style.cssText='flex:1;'+(nx==='sn'?'text-decoration:line-through;color:var(--soft)':'');
+  const cl=DB.checklists.find(c=>c.id===chkSel),s=chkStats(cl,chkDate);
+  const p=document.getElementById('chkProg'),pe=document.getElementById('chkPend'),bar=document.getElementById('chkBar');
+  if(p)p.textContent=s.ok+'/'+s.tot; if(pe)pe.textContent=s.pend; if(bar)bar.style.width=(s.tot?Math.round(s.ok/s.tot*100):0)+'%';
+  save();
+}
+function chkNova(){DB.checklists=DB.checklists||[];DB.checklists.push({id:uid(),setor:'Nova checklist',periodicidade:'Diária',secoes:[{id:uid(),titulo:'TAREFAS',tarefas:[{id:uid(),nome:'Nova tarefa'}]}]});chkSel=DB.checklists[DB.checklists.length-1].id;chkEdit=true;save();viewChecklists();}
+function chkRenChecklist(cid,v){const c=DB.checklists.find(x=>x.id===cid);if(c){c.setor=(v||'').trim()||c.setor;save();}}
+function chkExcluirChecklist(cid){const c=DB.checklists.find(x=>x.id===cid);if(!c)return;if(!confirm('Excluir a checklist "'+c.setor+'" e todo o histórico dela? Não pode ser desfeito.'))return;DB.checklists=DB.checklists.filter(x=>x.id!==cid);if(DB.checklistReg)delete DB.checklistReg[cid];chkSel=DB.checklists[0]&&DB.checklists[0].id;chkEdit=false;save();viewChecklists();}
+function chkAddSecao(cid){const c=DB.checklists.find(x=>x.id===cid);if(!c)return;c.secoes=c.secoes||[];c.secoes.push({id:uid(),titulo:'NOVA SEÇÃO',tarefas:[]});save();viewChecklists();}
+function chkRenSecao(cid,sid,v){const c=DB.checklists.find(x=>x.id===cid),s=c&&c.secoes.find(x=>x.id===sid);if(s){s.titulo=(v||'').trim()||s.titulo;save();}}
+function chkDelSecao(cid,sid){const c=DB.checklists.find(x=>x.id===cid);if(!c)return;if(!confirm('Remover esta seção e as tarefas dela?'))return;c.secoes=c.secoes.filter(x=>x.id!==sid);save();viewChecklists();}
+function chkAddTarefa(cid,sid){const c=DB.checklists.find(x=>x.id===cid),s=c&&c.secoes.find(x=>x.id===sid);if(!s)return;s.tarefas.push({id:uid(),nome:'Nova tarefa'});save();viewChecklists();}
+function chkRenTarefa(cid,sid,tid,v){const c=DB.checklists.find(x=>x.id===cid),s=c&&c.secoes.find(x=>x.id===sid),t=s&&s.tarefas.find(x=>x.id===tid);if(t){t.nome=(v||'').trim()||t.nome;save();}}
+function chkDelTarefa(cid,sid,tid){const c=DB.checklists.find(x=>x.id===cid),s=c&&c.secoes.find(x=>x.id===sid);if(!s)return;s.tarefas=s.tarefas.filter(x=>x.id!==tid);save();viewChecklists();}
+
 /* ===================== ROTEADOR ===================== */
 const ROUTES={
   dashboard:{title:'Dashboard',render:viewDashboard},
   insumos:{title:'Produtos',render:viewInsumos},
   fichas:{title:'Fichas Técnicas',render:viewFichas},
   estoque:{title:'Estoque & Compras',render:viewEstoque},
+  checklists:{title:'Checklists',render:viewChecklists},
   engenharia:{title:'Engenharia de Menu',render:viewEngenharia},
   cmv:{title:'Controle de CMV',render:viewCMV},
   desperdicio:{title:'Controle de Desperdícios',render:viewDesperdicio},
@@ -3284,11 +3657,11 @@ function finParam(){
 }
 
 /* ===================== EQUIPE ===================== */
-const ACESSOS=[['dashboard','Dashboard'],['insumos','Produtos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['formacao','Formação em Gestão'],['mapa','Mapa do Caminho'],['equipe','Equipe'],['conta','Configurações']];
+const ACESSOS=[['dashboard','Dashboard'],['insumos','Produtos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['checklists','Checklists'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['formacao','Formação em Gestão'],['mapa','Mapa do Caminho'],['equipe','Equipe'],['conta','Configurações']];
 const NIVEIS={
   admin:{label:'Administrador',desc:'Acesso total a tudo',perms:ACESSOS.map(a=>a[0])},
-  gerente:{label:'Gerente',desc:'Operação + indicadores (sem equipe/config)',perms:['dashboard','insumos','fichas','estoque','engenharia','cmv','desperdicio','buffet','faturamento','dre','mapa']},
-  operador:{label:'Operador',desc:'Só operação do dia a dia',perms:['insumos','fichas','estoque','cmv','desperdicio','buffet']},
+  gerente:{label:'Gerente',desc:'Operação + indicadores (sem equipe/config)',perms:['dashboard','insumos','fichas','estoque','checklists','engenharia','cmv','desperdicio','buffet','faturamento','dre','mapa']},
+  operador:{label:'Operador',desc:'Só operação do dia a dia',perms:['insumos','fichas','estoque','checklists','cmv','desperdicio','buffet']},
   personalizado:{label:'Personalizado',desc:'Você escolhe cada acesso',perms:[]}
 };
 function normMembro(m){if(!m.nivel)m.nivel='gerente';if(!Array.isArray(m.permissoes))m.permissoes=(NIVEIS[m.nivel]||NIVEIS.gerente).perms.slice();return m;}
