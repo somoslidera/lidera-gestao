@@ -665,15 +665,11 @@ async function saveNow(){clearTimeout(window._cloudT);renderFoot();
   if(typeof CLOUD!=='undefined'&&CLOUD&&typeof sb!=='undefined'&&sb&&typeof ORG!=='undefined'&&ORG){
     try{localStorage.setItem(localBackupKey(),JSON.stringify({dados:DB,ts:Date.now()}));}catch(e){}
     if(CLOUD_CONFLICT){setSaveStatus('conflict');avisarConflito();return false;}
-    setSaveStatus('saving');
-    try{
-      let q=sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id);
-      if(CLOUD_TS)q=q.eq('atualizado_em',CLOUD_TS);
-      const {data,error}=await q.select('atualizado_em').maybeSingle();
-      if(error){setSaveStatus('error');scheduleRetry();return false;}
-      if(!data){if(await reconcileSalvo())return true;CLOUD_CONFLICT=true;setSaveStatus('conflict');avisarConflito();return false;}
-      CLOUD_TS=data.atualizado_em;try{localStorage.removeItem(localBackupKey());}catch(e){}setSaveStatus('saved');return true;
-    }catch(e){setSaveStatus('error');scheduleRetry();return false;}
+    setSaveStatus('saving');_mergeHouve=false;
+    const r=await cloudCommit();
+    if(r==='saved'){try{localStorage.removeItem(localBackupKey());}catch(e){}setSaveStatus('saved');if(_mergeHouve)toast('Alterações de outra pessoa foram mescladas');return true;}
+    if(r==='error'){setSaveStatus('error');scheduleRetry();return false;}
+    CLOUD_CONFLICT=true;setSaveStatus('conflict');avisarConflito();return false;
   }
   try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){}
   return true;}
@@ -4007,7 +4003,7 @@ function emptyState(t,d,action){return `<div class="empty"><svg viewBox="0 0 24 
 const SUPA_URL='https://fvcbxorfstqqeewocxkf.supabase.co', SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2J4b3Jmc3RxcWVld29jeGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzM5MjgsImV4cCI6MjA5Njg0OTkyOH0.X9gnZt535F1ASHpUaL24eEZysHHECwzfBwjaR4kVnyw';
 const sb=(window.supabase&&SUPA_URL.indexOf('http')===0)?window.supabase.createClient(SUPA_URL,SUPA_ANON):null;
 let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false, MEMBRO_PERMS=null;
-let CLOUD_TS=null, SAVE_STATE='idle', SAVE_RETRY=0, CLOUD_CONFLICT=false;
+let CLOUD_TS=null, SAVE_STATE='idle', SAVE_RETRY=0, CLOUD_CONFLICT=false, CLOUD_BASE=null, _mergeHouve=false;
 let IS_SUPER=false, MY_UID=null, MY_LIMITE=5, CONSULTORES=[], adminConsFiltro='';
 function emptyDB(){return {insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};}
 function localBackupKey(){return 'flow_bkp_'+((ORG&&ORG.id)||'x');}
@@ -4033,28 +4029,66 @@ function pushCloud(){
   clearTimeout(window._cloudT);setSaveStatus('pending');
   window._cloudT=setTimeout(cloudFlush,800);
 }
-async function reconcileSalvo(){ // true se o estado do servidor JÁ é o nosso (adota ts e marca salvo) — evita falso-conflito
-  try{const cur=await sb.from('organizacoes').select('atualizado_em,dados').eq('id',ORG.id).maybeSingle();
-    if(cur&&cur.data&&JSON.stringify(cur.data.dados)===JSON.stringify(DB)){
-      CLOUD_TS=cur.data.atualizado_em;try{localStorage.removeItem(localBackupKey());}catch(e){}setSaveStatus('saved');return true;}
-  }catch(e){}
-  return false;
+/* ===== Mesclagem 3-way (multiusuário: combina edições em vez de sobrescrever) ===== */
+function _cloneDB(o){try{return JSON.parse(JSON.stringify(o));}catch(e){return o;}}
+function _eq(a,b){return JSON.stringify(a)===JSON.stringify(b);}
+function _isRec(v){return v&&typeof v==='object'&&!Array.isArray(v)&&('id' in v);}
+function _isIdMap(o){if(!o||typeof o!=='object'||Array.isArray(o))return false;const v=Object.values(o);return v.length>0&&v.every(_isRec);}
+function _mergeArr(base,mine,theirs){ // arrays de {id}: união por id (só-meu/só-dele preservados; ambos-mudaram → meu)
+  const map=a=>{const m={};(a||[]).forEach(x=>{if(x&&x.id!=null)m[String(x.id)]=x;});return m;};
+  const b=map(base),mi=map(mine),th=map(theirs),pick={};
+  new Set([...Object.keys(b),...Object.keys(mi),...Object.keys(th)]).forEach(k=>{const iB=k in b,iM=k in mi,iT=k in th;
+    if(iM&&iT)pick[k]=_eq(mi[k],b[k])?th[k]:mi[k];
+    else if(iM&&!iT){if(!(iB&&_eq(mi[k],b[k])))pick[k]=mi[k];}      // ele apagou e eu não mexi → some; senão mantém o meu
+    else if(!iM&&iT){if(!(iB&&_eq(th[k],b[k])))pick[k]=th[k];}});   // eu apaguei e ele não mexeu → some; senão mantém o dele
+  const out=[],seen=new Set();
+  (mine||[]).forEach(x=>{const k=x&&x.id!=null&&String(x.id);if(k&&(k in pick)&&!seen.has(k)){out.push(pick[k]);seen.add(k);}});
+  (theirs||[]).forEach(x=>{const k=x&&x.id!=null&&String(x.id);if(k&&(k in pick)&&!seen.has(k)){out.push(pick[k]);seen.add(k);}});
+  return out;
+}
+function _mergeUnion(base,mine,theirs){const out=(mine||[]).slice();(theirs||[]).forEach(x=>{if(!out.some(y=>_eq(y,x)))out.push(x);});return out;}
+function _mergeObj(base,mine,theirs,atomic){
+  base=base||{};const out={};
+  new Set([...Object.keys(base),...Object.keys(mine),...Object.keys(theirs)]).forEach(k=>{const iB=k in base,iM=k in mine,iT=k in theirs;
+    if(iM&&iT)out[k]=atomic?(_eq(mine[k],base[k])?theirs[k]:mine[k]):merge3(base[k],mine[k],theirs[k]);
+    else if(iM&&!iT){if(!(iB&&_eq(mine[k],base[k])))out[k]=mine[k];}
+    else if(!iM&&iT){if(!(iB&&_eq(theirs[k],base[k])))out[k]=theirs[k];}});
+  return out;
+}
+function merge3(base,mine,theirs){
+  if(mine===undefined)return theirs; if(theirs===undefined)return mine;
+  const mo=mine&&typeof mine==='object',to=theirs&&typeof theirs==='object';
+  if(!mo||!to||Array.isArray(mine)!==Array.isArray(theirs))return _eq(mine,base)?theirs:mine; // folha/scalar: meu se mudei, senão dele
+  if(Array.isArray(mine))return (mine.every(_isRec)&&theirs.every(_isRec))?_mergeArr(base,mine,theirs):_mergeUnion(base,mine,theirs);
+  return _mergeObj(base,mine,theirs,_isIdMap(mine)||_isIdMap(theirs));
+}
+async function cloudCommit(){ // grava; se outra sessão salvou, mescla e regrava. Retorna 'saved'|'error'|'unresolved'
+  for(let att=0;att<5;att++){
+    let q=sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id);
+    if(CLOUD_TS)q=q.eq('atualizado_em',CLOUD_TS);
+    const {data,error}=await q.select('atualizado_em').maybeSingle();
+    if(error)return 'error';
+    if(data){CLOUD_TS=data.atualizado_em;CLOUD_BASE=_cloneDB(DB);return 'saved';}
+    // 0 linhas → alguém salvou antes: busca a versão do servidor e mescla
+    let cur;try{cur=await sb.from('organizacoes').select('atualizado_em,dados').eq('id',ORG.id).maybeSingle();}catch(e){return 'error';}
+    if(!cur||!cur.data)return 'error';
+    const theirs=cur.data.dados||{};CLOUD_TS=cur.data.atualizado_em;
+    if(_eq(theirs,DB)){CLOUD_BASE=_cloneDB(DB);return 'saved';}     // já é igual ao nosso
+    DB=merge3(CLOUD_BASE||theirs,DB,theirs);                         // combina as duas edições
+    if(typeof normData==='function')normData();
+    _mergeHouve=true;                                               // regrava o resultado no próximo giro do laço
+  }
+  return 'unresolved';
 }
 async function cloudFlush(){
   if(!CLOUD||!sb||!ORG||CLOUD_CONFLICT)return;
-  setSaveStatus('saving');
+  setSaveStatus('saving');_mergeHouve=false;
   try{
-    let q=sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id);
-    if(CLOUD_TS)q=q.eq('atualizado_em',CLOUD_TS);           // guarda de versão otimista
-    const {data,error}=await q.select('atualizado_em').maybeSingle();
-    if(error){setSaveStatus('error');scheduleRetry();return;}
-    if(!data){                                              // 0 linhas → conferir se é conflito real
-      if(await reconcileSalvo())return;
-      CLOUD_CONFLICT=true;setSaveStatus('conflict');avisarConflito();return;
-    }
-    CLOUD_TS=data.atualizado_em;SAVE_RETRY=0;
-    try{localStorage.removeItem(localBackupKey());}catch(e){}
-    setSaveStatus('saved');
+    const r=await cloudCommit();
+    if(r==='saved'){SAVE_RETRY=0;try{localStorage.removeItem(localBackupKey());}catch(e){}setSaveStatus('saved');
+      if(_mergeHouve){toast('Alterações de outra pessoa foram mescladas');if(typeof reRenderVista==='function')reRenderVista();}return;}
+    if(r==='error'){setSaveStatus('error');scheduleRetry();return;}
+    CLOUD_CONFLICT=true;setSaveStatus('conflict');avisarConflito(); // fallback raro
   }catch(e){setSaveStatus('error');scheduleRetry();}
 }
 function scheduleRetry(){
@@ -4079,8 +4113,14 @@ async function conflitoSobrescrever(){
   try{
     const {data,error}=await sb.from('organizacoes').update({dados:DB}).eq('id',ORG.id).select('atualizado_em').maybeSingle();
     if(error||!data){setSaveStatus('error');scheduleRetry();return;}
-    CLOUD_TS=data.atualizado_em;try{localStorage.removeItem(localBackupKey());}catch(e){}setSaveStatus('saved');
+    CLOUD_TS=data.atualizado_em;CLOUD_BASE=_cloneDB(DB);try{localStorage.removeItem(localBackupKey());}catch(e){}setSaveStatus('saved');
   }catch(e){setSaveStatus('error');scheduleRetry();}
+}
+function reRenderVista(){ // re-renderiza a tela atual após uma mesclagem, se for seguro (sem modal aberto nem input em foco)
+  if(document.querySelector('#modalRoot .modal-overlay'))return;
+  const ae=document.activeElement;if(ae&&/^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName))return;
+  const rota=document.querySelector('#nav a[data-route].active');
+  if(rota&&rota.dataset.route)try{go(rota.dataset.route);}catch(e){}
 }
 async function chamarFn(nome,body){const s=(await sb.auth.getSession()).data.session;const r=await fetch(SUPA_URL+'/functions/v1/'+nome,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_ANON,'Authorization':'Bearer '+(s?s.access_token:'')},body:JSON.stringify(body||{})});let j={};try{j=await r.json();}catch(e){}return {status:r.status,data:j};}
 
@@ -4105,7 +4145,7 @@ async function entrarComoCliente(orgId,email){
   if(!orgId){telaMensagem('Conta sem restaurante vinculado','Sua conta foi criada, mas ainda não está liberada por um administrador. Aguarde a liberação.');return;}
   let org=null;try{org=(await sb.from('organizacoes').select('*').eq('id',orgId).single()).data;}catch(e){}
   if(!org){telaMensagem('Acesso indisponível','Não foi possível carregar seu restaurante. Tente novamente mais tarde.');return;}
-  ORG=org;CLOUD_TS=org.atualizado_em||null;CLOUD_CONFLICT=false;SAVE_RETRY=0;
+  ORG=org;CLOUD_TS=org.atualizado_em||null;CLOUD_CONFLICT=false;SAVE_RETRY=0;CLOUD_BASE=_cloneDB(org.dados||{});
   if(org.status==='suspenso'){telaMensagem('Acesso suspenso','Seu acesso está temporariamente suspenso. Fale com a Lidera para reativar.');return;}
   DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();
   CLOUD=true;ADMIN_MODE=false;hideAdmin();
@@ -4548,7 +4588,7 @@ async function doNovoCliente(){
 async function vincularPerfil(perfilId,orgId){if(!orgId)return;await sb.from('perfis').update({org_id:orgId}).eq('id',perfilId);toast('Cliente vinculado');showAdmin();}
 async function toggleStatus(orgId,status){const novo=status==='suspenso'?'ativo':'suspenso';await sb.from('organizacoes').update({status:novo}).eq('id',orgId);toast(novo==='ativo'?'Acesso reativado':'Acesso suspenso');showAdmin();}
 async function abrirCliente(orgId){let org=null;try{org=(await sb.from('organizacoes').select('*').eq('id',orgId).single()).data;}catch(e){}if(!org)return toast('Erro ao abrir');
-  ORG=org;CLOUD_TS=org.atualizado_em||null;CLOUD_CONFLICT=false;SAVE_RETRY=0;DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();CLOUD=true;ADMIN_MODE=true;MEMBRO_PERMS=null;hideAdmin();bannerCloud();renderFoot();setSaveStatus('saved');
+  ORG=org;CLOUD_TS=org.atualizado_em||null;CLOUD_CONFLICT=false;SAVE_RETRY=0;CLOUD_BASE=_cloneDB(org.dados||{});DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();CLOUD=true;ADMIN_MODE=true;MEMBRO_PERMS=null;hideAdmin();bannerCloud();renderFoot();setSaveStatus('saved');
   document.querySelectorAll('#nav a[data-route]').forEach(a=>a.style.display='');go('dashboard');}
 function voltarAdmin(){CLOUD=false;ADMIN_MODE=false;ORG=null;CLOUD_TS=null;CLOUD_CONFLICT=false;const ss=document.getElementById('saveStatus');if(ss)ss.style.display='none';const bn=document.getElementById('cloudBanner');if(bn)bn.style.display='none';showAdmin();}
 
