@@ -2081,7 +2081,6 @@ function nfeConfirmModal(d){
       <div class="field" style="flex:1 1 110px;margin:0"><label>NF nº</label><input class="input" id="nfe_nnf" value="${esc(d.nNF||'')}"></div>
       <div class="field" style="flex:1 1 150px;margin:0"><label>Data</label><input class="input" type="date" id="nfe_data" value="${d.data||''}"></div>
     </div>
-    <div class="field" style="max-width:300px;margin-bottom:8px"><label>Categoria do produto novo (catálogo de Produtos)</label><select class="input" id="nfe_cat">${(cats.length?cats:['Mercearia']).map(c=>`<option ${c==='Mercearia'?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
     ${d._pdf?`<div style="font-size:12px;background:var(--amber-bg,#fff7e6);border:1px solid var(--amber);color:#8a5a00;padding:9px 11px;border-radius:10px;margin-bottom:10px">⚠ Itens lidos do <b>PDF do DANFE</b> (leitura automática). Confira e ajuste os campos de cada item antes de importar — o <b>XML</b> da nota é sempre mais preciso.</div>`:''}
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Cada item é editável: descrição, produto vinculado (atualiza o preço), <b>categoria e subcategoria do DRE</b>, quantidade e valor. Vincule ao mesmo produto para somar os gastos sem duplicar.</div>
     <div style="max-height:360px;overflow:auto">${cards}</div>
@@ -2103,16 +2102,14 @@ function nfeAplicar(){
   d.itens.forEach((it,idx)=>{const dEl=$('#nfe_desc_'+idx);if(dEl)it.desc=(dEl.value||'').trim()||it.desc;
     const qEl=$('#nfe_qtd_'+idx),vEl=$('#nfe_vun_'+idx);if(qEl)it.qtd=nfeBrNum(qEl.value);if(vEl)it.vUn=nfeBrNum(vEl.value);it.vTotal=+((it.qtd||0)*(it.vUn||0)).toFixed(2);
     const gEl=$('#nfe_grupo_'+idx),sEl=$('#nfe_sub_'+idx);it._grupo=gEl?gEl.value:'CMV';it._sub=sEl?sEl.value:'Entrada de Produtos';});
-  const novaCat=($('#nfe_cat')&&$('#nfe_cat').value)||'Mercearia';
   DB.fin=DB.fin||{};DB.fin.fornecedores=DB.fin.fornecedores||[];
   if(d.fornecedor&&!DB.fin.fornecedores.some(f=>(f.nome||'').toLowerCase()===d.fornecedor.toLowerCase()))DB.fin.fornecedores.push({id:uid(),nome:d.fornecedor,contato:d.cnpj||''});
   let cri=0,upd=0;const linkIds=[];
   d.itens.forEach((it,idx)=>{const sel=$('#nfe_map_'+idx);const target=sel?sel.value:'novo';
     if(target==='ignorar'){linkIds[idx]=null;return;}
     if(target&&target!=='novo'&&DB.insumos[target]){const ins=DB.insumos[target];if(it.vUn>0)ins.preco=it.vUn;if(d.fornecedor)ins.fornecedor=d.fornecedor;upd++;linkIds[idx]=ins.id;}
-    else{const nid=uid();DB.insumos[nid]={id:nid,nome:it.desc||'Item NF',cat:novaCat,tipo:'pronto',uni:normUni(it.uCom),qtd:1,preco:it.vUn||0,fornecedor:d.fornecedor||''};cri++;linkIds[idx]=nid;}
+    else{const nid=uid();DB.insumos[nid]={id:nid,nome:it.desc||'Item NF',cat:(it._sub||it._grupo||'Mercearia'),grupo:it._grupo||'CMV',sub:it._sub||'',tipo:'pronto',uni:normUni(it.uCom),qtd:1,preco:it.vUn||0,fornecedor:d.fornecedor||''};cri++;linkIds[idx]=nid;}
   });
-  if(novaCat&&!catList('insumo').includes(novaCat))dbCats().insumo.push(novaCat);
   if($('#nfe_lanc')&&$('#nfe_lanc').checked){DB.lancamentos=DB.lancamentos||[];
     const modo=(document.querySelector('input[name=nfe_modo]:checked')||{}).value||'item';
     if(modo==='item'){
@@ -3027,9 +3024,11 @@ function lmProdutoCel(r,i){const ins=r.insumoId&&DB.insumos[r.insumoId];
 function lmDesvincular(i){const r=lancDraft[i];if(!r)return;r.insumoId='';if(r.descOrig)r.desc=r.descOrig;renderLmRows();}
 function lmVoltarLanc(){lancarModal(true);}
 function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
+  nfeEnsureCats();
   const orig=r.descOrig||r.desc||'';
   const lista=Object.values(DB.insumos||{}).filter(x=>x.tipo!=='preparado').sort((a,b)=>ordPt([a.nome,b.nome])[0]===a.nome?-1:1);
   const sel=r.insSugerido||'';
+  const gruSel=r.grupo||'CMV', subSel=r.sub||'';
   modal(`<div class="modal-head"><h3>Produto da nota</h3><button class="x" onclick="lmVoltarLanc()">${icoX}</button></div>
   <div class="modal-body">
     <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:16px;font-size:12.5px">
@@ -3048,14 +3047,17 @@ function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
       <div style="font-size:13px;font-weight:700;margin-bottom:10px">Cadastrar como produto novo</div>
       <div class="field"><label>Nome</label><input class="input" id="lp_nome" value="${esc(r.desc||'')}" placeholder="Ex.: Detergente"></div>
       <div class="grid-2">
-        <div class="field"><label>Categoria</label><select class="input" id="lp_cat">${catOptions('insumo','')}</select></div>
-        <div class="field"><label>Unidade</label><select class="input" id="lp_uni">${UNIDADES.map(u=>`<option value="${u}" ${u===(r.uni||'un')?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
+        <div class="field"><label>Categoria</label><select class="input" id="lp_grupo" onchange="lpSubRefresh()">${insGrupoOptions(gruSel)}</select></div>
+        <div class="field"><label>Subcategoria</label><select class="input" id="lp_sub" onchange="lpSubMaybeNew()">${insSubOptions(gruSel,subSel)}</select></div>
       </div>
       <div class="grid-2">
+        <div class="field"><label>Unidade</label><select class="input" id="lp_uni">${UNIDADES.map(u=>`<option value="${u}" ${u===(r.uni||'un')?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
         <div class="field"><label>Quantidade comprada</label><input class="input" id="lp_qtd" type="number" step="0.001" value="${r.qtd||1}"></div>
-        <div class="field"><label>Valor pago <span class="hint">total</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="lp_preco" inputmode="numeric" value="${fmtMoneyInput(lmTotalLinha(r))}" oninput="moneyMask(this)"></div></div>
       </div>
-      <div class="field" style="margin-bottom:0"><label>Fornecedor <span class="hint">opcional</span></label><select class="input" id="lp_forn">${fornOptions(r.fornecedor||'')}</select></div>
+      <div class="grid-2">
+        <div class="field"><label>Valor pago <span class="hint">total</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="lp_preco" inputmode="numeric" value="${fmtMoneyInput(lmTotalLinha(r))}" oninput="moneyMask(this)"></div></div>
+        <div class="field"><label>Fornecedor <span class="hint">opcional</span></label><select class="input" id="lp_forn">${fornOptions(r.fornecedor||'')}</select></div>
+      </div>
     </div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="lmVoltarLanc()">Cancelar</button><button class="btn btn-gold" onclick="lmSalvarNovoProduto(${i})">Cadastrar novo</button></div>`,true,true);}
@@ -3075,13 +3077,16 @@ function lmVincularExistente(i){const r=lancDraft[i];if(!r)return lmVoltarLanc()
   const n=lmAplicarVinculo(i,insId);
   save();lancarModal(true);
   toast(n>1?('Vinculado a '+ins.nome+' · '+n+' linhas'):('Vinculado a '+ins.nome));}
+function lpSubRefresh(){const g=$('#lp_grupo')?$('#lp_grupo').value:'';const s=$('#lp_sub');if(s)s.innerHTML=insSubOptions(g,'');}
+function lpSubMaybeNew(){const s=$('#lp_sub');if(!s||s.value!=='__new__')return;const g=$('#lp_grupo').value;const nome=(prompt('Nova subcategoria em "'+g+'":')||'').trim();if(!nome){s.value='';return;}DB.categorias[g]=DB.categorias[g]||{tipo:'despesa',subs:[]};if(!DB.categorias[g].subs.includes(nome))DB.categorias[g].subs.push(nome);save();s.innerHTML=insSubOptions(g,nome);}
 function lmSalvarNovoProduto(i){const r=lancDraft[i];if(!r)return lmVoltarLanc();
   const nome=($('#lp_nome').value||'').trim();if(!nome)return toast('Informe o nome do produto');
-  const cat=$('#lp_cat').value||'',uni=$('#lp_uni').value||'un';
+  const grupo=$('#lp_grupo')?$('#lp_grupo').value.trim():'';
+  let sub=$('#lp_sub')?$('#lp_sub').value.trim():''; if(sub==='__new__')sub='';
+  const cat=sub||grupo||'Mercearia',uni=$('#lp_uni').value||'un';
   const qtd=parseFloat($('#lp_qtd').value)||1,preco=moneyVal('lp_preco'),forn=$('#lp_forn').value||'';
   const nid=uid();const orig=(r.descOrig||'').trim();
-  DB.insumos[nid]={id:nid,nome,cat,tipo:'pronto',uni,qtd,preco,fornecedor:forn,apelidos:(orig&&lmNorm(orig)!==lmNorm(nome))?[orig]:[]};
-  if(cat&&!catList('insumo').includes(cat))dbCats().insumo.push(cat);
+  DB.insumos[nid]={id:nid,nome,cat,grupo,sub,tipo:'pronto',uni,qtd,preco,fornecedor:forn,apelidos:(orig&&lmNorm(orig)!==lmNorm(nome))?[orig]:[]};
   // vincula TODAS as linhas com a descrição idêntica da nota (mantém "AGUA ... C/" e "AGUA ... S/" separadas)
   const alvo=lmNorm(orig||r.desc);let n=0;
   lancDraft.forEach(x=>{if(x.insumoId)return;const xd=lmNorm(x.descOrig||x.desc);
