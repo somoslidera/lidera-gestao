@@ -1437,7 +1437,10 @@ function cargoCss(){
     body.print-jd #jdPrintArea{display:block!important;page:jdp}
   }
   #jdPrintArea *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  #jdPrintArea{font-family:'Inter',system-ui,Arial,sans-serif;color:#16233f;padding:13mm 14mm}
+  #jdPrintArea{font-family:'Inter',system-ui,Arial,sans-serif;color:#16233f}
+  #jdPrintArea .jd-page{width:100%;border-collapse:collapse}
+  #jdPrintArea .jd-page>thead>tr>td,#jdPrintArea .jd-page>tfoot>tr>td{height:14mm;border:0;padding:0}
+  #jdPrintArea .jd-page>tbody>tr>td{padding:0 15mm;border:0;vertical-align:top}
   #jdPrintArea .jd-print-head{text-align:center;border-bottom:3px solid #A48A57;padding-bottom:11px;margin-bottom:16px}
   #jdPrintArea .jd-print-brand{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#A48A57;font-weight:700}
   #jdPrintArea .jd-print-t{font-size:10.5px;letter-spacing:3px;color:#8391a8;margin-top:7px}
@@ -1507,7 +1510,7 @@ function cargoImprimir(){
   cargoCss();
   const nome=(DB.conta&&DB.conta.restaurante)||'Restaurante';
   const area=document.getElementById('jdPrintArea')||(()=>{const a=document.createElement('div');a.id='jdPrintArea';document.body.appendChild(a);return a;})();
-  area.innerHTML=`<div class="jd-print-head"><div class="jd-print-brand">${esc(nome)} · Flow by Lidera</div><div class="jd-print-t">Descrição de Cargo</div><div class="jd-print-cargo">${esc(c.cargo)}</div>${c.tag?`<div class="jd-print-tag">${esc(c.tag)}</div>`:''}</div><div class="jd-print-body">${c.html}</div>`;
+  area.innerHTML=`<table class="jd-page"><thead><tr><td></td></tr></thead><tfoot><tr><td></td></tr></tfoot><tbody><tr><td><div class="jd-print-head"><div class="jd-print-brand">${esc(nome)} · Flow by Lidera</div><div class="jd-print-t">Descrição de Cargo</div><div class="jd-print-cargo">${esc(c.cargo)}</div>${c.tag?`<div class="jd-print-tag">${esc(c.tag)}</div>`:''}</div><div class="jd-print-body">${c.html}</div></td></tr></tbody></table>`;
   document.body.classList.add('print-jd');
   setTimeout(()=>{window.print();setTimeout(()=>document.body.classList.remove('print-jd'),500);},80);
 }
