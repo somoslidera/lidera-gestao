@@ -1432,7 +1432,7 @@ function cargoCss(){
   /* ---- Impressão retrato ---- */
   #jdPrintArea{display:none}
   @media print{
-    @page jdp{size:A4 portrait;margin:15mm 14mm}
+    @page jdp{size:A4 portrait;margin:11mm 13mm}
     body.print-jd .sidebar,body.print-jd .topbar,body.print-jd .main,body.print-jd #modalRoot,body.print-jd #toastRoot,body.print-jd .backdrop,body.print-jd #adminScreen,body.print-jd #authScreen,body.print-jd #wizScreen,body.print-jd #formAdminScreen{display:none!important}
     body.print-jd #jdPrintArea{display:block!important;page:jdp}
   }
@@ -1443,11 +1443,12 @@ function cargoCss(){
   #jdPrintArea .jd-print-t{font-size:10.5px;letter-spacing:3px;color:#8391a8;margin-top:7px}
   #jdPrintArea .jd-print-cargo{font-size:26px;font-weight:800;font-family:'Fraunces',Georgia,serif;color:#1D3573;line-height:1.1}
   #jdPrintArea .jd-print-tag{font-size:12px;color:#6b7890;margin-top:1px}
-  #jdPrintArea h2{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#1D3573;border-bottom:2px solid #A48A57;padding-bottom:3px;margin:16px 0 8px;font-weight:800;break-after:avoid}
-  #jdPrintArea h3{font-size:12.5px;color:#7A5F2E;margin:11px 0 4px;font-weight:700;break-after:avoid}
-  #jdPrintArea p{font-size:11.5px;line-height:1.5;margin:5px 0}
+  #jdPrintArea h2{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#1D3573;border-bottom:2px solid #A48A57;padding-bottom:3px;margin:12px 0 7px;font-weight:800;break-after:avoid}
+  #jdPrintArea h3{font-size:12.5px;color:#7A5F2E;margin:10px 0 4px;font-weight:700;break-after:avoid}
+  #jdPrintArea p{font-size:11.5px;line-height:1.45;margin:5px 0}
+  #jdPrintArea .jd-data{break-after:avoid;margin:10px 0 2px}
   #jdPrintArea ul{margin:3px 0 8px;padding-left:18px}
-  #jdPrintArea li{font-size:11px;line-height:1.42;margin-bottom:2.5px}
+  #jdPrintArea li{font-size:11px;line-height:1.36;margin-bottom:2px}
   #jdPrintArea .jd-info{width:100%;border-collapse:collapse;margin:2px 0 8px}
   #jdPrintArea .jd-info td{border:.5px solid #c7d0e2;padding:5px 8px;font-size:10.5px}
   #jdPrintArea .jd-info td.k{background:#eef2f8;font-weight:700;color:#1D3573;white-space:nowrap}
@@ -1455,8 +1456,8 @@ function cargoCss(){
   #jdPrintArea .jd-kpi th{background:#1D3573;color:#fff;font-size:10px;padding:5px 8px;text-align:left}
   #jdPrintArea .jd-kpi td{border:.5px solid #c7d0e2;padding:5px 8px;font-size:10.5px}
   #jdPrintArea .jd-kpi td.ind{font-weight:700;color:#1D3573;width:32%}
-  #jdPrintArea .jd-sign{width:100%;border-collapse:collapse;margin-top:6px}
-  #jdPrintArea .jd-sign td{padding-top:34px;text-align:center;font-size:11.5px;width:50%}
+  #jdPrintArea .jd-sign{width:100%;border-collapse:collapse;margin-top:4px;break-inside:avoid}
+  #jdPrintArea .jd-sign td{padding-top:22px;text-align:center;font-size:11.5px;width:50%}
   #jdPrintArea .jd-sign span{display:block;font-size:10px;color:#888;margin-top:2px}
   `;document.head.appendChild(st);
 }
