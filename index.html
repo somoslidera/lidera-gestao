@@ -659,6 +659,8 @@ function catList(t){const def=t==='prato'?DEF_CAT_PRATO:DEF_CAT_INSUMO;const cst
 function isCatPadrao(t,c){return (t==='prato'?DEF_CAT_PRATO:DEF_CAT_INSUMO).includes(c);}
 function catOptions(t,sel){const list=catList(t).slice();if(sel&&!list.includes(sel))list.unshift(sel);return `<option value="">— categoria —</option>`+list.map(c=>`<option ${c===sel?'selected':''}>${esc(c)}</option>`).join('');}
 function fornOptions(sel){const fs=(DB.fin&&DB.fin.fornecedores)||[];let names=fs.map(f=>f.nome).filter(Boolean);if(sel&&!names.includes(sel))names.push(sel);names=ordPt(names);return `<option value="">— sem fornecedor —</option>`+names.map(nm=>`<option ${nm===sel?'selected':''}>${esc(nm)}</option>`).join('');}
+function fornDatalist(){return `<datalist id="forn_dl">${((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('')}</datalist>`;}
+function ensureFornecedor(nome){nome=(nome||'').trim();if(!nome)return;DB.fin=DB.fin||{};DB.fin.fornecedores=DB.fin.fornecedores||[];if(!DB.fin.fornecedores.some(f=>(f.nome||'').toLowerCase()===nome.toLowerCase()))DB.fin.fornecedores.push({id:uid(),nome,contato:''});}
 
 let DB=load();
 function load(){try{const d=JSON.parse(localStorage.getItem(STORE_KEY));if(d&&d.insumos)return d;}catch(e){}return seed();}
@@ -1799,7 +1801,7 @@ function editInsumo(id){
     </div>
     <div class="grid-2">
       <div class="field"><label>Unidade</label><select class="input" id="i_uni" onchange="updUniLabels();updInsPreview()">${UNIDADES.map(u=>`<option value="${u}" ${u===i.uni?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
-      <div class="field"><label>Fornecedor <span class="hint">opcional</span></label><select class="input" id="i_forn">${fornOptions(i.fornecedor)}</select></div>
+      <div class="field"><label>Fornecedor <span class="hint">opcional · digite para cadastrar um novo</span></label><input class="input" id="i_forn" list="forn_dl" value="${esc(i.fornecedor||'')}" placeholder="Nome do fornecedor">${fornDatalist()}</div>
     </div>
     <div id="pronto_block">
       <div style="border:1px solid var(--gold-soft);background:var(--amber-bg);border-radius:11px;padding:14px;margin-bottom:6px">
@@ -1848,7 +1850,8 @@ function saveInsumo(id){const nome=$('#i_nome').value.trim();if(!nome)return toa
   const grupo=$('#i_grupo')?$('#i_grupo').value.trim():'';
   let sub=$('#i_sub')?$('#i_sub').value.trim():''; if(sub==='__new__')sub='';
   const cat=sub||grupo||'Mercearia';
-  const forn=$('#i_forn')?$('#i_forn').value:'';
+  const forn=($('#i_forn')?$('#i_forn').value:'').trim();
+  ensureFornecedor(forn);
   let obj;
   if(draftInsTipo==='preparado'){const comps=draftInsComps.filter(c=>c[0]&&c[1]>0);
     if(!comps.length)return toast('Adicione ao menos um ingrediente');
@@ -3090,7 +3093,8 @@ function lmSalvarNovoProduto(i){const r=lancDraft[i];if(!r)return lmVoltarLanc()
   const grupo=$('#lp_grupo')?$('#lp_grupo').value.trim():'';
   let sub=$('#lp_sub')?$('#lp_sub').value.trim():''; if(sub==='__new__')sub='';
   const cat=sub||grupo||'Mercearia',uni=$('#lp_uni').value||'un';
-  const qtd=parseFloat($('#lp_qtd').value)||1,preco=moneyVal('lp_preco'),forn=$('#lp_forn').value||'';
+  const qtd=parseFloat($('#lp_qtd').value)||1,preco=moneyVal('lp_preco'),forn=($('#lp_forn').value||'').trim();
+  ensureFornecedor(forn);
   const nid=uid();const orig=(r.descOrig||'').trim();
   DB.insumos[nid]={id:nid,nome,cat,grupo,sub,tipo:'pronto',uni,qtd,preco,fornecedor:forn,apelidos:(orig&&lmNorm(orig)!==lmNorm(nome))?[orig]:[]};
   // vincula TODAS as linhas com a descrição idêntica da nota (mantém "AGUA ... C/" e "AGUA ... S/" separadas)
@@ -3164,6 +3168,7 @@ function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
       // atualiza o custo real pago: preço, qtd e unidade sempre juntos (trio coerente = custo/unidade correto)
       if(valor>0&&r.qtd>0){ins.preco=valor;ins.qtd=r.qtd;if(r.uni)ins.uni=r.uni;prodAtu++;}
       if(nv.fornecedor)ins.fornecedor=nv.fornecedor;}
+    if(nv.fornecedor)ensureFornecedor(nv.fornecedor);
     DB.lancamentos.push(nv);n++;lastYM=ymOf(nv.data);});
   if(!n)return toast('Preencha ao menos um item com categoria e valor');
   if(lastYM&&lastYM!==curYM())lancYM=lastYM;
