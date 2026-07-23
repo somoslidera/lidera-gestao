@@ -1290,10 +1290,10 @@ function viewChecklists(){
      <div class="section-head" style="align-items:flex-start">
        <div style="flex:1;min-width:0">
          ${chkEdit?`<input class="input" style="font-size:17px;font-weight:700;max-width:420px" value="${esc(cl.setor)}" onchange="chkRenChecklist('${cl.id}',this.value)">`:`<div class="ttl">${esc(cl.setor)}</div>`}
-         <div class="desc">${nTar} tarefa(s) em ${(cl.secoes||[]).length} seç(ões) · ${chkEdit?'edite os nomes, adicione ou remova tarefas e seções':'clique em <b>Imprimir</b> para a folha em paisagem — a data é escrita à mão depois de imprimir'}</div>
+         ${chkEdit?`<div class="desc">edite os nomes, adicione ou remova tarefas e seções</div>`:''}
        </div>
        ${chkEdit?`<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="chkExcluirChecklist('${cl.id}')">🗑 Excluir checklist</button>`:`<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
-         <label style="font-size:11px;color:var(--soft);display:flex;flex-direction:column;gap:3px;text-transform:uppercase;letter-spacing:.4px">Colunas de controle<select class="input" style="max-width:150px" onchange="chkPeriodo=this.value;viewChecklists()"><option value="mensal" ${chkPeriodo!=='semanal'?'selected':''}>Mensal (1–31)</option><option value="semanal" ${chkPeriodo==='semanal'?'selected':''}>Semanal (Seg–Dom)</option></select></label>
+         <label style="font-size:11px;color:var(--soft);display:flex;flex-direction:column;gap:3px;text-transform:uppercase;letter-spacing:.4px">Colunas de controle<select class="input" style="min-width:190px" onchange="chkPeriodo=this.value;viewChecklists()"><option value="mensal" ${chkPeriodo!=='semanal'?'selected':''}>Mensal (1–31)</option><option value="semanal" ${chkPeriodo==='semanal'?'selected':''}>Semanal (Seg–Dom)</option></select></label>
        </div>`}
      </div>
      ${(cl.secoes||[]).map(sec=>chkSecaoHTML(cl,sec)).join('')}
