@@ -1391,7 +1391,7 @@ function chkImprimir(){
   const semanal=(chkPeriodo==='semanal');
   let cols=[],periodoLbl='',periodoTit='';
   if(semanal){ // 7 colunas Seg→Dom, sem data fixa (preenchida à mão)
-    for(let i=0;i<7;i++)cols.push({l1:wdAb[(i+1)%7],l2:'__/__',wk:(i>=5)});
+    for(let i=0;i<7;i++)cols.push({l1:wdAb[(i+1)%7],l2:'',wk:(i>=5)});
     periodoTit='Semana';periodoLbl='____/____/______  a  ____/____/______';
   }else{ // dias 1..31, sem mês fixo (escrito à mão)
     for(let d=1;d<=31;d++)cols.push({l1:pad(d),l2:'',wk:false});
