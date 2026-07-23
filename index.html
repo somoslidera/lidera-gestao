@@ -463,8 +463,13 @@ body.dark .ins-rm{background:rgba(210,72,63,.16)}
 
 /* ===== Impressão da ficha técnica ===== */
 @media print{
+  @page fichap{size:A4 portrait;margin:0}
   body.print-ficha .sidebar,body.print-ficha .main,body.print-ficha #modalRoot,body.print-ficha #toastRoot{display:none!important}
-  body.print-ficha #printArea{display:block!important;padding:12mm}
+  body.print-ficha #printArea{display:block!important;padding:0;page:fichap}
+  /* espaçadores que repetem em toda página impressa: dão margem superior/inferior sem devolver o cabeçalho/rodapé do navegador */
+  #printArea .fp-page{width:100%;border-collapse:collapse}
+  #printArea .fp-page>thead>tr>td,#printArea .fp-page>tfoot>tr>td{height:13mm;border:0;padding:0}
+  #printArea .fp-page>tbody>tr>td{padding:0 12mm;border:0;vertical-align:top}
   #printArea .fp{color:#000;font-family:'Inter',sans-serif;border:1.5px solid #000}
   #printArea .fp-title{font-weight:800;font-size:15px;padding:8px 12px;border-bottom:1.5px solid #000}
   #printArea .fp-meta{font-size:11px;padding:6px 12px;border-bottom:1.5px solid #000;display:flex;flex-wrap:wrap;gap:4px 18px}
@@ -2803,7 +2808,7 @@ function imprimirFicha(){
     return `<tr><td>${esc(ins.nome)}</td><td>${(q||0)} ${u}</td><td>${fc.toFixed(2)}</td><td>${(Math.round((q||0)*fc*1000)/1000)} ${u}</td></tr>`;}).join('');
   const passos=(f.modoPreparo||[]).filter(s=>(s||'').trim());
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
-  pa.innerHTML=`<div class="fp">
+  pa.innerHTML=`<table class="fp-page"><thead><tr><td></td></tr></thead><tfoot><tr><td></td></tr></tfoot><tbody><tr><td><div class="fp">
     <div class="fp-title">FICHA TÉCNICA – ${esc((f.nome||'').toUpperCase())}</div>
     <div class="fp-meta"><span><b>Categoria:</b> ${esc(f.cat||'—')}</span><span><b>Preparo:</b> ${f.tempoPreparo?f.tempoPreparo+' min':'—'}</span><span><b>Rendimento:</b> ${f.rendGramas?nNum(f.rendGramas)+' '+uSym(f.rendUni||'g'):'—'}</span><span><b>Utensílios:</b> ${esc(f.utensilios||'—')}</span></div>
     <div class="fp-row">
@@ -2818,7 +2823,7 @@ function imprimirFicha(){
     <div class="fp-steps">${passos.length?passos.map((s,i)=>`<div><b>${i+1}.</b> ${esc(s)}</div>`).join(''):'<div style="color:#777">Sem etapas cadastradas.</div>'}</div>
     <div class="fp-sec">Padrão de Finalização e Saída</div>
     <div class="fp-final ${f.padraoFinalizacao?'':'empty'}">${f.padraoFinalizacao?esc(f.padraoFinalizacao):'Sem instruções de finalização.'}</div>
-  </div>`;
+  </div></td></tr></tbody></table>`;
   document.body.classList.add('print-ficha');
   const fim=()=>{document.body.classList.remove('print-ficha');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);
