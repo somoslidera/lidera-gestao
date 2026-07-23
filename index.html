@@ -1272,7 +1272,7 @@ function chkBuildDefaults(){ // IDs DETERMINÍSTICOS: dois usuários geram estru
     return {id:cs,setor,periodicidade:'Diária',secoes};
   });
 }
-let chkSel=null,chkPrintYM=null,chkEdit=false;
+let chkSel=null,chkPrintYM=null,chkEdit=false,chkPeriodo='mensal',chkWeekStart=null;
 function chkReg(cid,d){DB.checklistReg=DB.checklistReg||{};DB.checklistReg[cid]=DB.checklistReg[cid]||{};DB.checklistReg[cid][d]=DB.checklistReg[cid][d]||{st:{},obs:''};return DB.checklistReg[cid][d];}
 function chkStats(cl,d){let tot=0,ok=0,pend=0;const st=chkReg(cl.id,d).st||{};(cl.secoes||[]).forEach(s=>(s.tarefas||[]).forEach(t=>{tot++;const v=st[t.id]||'';if(v==='ok')ok++;if(!v)pend++;}));return {tot,ok,pend};}
 function viewChecklists(){
@@ -1291,7 +1291,12 @@ function viewChecklists(){
          ${chkEdit?`<input class="input" style="font-size:17px;font-weight:700;max-width:420px" value="${esc(cl.setor)}" onchange="chkRenChecklist('${cl.id}',this.value)">`:`<div class="ttl">${esc(cl.setor)}</div>`}
          <div class="desc">${nTar} tarefa(s) em ${(cl.secoes||[]).length} seç(ões) · ${chkEdit?'edite os nomes, adicione ou remova tarefas e seções':'clique em <b>Imprimir</b> para a folha em paisagem (grade do mês, para preencher à mão)'}</div>
        </div>
-       ${chkEdit?`<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="chkExcluirChecklist('${cl.id}')">🗑 Excluir checklist</button>`:`<label style="font-size:11px;color:var(--soft);display:flex;flex-direction:column;gap:3px;text-transform:uppercase;letter-spacing:.4px">Mês da impressão<input type="month" class="input" style="max-width:160px" value="${chkPrintYM}" onchange="chkPrintYM=this.value"></label>`}
+       ${chkEdit?`<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="chkExcluirChecklist('${cl.id}')">🗑 Excluir checklist</button>`:`<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+         <label style="font-size:11px;color:var(--soft);display:flex;flex-direction:column;gap:3px;text-transform:uppercase;letter-spacing:.4px">Colunas de controle<select class="input" style="max-width:130px" onchange="chkPeriodo=this.value;viewChecklists()"><option value="mensal" ${chkPeriodo!=='semanal'?'selected':''}>Mensal (1–31)</option><option value="semanal" ${chkPeriodo==='semanal'?'selected':''}>Semanal (Seg–Dom)</option></select></label>
+         ${chkPeriodo==='semanal'
+           ? `<label style="font-size:11px;color:var(--soft);display:flex;flex-direction:column;gap:3px;text-transform:uppercase;letter-spacing:.4px">Semana de<input type="date" class="input" style="max-width:165px" value="${chkWeekStart||hojeISO()}" onchange="chkWeekStart=this.value"></label>`
+           : `<label style="font-size:11px;color:var(--soft);display:flex;flex-direction:column;gap:3px;text-transform:uppercase;letter-spacing:.4px">Mês da impressão<input type="month" class="input" style="max-width:160px" value="${chkPrintYM}" onchange="chkPrintYM=this.value"></label>`}
+       </div>`}
      </div>
      ${(cl.secoes||[]).map(sec=>chkSecaoHTML(cl,sec)).join('')}
      ${chkEdit?`<button class="btn btn-ghost btn-sm" style="margin-top:16px" onclick="chkAddSecao('${cl.id}')">${icoPlus} Adicionar seção</button>`:''}
@@ -1359,6 +1364,12 @@ function chkInjectPrintCss(){
   #chkPrintArea .chk-grid td.c-t{text-align:left;padding:2px 8px;font-size:9px;white-space:nowrap;text-overflow:ellipsis;color:#1e2c4a}
   #chkPrintArea .chk-grid th.d .dn{font-size:8.5px;font-weight:700}
   #chkPrintArea .chk-grid th.d .dw{font-size:6px;opacity:.75;letter-spacing:.5px}
+  /* layout semanal: só 7 colunas → tarefa mais larga e cabeçalhos maiores */
+  #chkPrintArea .chk-grid.sem th.c-t{width:320px}
+  #chkPrintArea .chk-grid.sem th,#chkPrintArea .chk-grid.sem td{height:19px}
+  #chkPrintArea .chk-grid.sem th.d .dn{font-size:10px}
+  #chkPrintArea .chk-grid.sem th.d .dw{font-size:7.5px;opacity:.85}
+  #chkPrintArea .chk-grid.sem td.c-t{font-size:10px}
   #chkPrintArea .chk-grid td.cell{font-size:9px}
   #chkPrintArea .chk-grid tbody tr:nth-child(even) td.cell{background:#F7F9FC}
   #chkPrintArea .chk-grid td.wk{background:#EDF0F6}
@@ -1372,26 +1383,37 @@ function chkInjectPrintCss(){
 }
 function chkImprimir(){
   const cl=DB.checklists.find(c=>c.id===chkSel);if(!cl)return;
-  const ym=(chkPrintYM||hojeISO().slice(0,7)),Y=+ym.slice(0,4),M=+ym.slice(5,7),nd=new Date(Y,M,0).getDate();
   const meses=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const wd=['D','S','T','Q','Q','S','S'],pad=n=>String(n).padStart(2,'0');
+  const wd1=['D','S','T','Q','Q','S','S'],wdAb=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],pad=n=>String(n).padStart(2,'0');
   const nome=(DB.conta&&DB.conta.restaurante)||'Restaurante';
   const reg=(DB.checklistReg&&DB.checklistReg[cl.id])||{};
-  const wknd=d=>{const g=new Date(Y,M-1,d).getDay();return g===0||g===6;};
-  const dias=[];for(let d=1;d<=nd;d++)dias.push(d);
-  const cell=(tid,d)=>{const s=(reg[ym+'-'+pad(d)]&&reg[ym+'-'+pad(d)].st&&reg[ym+'-'+pad(d)].st[tid])||'',m=CHK_ST.find(x=>x.k===s);return s&&m?`<span style="color:${m.col};font-weight:800">${m.ic}</span>`:'';};
-  const dayHead=dias.map(d=>`<th class="d${wknd(d)?' wk':''}"><div class="dn">${pad(d)}</div><div class="dw">${wd[new Date(Y,M-1,d).getDay()]}</div></th>`).join('');
+  const semanal=(chkPeriodo==='semanal');
+  let cols=[],periodoLbl='',periodoTit='';
+  if(semanal){ // 7 colunas Seg→Dom da semana escolhida
+    const base=new Date((chkWeekStart||hojeISO())+'T12:00:00');
+    const dow=base.getDay(),seg=new Date(base);seg.setDate(base.getDate()+(dow===0?-6:1-dow));
+    for(let i=0;i<7;i++){const d=new Date(seg);d.setDate(seg.getDate()+i);
+      cols.push({iso:d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()),l1:wdAb[d.getDay()],l2:pad(d.getDate())+'/'+pad(d.getMonth()+1),wk:(d.getDay()===0||d.getDay()===6)});}
+    periodoTit='Semana';periodoLbl=cols[0].l2+' a '+cols[6].l2;
+  }else{ // dias 1..31 do mês
+    const ym=(chkPrintYM||hojeISO().slice(0,7)),Y=+ym.slice(0,4),M=+ym.slice(5,7),nd=new Date(Y,M,0).getDate();
+    for(let d=1;d<=nd;d++){const dt=new Date(Y,M-1,d);
+      cols.push({iso:ym+'-'+pad(d),l1:pad(d),l2:wd1[dt.getDay()],wk:(dt.getDay()===0||dt.getDay()===6)});}
+    periodoTit='Mês / Ano';periodoLbl=meses[M]+' / '+Y;
+  }
+  const cell=(tid,iso)=>{const s=(reg[iso]&&reg[iso].st&&reg[iso].st[tid])||'',m=CHK_ST.find(x=>x.k===s);return s&&m?`<span style="color:${m.col};font-weight:800">${m.ic}</span>`:'';};
+  const dayHead=cols.map(c=>`<th class="d${c.wk?' wk':''}"><div class="dn">${c.l1}</div><div class="dw">${c.l2}</div></th>`).join('');
   let n=0;const rows=(cl.secoes||[]).map(s=>{
-    const sh=`<tr class="sec"><td class="c-n"></td><td class="c-t">${esc(s.titulo)}</td>${dias.map(d=>`<td class="${wknd(d)?'wk':''}"></td>`).join('')}</tr>`;
-    const tr=(s.tarefas||[]).map(t=>{n++;return `<tr><td class="c-n">${n}</td><td class="c-t" title="${esc(t.nome)}">${esc(t.nome)}</td>${dias.map(d=>`<td class="cell${wknd(d)?' wk':''}">${cell(t.id,d)}</td>`).join('')}</tr>`;}).join('');
+    const sh=`<tr class="sec"><td class="c-n"></td><td class="c-t">${esc(s.titulo)}</td>${cols.map(c=>`<td class="${c.wk?'wk':''}"></td>`).join('')}</tr>`;
+    const tr=(s.tarefas||[]).map(t=>{n++;return `<tr><td class="c-n">${n}</td><td class="c-t" title="${esc(t.nome)}">${esc(t.nome)}</td>${cols.map(c=>`<td class="cell${c.wk?' wk':''}">${cell(t.id,c.iso)}</td>`).join('')}</tr>`;}).join('');
     return sh+tr;
   }).join('');
   const html=`<div class="chk-doc">
      <div class="chk-head">
        <div><div class="chk-brand">Flow · by Lidera</div><div class="chk-title"><h1>CHECKLIST</h1></div><div class="chk-setor">${esc(cl.setor)}</div></div>
-       <div class="chk-meta"><div><span>Restaurante</span><b>${esc(nome)}</b></div><div><span>Mês / Ano</span><b>${meses[M]} / ${Y}</b></div><div><span>Periodicidade</span><b>${esc(cl.periodicidade||'Diária')}</b></div></div>
+       <div class="chk-meta"><div><span>Restaurante</span><b>${esc(nome)}</b></div><div><span>${periodoTit}</span><b>${periodoLbl}</b></div><div><span>Periodicidade</span><b>${esc(cl.periodicidade||'Diária')}</b></div></div>
      </div>
-     <table class="chk-grid"><thead><tr><th class="c-n">Nº</th><th class="c-t" style="text-align:left;padding-left:8px">TAREFA</th>${dayHead}</tr></thead><tbody>${rows}</tbody></table>
+     <table class="chk-grid${semanal?' sem':''}"><thead><tr><th class="c-n">Nº</th><th class="c-t" style="text-align:left;padding-left:8px">TAREFA</th>${dayHead}</tr></thead><tbody>${rows}</tbody></table>
      <div class="chk-leg"><b>Legenda:</b>
        <span><i style="color:#1E9E6A">✓</i>OK · Realizado</span>
        <span><i style="color:#C9892A">!</i>IN · Insatisfatório</span>
@@ -1492,6 +1514,10 @@ function viewCargos(){
          <button class="btn btn-ghost btn-sm" onclick="cargoFmt('formatBlock','H3')" title="Subtítulo">Subtítulo</button>
          <button class="btn btn-ghost btn-sm" onclick="cargoFmt('formatBlock','H2')" title="Título de seção">Título</button>
          <button class="btn btn-ghost btn-sm" onclick="cargoFmt('formatBlock','P')" title="Texto normal">Texto</button>
+         <span style="width:1px;height:20px;background:var(--line)"></span>
+         <span style="font-size:12px;color:var(--soft)">Tabela:</span>
+         <button class="btn btn-ghost btn-sm" onclick="docLinhaTabela('add','jdBody')" title="Clique numa linha da tabela e adicione outra abaixo">＋ Linha</button>
+         <button class="btn btn-ghost btn-sm" onclick="docLinhaTabela('del','jdBody')" title="Clique na linha que quer remover">− Linha</button>
          <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="cargoDuplicar()">⧉ Duplicar</button>
          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="cargoExcluir()">🗑 Excluir</button>
       </div>`:''}
@@ -1503,6 +1529,27 @@ function cargoToggleEdit(){
 }
 function cargoSetCampo(k,v){const c=DB.cargos.find(x=>x.id===cargoSel);if(c){c[k]=(v||'').trim();save();}}
 function cargoFmt(cmd,val){try{document.execCommand(cmd,false,val||null);}catch(e){}const b=document.getElementById('jdBody');if(b)b.focus();}
+/* Adiciona/remove linhas das tabelas dentro de um documento editável (Cargos e POPs) */
+function docLinhaTabela(acao,bodyId){
+  const body=document.getElementById(bodyId);if(!body)return;
+  const sel=window.getSelection();
+  let node=(sel&&sel.rangeCount)?sel.anchorNode:null;
+  if(node&&node.nodeType===3)node=node.parentNode;
+  const tr=(node&&node.closest)?node.closest('tr'):null;
+  if(!tr||!body.contains(tr))return toast('Clique dentro de uma linha da tabela primeiro');
+  if(acao==='add'){
+    const novo=tr.cloneNode(true);
+    novo.querySelectorAll('td,th').forEach(c=>{c.innerHTML='&nbsp;';});
+    tr.parentNode.insertBefore(novo,tr.nextSibling);
+    const c1=novo.querySelector('td,th');if(c1){const r=document.createRange();r.selectNodeContents(c1);r.collapse(true);sel.removeAllRanges();sel.addRange(r);}
+    toast('Linha adicionada');
+  }else{
+    const pai=tr.parentNode;
+    if(pai.querySelectorAll('tr').length<=1)return toast('A tabela precisa ter ao menos uma linha');
+    tr.remove();toast('Linha removida');
+  }
+  body.focus();
+}
 function cargoNovo(){const id='jd-'+uid();DB.cargos=DB.cargos||[];DB.cargos.push({id,cargo:'Novo cargo',tag:'',html:'<table class="jd-info"><tbody><tr><td class="k">Cargo</td><td>—</td><td class="k">Departamento</td><td>—</td></tr><tr><td class="k">Líder Imediato</td><td>—</td><td class="k">Local de Trabalho</td><td>—</td></tr></tbody></table><h2>Missão do Cargo</h2><p>Descreva aqui a missão do cargo.</p><h2>Principais Responsabilidades</h2><ul><li>Primeira responsabilidade.</li></ul>'});cargoSel=id;cargoEdit=true;save();viewCargos();}
 function cargoDuplicar(){const c=DB.cargos.find(x=>x.id===cargoSel);if(!c)return;if(cargoEdit){const body=document.getElementById('jdBody');if(body)c.html=body.innerHTML;}const id='jd-'+uid();DB.cargos.push({id,cargo:c.cargo+' (cópia)',tag:c.tag,html:c.html});cargoSel=id;cargoEdit=false;save();viewCargos();toast('Cargo duplicado');}
 function cargoExcluir(){const c=DB.cargos.find(x=>x.id===cargoSel);if(!c)return;if(!confirm('Excluir a descrição de cargo "'+c.cargo+'"? Não pode ser desfeito.'))return;DB.cargos=DB.cargos.filter(x=>x.id!==cargoSel);cargoSel=DB.cargos[0]&&DB.cargos[0].id;cargoEdit=false;save();viewCargos();}
