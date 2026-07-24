@@ -495,7 +495,7 @@ body.dark .ins-rm{background:rgba(210,72,63,.16)}
 
 /* ===== Impressão da planilha de desperdícios ===== */
 @media print{
-  @page despp{size:A4 portrait;margin:0}
+  @page despp{size:A4 landscape;margin:0}
   body.print-desp .sidebar,body.print-desp .main,body.print-desp #modalRoot,body.print-desp #toastRoot{display:none!important}
   body.print-desp #printArea{display:block!important;padding:9mm;page:despp}
   #printArea .dp{color:#15233f;font-family:'Inter',sans-serif;border:1px solid #d7dbe5;border-radius:8px;overflow:hidden}
@@ -4526,7 +4526,7 @@ function viewDesperdicio(){
 function imprimirDesperdicio(){
   const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';
   const motivos=(DB.despMotivos&&DB.despMotivos.length)?DB.despMotivos:DESP_MOTIVOS;
-  let rows='';for(let i=0;i<34;i++)rows+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+  let rows='';for(let i=0;i<21;i++)rows+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
   pa.innerHTML=`<div class="dp">
     <div class="dp-bar"><div><div class="dp-t">Controle de Desperdícios</div></div>
