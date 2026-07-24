@@ -827,14 +827,16 @@ function custoFuncionario(f){
   const regime=f.regime||'CLT';
   const isCLT=regime==='CLT';
   const inss=isCLT?inssProgressivo(bruto):(regime==='Sócio'?Math.min(bruto,8475.55)*((DB.fin.inssSocio||11)/100):0); // pró-labore: INSS 11% até o teto
-  const fgts=isCLT?bruto*((DB.fin.encFGTS||8)/100):0;        // 8%
-  const prov13=isCLT?bruto*(8.33/100):0;                      // 13º — 1/12
-  const provFerias=isCLT?bruto*(2.78/100):0;                  // terço constitucional de férias (1/3 sobre 1/12); o salário de férias já está nos 12 salários
-  const prov=prov13+provFerias;
+  const fgts=isCLT?bruto*((DB.fin.encFGTS!=null?DB.fin.encFGTS:8)/100):0;
+  const provPct=isCLT?(DB.fin.encProv!=null?DB.fin.encProv:PROV_PADRAO):0; // % de provisões vem das Configurações financeiras
+  const prov=bruto*(provPct/100);
+  const prov13=prov*(PROV_13/PROV_PADRAO), provFerias=prov-prov13;         // mantém a proporção 13º (8,33%) / terço de férias (2,78%)
+  const inssPat=isCLT?bruto*((DB.fin.encINSS||0)/100):0;                   // INSS patronal, quando o regime exigir (Simples anexo IV, lucro presumido…)
   const liquido=bruto+porFora-vales-consumo-inss;
-  const total=bruto+porFora+beneficios+fgts+prov;             // custo da empresa
-  return {bruto,porFora,beneficios,vales,consumo,inss,fgts,prov13,provFerias,prov,encargos:fgts+prov,liquido,total,base:bruto,benef:beneficios};
+  const total=bruto+porFora+beneficios+fgts+prov+inssPat;     // custo da empresa
+  return {bruto,porFora,beneficios,vales,consumo,inss,inssPat,fgts,prov13,provFerias,prov,encargos:fgts+prov+inssPat,liquido,total,base:bruto,benef:beneficios};
 }
+const PROV_13=8.33, PROV_FER=2.78, PROV_PADRAO=11.11; // provisões padrão: 13º (1/12) + terço constitucional de férias
 function folhaTotal(){return (DB.fin.funcionarios||[]).reduce((s,f)=>s+custoFuncionario(f).total,0);}
 function custoSocio(s){const real=s.proLabore||0;const decl=(s.proLaboreDeclarado!=null&&s.proLaboreDeclarado!=='')?s.proLaboreDeclarado:real;return real+decl*((DB.fin.inssSocio||11)/100);}
 function proLaboreTotal(){return (DB.fin.funcionarios||[]).filter(f=>(f.regime||'')==='Sócio').reduce((s,f)=>s+custoFuncionario(f).total,0);} // sócios agora estão na folha
@@ -1726,7 +1728,8 @@ function normData(){
   if(f.inssSocio==null)f.inssSocio=11;
   if(f.comissaoIfood==null)f.comissaoIfood=27; if(f.taxaCartao==null)f.taxaCartao=2.5;
   // encargos CLT detalhados (FGTS + INSS + provisões 13º/férias), migra do encargoCLT antigo
-  if(f.encFGTS==null||f.encINSS==null||f.encProv==null){const old=(f.encargoCLT!=null?f.encargoCLT:32);f.encFGTS=8;f.encINSS=0;f.encProv=Math.max(0,old-8);}
+  if(f.encFGTS==null||f.encINSS==null||f.encProv==null){f.encFGTS=8;f.encINSS=0;f.encProv=PROV_PADRAO;}
+  if(!f._encV){f.encProv=PROV_PADRAO;f._encV=1;} // o campo de provisões nunca entrou na conta (a folha usava 11,11% fixo); alinha o valor salvo ao custo que já era aplicado
   f.imovel=f.imovel||{}; f.utilidades=f.utilidades||{}; f.servicosRec=f.servicosRec||{}; f.operacionais=f.operacionais||{}; f.sistemas=f.sistemas||{}; f.marketing=f.marketing||{};
   f.marketing.canais=f.marketing.canais||[]; // múltiplos canais de tráfego/mídia
   if(f.marketing.trafego>0&&!f.marketing.canais.length){f.marketing.canais.push({nome:f.marketing.plataforma||'Tráfego pago',valor:f.marketing.trafego});f.marketing.trafego=0;}
@@ -3822,7 +3825,7 @@ function finFolha(){
     ${ativos.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead>${head}</thead><tbody>${rowsByCat}</tbody></table></div>`:`<div style="text-align:center;padding:36px 0;color:var(--soft)">${todos.length?`Nenhum funcionário ativo em <b>${ymLabel(ym)}</b>. Selecione outro mês ou cadastre.`:'Nenhum funcionário cadastrado.'} <a class="tag tag-gold" style="cursor:pointer" onclick="funcEdit(null)">Adicionar →</a></div>`}
     <div style="font-size:11.5px;color:var(--soft);margin-top:14px;border-top:1px solid var(--line);padding-top:10px;line-height:1.55">
       <b>Como funciona:</b> os funcionários aparecem a partir do <b>mês de cadastro</b> (início). Marcar como pago abre a opção de também lançar no DRE. Excluir pergunta se quer remover só dos meses posteriores ou completamente.<br>
-      <b>Como calculamos:</b> INSS pela tabela progressiva 2026 sobre o bruto (CLT). FGTS 8% e provisões (13º 8,33% + terço de férias 2,78% = 11,11%) sobre o bruto — o salário de férias já está nos 12 salários, por isso provisionamos só o adicional. <b>Por Fora</b> não entra na base de INSS/FGTS/provisões. <b>Vales</b> e <b>Consumo</b> reduzem o líquido. Freelancers/PJ não têm encargos.
+      <b>Como calculamos:</b> INSS pela tabela progressiva 2026 sobre o bruto (CLT). FGTS, INSS patronal e provisões de 13º/férias saem dos percentuais das <b>Configurações financeiras</b> (padrão: FGTS 8%, INSS patronal 0% e provisões 11,11% = 13º 8,33% + terço de férias 2,78%) sobre o bruto — o salário de férias já está nos 12 salários, por isso provisionamos só o adicional. <b>Por Fora</b> não entra na base de INSS/FGTS/provisões. <b>Vales</b> e <b>Consumo</b> reduzem o líquido. Freelancers/PJ não têm encargos.
     </div>
   </div>`;
 }
@@ -4022,9 +4025,9 @@ function finParam(){
         :`<div class="field"><label>Alíquota efetiva de impostos <span class="hint">%, confirme com seu contador</span></label><input class="input" type="number" step="0.1" value="${fin.aliquota}" onchange="DB.fin.aliquota=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`}
       <div style="font-size:12.5px;font-weight:600;color:var(--muted);margin:8px 0 6px">Encargos CLT <span class="hint" style="font-weight:400">% sobre salário, total ${fmtPct((fin.encFGTS||0)+(fin.encINSS||0)+(fin.encProv||0))}</span></div>
       <div class="grid-3">
-        <div class="field"><label>FGTS <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.encFGTS!=null?fin.encFGTS:8}" onchange="DB.fin.encFGTS=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
-        <div class="field"><label>INSS patronal <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.encINSS!=null?fin.encINSS:0}" onchange="DB.fin.encINSS=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
-        <div class="field"><label>Prov. 13º/férias <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.encProv!=null?fin.encProv:24}" onchange="DB.fin.encProv=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+        <div class="field"><label>FGTS <span class="hint">%</span></label><input class="input" type="number" step="0.01" value="${fin.encFGTS!=null?fin.encFGTS:8}" onchange="DB.fin.encFGTS=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+        <div class="field"><label>INSS patronal <span class="hint">%</span></label><input class="input" type="number" step="0.01" value="${fin.encINSS!=null?fin.encINSS:0}" onchange="DB.fin.encINSS=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+        <div class="field"><label>Prov. 13º/férias <span class="hint">%</span></label><input class="input" type="number" step="0.01" value="${fin.encProv!=null?fin.encProv:PROV_PADRAO}" onchange="DB.fin.encProv=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
       </div>
       <div class="field"><label>INSS sócio (pró-labore) <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.inssSocio!=null?fin.inssSocio:11}" onchange="DB.fin.inssSocio=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
     </div>
