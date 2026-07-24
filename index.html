@@ -495,8 +495,9 @@ body.dark .ins-rm{background:rgba(210,72,63,.16)}
 
 /* ===== Impressão da planilha de desperdícios ===== */
 @media print{
+  @page despp{size:A4 portrait;margin:0}
   body.print-desp .sidebar,body.print-desp .main,body.print-desp #modalRoot,body.print-desp #toastRoot{display:none!important}
-  body.print-desp #printArea{display:block!important;padding:10mm}
+  body.print-desp #printArea{display:block!important;padding:9mm;page:despp}
   #printArea .dp{color:#15233f;font-family:'Inter',sans-serif;border:1px solid #d7dbe5;border-radius:8px;overflow:hidden}
   #printArea .dp *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #printArea .dp-bar{background:#1D3573;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
@@ -508,10 +509,10 @@ body.dark .ins-rm{background:rgba(210,72,63,.16)}
   #printArea .dp-note{font-size:10px;color:#5a6577;padding:8px 18px;background:#f6f7fa}
   #printArea table.dp-tb{width:100%;border-collapse:collapse}
   #printArea table.dp-tb th{font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;background:#1D3573;color:#fff;border:1px solid #1D3573;padding:7px 6px;text-align:left}
-  #printArea table.dp-tb td{border:1px solid #cfd4e0;height:26px;padding:2px 6px}
+  #printArea table.dp-tb td{border:1px solid #cfd4e0;height:6.4mm;padding:1px 6px}
   #printArea table.dp-tb tbody tr:nth-child(even) td{background:#f4f6fa}
-  #printArea .dp-legend{font-size:9px;color:#5a6577;padding:8px 18px;border-top:1px solid #e3e6ee}
-  #printArea .dp-foot{display:flex;justify-content:space-between;font-size:10px;color:#15233f;padding:9px 18px;border-top:2px solid #1D3573;font-weight:600}
+  #printArea .dp-legend{font-size:9px;color:#5a6577;padding:7px 18px;border-top:1px solid #e3e6ee}
+  #printArea .dp{page-break-inside:avoid;break-inside:avoid}
 }
 
 /* cabeçalho de tabela clicável (ordenação) */
@@ -4525,7 +4526,7 @@ function viewDesperdicio(){
 function imprimirDesperdicio(){
   const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';
   const motivos=(DB.despMotivos&&DB.despMotivos.length)?DB.despMotivos:DESP_MOTIVOS;
-  let rows='';for(let i=0;i<28;i++)rows+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+  let rows='';for(let i=0;i<34;i++)rows+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
   pa.innerHTML=`<div class="dp">
     <div class="dp-bar"><div><div class="dp-t">Controle de Desperdícios</div></div>
@@ -4535,7 +4536,6 @@ function imprimirDesperdicio(){
     <div class="dp-note">Anote cada item descartado: pese (ou conte), informe o motivo e a ação tomada para evitar a repetição. Depois registre no app em <b>Desperdícios</b>.</div>
     <table class="dp-tb"><thead><tr><th style="width:70px">Data</th><th>Produto / Insumo</th><th style="width:80px">Qtd</th><th style="width:150px">Motivo da Perda</th><th style="width:120px">Responsável</th><th>Ação Corretiva</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="dp-legend"><b>Motivos:</b> ${motivos.map(esc).join(' · ')}</div>
-    <div class="dp-foot"><span></span><span>Lidera · Flow</span></div>
   </div>`;
   document.body.classList.add('print-desp');
   const fim=()=>{document.body.classList.remove('print-desp');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
