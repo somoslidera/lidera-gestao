@@ -2042,7 +2042,8 @@ function delInsumo(id){
 /* ---- GERENCIAR CATEGORIAS (Insumos · Pratos · Fornecedores) ---- */
 let catTab='insumo';
 function gerenciarCategorias(t){catTab=t||catTab||'insumo';dbCats();DB.fin=DB.fin||{};DB.fin.fornecedores=DB.fin.fornecedores||[];
-  const tabs=[['insumo','Produtos'],['prato','Pratos'],['fornecedor','Fornecedores']];
+  // cada tela vê só o que lhe interessa: Produtos → produtos e fornecedores; Fichas Técnicas → categorias de prato
+  const tabs=(catTab==='prato')?[['prato','Pratos']]:[['insumo','Produtos'],['fornecedor','Fornecedores']];
   let body='';
   if(catTab==='fornecedor'){
     const fs=DB.fin.fornecedores;
@@ -2060,12 +2061,13 @@ function gerenciarCategorias(t){catTab=t||catTab||'insumo';dbCats();DB.fin=DB.fi
   }else{
     const list=catList(catTab);
     body=`<div style="display:flex;gap:8px;margin-bottom:6px"><input class="input" id="cat_new" placeholder="Nova categoria de ${catTab==='prato'?'prato':'insumo'}..." onkeydown="if(event.key==='Enter')addCatItem()"><button class="btn btn-primary" style="padding:0 18px" onclick="addCatItem()">${icoPlus}</button></div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:13px">Categorias <b style="color:var(--gold)">douradas</b> são padrão do sistema. As <b>brancas</b> são suas e podem ser removidas.</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:13px">${catTab==='prato'?'Organizam o cardápio nas Fichas Técnicas, na ficha impressa e no relatório do buffet. Não têm relação com as categorias financeiras. ':''}Categorias <b style="color:var(--gold)">douradas</b> são padrão do sistema. As <b>brancas</b> são suas e podem ser removidas.</div>
     <div class="cat-scroll">${list.map(c=>{const pad=isCatPadrao(catTab,c);const idx=pad?-1:dbCats()[catTab].indexOf(c);return `<div class="cat-row ${pad?'cat-pad':''}"><span>${esc(c)}${pad?'<span class="cat-badge">padrão</span>':''}</span>${pad?'':`<button class="mini-del" onclick="delCatIdx(${idx})">${icoX}</button>`}</div>`;}).join('')}</div>`;
   }
-  modal(`<div class="modal-head"><h3>Gerenciar categorias</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  const titulo=catTab==='prato'?'Categorias de prato':'Categorias e fornecedores';
+  modal(`<div class="modal-head"><h3>${titulo}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div class="chan-tabs" style="margin-top:0">${tabs.map(([k,l])=>`<button type="button" class="${catTab===k?'on':''}" onclick="gerenciarCategorias('${k}')">${l}</button>`).join('')}</div>
+    ${tabs.length>1?`<div class="chan-tabs" style="margin-top:0">${tabs.map(([k,l])=>`<button type="button" class="${catTab===k?'on':''}" onclick="gerenciarCategorias('${k}')">${l}</button>`).join('')}</div>`:''}
     ${body}
   </div>
   <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal()">Concluir</button></div>`);
