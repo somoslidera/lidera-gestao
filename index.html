@@ -4924,11 +4924,18 @@ async function entrarComoCliente(orgId,email){
   if(org.status==='suspenso'){telaMensagem('Acesso suspenso','Seu acesso está temporariamente suspenso. Fale com a Lidera para reativar.');return;}
   DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();
   CLOUD=true;ADMIN_MODE=false;hideAdmin();
-  // É um MEMBRO da equipe (não o dono)? Aplica o nível de acesso.
+  // O ADMINISTRADOR da conta tem SEMPRE acesso total a todos os módulos, mesmo que o e-mail dele também esteja na Equipe.
+  // Admin = e-mail cadastrado em Configurações (conta.email); se ainda não houver, quem NÃO está na Equipe é o dono.
   MEMBRO_PERMS=null;
-  const membro=email?(DB.equipe||[]).find(x=>(x.email||'').toLowerCase()===email):null;
-  if(membro){
-    MEMBRO_PERMS=(membro.permissoes||[]).slice();
+  DB.conta=DB.conta||{};
+  const emailLogin=(email||'').trim().toLowerCase();
+  const donoEmail=(DB.conta.email||'').trim().toLowerCase();
+  const naEquipe=emailLogin?(DB.equipe||[]).find(x=>(x.email||'').toLowerCase()===emailLogin):null;
+  const ehAdmin=!!emailLogin&&(donoEmail?emailLogin===donoEmail:!naEquipe);
+  if(ehAdmin){
+    if(!donoEmail&&emailLogin){DB.conta.email=emailLogin;setTimeout(()=>{try{save();}catch(e){}},800);} // fixa o admin da conta 1x, p/ nunca mais ser limitado se for adicionado à Equipe
+  }else if(naEquipe){
+    MEMBRO_PERMS=(naEquipe.permissoes||[]).slice();
     if(!MEMBRO_PERMS.length){telaMensagem('Acesso não configurado','Seu acesso ainda não tem áreas liberadas. Fale com o responsável pela conta.');return;}
   }
   bannerCloud();renderFoot();setSaveStatus('saved');
