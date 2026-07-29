@@ -230,6 +230,13 @@ th.num{text-align:right}
 /* ===== Auth / Admin (SaaS) ===== */
 #authScreen{position:fixed;inset:0;z-index:300;background:#1D3573;display:flex;align-items:center;justify-content:center;padding:20px}
 #authScreen .auth-card{background:var(--card);border-radius:18px;box-shadow:var(--shadow-lg);width:100%;max-width:400px;padding:34px 30px}
+#authScreen .unidade-list{display:flex;flex-direction:column;gap:9px}
+#authScreen .unidade-card{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;width:100%;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:var(--bg);cursor:pointer;transition:border-color .15s,transform .05s}
+#authScreen .unidade-card:hover{border-color:var(--gold);background:var(--card)}
+#authScreen .unidade-card:active{transform:scale(.995)}
+#authScreen .unidade-card:disabled{opacity:.5;cursor:not-allowed}
+#authScreen .unidade-card .un-nome{font-weight:700;font-size:14.5px;color:var(--navy)}
+#authScreen .unidade-card .un-sub{font-size:11.5px;color:var(--soft)}
 #authScreen .auth-wm{font-family:'Fraunces',serif;font-size:34px;font-weight:600;color:var(--navy);text-align:center}
 #authScreen .auth-by{font-size:13px;color:var(--gold);text-align:center;margin-top:-2px;margin-bottom:22px}
 .cloud-banner{background:var(--gold);color:#fff;font-size:12.5px;font-weight:600;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0}
@@ -614,6 +621,7 @@ thead th{letter-spacing:.7px}
   </nav>
   <div class="side-foot">
     <button class="side-edit" onclick="abrirWizard(1)" title="Preencher / editar os dados do negócio">✎ Editar dados do negócio</button>
+    <button id="btnTrocarUnidade" class="side-edit" style="display:none" onclick="showUnidades()" title="Trocar para outra unidade que você administra">⇄ Trocar de unidade</button>
     <b id="footName">Seu Restaurante</b>
   </div>
 </aside>
@@ -1760,7 +1768,7 @@ function normData(){
   (f.socios||[]).forEach(x=>{if(x.diaVenc==null)x.diaVenc=0;if(x.desde==null)x.desde=ymNow();});
   if(DB.onboardingFeito==null)DB.onboardingFeito=(Object.keys(DB.insumos||{}).length>0||Object.keys(DB.fichas||{}).length>0);
 }
-function renderFoot(){normData();const fn=$('#footName');if(fn)fn.textContent=(DB.conta&&DB.conta.restaurante)||'Seu Restaurante';}
+function renderFoot(){normData();const fn=$('#footName');if(fn)fn.textContent=(DB.conta&&DB.conta.restaurante)||'Seu Restaurante';const bt=$('#btnTrocarUnidade');if(bt)bt.style.display=(DONO_MODE&&(DONO_UNIDADES||[]).length>=2)?'':'none';}
 const icoMoon=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>`;
 const icoSun=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>`;
 function applyTheme(t){document.body.classList.toggle('dark',t==='dark');try{localStorage.setItem('flow_theme',t);}catch(e){}const b=document.getElementById('themeBtn');if(b)b.innerHTML=t==='dark'?icoSun:icoMoon;const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',t==='dark'?'#0E1626':'#1D3573');}
@@ -4780,6 +4788,7 @@ const sb=(window.supabase&&SUPA_URL.indexOf('http')===0)?window.supabase.createC
 let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false, MEMBRO_PERMS=null;
 let CLOUD_TS=null, SAVE_STATE='idle', SAVE_RETRY=0, CLOUD_CONFLICT=false, CLOUD_BASE=null, _mergeHouve=false;
 let IS_SUPER=false, MY_UID=null, MY_LIMITE=5, CONSULTORES=[], adminConsFiltro='';
+let DONO_MODE=false, DONO_UNIDADES=[], DONO_EMAIL='', DONO_UID=null; // cliente que administra várias unidades (usa organizacoes.consultor_id, sem ser consultor)
 function emptyDB(){return {insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};}
 function localBackupKey(){return 'flow_bkp_'+((ORG&&ORG.id)||'x');}
 function setSaveStatus(state){
@@ -4914,8 +4923,31 @@ async function afterAuth(){
   let perfil=null;try{perfil=(await sb.from('perfis').select('*').eq('id',uid).single()).data;}catch(e){}
   PERFIL=perfil||{papel:'cliente',org_id:null};
   if(PERFIL.papel==='admin'||PERFIL.papel==='consultor'){IS_SUPER=(PERFIL.papel==='admin');MY_UID=uid;MY_LIMITE=(PERFIL.limite_clientes!=null?PERFIL.limite_clientes:5);MEMBRO_PERMS=null;showAdmin();}
-  else{await entrarComoCliente(PERFIL.org_id,email);}
+  else{await entrarClienteRouter(uid,PERFIL.org_id,email);}
 }
+// Cliente-dono pode administrar VÁRIAS unidades (as que têm consultor_id = uid). Se tiver 2+, mostra o seletor de unidades.
+async function entrarClienteRouter(uid,orgId,email){
+  DONO_UID=uid;DONO_EMAIL=email;DONO_MODE=false;DONO_UNIDADES=[];
+  let unidades=[];
+  try{unidades=(uid?(await sb.from('organizacoes').select('id,nome,status,dados,consultor_id,atualizado_em').eq('consultor_id',uid)).data:null)||[];}catch(e){unidades=[];}
+  if(orgId&&!unidades.some(u=>u.id===orgId)){try{const p=(await sb.from('organizacoes').select('id,nome,status,dados,consultor_id,atualizado_em').eq('id',orgId).single()).data;if(p)unidades.unshift(p);}catch(e){}}
+  unidades=unidades.filter(u=>u&&!(u.dados&&u.dados._arquivado));
+  unidades.sort((a,b)=>((a.dados&&a.dados.conta&&a.dados.conta.restaurante)||a.nome||'').localeCompare((b.dados&&b.dados.conta&&b.dados.conta.restaurante)||b.nome||'','pt',{sensitivity:'base'}));
+  DONO_UNIDADES=unidades;
+  if(unidades.length>=2){DONO_MODE=true;showUnidades();}
+  else{await entrarComoCliente(orgId||(unidades[0]&&unidades[0].id)||null,email);}
+}
+function showUnidades(){
+  hideAdmin();const b=authBox();b.style.display='flex';
+  const cards=DONO_UNIDADES.map(u=>{const nome=esc((u.dados&&u.dados.conta&&u.dados.conta.restaurante)||u.nome||'Unidade');const susp=u.status==='suspenso';
+    return `<button class="unidade-card" ${susp?'disabled':''} onclick="abrirUnidade('${u.id}')"><span class="un-nome">${nome}</span><span class="un-sub">${susp?'acesso suspenso':'toque para abrir'}</span></button>`;}).join('');
+  b.innerHTML=`<div class="auth-card" style="max-width:460px"><div class="auth-wm" style="text-align:center">Flow</div><div class="auth-by" style="text-align:center">by Lidera</div>
+    <div style="font-size:17px;font-weight:700;margin:16px 0 3px;text-align:center">Suas unidades</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:15px;text-align:center">Escolha qual unidade você quer gerenciar. Você pode trocar a qualquer momento pelo menu lateral.</div>
+    <div class="unidade-list">${cards}</div>
+    <div style="text-align:center;margin-top:16px"><a onclick="logout()" style="color:var(--muted);cursor:pointer;font-size:12.5px">Sair</a></div></div>`;
+}
+async function abrirUnidade(id){hideLogin();await entrarComoCliente(id,DONO_EMAIL);}
 async function entrarComoCliente(orgId,email){
   if(!orgId){telaMensagem('Conta sem restaurante vinculado','Sua conta foi criada, mas ainda não está liberada por um administrador. Aguarde a liberação.');return;}
   let org=null;try{org=(await sb.from('organizacoes').select('*').eq('id',orgId).single()).data;}catch(e){}
@@ -5107,7 +5139,7 @@ async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin(
   if(IS_SUPER){try{CONSULTORES=(await sb.from('perfis').select('*').eq('papel','consultor').order('nome',{ascending:true})).data||[];}catch(e){CONSULTORES=[];}}else{CONSULTORES=[];}
   renderAdmin();
 }
-function consNome(id){if(!id)return 'Lidera';const c=CONSULTORES.find(x=>x.id===id);return c?(c.nome||c.email||'Consultor'):'Consultor';}
+function consNome(id){if(!id)return 'Lidera';const c=CONSULTORES.find(x=>x.id===id);return c?(c.nome||c.email||'Consultor'):'Dono (multi-unidade)';}
 function renderAdmin(){renderAdminSide();renderAdminMain();}
 function renderAdminSide(){const el=$('#admin_side');if(!el)return;
   const arqd=o=>!!(o.dados&&o.dados._arquivado), dem=o=>!!(o.dados&&o.dados._demo);
@@ -5170,6 +5202,7 @@ function dadosHTML(o,k,nm,arq){return `<div class="card card-pad">
   <div style="display:flex;gap:8px;flex-wrap:wrap">
    <button class="btn btn-primary btn-sm" onclick="abrirCliente('${o.id}')">Abrir app</button>
    <button class="btn btn-ghost btn-sm" onclick="atividadesCliente('${o.id}','${nm}')">Atividades</button>
+   <button class="btn btn-ghost btn-sm" onclick="donoModal('${o.id}')">👥 Dono / Unidades</button>
    ${arq?`<button class="btn btn-primary btn-sm" onclick="arquivarCliente('${o.id}',false)">↩ Restaurar</button>
      <button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirCliente('${o.id}','${nm}')">${icoTrash} Excluir</button>`
      :`<button class="btn btn-ghost btn-sm" onclick="arquivarCliente('${o.id}',true)">Arquivar</button>`}
@@ -5368,6 +5401,44 @@ async function doNovoCliente(){
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal();showAdmin()">Concluir</button>${novoId?`<button class="btn btn-primary" onclick="closeModal();abrirCliente('${novoId}')">Abrir e configurar acesso</button>`:''}</div>`);}
 async function vincularPerfil(perfilId,orgId){if(!orgId)return;await sb.from('perfis').update({org_id:orgId}).eq('id',perfilId);toast('Cliente vinculado');showAdmin();}
+/* ---- DONO MULTI-UNIDADE: um login (cliente) administra várias unidades. Liga as unidades via organizacoes.consultor_id = id do login. ---- */
+async function donoModal(orgId){
+  const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;
+  let dono=null;
+  if(o.consultor_id){try{dono=(await sb.from('perfis').select('id,email,nome,papel').eq('id',o.consultor_id).maybeSingle()).data;}catch(e){}}
+  const ehConsultor=dono&&(dono.papel==='consultor'||dono.papel==='admin');
+  // unidades já ligadas a esse dono (dentre as carregadas no painel)
+  const irmas=(o.consultor_id?ADMIN_ORGS.filter(x=>x.consultor_id===o.consultor_id&&!(x.dados&&x.dados._demo)):[]);
+  const listaIrmas=irmas.length?`<div style="font-size:12px;color:var(--muted);margin:10px 0 4px">Unidades deste dono (${irmas.length}):</div>
+    <div class="cat-scroll" style="max-height:150px">${irmas.map(u=>`<div class="cat-row"><span>${esc(u.nome||'')}${u.id===orgId?' <span class="cat-badge">esta</span>':''}</span></div>`).join('')}</div>`:'';
+  const atual=dono?(ehConsultor
+      ?`<div class="alert alert-amber" style="margin-bottom:12px">${typeof icoWarn!=='undefined'?icoWarn:''}<div>Esta unidade está vinculada a um <b>consultor</b> (${esc(dono.email||dono.nome||'')}), não a um dono. Para dono multi-unidade, use um login de cliente.</div></div>`
+      :`<div class="alert alert-green" style="margin-bottom:12px">${typeof icoOk!=='undefined'?icoOk:''}<div>Dono atual: <b>${esc(dono.nome||dono.email||'')}</b><br><span style="font-size:12px;color:var(--muted)">${esc(dono.email||'')}</span></div></div>`)
+    :`<div style="font-size:13px;color:var(--muted);margin-bottom:12px">Esta unidade ainda não tem um dono multi-unidade. Informe o e-mail do login que vai gerenciar esta e as outras unidades dele.</div>`;
+  modal(`<div class="modal-head"><h3>Dono / Multi-unidade</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-weight:600;margin-bottom:8px">${esc(o.nome||'')}</div>
+    ${atual}
+    <div class="field"><label>E-mail do dono <span class="hint">login de cliente já existente</span></label>
+      <input class="input" id="dono_email" placeholder="dono@exemplo.com" value="${dono&&!ehConsultor?esc(dono.email||''):''}" onkeydown="if(event.key==='Enter')donoVincular('${orgId}')"></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">O dono precisa ter criado a conta (tela <b>Criar conta</b>) antes. Repita este passo em cada unidade dele, usando o mesmo e-mail. Ao entrar, ele escolhe a unidade num seletor e tem acesso total a cada uma.</div>
+  </div>
+  <div class="modal-foot">${(dono&&!ehConsultor)?`<button class="btn btn-ghost" style="color:var(--red)" onclick="donoDesvincular('${orgId}')">Desvincular</button>`:''}<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="donoVincular('${orgId}')">Vincular dono</button></div>`);
+  setTimeout(()=>{const el=$('#dono_email');if(el)el.focus();},60);
+}
+async function donoVincular(orgId){
+  const email=(($('#dono_email')&&$('#dono_email').value)||'').trim().toLowerCase();if(!email)return showErr('Informe o e-mail do dono.');
+  let perfil=null;try{perfil=(await sb.from('perfis').select('id,email,nome,papel').ilike('email',email).maybeSingle()).data;}catch(e){}
+  if(!perfil)return showErr('Não encontrei um login com esse e-mail. O dono precisa criar a conta em "Criar conta" antes de ser vinculado.');
+  if(perfil.papel==='consultor'||perfil.papel==='admin')return showErr('Esse e-mail é de um consultor/admin. Use um login de cliente para dono de unidades.');
+  try{const r=await sb.from('organizacoes').update({consultor_id:perfil.id}).eq('id',orgId);if(r.error)throw r.error;}catch(e){return showErr('Não foi possível vincular: '+((e&&e.message)||e));}
+  toast('Unidade vinculada ao dono ✓');closeModal();await showAdmin();
+}
+async function donoDesvincular(orgId){
+  if(!confirm('Desvincular esta unidade do dono? Ele deixa de ver esta unidade no seletor.'))return;
+  try{const r=await sb.from('organizacoes').update({consultor_id:null}).eq('id',orgId);if(r.error)throw r.error;}catch(e){return showErr('Erro ao desvincular.');}
+  toast('Unidade desvinculada');closeModal();await showAdmin();
+}
 async function toggleStatus(orgId,status){const novo=status==='suspenso'?'ativo':'suspenso';await sb.from('organizacoes').update({status:novo}).eq('id',orgId);toast(novo==='ativo'?'Acesso reativado':'Acesso suspenso');showAdmin();}
 async function abrirCliente(orgId){let org=null;try{org=(await sb.from('organizacoes').select('*').eq('id',orgId).single()).data;}catch(e){}if(!org)return toast('Erro ao abrir');
   ORG=org;CLOUD_TS=org.atualizado_em||null;CLOUD_CONFLICT=false;SAVE_RETRY=0;CLOUD_BASE=_cloneDB(org.dados||{});DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();CLOUD=true;ADMIN_MODE=true;MEMBRO_PERMS=null;hideAdmin();bannerCloud();renderFoot();setSaveStatus('saved');
