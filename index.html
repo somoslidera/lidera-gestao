@@ -3177,7 +3177,6 @@ function lancarModal(manterRascunho){if(!manterRascunho||!lancDraft.length)lancD
       <select class="input" style="width:150px;padding:7px 9px" id="lm_bulk_sub" title="Mesma subcategoria em todas" onchange="lmAplicarTodas('sub',this.value)"><option value="">Subcategoria…</option></select>
       <input class="input" style="width:150px;padding:7px 9px" list="lm_forn" id="lm_bulk_forn" placeholder="Fornecedor…" title="Mesmo fornecedor em todas" onchange="lmAplicarTodas('fornecedor',this.value)">
       <select class="input" style="width:130px;padding:7px 9px" id="lm_bulk_forma" title="Mesma forma em todas" onchange="lmAplicarTodas('forma',this.value)"><option value="">Forma…</option>${ordPt(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select>
-      <button class="btn btn-ghost btn-sm" style="flex:0 0 auto;padding:7px 10px" title="Criar, renomear ou remover formas de pagamento" onclick="formasModal(()=>lancarModal(true))">💳 Formas</button>
     </div>
     <div style="overflow-x:auto"><div style="min-width:1240px">
       <div style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span>Categoria</span><span>Subcategoria</span><span>Descrição</span><span>Produto</span><span>Fornecedor</span><span>Valor</span><span>Qtd</span><span style="text-align:right">Total</span><span>Forma</span><span></span></div>
@@ -3418,17 +3417,10 @@ function delForma(i){const arr=DB.formasPagamento||[];const nome=arr[i];
   const uso=(DB.lancamentos||[]).filter(l=>l.forma===nome).length;
   if(uso&&!confirm('A forma "'+nome+'" está em '+uso+' lançamento(s). Remover da lista? Os lançamentos antigos mantêm o texto.'))return;
   arr.splice(i,1);save();fpRefresh();}
-let _formasVoltar=null;
-function formasModal(voltar){_formasVoltar=(typeof voltar==='function')?voltar:null;
-  modal(`<div class="modal-head"><h3>Formas de pagamento</h3><button class="x" onclick="formasConcluir()">${icoX}</button></div>
-  <div class="modal-body">
-    <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Crie, <b>renomeie</b> ou remova as opções que aparecem no menu <b>Forma</b> dos lançamentos. Renomear atualiza também os lançamentos que já usavam o nome antigo.</div>
+function finFormasInner(){return `<div style="max-width:520px">
     <div id="fp_list">${formasEditRows()}</div>
-    <div style="display:flex;gap:8px;margin-top:12px;border-top:1px solid var(--line);padding-top:12px"><input class="input" id="fp_novo" placeholder="Nova forma (ex.: Pix Loja)" onkeydown="if(event.key==='Enter')addForma()"><button class="btn btn-primary btn-sm" style="flex:0 0 auto" onclick="addForma()">${icoPlus} Adicionar</button></div>
-  </div>
-  <div class="modal-foot"><button class="btn btn-primary" onclick="formasConcluir()">Concluir</button></div>`);
-  setTimeout(()=>{const el=$('#fp_novo');if(el)el.focus();},60);}
-function formasConcluir(){const v=_formasVoltar;_formasVoltar=null;closeModal();if(v)v();else if(typeof viewFinanceiro==='function')viewFinanceiro();}
+    <div style="display:flex;gap:8px;margin-top:14px;border-top:1px solid var(--line);padding-top:14px"><input class="input" id="fp_novo" placeholder="Nova forma (ex.: Pix Loja)" onkeydown="if(event.key==='Enter')addForma()"><button class="btn btn-primary btn-sm" style="flex:0 0 auto" onclick="addForma()">${icoPlus} Adicionar</button></div>
+  </div>`;}
 function elSubRefresh(){const g=$('#el_grupo'),s=$('#el_sub');if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=ordPt(c?c.subs:[]).map(x=>`<option>${esc(x)}</option>`).join('');}
 function editLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)return;
   const grupos=ordPt(Object.keys(DB.categorias));
@@ -3493,7 +3485,7 @@ function finLancamentos(){
         <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="XML (mais preciso) ou PDF do DANFE">🧾 Importar NF-e<input type="file" accept=".xml,.pdf" style="display:none" onchange="importarNFe(this)"></label>
         <label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆ Planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarLancamentos(this)"></label>
         <button class="btn btn-ghost btn-sm" onclick="modeloLancModal()">⬇ Modelo</button>
-        <button class="btn btn-ghost btn-sm" onclick="formasModal()" title="Criar, renomear ou remover formas de pagamento">💳 Formas de pagamento</button>
+        <button class="btn btn-ghost btn-sm" onclick="finTab='formas';viewFinanceiro()" title="Abrir a aba Formas de Pagamento">💳 Formas de pagamento</button>
       </div></div>
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
       <div class="dash-pill"><span>Receitas</span><b style="color:var(--green)">${fmtBRL(d.recTot)}</b></div>
@@ -3675,7 +3667,7 @@ function finList(key,cols){
 }
 function viewFinanceiro(){
   const t=totaisGerais(finTab==='visao'?periodoRange():undefined);
-  const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['meios','Meios de Pagamento'],['param','Parâmetros']];
+  const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['formas','Formas de Pagamento'],['meios','Meios de Pagamento'],['param','Parâmetros']];
   let body='';
   if(finTab==='lanc')body=finLancamentos();
   else if(finTab==='fluxo')body=finFluxo();
@@ -3684,6 +3676,7 @@ function viewFinanceiro(){
   else if(finTab==='visao')body=finVisao(t);
   else if(finTab==='pagar')body=finContas('contasPagar');
   else if(finTab==='receber')body=finContas('contasReceber');
+  else if(finTab==='formas')body=finCard('Formas de Pagamento','As opções que aparecem no menu Forma dos lançamentos. Renomear atualiza os registros que já usavam o nome antigo.',finFormasInner());
   else if(finTab==='meios')body=finCard('Meios de Pagamento','Taxas por meio de recebimento',
     finList('meiosPagamento',[{f:'nome',ph:'Nome',w:'1.4fr'},{f:'tipo',type:'select',opts:['Crédito','Débito','Marketplace','PIX','Dinheiro','Voucher'],w:'1fr'},{f:'taxa',type:'num',ph:'%',w:'100px'}]),
     `<span style="color:var(--muted)">A comissão de marketplace usada no cálculo é definida em <b>Parâmetros</b>.</span>`);
