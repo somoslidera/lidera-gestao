@@ -2198,7 +2198,7 @@ function nfeMatch(desc){const n=normHdr(desc);if(!n)return '';let best='';
   Object.values(DB.insumos).filter(i=>i.tipo!=='preparado').forEach(i=>{const ni=normHdr(i.nome);if(ni&&(n.includes(ni)||ni.includes(n)))best=i.id;});
   return best;}
 /* ----- Importar NF-e (PDF / DANFE) via pdf.js — best-effort ----- */
-const NFE_UNIDS=['UN','UND','UNID','PC','PÇ','PCT','PECA','CX','CXA','KG','G','GR','GRS','L','LT','LTR','ML','MG','DZ','DUZIA','FD','FR','FRD','SC','SACO','PT','POTE','BD','BDJ','BJ','GL','GLS','TB','RL','ROLO','M','MT','M2','M3','CJ','JG','BR','LATA','GAR','GARRAFA','PAR','PARES'];
+const NFE_UNIDS=['UN','UND','UNID','PC','PÇ','PCT','PECA','CX','CXA','KG','G','GR','GRS','L','LT','LTR','ML','MG','DZ','DUZIA','FD','FR','FRD','SC','SACO','PT','POTE','BD','BDJ','BJ','GL','GLS','TB','RL','ROLO','M','MT','M2','M3','CJ','JG','BR','LATA','GAR','GARRAFA','PAR','PARES','GF','VD','TP','FR','FRC','SACH','SACHE','AMP','BB','BOMB','DP','KIT','KT','RS','FA','FRA'];
 function nfeBrNum(s){if(s==null)return 0;s=(''+s).trim().replace(/[^\d.,-]/g,'');if(!s)return 0;if(s.indexOf(',')>=0)s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isFinite(n)?n:0;}
 function ensurePdfJs(){return new Promise((res,rej)=>{if(window.pdfjsLib)return res(window.pdfjsLib);const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';s.onload=()=>{try{window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';res(window.pdfjsLib);}catch(e){rej(e);}};s.onerror=()=>rej(new Error('Falha ao carregar o leitor de PDF.'));document.head.appendChild(s);});}
 async function pdfRows(arrbuf){const lib=await ensurePdfJs();const pdf=await lib.getDocument({data:arrbuf}).promise;const pages=[];
@@ -2229,7 +2229,7 @@ function parseDanfePdf(pages){
     const bad=/DANFE|RECEBEMOS|RECEBEDOR|RECEBIMENTO|DESTINAT|REMETENTE|RAZ[ÃA]O|NOTA FISCAL|IDENTIFICA|DOCUMENTO AUXILIAR|CHAVE DE ACESSO|S[ÉE]RIE|FOLHA|SA[ÍI]DA|ENTRADA|PROTOCOLO|DESCRI|PRODUTO|C[ÓO]DIGO|QUANT|NCM|CFOP|VALOR|N[ºo°]|WWW\.|HTTP|@|\.COM|\.BR\b|\.NET|CEP|BAIRRO|INSCRI[ÇC]|TELEFONE|\bFONE\b|E-?MAIL|\bRUA\b|AVENIDA|\bAV\b|RODOVIA|\bROD\b|ESTRADA|PRA[ÇC]A|MUNIC[ÍI]PIO/i;
     const cands=rows.slice(0,lim).map(lineText).map(t=>t.trim()).filter(t=>t&&t.length>=4&&/[A-Za-zÀ-ú]{4,}/.test(t)&&!/^\d/.test(t)&&!bad.test(t));
     const razao=/\b(LTDA|EIRELI|EPP|S\/A|S\.?A\.?|ME|MEI|COM[ÉE]RCIO|COMERCIAL|IND[ÚU]STRIA|IND\b|DISTRIBUI|ALIMENTOS|SUPERMERCAD|ATACAD|MERCAD|RESTAURANTE|PADARIA|A[ÇC]OUGUE|HORTIFRUT|BEBIDAS|FRIGOR[ÍI]FICO)\b/i;
-    fornecedor=(cands.find(t=>razao.test(t))||cands[0]||'').slice(0,80);}
+    fornecedor=(cands.find(t=>razao.test(t))||cands[0]||'').replace(/\s+(DOCUMENTO|RECEBEMOS|AUX[ÍI]LIAR|DANFE|NOTA FISCAL|IDENTIFICA).*$/i,'').slice(0,80).trim();}
   const itens=[];
   for(let i=start;i<end;i++){
     let toks=[];rows[i].items.forEach(it=>it.str.split(/\s+/).forEach(t=>{if(t.trim())toks.push(t.trim());}));
@@ -2240,7 +2240,10 @@ function parseDanfePdf(pages){
     const numStart=unIdx>=0?unIdx+1:ncmIdx+3;
     const nums=[];for(let k=numStart;k<toks.length;k++){if(/^\d[\d\.]*,\d+$/.test(toks[k])||/^\d+$/.test(toks[k]))nums.push(toks[k]);}
     if(nums.length<3)continue;
-    const qtd=nfeBrNum(nums[0]),vUn=nfeBrNum(nums[1]),vTotal=nfeBrNum(nums[2]);
+    const qtd=nfeBrNum(nums[0]),vUn=nfeBrNum(nums[1]);
+    // O total do item numa NF é sempre QTDE × V.UN. Não confiar na posição da 3ª coluna: alguns DANFEs intercalam colunas de Subst. Tributária (zeros) entre o V.UN e o V.TOTAL.
+    let vTotal=+(((qtd||0)*(vUn||0))).toFixed(2);
+    if(vTotal<=0){const cand=nums.slice(2).map(nfeBrNum).filter(n=>n>0);vTotal=cand.length?cand[0]:0;} // se o unitário vier zerado, usa o 1º valor impresso seguinte
     let descToks=toks.slice(1,ncmIdx);if(!descToks.join('').replace(/[^A-Za-zÀ-ú]/g,''))descToks=toks.slice(0,ncmIdx);
     let desc=descToks.join(' ').replace(/\s+/g,' ').trim();
     const uCom=unIdx>=0?toks[unIdx]:'';
