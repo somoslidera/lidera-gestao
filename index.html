@@ -3267,14 +3267,16 @@ function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
   const lista=Object.values(DB.insumos||{}).filter(x=>x.tipo!=='preparado').sort((a,b)=>ordPt([a.nome,b.nome])[0]===a.nome?-1:1);
   const sel=r.insSugerido||'';
   const gruSel=r.grupo||'CMV', subSel=r.sub||'';
-  modal(`<div class="modal-head"><h3>Produto da nota</h3><button class="x" onclick="lmVoltarLanc()">${icoX}</button></div>
+  const linhaTxt=r.fromIA?('Na nota veio: <b>'+esc(orig)+'</b>'):(orig?('Descrição: <b>'+esc(orig)+'</b>'):'Lançamento manual');
+  const apelidoTxt=(r.fromIA&&orig)?('O apelido <b>'+esc(orig)+'</b> fica memorizado — nas próximas notas ele já vem vinculado sozinho. '):'';
+  modal(`<div class="modal-head"><h3>${r.fromIA?'Produto da nota':'Vincular a um produto'}</h3><button class="x" onclick="lmVoltarLanc()">${icoX}</button></div>
   <div class="modal-body">
     <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:16px;font-size:12.5px">
-      Na nota veio: <b>${esc(orig)}</b> · ${fmtBRL(lmTotalLinha(r))}${r.fornecedor?' · '+esc(r.fornecedor):''}
+      ${linhaTxt} · ${fmtBRL(lmTotalLinha(r))}${r.fornecedor?' · '+esc(r.fornecedor):''}
     </div>
     <div style="border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px">
       <div style="font-size:13px;font-weight:700;margin-bottom:4px">Vincular a um produto já cadastrado</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">O apelido <b>${esc(orig)}</b> fica memorizado — nas próximas notas ele já vem vinculado sozinho. O <b>valor pago e o fornecedor do produto serão atualizados</b> com os dados desta nota.</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${apelidoTxt}O <b>valor pago e o fornecedor do produto serão atualizados</b> com os dados deste lançamento.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <select class="input" id="lv_ins" style="flex:1 1 220px;min-width:0">${lista.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${esc(x.nome)}${x.fornecedor?' · '+esc(x.fornecedor):''}</option>`).join('')}</select>
         <button class="btn btn-primary" style="flex:0 0 auto" onclick="lmVincularExistente(${i})">Vincular</button>
@@ -3283,7 +3285,7 @@ function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
     <div style="text-align:center;font-size:11px;color:var(--soft);letter-spacing:1px;margin-bottom:14px">— OU —</div>
     <div style="border:1px solid var(--line);border-radius:12px;padding:14px">
       <div style="font-size:13px;font-weight:700;margin-bottom:10px">Cadastrar como produto novo</div>
-      <div class="field"><label>Nome</label><input class="input" id="lp_nome" value="${esc(r.desc||'')}" placeholder="Ex.: Detergente"></div>
+      <div class="field"><label>Nome</label><input class="input" id="lp_nome" value="${esc(r.fromIA?(r.desc||''):'')}" placeholder="Ex.: Detergente"></div>
       <div class="grid-2">
         <div class="field"><label>Categoria</label><select class="input" id="lp_grupo" onchange="lpSubRefresh()">${insGrupoOptions(gruSel)}</select></div>
         <div class="field"><label>Subcategoria</label><select class="input" id="lp_sub" onchange="lpSubMaybeNew()">${insSubOptions(gruSel,subSel)}</select></div>
@@ -3299,11 +3301,15 @@ function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
     </div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="lmVoltarLanc()">Cancelar</button><button class="btn btn-gold" onclick="lmSalvarNovoProduto(${i})">Cadastrar novo</button></div>`,true,true);}
-/* Aplica o vínculo a TODAS as linhas com a mesma descrição da nota e atualiza o custo do insumo */
+/* Vincula a linha clicada e, se ela veio de uma nota, também as outras linhas da mesma nota com a mesma descrição */
 function lmAplicarVinculo(i,insId){const r=lancDraft[i],ins=DB.insumos[insId];if(!r||!ins)return 0;
-  const alvo=lmNorm(r.descOrig||r.desc);let n=0;
-  lancDraft.forEach(x=>{if(x.insumoId)return;const xd=lmNorm(x.descOrig||x.desc);
-    if(xd&&xd===alvo){x.insumoId=insId;x.desc=ins.nome;n++;}});
+  const alvo=lmNorm(r.descOrig||r.desc);
+  // a linha clicada SEMPRE vincula — mesmo sem descrição (é o caso do lançamento manual)
+  r.insumoId=insId;if(r.fromIA)r.desc=ins.nome;if(!r.uni&&ins.uni)r.uni=ins.uni;let n=1;
+  // só linhas da mesma nota se propagam: no manual cada linha é independente
+  if(alvo&&r.fromIA)lancDraft.forEach((x,j)=>{if(j===i||x.insumoId||!x.fromIA)return;
+    const xd=lmNorm(x.descOrig||x.desc);
+    if(xd&&xd===alvo){x.insumoId=insId;x.desc=ins.nome;if(!x.uni&&ins.uni)x.uni=ins.uni;n++;}});
   // memoriza o apelido para as próximas notas
   const orig=(r.descOrig||'').trim();
   if(orig&&lmNorm(orig)!==lmNorm(ins.nome)){ins.apelidos=ins.apelidos||[];
@@ -3326,9 +3332,11 @@ function lmSalvarNovoProduto(i){const r=lancDraft[i];if(!r)return lmVoltarLanc()
   ensureFornecedor(forn);
   const nid=uid();const orig=(r.descOrig||'').trim();
   DB.insumos[nid]={id:nid,nome,cat,grupo,sub,tipo:'pronto',uni,qtd,preco,fornecedor:forn,apelidos:(orig&&lmNorm(orig)!==lmNorm(nome))?[orig]:[]};
-  // vincula TODAS as linhas com a descrição idêntica da nota (mantém "AGUA ... C/" e "AGUA ... S/" separadas)
-  const alvo=lmNorm(orig||r.desc);let n=0;
-  lancDraft.forEach(x=>{if(x.insumoId)return;const xd=lmNorm(x.descOrig||x.desc);
+  // a linha clicada sempre vincula; as outras linhas da MESMA nota com descrição idêntica
+  // vinculam junto (mantém "AGUA ... C/" e "AGUA ... S/" separadas)
+  const alvo=lmNorm(orig||r.desc);
+  r.insumoId=nid;if(r.fromIA)r.desc=nome;if(!r.qtd)r.qtd=qtd;if(!r.uni)r.uni=uni;if(forn&&!r.fornecedor)r.fornecedor=forn;let n=1;
+  if(alvo&&r.fromIA)lancDraft.forEach((x,j)=>{if(j===i||x.insumoId||!x.fromIA)return;const xd=lmNorm(x.descOrig||x.desc);
     if(xd&&xd===alvo){x.insumoId=nid;x.desc=nome;if(!x.qtd)x.qtd=qtd;if(!x.uni)x.uni=uni;if(forn&&!x.fornecedor)x.fornecedor=forn;n++;}});
   save();lancarModal(true);
   toast(n>1?('Produto cadastrado · '+n+' linhas vinculadas'):'Produto cadastrado e vinculado');}
