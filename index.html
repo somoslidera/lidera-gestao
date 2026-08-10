@@ -2323,6 +2323,9 @@ function nfeAplicar(){
     it.vTotal = totInf>0 ? totInf : (calc>0?calc:(it.vTotal||0)); // não zera: cai p/ o total da própria nota (vProd)
     if((!it.vUn||it.vUn<=0)&&it.vTotal>0&&it.qtd>0)it.vUn=+(it.vTotal/it.qtd).toFixed(4); // deriva o unitário p/ o preço do produto quando a nota não traz
     const gEl=$('#nfe_grupo_'+idx),sEl=$('#nfe_sub_'+idx);it._grupo=gEl?gEl.value:'CMV';it._sub=sEl?sEl.value:'Entrada de Produtos';});
+  // essa nota já entrou antes? avisa antes de duplicar o gasto
+  if($('#nfe_lanc')&&$('#nfe_lanc').checked&&nfJaLancada(d.nNF,d.fornecedor)
+     &&!confirm('A NF '+d.nNF+' já foi lançada para '+(d.fornecedor||'esse fornecedor')+'.\n\nImportar de novo vai duplicar o gasto. Deseja continuar?'))return;
   DB.fin=DB.fin||{};DB.fin.fornecedores=DB.fin.fornecedores||[];
   if(d.fornecedor&&!DB.fin.fornecedores.some(f=>(f.nome||'').toLowerCase()===d.fornecedor.toLowerCase()))DB.fin.fornecedores.push({id:uid(),nome:d.fornecedor,contato:d.cnpj||''});
   let cri=0,upd=0;const linkIds=[];
@@ -3070,10 +3073,15 @@ function hojeISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMon
 function ymOf(d){return (d||'').slice(0,7);}
 function fmtDataBR(iso){if(!iso)return '—';const p=iso.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:iso;}
 function ymLabel(ym){const p=(ym||'').split('-');return p.length===2?`${MESES_PT[(+p[1])-1]||''} / ${p[0]}`:ym;}
-let lancYM=null, lancFiltro={data:'',grupo:'',sub:'',desc:'',fornecedor:'',forma:''};
+let lancYM=null, lancFiltro={data:'',grupo:'',sub:'',desc:'',nf:'',fornecedor:'',forma:''};
 function lancSetFiltro(k,v){lancFiltro[k]=v;lancRefreshTabela();}
 function lancSetFiltroData(v){lancFiltro.data=v;const nym=v?ymOf(v):null;if(nym&&nym!==curYM()){lancYM=nym;viewFinanceiro();}else{lancRefreshTabela();}}
-function lancLimparFiltro(){lancFiltro={data:'',grupo:'',sub:'',desc:'',fornecedor:'',forma:''};viewFinanceiro();}
+function lancLimparFiltro(){lancFiltro={data:'',grupo:'',sub:'',desc:'',nf:'',fornecedor:'',forma:''};viewFinanceiro();}
+/* nº da NF: compara só os dígitos, então "0001234", "1234" e "NF 1.234" são a mesma nota */
+function nfKey(nf){return (''+(nf==null?'':nf)).replace(/\D/g,'').replace(/^0+/,'');}
+function nfJaLancada(nf,fornecedor,ignoraId){const k=nfKey(nf);if(!k)return false;
+  const f=(fornecedor||'').trim().toLowerCase();
+  return (DB.lancamentos||[]).some(l=>l.id!==ignoraId&&nfKey(l.nfe)===k&&(!f||!(l.fornecedor||'').trim()||(l.fornecedor||'').trim().toLowerCase()===f));}
 function curYM(){return lancYM||ymOf(hojeISO());}
 function ymNow(){return ymOf(hojeISO());} // mês-calendário atual (AAAA-MM)
 function ymMinus1(ym){let y=+ym.slice(0,4),m=+ym.slice(5,7)-1;if(m<1){m=12;y--;}return y+'-'+String(m).padStart(2,'0');}
@@ -3157,8 +3165,8 @@ function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast
   save();viewFinanceiro();toast('Lançamento registrado');}
 /* ----- Popup de lançamento (uma ou várias linhas) ----- */
 let lancDraft=[];
-const LM_GC='112px 116px 132px minmax(130px,1fr) 124px 112px 104px 74px 110px 102px 30px';
-function lmBlank(){return {data:hojeISO(),grupo:'',sub:'',desc:'',fornecedor:'',vunStr:'',vun:0,qtd:1,forma:'',insumoId:'',insSugerido:'',uni:'',descOrig:'',fromIA:false};}
+const LM_GC='112px 116px 132px minmax(130px,1fr) 92px 124px 112px 104px 74px 110px 102px 30px';
+function lmBlank(){return {data:hojeISO(),grupo:'',sub:'',desc:'',nf:'',fornecedor:'',vunStr:'',vun:0,qtd:1,forma:'',insumoId:'',insSugerido:'',uni:'',descOrig:'',fromIA:false};}
 function lmTotalLinha(r){const q=+r.qtd||0,v=+r.vun||0;return Math.round(q*v*100)/100;}
 function lmAgrupar(rows){const map=new Map();
   rows.forEach(r=>{const key=lmNorm(r.descOrig||r.desc)+'|'+Math.round((+r.vun||0)*100);
@@ -3184,11 +3192,12 @@ function lancarModal(manterRascunho){if(!manterRascunho||!lancDraft.length)lancD
       <input type="date" class="input" style="width:138px;padding:7px 9px" id="lm_bulk_data" title="Mesma data em todas as linhas" onchange="lmAplicarTodas('data',this.value)">
       <select class="input" style="width:150px;padding:7px 9px" id="lm_bulk_grupo" title="Mesma categoria em todas" onchange="lmAplicarTodas('grupo',this.value)"><option value="">Categoria…</option>${ordPt(Object.keys(DB.categorias||{})).map(g=>`<option>${esc(g)}</option>`).join('')}</select>
       <select class="input" style="width:150px;padding:7px 9px" id="lm_bulk_sub" title="Mesma subcategoria em todas" onchange="lmAplicarTodas('sub',this.value)"><option value="">Subcategoria…</option></select>
+      <input class="input" style="width:118px;padding:7px 9px" id="lm_bulk_nf" placeholder="NF nº…" title="Mesmo número de nota em todas as linhas" onchange="lmAplicarTodas('nf',this.value)">
       <input class="input" style="width:150px;padding:7px 9px" list="lm_forn" id="lm_bulk_forn" placeholder="Fornecedor…" title="Mesmo fornecedor em todas" onchange="lmAplicarTodas('fornecedor',this.value)">
       <select class="input" style="width:130px;padding:7px 9px" id="lm_bulk_forma" title="Mesma forma em todas" onchange="lmAplicarTodas('forma',this.value)"><option value="">Forma…</option>${ordPt(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select>
     </div>
-    <div style="overflow-x:auto"><div style="min-width:1240px">
-      <div style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span>Categoria</span><span>Subcategoria</span><span>Descrição</span><span>Produto</span><span>Fornecedor</span><span>Valor</span><span>Qtd</span><span style="text-align:right">Total</span><span>Forma</span><span></span></div>
+    <div style="overflow-x:auto"><div style="min-width:1330px">
+      <div style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span>Categoria</span><span>Subcategoria</span><span>Descrição</span><span>NF nº</span><span>Produto</span><span>Fornecedor</span><span>Valor</span><span>Qtd</span><span style="text-align:right">Total</span><span>Forma</span><span></span></div>
       <div id="lm_rows"></div>
     </div></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px">
@@ -3197,7 +3206,7 @@ function lancarModal(manterRascunho){if(!manterRascunho||!lancDraft.length)lancD
     </div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="lancarModalSalvar()">Lançar</button></div>`,true,true);
-  const mc=document.querySelector('#modalRoot .modal');if(mc){mc.style.maxWidth='1340px';mc.style.width='min(1340px,96vw)';}
+  const mc=document.querySelector('#modalRoot .modal');if(mc){mc.style.maxWidth='1420px';mc.style.width='min(1420px,96vw)';}
   renderLmRows();}
 function renderLmRows(){const el=$('#lm_rows');if(!el)return;const grupos=ordPt(Object.keys(DB.categorias));const formas=ordPt(DB.formasPagamento||[]);
   el.innerHTML=lancDraft.map((r,i)=>`
@@ -3206,6 +3215,7 @@ function renderLmRows(){const el=$('#lm_rows');if(!el)return;const grupos=ordPt(
      <select class="input" style="min-width:0" onchange="lancDraft[${i}].grupo=this.value;lancDraft[${i}].sub='';lmSubRefresh(${i})"><option value="" ${!r.grupo?'selected':''}>—</option>${grupos.map(g=>`<option ${g===r.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
      <select class="input" style="min-width:0" id="lm_sub_${i}" onchange="lancDraft[${i}].sub=this.value">${subOptions(r.grupo,r.sub)}</select>
      ${lmDescCel(r,i)}
+     <input class="input" style="min-width:0" value="${esc(r.nf||'')}" placeholder="nº" title="Número da nota fiscal" oninput="lancDraft[${i}].nf=this.value">
      ${lmProdutoCel(r,i)}
      <input class="input" style="min-width:0" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value">
      <div class="money-wrap" style="min-width:0"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${r.vunStr||''}" placeholder="0,00" title="Valor unitário" oninput="lancDraft[${i}].vun=moneyMask(this);lancDraft[${i}].vunStr=this.value;lmRecalc(${i})"></div>
@@ -3377,18 +3387,22 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
     if(!itens.length)return lmIaStatus('Não encontrei itens na nota. Tente uma foto mais nítida ou lance manualmente.','erro');
     const dataNota=(data.data&&/^\d{4}-\d{2}-\d{2}$/.test(data.data))?data.data:hojeISO();
     const forn=(data.fornecedor||'').trim();
+    const nfNota=(''+(data.nf||data.numero||data.numeroNota||data.nNF||'')).trim();
     const lidas=itens.map(it=>{const grupo=lmInferGrupo(it.categoria,it.subcategoria);const sub=lmMatchSub(grupo,it.subcategoria)||lmMatchSub(grupo,it.categoria);
       const raw=(it.descricao||'').trim();const m=lmAcharInsumo(raw,forn);const ins=(m&&m.mesmoForn)?DB.insumos[m.id]:null;
       const qtd=Math.abs(+it.quantidade)||1,tot=Math.abs(+it.valor)||0,vun=qtd>0?tot/qtd:tot;
-      return {data:dataNota,grupo,sub,desc:ins?ins.nome:raw,descOrig:raw,fromIA:true,fornecedor:forn,vun,vunStr:fmtMoneyInput(vun),qtd,forma:'',insumoId:ins?ins.id:'',insSugerido:(m&&!m.mesmoForn)?m.id:'',uni:normUni(it.unidade||'')};});
+      return {data:dataNota,grupo,sub,desc:ins?ins.nome:raw,descOrig:raw,nf:nfNota,fromIA:true,fornecedor:forn,vun,vunStr:fmtMoneyInput(vun),qtd,forma:'',insumoId:ins?ins.id:'',insSugerido:(m&&!m.mesmoForn)?m.id:'',uni:normUni(it.unidade||'')};});
     const novas=lmAgrupar(lidas);
     const vazio=lancDraft.length===1&&!lancDraft[0].grupo&&!lancDraft[0].desc&&!lancDraft[0].vunStr;
     lancDraft=vazio?novas:lancDraft.concat(novas);
     renderLmRows();
+    const bn=$('#lm_bulk_nf');if(bn&&nfNota)bn.value=nfNota;
     const semCat=novas.filter(r=>!r.grupo).length,semProd=novas.filter(r=>!r.insumoId&&!r.insSugerido).length,outroF=novas.filter(r=>!r.insumoId&&r.insSugerido).length;
     const avisos=[];if(semCat)avisos.push(semCat+' sem categoria');if(semProd)avisos.push(semProd+' produto(s) não cadastrado(s)');if(outroF)avisos.push(outroF+' já existe(m) com outro fornecedor — clique pra vincular ou cadastrar');
+    if(!nfNota)avisos.push('não achei o nº da NF — preencha na coluna "NF nº"');
+    else if(nfJaLancada(nfNota,forn))avisos.push('⚠ a NF '+nfNota+' já foi lançada antes');
     const agr=(novas.length<lidas.length)?(' agrupados em '+novas.length+' linha'+(novas.length===1?'':'s')):'';
-    lmIaStatus(lidas.length+(lidas.length===1?' item lido':' itens lidos')+agr+'. '+(avisos.length?avisos.join(' · ')+'. ':'')+'Revise categoria e valores antes de lançar.',avisos.length?'info':'ok');
+    lmIaStatus(lidas.length+(lidas.length===1?' item lido':' itens lidos')+agr+(nfNota?' · NF '+nfNota:'')+'. '+(avisos.length?avisos.join(' · ')+'. ':'')+'Revise categoria e valores antes de lançar.',avisos.length?'info':'ok');
   }catch(e){lmIaStatus('Erro ao processar a nota: '+((e&&e.message)||e)+'.','erro');}
   finally{lmLoading(false);if(btn){btn.disabled=false;btn.style.opacity='';}}
 }
@@ -3396,9 +3410,12 @@ function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
   // itens de CMV que serão lançados sem produto vinculado (amarelo) → confirma antes
   const semProd=lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo==='CMV'&&!(r.insumoId&&DB.insumos[r.insumoId])).length;
   if(semProd>0 && !confirm('Atenção: '+semProd+(semProd===1?' item de CMV não está vinculado a um produto cadastrado (aparece em amarelo).':' itens de CMV não estão vinculados a produtos cadastrados (aparecem em amarelo).')+'\n\nSem o vínculo, o gasto não atualiza o custo do produto nem o estoque. Deseja lançar mesmo assim?')) return;
+  // avisa se alguma NF do rascunho já foi lançada antes (mesma nota + mesmo fornecedor)
+  const jaLancadas=[...new Set(lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo&&nfKey(r.nf)&&nfJaLancada(r.nf,r.fornecedor)).map(r=>(r.nf||'').trim()))];
+  if(jaLancadas.length && !confirm('A NF '+jaLancadas.join(', ')+(jaLancadas.length===1?' já foi lançada':' já foram lançadas')+' para esse fornecedor.\n\nDeseja lançar mesmo assim?')) return;
   let n=0,lastYM=null,prodAtu=0;
   lancDraft.forEach(r=>{const valor=lmTotalLinha(r);if(!valor||!r.grupo)return;
-    const nv={id:uid(),data:r.data||hojeISO(),grupo:r.grupo,sub:r.sub||'',descricao:(r.desc||'').trim(),fornecedor:(r.fornecedor||'').trim(),valor,forma:r.forma||''};
+    const nv={id:uid(),data:r.data||hojeISO(),grupo:r.grupo,sub:r.sub||'',descricao:(r.desc||'').trim(),nfe:(r.nf||'').trim(),fornecedor:(r.fornecedor||'').trim(),valor,forma:r.forma||''};
     if((+r.qtd||1)!==1){nv.qtd=+r.qtd;if(r.uni)nv.uni=r.uni;}
     const ins=r.insumoId&&DB.insumos[r.insumoId];
     if(ins){nv.insumoId=r.insumoId;
@@ -3452,23 +3469,27 @@ function editLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!
       <div class="field"><label>Categoria</label><select class="input" id="el_grupo" onchange="elSubRefresh()">${grupos.map(g=>`<option ${g===l.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
       <div class="field"><label>Subcategoria</label><select class="input" id="el_sub">${ordPt(DB.categorias[l.grupo]?DB.categorias[l.grupo].subs:[]).map(x=>`<option ${x===l.sub?'selected':''}>${esc(x)}</option>`).join('')||`<option value="">—</option>`}</select></div>
     </div>
-    <div class="field"><label>Descrição</label><input class="input" id="el_desc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" placeholder="Referência, nº NF..."></div>
-    <div class="field"><label>Fornecedor</label><input class="input" id="el_fornecedor" list="el_forn_list" value="${(l.fornecedor||'').replace(/"/g,'&quot;')}" placeholder="opcional"><datalist id="el_forn_list">${((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('')}</datalist></div>
+    <div class="field"><label>Descrição</label><input class="input" id="el_desc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" placeholder="Referência, histórico..."></div>
+    <div class="grid-2">
+      <div class="field"><label>NF nº <span class="hint">opcional</span></label><input class="input" id="el_nfe" value="${(l.nfe||'').replace(/"/g,'&quot;')}" placeholder="nº da nota fiscal"></div>
+      <div class="field"><label>Fornecedor</label><input class="input" id="el_fornecedor" list="el_forn_list" value="${(l.fornecedor||'').replace(/"/g,'&quot;')}" placeholder="opcional"><datalist id="el_forn_list">${((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('')}</datalist></div>
+    </div>
     <div class="field"><label>Forma de pagamento</label><select class="input" id="el_forma"><option value="">—</option>${ordPt(DB.formasPagamento||[]).map(x=>`<option ${x===l.forma?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveLancamento('${id}')">Salvar</button></div>`);
 }
 function saveLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)return closeModal();
   const valor=moneyVal('el_valor');if(!valor)return toast('Informe o valor');
-  l.data=$('#el_data').value||l.data;l.grupo=$('#el_grupo').value;l.sub=$('#el_sub').value||'';l.descricao=($('#el_desc').value||'').trim();l.fornecedor=($('#el_fornecedor')?($('#el_fornecedor').value||'').trim():(l.fornecedor||''));l.valor=valor;l.forma=$('#el_forma').value||'';
+  l.data=$('#el_data').value||l.data;l.grupo=$('#el_grupo').value;l.sub=$('#el_sub').value||'';l.descricao=($('#el_desc').value||'').trim();l.nfe=($('#el_nfe')?($('#el_nfe').value||'').trim():(l.nfe||''));l.fornecedor=($('#el_fornecedor')?($('#el_fornecedor').value||'').trim():(l.fornecedor||''));l.valor=valor;l.forma=$('#el_forma').value||'';
   syncTaxaLanc(l);save();closeModal();viewFinanceiro();toast('Lançamento atualizado');}
 function lancFiltrados(ym){
-  const fl=lancFiltro, ativo=fl.data||fl.grupo||fl.sub||fl.desc||fl.fornecedor||fl.forma;
+  const fl=lancFiltro, ativo=fl.data||fl.grupo||fl.sub||fl.desc||fl.nf||fl.fornecedor||fl.forma;
   const ls=lancMes(ym).filter(l=>
     (!fl.data||l.data===fl.data)&&
     (!fl.grupo||l.grupo===fl.grupo)&&
     (!fl.sub||(l.sub||'').toLowerCase().includes(fl.sub.toLowerCase()))&&
     (!fl.desc||(l.descricao||'').toLowerCase().includes(fl.desc.toLowerCase()))&&
+    (!fl.nf||(nfKey(fl.nf)?nfKey(l.nfe).includes(nfKey(fl.nf)):true))&&
     (!fl.fornecedor||(l.fornecedor||'').toLowerCase().includes(fl.fornecedor.toLowerCase()))&&
     (!fl.forma||(l.forma||'')===fl.forma)
   ).sort((a,b)=>(b.data||'').localeCompare(a.data||'')||0);
@@ -3477,10 +3498,10 @@ function lancFiltrados(ym){
 }
 function lancInfoHTML(ls,ativo){return `<div style="font-size:12.5px;color:var(--soft)">${ls.length} lançamento(s)${ativo?' · filtrado':''}</div>${ativo?`<a onclick="lancLimparFiltro()" style="color:var(--gold);font-weight:600;font-size:12.5px;cursor:pointer">Limpar filtros ✕</a>`:''}`;}
 function lancRowsHTML(ls,ativo){return ls.length?ls.map(l=>{const rec=grupoTipo(l.grupo)==='receita';const auto=l.autoTaxa;return `<tr${auto?' style="background:var(--bg)"':''}>
-      <td>${fmtDataBR(l.data)}</td><td>${esc(l.grupo)}</td><td>${esc(l.sub||'—')}${auto?' <span style="font-size:9.5px;color:var(--soft);border:1px solid var(--line);border-radius:5px;padding:0 4px;letter-spacing:.3px">AUTO</span>':''}</td><td>${esc(l.descricao||'—')}</td><td style="color:var(--soft)">${esc(l.fornecedor||'—')}</td><td style="color:var(--soft)">${esc(l.forma||'—')}</td>
+      <td>${fmtDataBR(l.data)}</td><td>${esc(l.grupo)}</td><td>${esc(l.sub||'—')}${auto?' <span style="font-size:9.5px;color:var(--soft);border:1px solid var(--line);border-radius:5px;padding:0 4px;letter-spacing:.3px">AUTO</span>':''}</td><td>${esc(l.descricao||'—')}</td><td style="white-space:nowrap">${l.nfe?esc(l.nfe):'<span style="color:var(--soft)">—</span>'}</td><td style="color:var(--soft)">${esc(l.fornecedor||'—')}</td><td style="color:var(--soft)">${esc(l.forma||'—')}</td>
       <td class="num" style="color:${rec?'var(--green)':'var(--red)'};font-weight:600;white-space:nowrap">${rec?'+':'−'} ${fmtBRL(l.valor)}</td>
-      <td class="num">${auto?`<span style="font-size:10.5px;color:var(--soft)" title="Taxa calculada automaticamente sobre o recebível. Ajuste o % em Parâmetros.">automático</span>`:`<div style="display:inline-flex;gap:6px"><button class="icon-btn" title="Editar" onclick="editLancamento('${l.id}')">${icoEdit}</button><button class="icon-btn" title="Excluir" style="color:var(--red)" onclick="delLancamento('${l.id}')">${icoX}</button></div>`}</td></tr>`;}).join(''):`<tr><td colspan="8" style="color:var(--soft);text-align:center;padding:14px">${ativo?'Nenhum lançamento com esse filtro.':'Nenhum lançamento neste mês. Use o formulário acima.'}</td></tr>`;}
-function lancFootHTML(ls,ativo,filtTot){return ativo&&ls.length?`<tr><td colspan="6" style="text-align:right;font-weight:600;border-top:2px solid var(--navy)">Total filtrado</td><td class="num" style="font-weight:700;color:${filtTot>=0?'var(--green)':'var(--red)'};border-top:2px solid var(--navy)">${fmtBRL(filtTot)}</td><td style="border-top:2px solid var(--navy)"></td></tr>`:'';}
+      <td class="num">${auto?`<span style="font-size:10.5px;color:var(--soft)" title="Taxa calculada automaticamente sobre o recebível. Ajuste o % em Parâmetros.">automático</span>`:`<div style="display:inline-flex;gap:6px"><button class="icon-btn" title="Editar" onclick="editLancamento('${l.id}')">${icoEdit}</button><button class="icon-btn" title="Excluir" style="color:var(--red)" onclick="delLancamento('${l.id}')">${icoX}</button></div>`}</td></tr>`;}).join(''):`<tr><td colspan="9" style="color:var(--soft);text-align:center;padding:14px">${ativo?'Nenhum lançamento com esse filtro.':'Nenhum lançamento neste mês. Use o formulário acima.'}</td></tr>`;}
+function lancFootHTML(ls,ativo,filtTot){return ativo&&ls.length?`<tr><td colspan="7" style="text-align:right;font-weight:600;border-top:2px solid var(--navy)">Total filtrado</td><td class="num" style="font-weight:700;color:${filtTot>=0?'var(--green)':'var(--red)'};border-top:2px solid var(--navy)">${fmtBRL(filtTot)}</td><td style="border-top:2px solid var(--navy)"></td></tr>`:'';}
 function lancRefreshTabela(){
   const tb=$('#lancTbody'); if(!tb)return viewFinanceiro();
   const {ls,ativo,filtTot}=lancFiltrados(curYM());
@@ -3510,12 +3531,13 @@ function finLancamentos(){
     </div>
     <div id="lancInfo" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">${lancInfoHTML(ls,ativo)}</div>
     <div class="scroll-x"><table><thead>
-      <tr><th>Data</th><th>Categoria</th><th>Subcategoria</th><th>Descrição</th><th>Fornecedor</th><th>Forma</th><th class="num">Valor</th><th></th></tr>
+      <tr><th>Data</th><th>Categoria</th><th>Subcategoria</th><th>Descrição</th><th>NF nº</th><th>Fornecedor</th><th>Forma</th><th class="num">Valor</th><th></th></tr>
       <tr class="lanc-filtro">
         <th><input type="date" class="input" value="${fl.data||''}" title="Filtrar por dia" onchange="lancSetFiltroData(this.value)"></th>
         <th><select class="input" onchange="lancSetFiltro('grupo',this.value)"><option value="">Todos</option>${grupos.map(g=>`<option ${fl.grupo===g?'selected':''}>${esc(g)}</option>`).join('')}</select></th>
         <th><input class="input" placeholder="filtrar..." value="${(fl.sub||'').replace(/"/g,'&quot;')}" oninput="clearTimeout(window._lf1);window._lf1=setTimeout(()=>lancSetFiltro('sub',this.value),350)"></th>
         <th><input class="input" placeholder="filtrar..." value="${(fl.desc||'').replace(/"/g,'&quot;')}" oninput="clearTimeout(window._lf2);window._lf2=setTimeout(()=>lancSetFiltro('desc',this.value),350)"></th>
+        <th><input class="input" placeholder="nº da nota" title="Digite o número para ver se essa NF já foi lançada" value="${(fl.nf||'').replace(/"/g,'&quot;')}" oninput="clearTimeout(window._lf4);window._lf4=setTimeout(()=>lancSetFiltro('nf',this.value),350)"></th>
         <th><input class="input" placeholder="filtrar..." value="${(fl.fornecedor||'').replace(/"/g,'&quot;')}" oninput="clearTimeout(window._lf3);window._lf3=setTimeout(()=>lancSetFiltro('fornecedor',this.value),350)"></th>
         <th><select class="input" onchange="lancSetFiltro('forma',this.value)"><option value="">Todas</option>${formas.map(x=>`<option ${fl.forma===x?'selected':''}>${esc(x)}</option>`).join('')}</select></th>
         <th></th><th></th>
@@ -3553,20 +3575,20 @@ function parseDataISO(v){if(v==null||v==='')return '';
   return '';}
 function mesNum(v){if(v==null||v==='')return 0;const s=v.toString().trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');const n=parseInt(s,10);if(n>=1&&n<=12)return n;
   const nm=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];const i=nm.findIndex(x=>x.slice(0,3)===s.slice(0,3));return i>=0?i+1:0;}
-function lancModeloAOA(){return [['Data','Grupo','Subcategoria','Descrição','Valor','Forma de Pagamento'],
-  ['01/05/2026','Receita','PIX','Vendas do dia',1500,'PIX'],
-  ['01/05/2026','Receita','Cartão de Crédito','Vendas cartão',3200,'Crédito'],
-  ['01/05/2026','CMV','Proteína - Bovina','Carnes',-320.5,'Boleto'],
-  ['05/05/2026','Despesas Prediais','Aluguel','Aluguel maio',-4200,'Transferência'],
-  ['10/05/2026','Utilidades','Energia Elétrica','Conta de luz',-680,'Débito']];}
+function lancModeloAOA(){return [['Data','Grupo','Subcategoria','Descrição','NF nº','Valor','Forma de Pagamento'],
+  ['01/05/2026','Receita','PIX','Vendas do dia','',1500,'PIX'],
+  ['01/05/2026','Receita','Cartão de Crédito','Vendas cartão','',3200,'Crédito'],
+  ['01/05/2026','CMV','Proteína - Bovina','Carnes','12345',-320.5,'Boleto'],
+  ['05/05/2026','Despesas Prediais','Aluguel','Aluguel maio','',-4200,'Transferência'],
+  ['10/05/2026','Utilidades','Energia Elétrica','Conta de luz','',-680,'Débito']];}
 async function baixarModeloLanc(fmt){const aoa=lancModeloAOA();
   if(fmt==='csv'){const csv=aoa.map(r=>r.map(c=>{let s=(typeof c==='number')?String(c).replace('.',','):String(c);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(';')).join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download='modelo-lancamentos.csv';a.click();}
-  else{try{const X=await loadXLSX();const ws=X.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:12},{wch:20},{wch:18},{wch:26},{wch:12},{wch:18}];const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Lançamentos');X.writeFile(wb,'modelo-lancamentos.xlsx');}catch(e){toast('Não foi possível gerar o Excel. Tente CSV.');}}
+  else{try{const X=await loadXLSX();const ws=X.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:12},{wch:20},{wch:18},{wch:26},{wch:10},{wch:12},{wch:18}];const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Lançamentos');X.writeFile(wb,'modelo-lancamentos.xlsx');}catch(e){toast('Não foi possível gerar o Excel. Tente CSV.');}}
   closeModal();}
 function modeloLancModal(){
   modal(`<div class="modal-head"><h3>Modelo · Lançamentos</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Baixe a planilha, preencha e importe em <b>Lançamentos › Importar</b>. Colunas: <b>Data · Grupo · Subcategoria · Descrição · Valor · Forma de Pagamento</b>.</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Baixe a planilha, preencha e importe em <b>Lançamentos › Importar</b>. Colunas: <b>Data · Grupo · Subcategoria · Descrição · NF nº · Valor · Forma de Pagamento</b>. A coluna <b>NF nº</b> é opcional — preencha nas compras para controlar quais notas já entraram.</div>
     <div class="alert alert-amber" style="margin-bottom:14px">${icoWarn}<div><b>Sinal do valor:</b> receitas com valor <b>positivo</b> e despesas com valor <b>negativo</b> (ex.: Aluguel = −4200). Os grupos que não existirem ainda são criados automaticamente.</div></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" onclick="baixarModeloLanc('xlsx')">⬇ Excel (.xlsx)</button><button class="btn btn-ghost" onclick="baixarModeloLanc('csv')">⬇ CSV (.csv)</button></div>
   </div>`);
@@ -3580,9 +3602,11 @@ async function importarLancamentos(input){const f=input&&input.files&&input.file
   // mapeia colunas pelo cabeçalho (aceita qualquer ordem); senão usa posição padrão
   const header=rows[0]||[];const temHdr=/data|grupo|valor|descri|forma|subcateg|categoria/.test(normHdr(header.join(' ')));
   let M;
-  if(temHdr){M={data:colIdx(header,['data']),ano:colIdx(header,['ano']),mes:colIdx(header,['mes']),dia:colIdx(header,['dia']),grupo:colIdx(header,['grupo']),sub:colIdx(header,['subcategoria','subcateg']),desc:colIdx(header,['descricao','descri','historico','observ']),valor:colIdx(header,['valor','total']),forma:colIdx(header,['forma','pagamento','meio'])};
-    if(M.sub<0)M.sub=colIdx(header,['categoria']);}
-  else M={data:0,ano:-1,mes:-1,dia:-1,grupo:1,sub:2,desc:3,valor:4,forma:5};
+  if(temHdr){M={data:colIdx(header,['data']),ano:colIdx(header,['ano']),mes:colIdx(header,['mes']),dia:colIdx(header,['dia']),grupo:colIdx(header,['grupo']),sub:colIdx(header,['subcategoria','subcateg']),desc:colIdx(header,['descricao','descri','historico','observ']),nf:colIdx(header,['nota fiscal','nf n','nf º','numero da nota','num nota','nfe']),valor:colIdx(header,['valor','total']),forma:colIdx(header,['forma','pagamento','meio'])};
+    if(M.sub<0)M.sub=colIdx(header,['categoria']);
+    // "nf" sozinho só vale como cabeçalho inteiro (senão casaria com "Informações")
+    if(M.nf<0)M.nf=header.findIndex(h=>['nf','nota','n nf','nº nf'].includes(normHdr(h)));}
+  else M={data:0,ano:-1,mes:-1,dia:-1,grupo:1,sub:2,desc:3,nf:-1,valor:4,forma:5};
   if(M.grupo<0)M.grupo=1;if(M.valor<0)M.valor=4;
   const cell=(row,i)=>i>=0&&row[i]!=null?row[i].toString().trim():'';
   DB.lancamentos=DB.lancamentos||[];DB.categorias=DB.categorias||{};DB.formasPagamento=DB.formasPagamento||[];
@@ -3596,7 +3620,7 @@ async function importarLancamentos(input){const f=input&&input.files&&input.file
     if(!DB.categorias[grupo]){DB.categorias[grupo]={tipo:val>=0?'receita':'despesa',subs:sub?[sub]:[]};novos++;}
     else if(sub&&!DB.categorias[grupo].subs.includes(sub))DB.categorias[grupo].subs.push(sub);
     if(forma&&!DB.formasPagamento.includes(forma))DB.formasPagamento.push(forma);
-    DB.lancamentos.push({id:uid(),data,grupo,sub,descricao:desc,valor:Math.abs(val),forma,importado:true});add++;ult=ymOf(data);
+    DB.lancamentos.push({id:uid(),data,grupo,sub,descricao:desc,nfe:cell(row,M.nf),valor:Math.abs(val),forma,importado:true});add++;ult=ymOf(data);
   }
   if(!add)return toast('Nenhuma linha válida (confira Data, Grupo e Valor)');
   syncAllTaxas(); // gera as taxas de cartão/PIX sobre as receitas importadas
