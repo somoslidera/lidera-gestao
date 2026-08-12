@@ -2187,13 +2187,51 @@ function parseNFe(text){
   const cnpj=emit?one(emit,'CNPJ'):'';
   const nNF=ide?one(ide,'nNF'):'';
   let data=ide?(one(ide,'dhEmi')||one(ide,'dEmi')):''; data=(data||'').slice(0,10);
+  const num=(p,t)=>{const v=parseFloat(one(p,t));return isFinite(v)?v:0;};
   const itens=Array.from(doc.getElementsByTagNameNS('*','det')).map(det=>{const prod=det.getElementsByTagNameNS('*','prod')[0];if(!prod)return null;
-    return {desc:one(prod,'xProd'),uCom:one(prod,'uCom'),qtd:parseFloat(one(prod,'qCom'))||0,vUn:parseFloat(one(prod,'vUnCom'))||0,vTotal:parseFloat(one(prod,'vProd'))||0};}).filter(Boolean);
+    const imp=det.getElementsByTagNameNS('*','imposto')[0];
+    // cobrados POR FORA do preço do item (o ICMS normal já está dentro do vProd — não entra aqui)
+    const porFora=(imp?num(imp,'vICMSST')+num(imp,'vFCPST')+num(imp,'vIPI'):0)
+                  +num(prod,'vFrete')+num(prod,'vSeg')+num(prod,'vOutro')-num(prod,'vDesc');
+    return {desc:one(prod,'xProd'),uCom:one(prod,'uCom'),qtd:parseFloat(one(prod,'qCom'))||0,vUn:parseFloat(one(prod,'vUnCom'))||0,vTotal:parseFloat(one(prod,'vProd'))||0,vExtraNota:+porFora.toFixed(2)};}).filter(Boolean);
   if(!itens.length)return null;
   const vNF=doc.getElementsByTagNameNS('*','vNF')[0];
   let total=vNF?parseFloat(vNF.textContent)||0:0; if(!total)total=itens.reduce((s,i)=>s+i.vTotal,0);
   return {fornecedor,cnpj,nNF,data,total,itens};
 }
+/* ----- Impostos e despesas que entram no custo real do produto -----
+   Na nota, o preço do item (vProd) NÃO inclui ICMS-ST, IPI, frete, seguro e outras despesas,
+   mas o restaurante paga tudo isso — então isso é custo do produto. Já o ICMS "normal" é
+   imposto por dentro: JÁ está no vProd, e somá-lo de novo inflaria o custo.
+   No XML pegamos item a item (preciso). O que faltar para fechar o Valor Total da Nota
+   (frete/despesas informados só no total, ou o caso do PDF) é rateado proporcional ao item. */
+function nfeCalcExtras(d){
+  const itens=(d&&d.itens)||[];
+  const somaProd=itens.reduce((s,i)=>s+(+i.vTotal||0),0);
+  itens.forEach(i=>{const e=+i.vExtraNota||0;i.vExtra=isFinite(e)?+e.toFixed(2):0;});
+  const somaExtra=itens.reduce((s,i)=>s+(i.vExtra||0),0);
+  const totalNota=+d.total||0;
+  const resid=+(totalNota-somaProd-somaExtra).toFixed(2);
+  if(totalNota>0&&somaProd>0&&Math.abs(resid)>0.02){
+    let acc=0;const ult=itens.length-1;
+    itens.forEach((i,k)=>{
+      const add=(k===ult)?+(resid-acc).toFixed(2):+(resid*((+i.vTotal||0)/somaProd)).toFixed(2);
+      if(k<ult)acc=+(acc+add).toFixed(2);
+      i.vExtra=+((i.vExtra||0)+add).toFixed(2);});
+  }
+  itens.forEach(i=>{if(!isFinite(i.vExtra))i.vExtra=0;});
+  d.somaProdutos=+somaProd.toFixed(2);
+  d.totalExtras=+itens.reduce((s,i)=>s+(i.vExtra||0),0).toFixed(2);
+  // muito acima do normal costuma ser item não lido no PDF, não imposto — aí avisamos em vez de embutir
+  d.extrasSuspeito=somaProd>0&&d.totalExtras>somaProd*0.6;
+  return d;
+}
+function nfeCustoItem(it,comImp){return +(((+it.vTotal||0)+(comImp?(+it.vExtra||0):0)).toFixed(2));}
+function nfeComImp(){const el=$('#nfe_imp');return el?!!el.checked:false;}
+function nfeImpRefresh(){const d=window._nfe;if(!d)return;const on=nfeComImp();
+  (d.itens||[]).forEach((it,idx)=>{const el=$('#nfe_cimp_'+idx);if(!el)return;
+    const tEl=$('#nfe_tot_'+idx);const base=tEl?nfeBrNum(tEl.value):(it.vTotal||0);
+    el.textContent=fmtBRL(base+(on?(it.vExtra||0):0));el.style.opacity=on?'':'.45';});}
 function nfeMatch(desc){const n=normHdr(desc);if(!n)return '';let best='';
   Object.values(DB.insumos).filter(i=>i.tipo!=='preparado').forEach(i=>{const ni=normHdr(i.nome);if(ni&&(n.includes(ni)||ni.includes(n)))best=i.id;});
   return best;}
@@ -2259,36 +2297,39 @@ async function importarNFe(input){const f=input&&input.files&&input.files[0];if(
   if(isPdf){let d;toast('Lendo o PDF da nota…');
     try{const buf=await f.arrayBuffer();const pages=await pdfRows(buf);d=parseDanfePdf(pages);}catch(e){return toast('Não consegui ler o PDF. Se possível, use o XML (mais preciso).');}
     if(!d||!d.itens.length)return toast('Não reconheci os itens no PDF do DANFE. Tente o XML da nota (mais preciso).');
-    window._nfe=d;nfeConfirmModal(d);return;}
+    window._nfe=nfeCalcExtras(d);nfeConfirmModal(d);return;}
   let text;try{text=await f.text();}catch(e){return toast('Não foi possível ler o arquivo.');}
   const d=parseNFe(text);
   if(!d)return toast('Não reconheci a NF-e. Envie o .xml da nota, ou o PDF do DANFE.');
-  window._nfe=d; nfeConfirmModal(d);
+  window._nfe=nfeCalcExtras(d); nfeConfirmModal(d);
 }
 function nfeEnsureCats(){DB.categorias=DB.categorias||{};if(!DB.categorias['CMV'])DB.categorias['CMV']={tipo:'despesa',subs:[]};if(!DB.categorias['CMV'].subs.includes('Entrada de Produtos'))DB.categorias['CMV'].subs.unshift('Entrada de Produtos');}
 function nfeSubRefresh(idx){const g=$('#nfe_grupo_'+idx),s=$('#nfe_sub_'+idx);if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=ordPt(c&&c.subs.length?c.subs:['(sem subcategoria)']).map(x=>`<option>${esc(x)}</option>`).join('');}
 function nfeMapChanged(idx){const sel=$('#nfe_map_'+idx),dEl=$('#nfe_desc_'+idx);if(!sel||!dEl)return;const v=sel.value;if(v&&v!=='novo'&&v!=='ignorar'&&DB.insumos[v])dEl.value=DB.insumos[v].nome;}
 function nfeRowTot(idx){const q=nfeBrNum(($('#nfe_qtd_'+idx)||{}).value),v=nfeBrNum(($('#nfe_vun_'+idx)||{}).value);const s=$('#nfe_tot_'+idx);
-  if(s&&s.dataset.manual!=='1'&&q*v>0)s.value=(+(q*v).toFixed(2)); /* recalcula o total, exceto se o usuário digitou o total à mão */ }
-function nfeTotEdit(idx){const s=$('#nfe_tot_'+idx);if(s)s.dataset.manual='1';}
+  if(s&&s.dataset.manual!=='1'&&q*v>0)s.value=(+(q*v).toFixed(2)); /* recalcula o total, exceto se o usuário digitou o total à mão */
+  nfeImpRefresh();}
+function nfeTotEdit(idx){const s=$('#nfe_tot_'+idx);if(s)s.dataset.manual='1';nfeImpRefresh();}
 function nfeConfirmModal(d){
   nfeEnsureCats();
   const cats=catList('insumo'),insumos=Object.values(DB.insumos).filter(i=>i.tipo!=='preparado');
   const gruposDesp=ordPt(Object.keys(DB.categorias).filter(g=>grupoTipo(g)!=='receita'));
   const gDef=gruposDesp.includes('CMV')?'CMV':(gruposDesp[0]||'CMV');
   const subsDef=ordPt((DB.categorias[gDef]||{subs:[]}).subs);const subDef=subsDef.includes('Entrada de Produtos')?'Entrada de Produtos':(subsDef[0]||'');
+  const temImp=Math.abs(d.totalExtras||0)>0.01, ehDesc=(d.totalExtras||0)<0;
   const cards=d.itens.map((it,idx)=>{const m=nfeMatch(it.desc);const preDesc=(m&&DB.insumos[m])?DB.insumos[m].nome:(it.desc||'');return `
     <div style="border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:9px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <div class="field" style="margin:0;min-width:0"><label>Descrição</label><input class="input" id="nfe_desc_${idx}" value="${esc(preDesc)}"></div>
         <div class="field" style="margin:0;min-width:0"><label>Produto no app</label><select class="input" id="nfe_map_${idx}" onchange="nfeMapChanged(${idx})"><option value="novo" ${!m?'selected':''}>＋ Criar novo produto</option><option value="ignorar">Ignorar este item</option>${insumos.map(i=>`<option value="${i.id}" ${m===i.id?'selected':''}>${esc(i.nome)}</option>`).join('')}</select></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 90px 100px 104px;gap:8px;align-items:end">
+      <div style="display:grid;grid-template-columns:1fr 1fr 90px 100px 104px${temImp?' 112px':''};gap:8px;align-items:end">
         <div class="field" style="margin:0;min-width:0"><label>Categoria (DRE)</label><select class="input" id="nfe_grupo_${idx}" onchange="nfeSubRefresh(${idx})">${gruposDesp.map(g=>`<option ${g===gDef?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
         <div class="field" style="margin:0;min-width:0"><label>Subcategoria</label><select class="input" id="nfe_sub_${idx}">${(subsDef.length?subsDef:['(sem subcategoria)']).map(x=>`<option ${x===subDef?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
         <div class="field" style="margin:0;min-width:0"><label>Qtd ${esc(it.uCom||'')}</label><input class="input" id="nfe_qtd_${idx}" value="${it.qtd||0}" oninput="nfeRowTot(${idx})" style="width:100%;padding:6px 7px"></div>
         <div class="field" style="margin:0;min-width:0"><label>V. unit</label><input class="input" id="nfe_vun_${idx}" value="${it.vUn||0}" oninput="nfeRowTot(${idx})" style="width:100%;padding:6px 7px"></div>
-        <div class="field" style="margin:0;min-width:0"><label>Total</label><input class="input" id="nfe_tot_${idx}" value="${it.vTotal||0}" oninput="nfeTotEdit(${idx})" title="Valor total do item (vem da nota; pode ajustar)" style="width:100%;padding:6px 7px;text-align:right;font-weight:600"></div>
+        <div class="field" style="margin:0;min-width:0"><label>Total</label><input class="input" id="nfe_tot_${idx}" value="${it.vTotal||0}" oninput="nfeTotEdit(${idx})" title="Valor total do item como vem impresso na nota (sem os impostos por fora)" style="width:100%;padding:6px 7px;text-align:right;font-weight:600"></div>
+        ${temImp?`<div class="field" style="margin:0;min-width:0"><label title="Total do item somado à parte dele nos impostos e despesas da nota">${ehDesc?'C/ desconto':'C/ imposto'}</label><div class="input" id="nfe_cimp_${idx}" title="${ehDesc?'':'+ '}${fmtBRL(it.vExtra||0)} ${ehDesc?'de desconto da nota':'de ICMS-ST / IPI / frete'}" style="padding:6px 7px;text-align:right;font-weight:700;background:var(--bg);color:var(--navy)">${fmtBRL((it.vTotal||0)+(it.vExtra||0))}</div></div>`:''}
       </div>
     </div>`;}).join('');
   modal(`<div class="modal-head"><h3>Importar NF-e</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
@@ -2299,6 +2340,13 @@ function nfeConfirmModal(d){
       <div class="field" style="flex:1 1 150px;margin:0"><label>Data</label><input class="input" type="date" id="nfe_data" value="${d.data||''}"></div>
     </div>
     ${d._pdf?`<div style="font-size:12px;background:var(--amber-bg,#fff7e6);border:1px solid var(--amber);color:#8a5a00;padding:9px 11px;border-radius:10px;margin-bottom:10px">⚠ Itens lidos do <b>PDF do DANFE</b> (leitura automática). Confira e ajuste os campos de cada item antes de importar — o <b>XML</b> da nota é sempre mais preciso.</div>`:''}
+    ${temImp?`<label style="display:flex;gap:9px;align-items:flex-start;background:var(--bg);border:1px solid ${d.extrasSuspeito?'var(--amber)':'var(--line)'};border-radius:10px;padding:10px 12px;margin-bottom:10px;cursor:pointer;font-size:12.5px">
+      <input type="checkbox" id="nfe_imp" checked style="width:16px;height:16px;margin-top:1px;flex:0 0 auto" onchange="nfeImpRefresh()">
+      <span style="min-width:0"><b>${ehDesc?'Aplicar o desconto da nota ao custo dos produtos — '+fmtBRL(Math.abs(d.totalExtras)):'Somar impostos e despesas ao custo dos produtos — '+fmtBRL(d.totalExtras)}</b><br>
+        <span style="color:var(--muted)">${ehDesc?'A nota fechou abaixo da soma dos itens (desconto), então o custo de cada produto cai proporcionalmente.':'ICMS-ST, IPI, frete e outras despesas cobrados <b>por fora</b> do preço. O ICMS normal não entra: ele já está dentro do preço do item.'}</span><br>
+        <span style="color:var(--soft)">Produtos ${fmtBRL(d.somaProdutos)} ${ehDesc?'−':'+'} ${fmtBRL(Math.abs(d.totalExtras))} = <b>${fmtBRL(d.total)}</b>, o total da nota.</span>
+        ${d.extrasSuspeito?`<br><span style="color:var(--amber);font-weight:600">⚠ Esse valor está alto demais para imposto — provavelmente algum item da nota não foi lido. Confira os itens antes de importar.</span>`:''}
+      </span></label>`:''}
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Cada item é editável: descrição, produto vinculado (atualiza o preço), <b>categoria e subcategoria do DRE</b>, quantidade e valor. Vincule ao mesmo produto para somar os gastos sem duplicar.</div>
     <div style="max-height:360px;overflow:auto">${cards}</div>
     <div style="margin-top:6px;border-top:1px solid var(--line);padding-top:12px">
@@ -2323,6 +2371,10 @@ function nfeAplicar(){
     it.vTotal = totInf>0 ? totInf : (calc>0?calc:(it.vTotal||0)); // não zera: cai p/ o total da própria nota (vProd)
     if((!it.vUn||it.vUn<=0)&&it.vTotal>0&&it.qtd>0)it.vUn=+(it.vTotal/it.qtd).toFixed(4); // deriva o unitário p/ o preço do produto quando a nota não traz
     const gEl=$('#nfe_grupo_'+idx),sEl=$('#nfe_sub_'+idx);it._grupo=gEl?gEl.value:'CMV';it._sub=sEl?sEl.value:'Entrada de Produtos';});
+  // custo real do item = valor da nota + a parte dele nos impostos/despesas cobrados por fora
+  const comImp=nfeComImp();
+  d.itens.forEach(it=>{it._custo=nfeCustoItem(it,comImp);
+    it._vUnCusto=(it.qtd>0)?+(it._custo/it.qtd).toFixed(4):it._custo;});
   // essa nota já entrou antes? avisa antes de duplicar o gasto
   if($('#nfe_lanc')&&$('#nfe_lanc').checked&&nfJaLancada(d.nNF,d.fornecedor)
      &&!confirm('A NF '+d.nNF+' já foi lançada para '+(d.fornecedor||'esse fornecedor')+'.\n\nImportar de novo vai duplicar o gasto. Deseja continuar?'))return;
@@ -2331,19 +2383,20 @@ function nfeAplicar(){
   let cri=0,upd=0;const linkIds=[];
   d.itens.forEach((it,idx)=>{const sel=$('#nfe_map_'+idx);const target=sel?sel.value:'novo';
     if(target==='ignorar'){linkIds[idx]=null;return;}
-    if(target&&target!=='novo'&&DB.insumos[target]){const ins=DB.insumos[target];if(it.vUn>0)ins.preco=it.vUn;if(d.fornecedor)ins.fornecedor=d.fornecedor;upd++;linkIds[idx]=ins.id;}
-    else{const nid=uid();DB.insumos[nid]={id:nid,nome:it.desc||'Item NF',cat:(it._sub||it._grupo||'Mercearia'),grupo:it._grupo||'CMV',sub:it._sub||'',tipo:'pronto',uni:normUni(it.uCom),qtd:1,preco:it.vUn||0,fornecedor:d.fornecedor||''};cri++;linkIds[idx]=nid;}
+    if(target&&target!=='novo'&&DB.insumos[target]){const ins=DB.insumos[target];if(it._vUnCusto>0)ins.preco=it._vUnCusto;if(d.fornecedor)ins.fornecedor=d.fornecedor;upd++;linkIds[idx]=ins.id;}
+    else{const nid=uid();DB.insumos[nid]={id:nid,nome:it.desc||'Item NF',cat:(it._sub||it._grupo||'Mercearia'),grupo:it._grupo||'CMV',sub:it._sub||'',tipo:'pronto',uni:normUni(it.uCom),qtd:1,preco:it._vUnCusto||0,fornecedor:d.fornecedor||''};cri++;linkIds[idx]=nid;}
   });
   if($('#nfe_lanc')&&$('#nfe_lanc').checked){DB.lancamentos=DB.lancamentos||[];
     const modo=(document.querySelector('input[name=nfe_modo]:checked')||{}).value||'item';
     if(modo==='item'){
-      d.itens.forEach((it,idx)=>{const insId=linkIds[idx];if(!insId)return;const v=it.vTotal||0;if(v<=0)return;
+      d.itens.forEach((it,idx)=>{const insId=linkIds[idx];if(!insId)return;const v=it._custo||0;if(v<=0)return;
         DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:it._grupo||'CMV',sub:it._sub||'',descricao:it.desc||'Produto',fornecedor:d.fornecedor||'',valor:v,forma:'',fromNFe:true,insumoId:insId,nfe:d.nNF||''});});
-    } else if(d.total>0){
-      DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:'CMV',sub:'Entrada de Produtos',descricao:(d.fornecedor||'Compra')+(d.nNF?' · NF '+d.nNF:''),fornecedor:d.fornecedor||'',valor:d.total,forma:'',fromNFe:true,nfe:d.nNF||''});
+    } else {const vTot=comImp?(d.total||0):(d.somaProdutos||d.total||0); if(vTot>0)
+      DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:'CMV',sub:'Entrada de Produtos',descricao:(d.fornecedor||'Compra')+(d.nNF?' · NF '+d.nNF:''),fornecedor:d.fornecedor||'',valor:vTot,forma:'',fromNFe:true,nfe:d.nNF||''});
     }
   }
-  window._nfe=null;save();closeModal();(current==='insumos'?viewInsumos():viewFinanceiro());toast(`NF importada · ${cri} novo(s), ${upd} atualizado(s)`);
+  const impMsg=(comImp&&(d.totalExtras||0)>0.01)?` · ${fmtBRL(d.totalExtras)} de impostos somados ao custo`:'';
+  window._nfe=null;save();closeModal();(current==='insumos'?viewInsumos():viewFinanceiro());toast(`NF importada · ${cri} novo(s), ${upd} atualizado(s)${impMsg}`);
 }
 
 /* ===================== FICHAS TÉCNICAS ===================== */
