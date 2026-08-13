@@ -2927,44 +2927,73 @@ function imprimirFicha(){
 }
 
 /* ===================== ENGENHARIA DE MENU ===================== */
-function classificar(){
+/* Dois critérios de "item eficiente":
+   CMV  = régua absoluta (dentro da meta de CMV dos Parâmetros) — enxerga custo;
+   MC   = régua relativa (margem de contribuição acima da média ponderada do cardápio),
+          que é o método clássico da engenharia de cardápio — enxerga quanto sobra em R$. */
+let engModo='cmv';
+function engSetModo(m){engModo=(m==='mc')?'mc':'cmv';viewEngenharia();}
+function classificar(modo){
+  modo=(modo||engModo)==='mc'?'mc':'cmv';
   // só entra na Engenharia quem tem preço E vendas/mês preenchidas
   const arr=fichasVendaveis().filter(f=>(f.precoVenda||0)>0&&(f.vendasMes||0)>0).map(f=>{const m=metricasFicha(f);return{f,m,pop:f.vendasMes||0,marg:m.mcBlend,cmv:m.cmvBlend};});
   if(!arr.length)return [];
   const avgPop=arr.reduce((s,x)=>s+x.pop,0)/arr.length;
-  const alvoCmv=cmvAlvoRef(); // régua absoluta: CMV dentro da meta = eficiente
-  arr.forEach((x,idx)=>{const hiP=x.pop>=avgPop,eff=x.cmv<=alvoCmv;
+  const alvoCmv=cmvAlvoRef();
+  const totPop=arr.reduce((s,x)=>s+x.pop,0);
+  const mcMedio=totPop?arr.reduce((s,x)=>s+x.marg*x.pop,0)/totPop:0; // ponderada pelas vendas
+  const porMC=modo==='mc';
+  arr.forEach(x=>{const hiP=x.pop>=avgPop,eff=porMC?(x.marg>=mcMedio):(x.cmv<=alvoCmv);
     x.classe=hiP&&eff?'Estrelas':hiP&&!eff?'Populares':!hiP&&eff?'Potenciais':'Críticos';
-    x.avgPop=avgPop;x.alvoCmv=alvoCmv;x.n=idx+1;});
+    x.avgPop=avgPop;x.alvoCmv=alvoCmv;x.mcMedio=mcMedio;x.modo=modo;});
+  // o número do item acompanha o ranking do critério escolhido (liga o ponto do gráfico à lista)
+  [...arr].sort((a,b)=>porMC?(b.marg-a.marg):(a.cmv-b.cmv)).forEach((x,i)=>{x.n=i+1;});
   return arr;
 }
 const ENG_COR={Estrelas:'#1E9E6A',Populares:'#1D3573',Potenciais:'#C9892A','Críticos':'#D2483F'};
 const ENG_GLYPH={Estrelas:'★',Populares:'●',Potenciais:'◆','Críticos':'▼'};
 const ENG_GUIA={Estrelas:'Vende bem e com CMV baixo. Destaque no cardápio e proteja a ficha.',Populares:'Vende muito, mas com CMV alto. Renegocie o insumo ou ajuste porção e preço.',Potenciais:'CMV baixo, mas vende pouco. Dê visibilidade e estimule a venda.','Críticos':'Vende pouco e com CMV alto. Reformule a ficha ou tire do cardápio.'};
+const ENG_GUIA_MC={Estrelas:'Vende bem e deixa muito dinheiro. Destaque no cardápio e proteja a ficha.',Populares:'Vende muito, mas sobra pouco por prato. Reveja preço, porção ou custo.',Potenciais:'Deixa boa margem, mas vende pouco. Dê visibilidade e estimule a venda.','Críticos':'Vende pouco e sobra pouco. Reformule a ficha ou tire do cardápio.'};
+const ENG_QUAD_CMV={Potenciais:'baixa saída · CMV baixo',Estrelas:'alta saída · CMV baixo','Críticos':'baixa saída · CMV alto',Populares:'alta saída · CMV alto'};
+const ENG_QUAD_MC={Potenciais:'baixa saída · margem alta',Estrelas:'alta saída · margem alta','Críticos':'baixa saída · margem baixa',Populares:'alta saída · margem baixa'};
 function engTag(c){return c==='Estrelas'?'tag-green':c==='Populares'?'tag-navy':c==='Potenciais'?'tag-amber':'tag-red';}
 function viewEngenharia(){
   const arr=classificar();
-  if(!arr.length){$('#view').innerHTML=`<div class="card">${emptyState('Sem dados','Cadastre o preço e a média de vendas/mês nas fichas técnicas para entrar na análise.','go(&#39;fichas&#39;)')}</div>`;return;}
-  const avgPop=arr[0].avgPop,alvo=cmvAlvoRef();
+  if(!arr.length){$('#view').innerHTML=`<div class="pill-filter" style="margin-bottom:18px">${[['cmv','CMV'],['mc','Margem de contribuição']].map(([k,l])=>`<button class="${engModo===k?'on':''}" onclick="engSetModo('${k}')">${l}</button>`).join('')}</div><div class="card">${emptyState('Sem dados','Cadastre o preço e a média de vendas/mês nas fichas técnicas para entrar na análise.','go(&#39;fichas&#39;)')}</div>`;return;}
+  const porMC=engModo==='mc';
+  const avgPop=arr[0].avgPop,alvo=cmvAlvoRef(),mcMed=arr[0].mcMedio;
+  const val=x=>porMC?x.marg:x.cmv;                 // métrica do eixo vertical
+  const corte=porMC?mcMed:alvo;                    // linha do meio do gráfico
+  const fmtVal=v=>porMC?fmtBRL(v):fmtPct(v);
   const maxPop=Math.max(...arr.map(x=>x.pop)),minPop=Math.min(...arr.map(x=>x.pop));
-  const maxCmv=Math.max(...arr.map(x=>x.cmv).concat(alvo)),minCmv=Math.min(...arr.map(x=>x.cmv).concat(alvo));
+  const maxV=Math.max(...arr.map(val).concat(corte)),minV=Math.min(...arr.map(val).concat(corte));
   const colorOf=c=>ENG_COR[c]||'#888';
   // mantém os pontos numa faixa interna 16-84% para não invadir os rótulos dos quadrantes
   const px=v=>v>=avgPop?50+((v-avgPop)/((maxPop-avgPop)||1))*34:16+((v-minPop)/((avgPop-minPop)||1))*34;
-  const py=v=>v<=alvo?50-((alvo-v)/((alvo-minCmv)||1))*34:50+((v-alvo)/((maxCmv-alvo)||1))*34; // meta de CMV = linha do meio
+  // eficiente sempre para CIMA: no CMV é o menor valor, na MC é o maior
+  const py=v=>{const bom=porMC?(v>=corte):(v<=corte);
+    return bom?50-(Math.abs(v-corte)/((porMC?(maxV-corte):(corte-minV))||1))*34
+              :50+(Math.abs(v-corte)/((porMC?(corte-minV):(maxV-corte))||1))*34;};
   const ORDEM=['Estrelas','Populares','Potenciais','Críticos'];
-  const countBy={},cmvList={};arr.forEach(x=>{countBy[x.classe]=(countBy[x.classe]||0)+1;(cmvList[x.classe]=cmvList[x.classe]||[]).push(x.cmv);});
-  const cmvMed=c=>cmvList[c]&&cmvList[c].length?cmvList[c].reduce((s,v)=>s+v,0)/cmvList[c].length:null;
-  const acimaMeta=arr.filter(x=>x.cmv>alvo);
-  const ranked=[...arr].sort((a,b)=>a.cmv-b.cmv);
+  const GUIA=porMC?ENG_GUIA_MC:ENG_GUIA, QUAD=porMC?ENG_QUAD_MC:ENG_QUAD_CMV;
+  const countBy={},vList={};arr.forEach(x=>{countBy[x.classe]=(countBy[x.classe]||0)+1;(vList[x.classe]=vList[x.classe]||[]).push(val(x));});
+  const medDe=c=>vList[c]&&vList[c].length?vList[c].reduce((s,v)=>s+v,0)/vList[c].length:null;
+  const foraMeta=arr.filter(x=>porMC?(x.marg<corte):(x.cmv>corte));
+  const ranked=[...arr].sort((a,b)=>porMC?(b.marg-a.marg):(a.cmv-b.cmv));
   $('#view').innerHTML=`
   <div style="max-width:1060px">
-  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:14px">
     <div>
       <div style="font-family:'Fraunces',serif;font-size:24px;font-weight:600;line-height:1.1">Engenharia de Cardápio</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:4px;max-width:560px">Cada item posicionado por <b>popularidade</b> × <b>CMV</b>. A linha do meio do gráfico é a sua <b>meta de CMV (${fmtPct(alvo)})</b>; acima dela = eficiente.</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px;max-width:600px">Cada item posicionado por <b>popularidade</b> × <b>${porMC?'margem de contribuição':'CMV'}</b>. A linha do meio do gráfico é ${porMC?`a <b>MC média do cardápio (${fmtBRL(corte)})</b>`:`a sua <b>meta de CMV (${fmtPct(corte)})</b>`}; acima dela = eficiente.</div>
     </div>
     <div style="font-size:11.5px;color:var(--soft);font-weight:600;letter-spacing:.3px">${arr.length} ${arr.length===1?'item analisado':'itens analisados'}</div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+    <span style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700">Analisar por</span>
+    <div class="pill-filter" style="margin:0">${[['cmv','CMV','% do preço que vira custo'],['mc','Margem de contribuição','R$ que sobram por prato']].map(([k,l,t])=>`<button class="${engModo===k?'on':''}" title="${t}" onclick="engSetModo('${k}')">${l}</button>`).join('')}</div>
+    <span style="font-size:11.5px;color:var(--soft)">${porMC?'Corte: MC média ponderada pelas vendas':'Corte: meta de CMV dos Parâmetros'}</span>
   </div>
 
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:14px;margin-bottom:18px">
@@ -2973,39 +3002,43 @@ function viewEngenharia(){
         <div style="font-family:'Fraunces',serif;font-size:34px;font-weight:600;line-height:.9;color:${colorOf(c)}">${countBy[c]||0}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:12.5px;font-weight:700;color:${colorOf(c)}">${ENG_GLYPH[c]} ${c}</div>
-          <div style="font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:3px">${ENG_GUIA[c]}</div></div>
+          <div style="font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:3px">${GUIA[c]}</div></div>
       </div>
-      <div class="stat-foot">CMV médio ${cmvMed(c)!=null?fmtPct(cmvMed(c)):'—'}</div>
+      <div class="stat-foot">${porMC?'MC média':'CMV médio'} ${medDe(c)!=null?fmtVal(medDe(c)):'—'}</div>
     </div>`).join('')}
   </div>
 
   <div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(164,138,87,.14),rgba(29,53,115,.06));border:1px solid var(--line);border-radius:14px;padding:13px 16px;margin-bottom:20px">
     <div style="width:34px;height:34px;border-radius:10px;background:var(--navy);color:var(--gold-soft);display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto">✦</div>
-    <div style="font-size:13px;line-height:1.5">${acimaMeta.length?`<b>${acimaMeta.length}</b> ${acimaMeta.length===1?'item está':'itens estão'} com CMV acima da meta de <b>${fmtPct(alvo)}</b>. Comece pelos <b style="color:${colorOf('Populares')}">Populares</b> (vendem muito) para o maior ganho.`:`Todos os itens estão dentro da meta de CMV de <b>${fmtPct(alvo)}</b>. Cardápio eficiente — foque em vender mais os de baixa saída.`}</div>
+    <div style="font-size:13px;line-height:1.5">${foraMeta.length
+      ?(porMC?`<b>${foraMeta.length}</b> ${foraMeta.length===1?'item deixa':'itens deixam'} menos que a MC média de <b>${fmtBRL(corte)}</b> por prato. Comece pelos <b style="color:${colorOf('Populares')}">Populares</b> (vendem muito) para o maior ganho.`
+              :`<b>${foraMeta.length}</b> ${foraMeta.length===1?'item está':'itens estão'} com CMV acima da meta de <b>${fmtPct(corte)}</b>. Comece pelos <b style="color:${colorOf('Populares')}">Populares</b> (vendem muito) para o maior ganho.`)
+      :(porMC?`Todos os itens estão na média de MC ou acima. Foque em vender mais os de baixa saída.`
+              :`Todos os itens estão dentro da meta de CMV de <b>${fmtPct(corte)}</b>. Cardápio eficiente — foque em vender mais os de baixa saída.`)}</div>
   </div>
 
   <div class="matrix-wrap">
     <div>
       <div class="matrix">
-        <div class="quad q-puzzle" style="top:0;left:0;right:auto;bottom:auto"><div><div class="ql" style="color:var(--amber)">◆ Potenciais</div><div class="qd">baixa saída · CMV baixo</div></div></div>
-        <div class="quad q-star" style="top:0;right:0;left:auto;bottom:auto;justify-content:flex-end;text-align:right"><div><div class="ql" style="color:var(--green);justify-content:flex-end">★ Estrelas</div><div class="qd">alta saída · CMV baixo</div></div></div>
-        <div class="quad q-dog" style="bottom:0;left:0;top:auto;right:auto;align-items:flex-end"><div><div class="ql" style="color:var(--red)">▼ Críticos</div><div class="qd">baixa saída · CMV alto</div></div></div>
-        <div class="quad q-horse" style="bottom:0;right:0;top:auto;left:auto;justify-content:flex-end;text-align:right;align-items:flex-end"><div><div class="ql" style="color:var(--navy);justify-content:flex-end">● Populares</div><div class="qd">alta saída · CMV alto</div></div></div>
-        <div class="axis-v"></div><div class="axis-h"></div><div class="axis-mid">meta ${fmtPct(alvo)}</div>
-        ${arr.map(x=>`<div class="dot" style="left:${px(x.pop)}%;top:${py(x.cmv)}%;background:${colorOf(x.classe)}" title="${x.f.nome} · ${x.classe}&#10;Vendas: ${x.pop} · CMV: ${fmtPct(x.cmv)}">${x.n}</div>`).join('')}
+        <div class="quad q-puzzle" style="top:0;left:0;right:auto;bottom:auto"><div><div class="ql" style="color:var(--amber)">◆ Potenciais</div><div class="qd">${QUAD.Potenciais}</div></div></div>
+        <div class="quad q-star" style="top:0;right:0;left:auto;bottom:auto;justify-content:flex-end;text-align:right"><div><div class="ql" style="color:var(--green);justify-content:flex-end">★ Estrelas</div><div class="qd">${QUAD.Estrelas}</div></div></div>
+        <div class="quad q-dog" style="bottom:0;left:0;top:auto;right:auto;align-items:flex-end"><div><div class="ql" style="color:var(--red)">▼ Críticos</div><div class="qd">${QUAD['Críticos']}</div></div></div>
+        <div class="quad q-horse" style="bottom:0;right:0;top:auto;left:auto;justify-content:flex-end;text-align:right;align-items:flex-end"><div><div class="ql" style="color:var(--navy);justify-content:flex-end">● Populares</div><div class="qd">${QUAD.Populares}</div></div></div>
+        <div class="axis-v"></div><div class="axis-h"></div><div class="axis-mid">${porMC?'MC média '+fmtBRL(corte):'meta '+fmtPct(corte)}</div>
+        ${arr.map(x=>`<div class="dot" style="left:${px(x.pop)}%;top:${py(val(x))}%;background:${colorOf(x.classe)}" title="${x.f.nome} · ${x.classe}&#10;Vendas: ${x.pop} · ${porMC?'MC: '+fmtBRL(x.marg)+' por prato':'CMV: '+fmtPct(x.cmv)}">${x.n}</div>`).join('')}
       </div>
       <div class="axis-label">Popularidade (vendas/mês) →</div>
-      <div class="axis-label-y">Eficiência · menor CMV ↑</div>
+      <div class="axis-label-y">${porMC?'Rentabilidade · maior MC ↑':'Eficiência · menor CMV ↑'}</div>
     </div>
     <div class="card card-pad">
-      <div class="ttl">Ranking por CMV</div>
-      <div class="desc" style="margin-bottom:14px">Do mais eficiente ao menos eficiente</div>
+      <div class="ttl">Ranking por ${porMC?'margem':'CMV'}</div>
+      <div class="desc" style="margin-bottom:14px">${porMC?'Do que mais deixa dinheiro ao que menos deixa':'Do mais eficiente ao menos eficiente'}</div>
       <div style="display:flex;flex-direction:column;gap:11px">${ranked.map(x=>`
         <div style="display:flex;align-items:center;gap:11px">
           <span class="eng-rank" style="background:${colorOf(x.classe)}">${x.n}</span>
           <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.f.nome}</div>
-            <div style="font-size:11px;color:var(--soft)">${x.pop} vendas/mês</div></div>
-          <div style="text-align:right;flex:0 0 auto"><div style="font-weight:700;font-size:15px;font-family:'Fraunces',serif;color:${cmvCorRef(x.cmv)}">${fmtPct(x.cmv)}</div>
+            <div style="font-size:11px;color:var(--soft)">${x.pop} vendas/mês${porMC?' · '+fmtBRL(x.marg*x.pop)+'/mês':''}</div></div>
+          <div style="text-align:right;flex:0 0 auto"><div style="font-weight:700;font-size:15px;font-family:'Fraunces',serif;color:${porMC?(x.marg>=corte?'var(--green)':'var(--red)'):cmvCorRef(x.cmv)}">${fmtVal(val(x))}</div>
             <span class="tag ${engTag(x.classe)}" style="margin-top:2px">${x.classe}</span></div>
         </div>`).join('')}</div>
     </div>
