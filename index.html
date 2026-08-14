@@ -4270,6 +4270,14 @@ function membroSetNivel(nivel){const checks=document.querySelectorAll('#mb_perms
   if(nivel!=='personalizado')checks.forEach(c=>c.checked=perms.includes(c.dataset.perm));}
 function membroTogglePerm(){const sel=document.getElementById('mb_nivel');if(sel)sel.value='personalizado';}
 function membroErro(msg){const el=document.getElementById('mb_erro');if(el){el.textContent=msg||'';el.style.display=msg?'block':'none';}if(msg)toast(msg);}
+/* O Supabase responde em inglês; aqui vira instrução de como resolver. */
+function membroErroTraduz(msg,email){const t=(msg||'').toLowerCase();
+  if(t.includes('already been registered')||t.includes('already registered')||t.includes('email_exists'))
+    return 'Este e-mail já tem um acesso no Flow. Se é o acesso principal deste restaurante, essa pessoa já entra direto pela tela de login (use "Esqueci minha senha" se não souber a senha) — não precisa cadastrar como membro. Se o acesso é de outro restaurante, cadastre a pessoa aqui com outro e-mail.';
+  if(t.includes('password')&&(t.includes('at least')||t.includes('short')))return 'A senha precisa ter pelo menos 6 caracteres.';
+  if(t.includes('invalid email')||t.includes('unable to validate email'))return 'E-mail inválido: confira se não ficou espaço ou letra trocada em "'+(email||'')+'".';
+  if(t.includes('rate limit')||t.includes('too many'))return 'Muitas tentativas seguidas. Espere um minuto e tente de novo.';
+  return msg||'Não foi possível criar o acesso. Tente novamente.';}
 async function saveMembro(){const m=DB.equipe.find(x=>x.id===editMembroId);if(!m)return;
   membroErro('');
   const nome=$('#mb_nome').value.trim(),email=$('#mb_email').value.trim().toLowerCase(),senha=$('#mb_senha').value;
@@ -4280,10 +4288,15 @@ async function saveMembro(){const m=DB.equipe.find(x=>x.id===editMembroId);if(!m
   // cria a conta de login real na 1ª vez (precisa estar na nuvem)
   if(sb&&CLOUD&&!m.authId){
     if(!email||senha.length<6){return membroErro('Informe e-mail e senha de ao menos 6 caracteres para criar o acesso.');}
+    // o acesso principal do restaurante já entra direto: cadastrá-lo como membro só daria erro
+    if(email===(DB.conta.email||'').trim().toLowerCase())
+      return membroErro('Este e-mail já é o acesso principal do restaurante — essa pessoa entra direto pela tela de login, com acesso total. Não precisa cadastrar como membro da equipe.');
+    const dup=DB.equipe.find(x=>x!==m&&(x.email||'').trim().toLowerCase()===email);
+    if(dup)return membroErro('Este e-mail já está cadastrado na equipe como "'+(dup.nome||'sem nome')+'". Edite aquele membro em vez de criar outro.');
     if(btn){btn.disabled=true;btn.textContent='Criando acesso...';}
     let res;try{res=await chamarFn('criar-membro',{acao:'criar',email,senha,nome,orgId:(ORG&&ORG.id)});}catch(e){res={data:{error:(e&&e.message)||'Falha de conexão'}};}
     if(btn){btn.disabled=false;btn.textContent='Salvar membro';}
-    if(!res||!res.data||!res.data.ok)return membroErro((res&&res.data&&res.data.error)||'Não foi possível criar o acesso. Tente novamente.');
+    if(!res||!res.data||!res.data.ok)return membroErro(membroErroTraduz(res&&res.data&&res.data.error,email));
     m.authId=res.data.authId;m.criado=true;
     save();closeModal();viewEquipe();toast('Acesso criado! O membro já entra com o e-mail e a senha.');return;
   }
