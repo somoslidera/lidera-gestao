@@ -615,7 +615,7 @@ thead th{letter-spacing:.7px}
     <div class="lbl">FORMAÇÃO</div>
     <a data-route="formacao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-5"/><path d="M22 10v6"/></svg>Formação em Gestão</a>
     <div class="lbl">SUA CONTA</div>
-    <a data-route="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>Mapa do Caminho</a>
+    <a data-route="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>Plano de Guerra</a>
     <a data-route="equipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M21 20a6 6 0 0 0-3-5"/></svg>Equipe</a>
     <a data-route="conta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Configurações</a>
   </nav>
@@ -1718,7 +1718,7 @@ const ROUTES={
   cargos:{title:'Descrições de Cargos',render:viewCargos},
   pops:{title:'POPs · Procedimentos',render:viewPops},
   formacao:{title:'Formação em Gestão',render:viewFormacao},
-  mapa:{title:'Mapa do Caminho',render:viewMapa},
+  mapa:{title:'Plano de Guerra',render:viewMapa},
   equipe:{title:'Equipe',render:viewEquipe},
   conta:{title:'Configurações',render:viewConta},
 };
@@ -4209,7 +4209,7 @@ function finParam(){
 }
 
 /* ===================== EQUIPE ===================== */
-const ACESSOS=[['dashboard','Dashboard'],['insumos','Produtos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['checklists','Checklists'],['pops','POPs · Procedimentos'],['cargos','Descrições de Cargos'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['formacao','Formação em Gestão'],['mapa','Mapa do Caminho'],['equipe','Equipe'],['conta','Configurações']];
+const ACESSOS=[['dashboard','Dashboard'],['insumos','Produtos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['checklists','Checklists'],['pops','POPs · Procedimentos'],['cargos','Descrições de Cargos'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['formacao','Formação em Gestão'],['mapa','Plano de Guerra'],['equipe','Equipe'],['conta','Configurações']];
 const NIVEIS={
   admin:{label:'Administrador',desc:'Acesso total a tudo',perms:ACESSOS.map(a=>a[0])},
   gerente:{label:'Gerente',desc:'Operação + indicadores (sem equipe/config)',perms:['dashboard','insumos','fichas','estoque','checklists','engenharia','cmv','desperdicio','buffet','faturamento','dre','mapa']},
@@ -4307,30 +4307,73 @@ async function removerMembro(id){const m=DB.equipe.find(x=>x.id===id);if(!m)retu
   if(sb&&CLOUD&&m.authId){try{await chamarFn('criar-membro',{acao:'remover',authId:m.authId,orgId:(ORG&&ORG.id)});}catch(e){}}
   DB.equipe=DB.equipe.filter(x=>x.id!==id);save();viewEquipe();toast('Membro removido');}
 
-/* ===================== MAPA DO CAMINHO ===================== */
+/* ===================== PLANO DE GUERRA (cliente · só leitura) =====================
+   Espelha o Controle de Projeto que a Lidera edita no painel admin (dados._projeto).
+   O cliente acompanha, mas não edita: quem manda no plano é o consultor — assim o
+   salvamento do cliente nunca briga com o do painel. A etapa "Onboarding" é interna
+   (contrato, cobrança, drive) e fica escondida daqui, igual já não conta no %.       */
 function ringSVG(pct){const r=34,c=2*Math.PI*r,off=c*(1-clamp(pct,0,100)/100);
   return `<svg width="92" height="92" viewBox="0 0 92 92"><circle cx="46" cy="46" r="34" fill="none" stroke="var(--line)" stroke-width="9"/><circle cx="46" cy="46" r="34" fill="none" stroke="var(--green)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 46 46)"/></svg>`;}
-function viewMapa(){
-  const nIns=Object.keys(DB.insumos).length, nFic=Object.keys(DB.fichas).length;
-  const steps=[
-    {nome:'Onboarding',desc:'Cadastro inicial do restaurante',done:!!(DB.conta&&DB.conta.restaurante),route:'conta'},
-    {nome:'Insumos',desc:`${nIns} insumo(s) cadastrado(s)`,done:nIns>0,route:'insumos'},
-    {nome:'Fichas Técnicas',desc:`${nFic} ficha(s) com custo`,done:nFic>0,route:'fichas'},
-    {nome:'Engenharia de Menu',desc:'Matriz com preço e vendas',done:fichasVendaveis().some(f=>f.precoVenda>0&&f.vendasMes>0),route:'engenharia'},
-    {nome:'Equipe',desc:`${(DB.fin.funcionarios||[]).length} pessoa(s) na folha`,done:(DB.fin.funcionarios||[]).length>0,route:'financeiro'},
-    {nome:'Financeiro',desc:'Gestão financeira ativa',done:(DB.fin.contasPagar||[]).length>0,route:'financeiro'},
-  ];
-  const done=steps.filter(s=>s.done).length, pct=Math.round(done/steps.length*100);
-  $('#view').innerHTML=`<div class="card card-pad" style="max-width:760px">
-    <div style="display:flex;align-items:center;gap:18px;margin-bottom:20px">
-      <div style="position:relative;flex-shrink:0">${ringSVG(pct)}<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'Fraunces',serif;font-size:19px">${pct}%</div></div>
-      <div><div class="ttl" style="font-size:18px">Mapa do Caminho</div><div class="desc">${done} de ${steps.length} etapas concluídas, siga para destravar todo o potencial do app.</div></div>
+function pgTarefas(){const p=DB._projeto;const arr=(p&&Array.isArray(p.tarefas))?p.tarefas:[];
+  return arr.filter(t=>t&&t.fase!=='Onboarding');}
+function pgFases(ts){const fases=[];ts.forEach(t=>{const nome=t.fase||'Outras';let f=fases.find(x=>x.nome===nome);
+  if(!f){f={nome,itens:[]};fases.push(f);}f.itens.push(t);});return fases;}
+function pgLinha(t,hoje){const atrasada=!t.feito&&t.prazo&&t.prazo<hoje;
+  return `<div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)">
+    <div style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex:0 0 auto;${t.feito?'background:var(--green);color:#fff':'background:var(--bg);color:var(--soft);border:1px solid var(--line)'}">${t.feito?'✓':'○'}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13.5px;${t.feito?'color:var(--soft);text-decoration:line-through':'font-weight:500'}">${esc(t.titulo||'')}</div>
+      ${t.resp?`<div style="font-size:11.5px;color:var(--muted);margin-top:2px">👤 ${esc(t.resp)}</div>`:''}
     </div>
-    ${steps.map(s=>`<div style="display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--line);border-radius:12px;margin-bottom:9px">
-      <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;${s.done?'background:var(--green);color:#fff':'background:#EEF0F4;color:var(--soft)'}">${s.done?'✓':'○'}</div>
-      <div style="flex:1"><div style="font-weight:600;font-size:14px">${s.nome} ${s.done?'<span class="tag tag-green" style="margin-left:6px">Concluído</span>':'<span class="tag tag-gray" style="margin-left:6px">Pendente</span>'}</div><div style="font-size:12px;color:var(--muted)">${s.desc}</div></div>
-      <button class="btn btn-ghost btn-sm" onclick="go('${s.route}')">Abrir</button>
-    </div>`).join('')}
+    ${t.prazo?`<div style="flex:0 0 auto;font-size:11.5px;text-align:right;${atrasada?'color:var(--red);font-weight:600':'color:var(--soft)'}">${atrasada?'⚠ ':''}${fmtDataBR(t.prazo)}</div>`:''}
+  </div>`;}
+function viewMapa(){
+  const ts=pgTarefas(), hoje=hojeISO();
+  if(!ts.length){$('#view').innerHTML=`<div class="card card-pad" style="max-width:760px">
+    <div class="ttl" style="font-size:18px">Plano de Guerra</div>
+    <div class="desc" style="margin-top:6px">Seu plano ainda está sendo montado pela Lidera. Assim que as etapas forem definidas com o seu consultor, elas aparecem aqui com prazos, responsáveis e o seu percentual de avanço.</div>
+  </div>`;return;}
+  const feitas=ts.filter(t=>t.feito).length, pct=Math.round(feitas/ts.length*100);
+  const atrasadas=ts.filter(t=>!t.feito&&t.prazo&&t.prazo<hoje).length;
+  // próximas etapas: pendentes, com prazo primeiro (mais perto na frente), depois a ordem do plano
+  const pend=ts.filter(t=>!t.feito);
+  const proximas=[...pend].sort((a,b)=>{const pa=a.prazo||'9999-99-99',pb=b.prazo||'9999-99-99';
+    return pa!==pb?pa.localeCompare(pb):ts.indexOf(a)-ts.indexOf(b);}).slice(0,5);
+  const fases=pgFases(ts);
+  $('#view').innerHTML=`<div style="max-width:860px">
+    <div class="card card-pad" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+        <div style="position:relative;flex-shrink:0">${ringSVG(pct)}<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'Fraunces',serif;font-size:19px">${pct}%</div></div>
+        <div style="flex:1;min-width:200px">
+          <div class="ttl" style="font-size:18px">Plano de Guerra</div>
+          <div class="desc">${feitas} de ${ts.length} tarefas concluídas${atrasadas?` · <span style="color:var(--red);font-weight:600">${atrasadas} atrasada(s)</span>`:''}</div>
+          <div style="margin-top:10px;height:10px;border-radius:6px;background:var(--line);overflow:hidden"><div style="height:10px;width:${pct}%;background:${pct>=100?'var(--green)':'var(--gold)'};transition:width .3s"></div></div>
+        </div>
+      </div>
+    </div>
+    ${proximas.length?`<div class="card card-pad" style="margin-bottom:16px;border-color:var(--gold)">
+      <div class="ttl" style="font-size:15px">Próximas etapas</div>
+      <div class="desc" style="margin-bottom:6px">O que vem agora no seu plano</div>
+      ${proximas.map(t=>`<div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)">
+        <div style="width:7px;height:7px;border-radius:50%;background:var(--gold);flex:0 0 auto"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13.5px;font-weight:500">${esc(t.titulo||'')}</div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:2px">${esc(t.fase||'')}${t.resp?' · 👤 '+esc(t.resp):''}</div>
+        </div>
+        ${t.prazo?`<div style="flex:0 0 auto;font-size:11.5px;text-align:right;${t.prazo<hoje?'color:var(--red);font-weight:600':'color:var(--soft)'}">${t.prazo<hoje?'⚠ ':''}${fmtDataBR(t.prazo)}</div>`:''}
+      </div>`).join('')}
+    </div>`:`<div class="card card-pad" style="margin-bottom:16px;border-color:var(--green)">
+      <div style="font-size:13.5px">🎉 Todas as tarefas do plano estão concluídas. Fale com seu consultor sobre os próximos passos.</div></div>`}
+    ${fases.map(f=>{const d=f.itens.filter(x=>x.feito).length,p2=Math.round(d/f.itens.length*100);
+      return `<div class="card card-pad" style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+          <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600">${esc(f.nome)}</div>
+          <div style="font-size:12px;color:var(--soft)">${d}/${f.itens.length} · ${p2}%</div>
+        </div>
+        <div style="height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin-bottom:6px"><div style="height:6px;width:${p2}%;background:${p2>=100?'var(--green)':'var(--gold)'}"></div></div>
+        ${f.itens.map(t=>pgLinha(t,hoje)).join('')}
+      </div>`;}).join('')}
+    <div style="font-size:11.5px;color:var(--soft);margin-top:6px">Este plano é conduzido pela Lidera junto com você. Para incluir ou mudar alguma etapa, fale com seu consultor.</div>
   </div>`;
 }
 
@@ -5364,7 +5407,10 @@ function dadosHTML(o,k,nm,arq){return `<div class="card card-pad">
   </div></div>`;}
 function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=projAtrasadas(p);const h=hojeISO();const cont=p.tarefas.filter(x=>x.fase!=='Onboarding');const feitas=cont.filter(x=>x.feito).length;
   const fases=[];p.tarefas.forEach(t=>{let g=fases.find(f=>f.nome===t.fase);if(!g){g={nome:t.fase,itens:[]};fases.push(g);}g.itens.push(t);});
-  let html=`<div class="card card-pad">
+  // sugestões de responsável: a Lidera, o dono e quem está na Equipe do restaurante
+  const respOpts=[...new Set(['Lidera','Cliente'].concat((((o.dados||{}).equipe)||[]).map(m=>(m&&m.nome||'').trim()).filter(Boolean)))];
+  let html=`<datalist id="proj_resp_opts">${respOpts.map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>
+  <div class="card card-pad">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
       <div style="font-weight:700">Progresso do projeto <span style="font-size:11px;color:var(--soft);font-weight:500">(Onboarding não conta)</span></div>
       <div style="font-size:13px;color:var(--soft)">${feitas}/${cont.length} tarefas${atr?` · <span style="color:var(--red);font-weight:600">${atr} atrasada(s)</span>`:''}</div>
@@ -5388,6 +5434,7 @@ function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=pro
         <input type="checkbox" ${t.feito?'checked':''} onchange="projToggle('${t.id}')" style="width:18px;height:18px;flex:0 0 auto;cursor:pointer">
         <input class="input" value="${esc(t.titulo)}" onchange="projRename('${t.id}',this.value)" title="Editar descrição da tarefa" style="flex:1;min-width:150px;padding:6px 8px;${t.feito?'text-decoration:line-through;color:var(--soft)':''}">
         ${over?`<span style="color:var(--red);font-size:11px;font-weight:600;flex:0 0 auto">⚠ Atrasada</span>`:''}
+        <input class="input" list="proj_resp_opts" value="${esc(t.resp||'')}" placeholder="Responsável" title="Quem é responsável por esta tarefa" onchange="projResp('${t.id}',this.value)" style="width:150px;flex:0 0 auto;padding:6px 8px">
         <input type="date" class="input" value="${t.prazo||''}" onchange="projPrazo('${t.id}',this.value)" style="width:148px;flex:0 0 auto;padding:6px 8px;${over?'border-color:var(--red);color:var(--red)':''}">
         <button class="btn btn-ghost btn-sm" title="Excluir tarefa" onclick="projDel('${t.id}')" style="padding:4px 8px;color:var(--red);flex:0 0 auto">✕</button>
       </div>`;});
@@ -5416,6 +5463,7 @@ function adminOverviewHTML(){const arqd=o=>!!(o.dados&&o.dados._arquivado);
   return html;
 }
 function projToggle(id){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;t.feito=!t.feito;t.feitoEm=t.feito?hojeISO():'';renderAdminMain();renderAdminList();projSaveOrg(o);}
+function projResp(id,v){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;t.resp=(v||'').trim();projSaveOrg(o);}
 function projPrazo(id,v){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;t.prazo=v||'';renderAdminMain();renderAdminList();projSaveOrg(o);}
 function projRename(id,val){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;const v=(val||'').trim();if(!v){renderAdminMain();return;}if(v===t.titulo)return;t.titulo=v;projSaveOrg(o);}
 function projRenameFase(oldName,val){const o=projCur();if(!o)return;const p=projEnsure(o);let v=(val||'').trim().replace(/['"\\]/g,'');if(!v||v===oldName){renderAdminMain();return;}p.tarefas.forEach(t=>{if(t.fase===oldName)t.fase=v;});renderAdminMain();renderAdminList();projSaveOrg(o);}
@@ -5438,10 +5486,11 @@ function projAdd(fase){modal(`<div class="modal-head"><h3>Nova tarefa</h3><butto
   <div class="modal-body">
    <div class="field"><label>Etapa</label><input class="input" id="pa_fase" value="${esc(fase||'')}" placeholder="Ex.: Etapa 01 · Gestão Financeira"></div>
    <div class="field"><label>Tarefa</label><input class="input" id="pa_tit" placeholder="Descrição da tarefa"></div>
+   <div class="field"><label>Responsável (opcional)</label><input class="input" id="pa_resp" list="proj_resp_opts" placeholder="Ex.: Lidera, ou o nome de quem vai executar"></div>
    <div class="field"><label>Data de finalização (opcional)</label><input class="input" type="date" id="pa_prazo"></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="projAddSave()">Adicionar</button></div>`);setTimeout(()=>{const e=$('#pa_tit');if(e)e.focus();},40);}
-function projAddSave(){const o=projCur();if(!o)return;const fase=(($('#pa_fase').value||'').trim().replace(/['"\\]/g,''))||'Outras';const tit=($('#pa_tit').value||'').trim();const prazo=$('#pa_prazo').value||'';if(!tit)return toast('Informe a tarefa');const p=projEnsure(o);p.tarefas.push({id:'c'+Date.now()+Math.floor(Math.random()*1000),titulo:tit,fase,feito:false,prazo});closeModal();renderAdminMain();renderAdminList();projSaveOrg(o);}
+function projAddSave(){const o=projCur();if(!o)return;const fase=(($('#pa_fase').value||'').trim().replace(/['"\\]/g,''))||'Outras';const tit=($('#pa_tit').value||'').trim();const prazo=$('#pa_prazo').value||'';const resp=(($('#pa_resp')&&$('#pa_resp').value)||'').trim();if(!tit)return toast('Informe a tarefa');const p=projEnsure(o);p.tarefas.push({id:'c'+Date.now()+Math.floor(Math.random()*1000),titulo:tit,fase,feito:false,prazo,resp});closeModal();renderAdminMain();renderAdminList();projSaveOrg(o);}
 
 /* ---- ADMIN · editor da Formação em Gestão ---- */
 let FORM_ADMIN=null, _formSaveT=null;
