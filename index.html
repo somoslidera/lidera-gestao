@@ -964,7 +964,7 @@ function totaisGerais(R){
   const recDireto=faturamento*(mixBalcao()/100), recIfood=faturamento-recDireto, cmvRS=faturamento*cmvPct;
   const comissaoRS=canaisVenda().reduce((s,c)=>s+faturamento*(canalMix(c)/100)*(canalTaxa(c)/100),0);
   const impostoRS=DB.fin.mei?impostoMensal(faturamento)*nm:impostoMensal(faturamento);
-  const taxaCartaoRS=recDireto*((DB.fin.taxaCartao||0)/100);
+  const taxaCartaoRS=recDireto*(taxaMediaRec()/100);   // média das bandeiras cadastradas
   const custosVar=cmvRS+comissaoRS+impostoRS+taxaCartaoRS;
   const fixosBase=((DB.fin.custosFixos||[]).reduce((s,d)=>s+(d.valor||0),0))*nm; // estruturais já espelhados em custosFixos
   const provisoesRS=(DB.fin.provisoes||[]).reduce((s,d)=>s+(d.valor||0),0)*nm;
@@ -1755,6 +1755,19 @@ function normData(){
   }
   f.canais=f.canais.filter(c=>c&&c.id).slice(0,CANAIS_MAX);
   f.canais.forEach(c=>{c.nome=(''+(c.nome||'')).trim()||'Delivery';c.taxa=Math.max(0,+c.taxa||0);c.mix=clamp(+c.mix||0,0,100);});
+  // --- migra os meios de recebimento (roda 1x) ---
+  if(!Array.isArray(f.meios)){
+    const antigos=Array.isArray(f.meiosPagamento)?f.meiosPagamento.filter(m=>m&&(m.nome||'').trim()):[];
+    f.meios = antigos.length
+      ? antigos.map(m=>({id:m.id||('mr'+uid()),nome:(''+m.nome).trim(),tipo:m.tipo||'Crédito',taxa:Math.max(0,+m.taxa||0)}))
+      : [{id:'mrCred',nome:'Cartão de Crédito',tipo:'Crédito',taxa:Math.max(0,+f.taxaCartao||0)},
+         {id:'mrDeb', nome:'Cartão de Débito', tipo:'Débito', taxa:Math.max(0,+f.taxaDebito||0)},
+         {id:'mrPix', nome:'PIX',              tipo:'PIX',    taxa:Math.max(0,+f.taxaPix||0)}];
+  }
+  f.meios=f.meios.filter(m=>m&&m.id);
+  f.meios.forEach(m=>{m.nome=(''+(m.nome||'')).trim()||'Meio de recebimento';m.tipo=m.tipo||'Crédito';m.taxa=Math.max(0,+m.taxa||0);});
+  if(f.receitaBruta==null)f.receitaBruta=true;
+  sincronizarMeios();
   Object.values(DB.fichas||{}).forEach(fi=>{if(!fi||typeof fi!=='object')return;
     if(!fi.precos||typeof fi.precos!=='object')fi.precos={};
     if(fi.precos.ifood==null&&+fi.precoIfood>0)fi.precos.ifood=+fi.precoIfood;});  // preço antigo do iFood
@@ -3222,10 +3235,15 @@ function grupoTipo(g){const c=DB.categorias&&DB.categorias[g];return c?c.tipo:'d
 function lancMes(ym){return (DB.lancamentos||[]).filter(l=>ymOf(l.data)===ym);}
 function dreLanc(ym){
   const receita={},despesa={};let recTot=0,despTot=0;
-  lancMes(ym).forEach(l=>{const tipo=grupoTipo(l.grupo),bag=tipo==='receita'?receita:despesa,sub=l.sub||'(sem subcategoria)';
+  const ls=lancMes(ym);
+  ls.forEach(l=>{const tipo=grupoTipo(l.grupo),bag=tipo==='receita'?receita:despesa,sub=l.sub||'(sem subcategoria)';
     bag[l.grupo]=bag[l.grupo]||{};bag[l.grupo][sub]=(bag[l.grupo][sub]||0)+(l.valor||0);
     if(tipo==='receita')recTot+=l.valor||0;else despTot+=l.valor||0;});
-  return {receita,despesa,recTot,despTot,resultado:recTot-despTot};
+  // taxa das bandeiras: calculada na hora a partir das receitas, nunca lançada
+  const tx=taxasRecebimento(ls);
+  if(tx.total>0){despesa[TAXA_GRUPO]=despesa[TAXA_GRUPO]||{};
+    despesa[TAXA_GRUPO][TAXA_SUB]=(despesa[TAXA_GRUPO][TAXA_SUB]||0)+tx.total;despTot+=tx.total;}
+  return {receita,despesa,recTot,despTot,resultado:recTot-despTot,taxasRec:tx};
 }
 const dreCollapsed=new Set();
 function dreToggle(g){if(dreCollapsed.has(g))dreCollapsed.delete(g);else dreCollapsed.add(g);viewDRE();}
@@ -3253,7 +3271,7 @@ function viewDRE(){
           +(colR?'':recGrupos.map(g=>Object.entries(d.receita[g]).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${pctTxt(v)}</td></tr>`).join('')).join(''));})()}
         ${ordered.map(g=>{const subs=d.despesa[g];const subtot=Object.values(subs).reduce((a,b)=>a+b,0);const col=dreCollapsed.has(g);
           return `<tr class="dre-cat" onclick="dreToggle('${g.replace(/'/g,"\\'")}')" style="cursor:pointer"><td style="font-size:10.5px;letter-spacing:.6px;color:var(--gold);text-transform:uppercase;font-weight:700;padding:9px 13px 5px"><span style="display:inline-block;width:12px;color:var(--muted)">${col?'▸':'▾'}</span> ${g}</td><td class="num" style="font-weight:700;color:var(--red)">${fmtBRL(-subtot)}</td><td class="num" style="color:var(--soft)">${pctTxt(subtot)}</td></tr>`
-          +(col?'':Object.entries(subs).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num" style="color:var(--red)">${fmtBRL(-v)}</td><td class="num" style="color:var(--soft)">${pctTxt(v)}</td></tr>`).join(''));}).join('')}
+          +(col?'':Object.entries(subs).map(([s,v])=>`<tr class="ind"><td>${s}${(g===TAXA_GRUPO&&s===TAXA_SUB)?` <span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px" title="Calculado a partir das receitas × a taxa de cada bandeira (Financeiro → Parâmetros). Não é um lançamento.">CALCULADO</span>`:''}</td><td class="num" style="color:var(--red)">${fmtBRL(-v)}</td><td class="num" style="color:var(--soft)">${pctTxt(v)}</td></tr>`).join(''));}).join('')}
         <tr class="total"><td>(=) Resultado líquido</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(lucro)}</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${pctTxt(lucro)}</td></tr>
       </tbody></table>
     </div>
@@ -3275,15 +3293,54 @@ function viewDRE(){
 /* ----- Lançamentos ----- */
 function lancSubRefresh(){const g=$('#lc_grupo');const s=$('#lc_sub');if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=ordPt(c?c.subs:[]).map(x=>`<option>${esc(x)}</option>`).join('');}
 /* ===== Taxas de cartão/PIX automáticas no DRE (sobre recebíveis) ===== */
-function taxaInfo(L){ // identifica a taxa pela forma de pagamento (ou pela subcategoria da receita)
-  const cand=[L.forma||'',L.sub||''];
-  for(const c of cand){const cl=c.toLowerCase();
-    if(/cr[eé]dito/.test(cl))return{pct:DB.fin.taxaCartao||0,sub:'Taxa de Crédito'};
-    if(/d[eé]bito/.test(cl))return{pct:DB.fin.taxaDebito||0,sub:'Taxa de Débito'};
-    if(/pix/.test(cl))return{pct:DB.fin.taxaPix||0,sub:'Taxa de PIX'};
-  }
-  return null;
-}
+/* ===== MEIOS DE RECEBIMENTO (bandeiras) =====
+   Uma lista só, com id fixo (o nome é rótulo). Cada meio aparece como forma de
+   pagamento no lançamento E como subcategoria de Receita. A taxa NÃO vira lançamento:
+   o DRE calcula a linha na hora, então não polui a lista nem duplica gasto. */
+const TAXA_SUB='Taxas de recebimento', TAXA_GRUPO='Despesas Financeiras';
+/* o cadastro do meio alimenta os 2 lugares onde ele é escolhido: a Forma do
+   lançamento e a subcategoria de Receita. Fonte única, sem redigitar. */
+function sincronizarMeios(){const ms=meiosRec();if(!ms.length)return;
+  DB.formasPagamento=DB.formasPagamento||[];
+  DB.categorias=DB.categorias||{};
+  const rec=DB.categorias['Receita'];
+  ms.forEach(m=>{const nome=m.nome;
+    if(!DB.formasPagamento.some(x=>(''+x).toLowerCase()===nome.toLowerCase()))DB.formasPagamento.push(nome);
+    if(rec&&Array.isArray(rec.subs)&&!rec.subs.some(x=>(''+x).toLowerCase()===nome.toLowerCase()))rec.subs.push(nome);});
+  const g=DB.categorias[TAXA_GRUPO];
+  if(g&&Array.isArray(g.subs)&&!g.subs.includes(TAXA_SUB))g.subs.push(TAXA_SUB);}
+/* renomear o meio leva junto os registros que já usavam o nome antigo */
+function renomearMeio(m,novo){const velho=m.nome;novo=(''+novo).trim();if(!novo||novo===velho)return;
+  const eq=(a,b)=>(''+(a||'')).toLowerCase()===(''+(b||'')).toLowerCase();
+  m.nome=novo;
+  DB.formasPagamento=(DB.formasPagamento||[]).map(x=>eq(x,velho)?novo:x);
+  const rec=DB.categorias&&DB.categorias['Receita'];
+  if(rec&&Array.isArray(rec.subs))rec.subs=rec.subs.map(x=>eq(x,velho)?novo:x);
+  (DB.lancamentos||[]).forEach(l=>{if(eq(l.forma,velho))l.forma=novo;if(eq(l.sub,velho))l.sub=novo;});
+  sincronizarMeios();}
+function meiosRec(){const f=(DB&&DB.fin)||{};return Array.isArray(f.meios)?f.meios.filter(m=>m&&m.id):[];}
+function meioPorId(id){return meiosRec().find(m=>m.id===id)||null;}
+function meioTaxa(m){return Math.max(0,+(m&&m.taxa)||0);}
+function receitaEhBruta(){return (DB.fin||{}).receitaBruta!==false;}   // padrão: ligado
+/* acha o meio de um lançamento: pelo id gravado; senão pelo nome (sub ou forma) */
+function meioDoLanc(l){if(!l)return null;
+  if(l.meioId){const m=meioPorId(l.meioId);if(m)return m;}
+  const nm=x=>(''+(x||'')).trim().toLowerCase();
+  const cand=[nm(l.sub),nm(l.forma)].filter(Boolean);
+  return meiosRec().find(m=>cand.includes(nm(m.nome)))||null;}
+/* total de taxa do período, e a quebra por meio (para o detalhe) */
+function taxasRecebimento(ls){const porMeio={};let total=0;
+  if(!receitaEhBruta())return {total:0,porMeio,ativo:false};
+  (ls||[]).forEach(l=>{if(grupoTipo(l.grupo)!=='receita')return;
+    const m=meioDoLanc(l);if(!m)return;const pct=meioTaxa(m);if(pct<=0)return;
+    const v=(+l.valor||0)*pct/100;if(v<=0)return;
+    porMeio[m.id]=porMeio[m.id]||{meio:m,base:0,taxa:0};
+    porMeio[m.id].base+=(+l.valor||0);porMeio[m.id].taxa+=v;total+=v;});
+  return {total:+total.toFixed(2),porMeio,ativo:true};}
+/* média ponderada das taxas — usada na projeção do modelo no lugar da taxa fixa antiga */
+function taxaMediaRec(){const ms=meiosRec().filter(m=>meioTaxa(m)>0);if(!ms.length)return +(DB.fin.taxaCartao||0);
+  return ms.reduce((a,m)=>a+meioTaxa(m),0)/ms.length;}
+function taxaInfo(L){const m=meioDoLanc(L);return m?{pct:meioTaxa(m),sub:TAXA_SUB}:null;}
 function ensureTaxaSubs(){const g=DB.categorias&&DB.categorias['Despesas Financeiras'];if(!g)return;['Taxa de Débito','Taxa de Crédito','Taxa de PIX'].forEach(s=>{if(!g.subs.includes(s))g.subs.push(s);});}
 function syncTaxaLanc(L){ // lançamento automático de taxa desativado: apenas remove taxa antiga vinculada
   if(!L)return;DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromTaxa!==L.id);
@@ -3556,6 +3613,7 @@ function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
       if(valor>0&&r.qtd>0){ins.preco=valor;ins.qtd=r.qtd;if(r.uni)ins.uni=r.uni;prodAtu++;}
       if(nv.fornecedor)ins.fornecedor=nv.fornecedor;}
     if(nv.fornecedor)ensureFornecedor(nv.fornecedor);
+    const _m=meioDoLanc(nv);if(_m)nv.meioId=_m.id;
     DB.lancamentos.push(nv);n++;lastYM=ymOf(nv.data);});
   if(!n)return toast('Preencha ao menos um item com categoria e valor');
   if(lastYM&&lastYM!==curYM())lancYM=lastYM;
@@ -4206,6 +4264,35 @@ function finCustosFixos(){
   </div>`;
 }
 /* ---- Editor de canais de venda (Parâmetros) ---- */
+function meiosEditorHTML(){const ms=meiosRec();const bruta=receitaEhBruta();
+  return `<div style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+      <div style="font-size:12.5px;font-weight:600;color:var(--muted)">Meios de recebimento e taxas</div>
+      <button class="btn btn-ghost btn-sm" onclick="meioAdd()" style="padding:4px 9px;font-size:11.5px">${icoPlus} Adicionar bandeira</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--soft);margin-bottom:8px">Cada bandeira aqui vira <b>forma de pagamento</b> no lançamento e <b>subcategoria de Receita</b>. Renomear atualiza os lançamentos que já usavam o nome antigo.</div>
+    ${ms.length?`<div style="display:grid;grid-template-columns:minmax(120px,1fr) 118px 84px 34px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 4px"><span>Bandeira</span><span>Tipo</span><span>Taxa %</span><span></span></div>`:''}
+    ${ms.map((m,i)=>`<div style="display:grid;grid-template-columns:minmax(120px,1fr) 118px 84px 34px;gap:8px;align-items:center;margin-bottom:6px">
+      <input class="input" value="${esc(m.nome)}" placeholder="Ex.: Visa Crédito" onchange="meioSet(${i},'nome',this.value)" style="padding:7px 9px">
+      <select class="input" onchange="meioSet(${i},'tipo',this.value)" style="padding:7px 9px">${['Crédito','Débito','PIX','Voucher','Dinheiro','Marketplace'].map(t=>`<option ${t===m.tipo?'selected':''}>${t}</option>`).join('')}</select>
+      <input class="input" type="number" step="0.01" min="0" value="${m.taxa}" onchange="meioSet(${i},'taxa',this.value)" style="padding:7px 9px">
+      <button class="btn btn-ghost btn-sm" title="Remover" onclick="meioDel(${i})" style="padding:4px 6px;color:var(--red)">✕</button>
+    </div>`).join('')}
+    <label style="display:flex;gap:9px;align-items:flex-start;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-top:10px;cursor:pointer;font-size:12px">
+      <input type="checkbox" ${bruta?'checked':''} onchange="DB.fin.receitaBruta=this.checked;save();viewFinanceiro()" style="width:16px;height:16px;margin-top:1px;flex:0 0 auto">
+      <span>Descontar a taxa no DRE automaticamente<br>
+        <span style="color:var(--muted)">Marque quando você lança a receita pelo <b>valor bruto</b> (antes da taxa). Se você lança o valor <b>líquido</b> que caiu na conta, desmarque: a taxa já está descontada e o DRE não deve tirar de novo.</span></span>
+    </label>
+  </div>`;}
+function meioAdd(){const ms=meiosRec();ms.push({id:'mr'+uid(),nome:'',tipo:'Crédito',taxa:0});DB.fin.meios=ms;save();viewFinanceiro();}
+function meioSet(i,campo,v){const ms=meiosRec();const m=ms[i];if(!m)return;
+  if(campo==='nome'){renomearMeio(m,(''+v).trim()||'Meio de recebimento');}
+  else if(campo==='taxa')m.taxa=Math.max(0,parseFloat(v)||0);
+  else m.tipo=v;
+  DB.fin.meios=ms;sincronizarMeios();save();viewFinanceiro();}
+function meioDel(i){const ms=meiosRec();const m=ms[i];if(!m)return;
+  if(!confirm('Remover "'+(m.nome||'sem nome')+'"?\n\nOs lançamentos que já usam esse nome não mudam, mas a taxa deixa de ser descontada no DRE.'))return;
+  ms.splice(i,1);DB.fin.meios=ms;save();viewFinanceiro();toast('Meio removido');}
 function canaisEditorHTML(){const cs=canaisVenda();const bal=mixBalcao();const somaOk=mixDelivery()<=100;
   return `<div style="margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
@@ -4271,12 +4358,8 @@ function finParam(){
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">Taxas e CMV</div><div class="desc">Comissão de delivery, cartão e metas de CMV</div></div></div>
       ${canaisEditorHTML()}
-      <div style="font-size:12.5px;font-weight:600;color:var(--muted);margin:4px 0 6px">Taxas de cartão / PIX</div>
-      <div class="grid-3">
-        <div class="field"><label>Débito <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaDebito!=null?fin.taxaDebito:''}" placeholder="0" onchange="DB.fin.taxaDebito=parseFloat(this.value)||0;syncAllTaxas();save();viewFinanceiro()"></div>
-        <div class="field"><label>Crédito <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaCartao}" onchange="DB.fin.taxaCartao=parseFloat(this.value)||0;syncAllTaxas();save();viewFinanceiro()"></div>
-        <div class="field"><label>PIX <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaPix!=null?fin.taxaPix:''}" placeholder="0" onchange="DB.fin.taxaPix=parseFloat(this.value)||0;syncAllTaxas();save();viewFinanceiro()"></div>
-      </div>
+      <div style="border-top:1px solid var(--line);margin:10px 0 12px"></div>
+      ${meiosEditorHTML()}
       <div class="field"><label>CMV alvo <span class="hint">% meta</span></label><input class="input" type="number" step="0.5" value="${DB.cmvAlvo}" onchange="DB.cmvAlvo=parseFloat(this.value)||30;save();viewFinanceiro()"></div>
       <div class="field"><label>CMV do ponto de equilíbrio <span class="hint">qual CMV usar no cálculo</span></label>
         <select class="input" onchange="DB.fin.peCmvFonte=this.value;save();viewFinanceiro()">
