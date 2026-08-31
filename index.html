@@ -2778,11 +2778,23 @@ function editFicha(id){
             <div style="font-size:13px;font-weight:700;margin-bottom:3px">Integração com Engenharia de Menu</div>
             <div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">Preencha para classificar o prato automaticamente na Matriz de Preço.</div>
             <div class="fx-g2">
-              <div class="field" style="margin:0"><label>Preço de venda praticado</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="f_preco" inputmode="numeric" value="${fmtMoneyInput(f.precoVenda||0)}" oninput="moneyMask(this);recalcFicha()"></div></div>
+              <div class="field" style="margin:0"><label>Preço de venda praticado <span class="hint">balcão</span></label>
+                <div style="display:flex;gap:7px;align-items:center">
+                  <div class="money-wrap" style="flex:1 1 auto;min-width:0"><span class="money-pre">R$</span><input class="input money-inp" id="f_preco" inputmode="numeric" value="${fmtMoneyInput(f.precoVenda||0)}" oninput="moneyMask(this);recalcFicha()"></div>
+                  <div title="CMV geral: custo sobre o preço de balcão" style="flex:0 0 auto;text-align:center;min-width:66px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:5px 7px">
+                    <div style="font-size:9px;letter-spacing:.4px;color:var(--soft);font-weight:700">CMV</div>
+                    <div class="mc-v" id="f_mc" style="font-size:13.5px;line-height:1.2">—</div></div>
+                </div></div>
               <div class="field" style="margin:0"><label>Média de vendas / mês</label><input class="input" id="f_vendas" type="number" value="${f.vendasMes||''}" placeholder="0"></div>
             </div>
-            ${canaisVenda().map(c=>`<div class="field" style="margin:12px 0 0"><label>Preço no ${esc(c.nome)} <span class="hint">opcional · taxa ${fmtPct(canalTaxa(c))}</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="f_precoC_${c.id}" inputmode="numeric" value="${fmtMoneyInput((f.precos&&f.precos[c.id])||0)}" oninput="moneyMask(this);recalcFicha()"></div></div>`).join('')}
-            <div class="mc-line" style="border-top:0;margin-top:0;padding-top:4px"><span style="color:var(--muted)">CMV (%) iFood <span style="font-size:10px;color:var(--soft)">c/ comissão</span></span><span class="mc-v" id="f_mcIf">—</span></div>
+            ${canaisVenda().length?`<div class="fx-g2" style="margin-top:12px">${canaisVenda().map(c=>`
+              <div class="field" style="margin:0"><label>Preço no ${esc(c.nome)} <span class="hint">taxa ${fmtPct(canalTaxa(c))}</span></label>
+                <div style="display:flex;gap:7px;align-items:center">
+                  <div class="money-wrap" style="flex:1 1 auto;min-width:0"><span class="money-pre">R$</span><input class="input money-inp" id="f_precoC_${c.id}" inputmode="numeric" value="${fmtMoneyInput((f.precos&&f.precos[c.id])||0)}" oninput="moneyMask(this);recalcFicha()"></div>
+                  <div title="CMV no ${esc(c.nome)}: custo sobre o que sobra depois da comissão de ${fmtPct(canalTaxa(c))}" style="flex:0 0 auto;text-align:center;min-width:66px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:5px 7px">
+                    <div style="font-size:9px;letter-spacing:.4px;color:var(--soft);font-weight:700">CMV</div>
+                    <div class="mc-v" id="f_cmvC_${c.id}" style="font-size:13.5px;line-height:1.2">—</div></div>
+                </div></div>`).join('')}</div>`:''}
           </div>
           <div id="f_calc"></div>
         </div>
@@ -2927,6 +2939,8 @@ function recalcFicha(){
   const sug=DB.cmvAlvo?custo/(DB.cmvAlvo/100):0;
   const cc=cmvCorRef;
   const mcEl=$('#f_mc');if(mcEl)mcEl.innerHTML=preco?`<span style="color:${cc(cmv)}">${fmtPct(cmv)}</span>`:'—';
+  linhasCanal.forEach(x=>{const el=$('#f_cmvC_'+x.c.id);if(!el)return;
+    el.innerHTML=x.preco?`<span style="color:${cc(x.cmv)}">${fmtPct(x.cmv)}</span>`:'—';});
   const mcIfEl=$('#f_mcIf');if(mcIfEl)mcIfEl.innerHTML=precoIf?`<span style="color:${cc(cmvIf)}">${fmtPct(cmvIf)}</span>`:'—';
   const box=$('#f_calc');if(!box)return;
   box.innerHTML=`<div class="calc-box" style="margin-top:14px">
