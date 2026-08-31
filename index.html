@@ -5600,6 +5600,7 @@ function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=pro
         ${f.nome==='Onboarding'?`<span class="tag tag-gray" style="flex:0 0 auto">não conta no %</span>`:''}
         <button class="btn btn-ghost btn-sm" title="Definir o responsável de todas as tarefas desta etapa de uma vez" onclick="projRespFase('${fa}')" style="flex:0 0 auto;padding:4px 8px;font-size:11.5px">👤 Responsável da etapa</button>
         <span style="font-size:12px;color:var(--soft);flex:0 0 auto">${done}/${f.itens.length}</span>
+        <button class="btn btn-ghost btn-sm" title="Excluir a etapa inteira e as tarefas dela" onclick="projDelFase('${fa}')" style="flex:0 0 auto;padding:4px 7px;color:var(--red)">✕</button>
       </div>`;
     f.itens.forEach(t=>{const over=!t.feito&&t.prazo&&t.prazo<h;
       html+=`<div data-id="${t.id}" ondragover="projDragOver(event)" ondragleave="projDragLeave(event)" ondrop="projDropTask(event,'${t.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
@@ -5750,6 +5751,14 @@ function projDropFase(e,targetFase){e.preventDefault();e.stopPropagation();projD
   if(dragKind==='fase'){if(dragVal!==targetFase)projReorderFases(p,dragVal,targetFase);}
   else if(dragKind==='task'){const a=p.tarefas;const fi=a.findIndex(x=>x.id===dragVal);if(fi>=0){const m=a.splice(fi,1)[0];m.fase=targetFase;let last=-1;a.forEach((x,i)=>{if(x.fase===targetFase)last=i;});a.splice(last+1,0,m);}}
   dragKind=null;dragVal=null;renderAdminMain();renderAdminList();projSaveOrg(o);}
+function projDelFase(fase){const o=projCur();if(!o)return;const p=projEnsure(o);
+  const itens=p.tarefas.filter(t=>t.fase===fase);if(!itens.length)return;
+  const feitas=itens.filter(t=>t.feito).length;
+  if(!confirm('Excluir a etapa "'+fase+'" e as '+itens.length+' tarefa(s) dela?'
+    +(feitas?'\n\n'+feitas+' já está(ão) concluída(s) e sairá(ão) do histórico.':'')
+    +'\n\nEssa ação não tem desfazer.'))return;
+  p.tarefas=p.tarefas.filter(t=>t.fase!==fase);
+  renderAdminMain();renderAdminList();projSaveOrg(o);toast('Etapa "'+fase+'" excluída');}
 function projDel(id){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;if(!confirm('Excluir a tarefa "'+t.titulo+'"?'))return;p.tarefas=p.tarefas.filter(x=>x.id!==id);renderAdminMain();renderAdminList();projSaveOrg(o);}
 function projAdd(fase){modal(`<div class="modal-head"><h3>Nova tarefa</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
