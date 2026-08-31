@@ -793,25 +793,43 @@ function custoPorKgFicha(ficha){ // custo de 1 Kg do prato pronto
 function impostoVarPct(){return DB.fin.mei?0:(DB.fin.aliquota||0);}
 function impostoMensal(fat){return DB.fin.mei?(DB.fin.impostoFixo||0):fat*((DB.fin.aliquota||0)/100);}
 function regimeLabel(){if(DB.fin.mei)return 'MEI / DAS';return DB.fin.regime==='presumido'?'Lucro Presumido':DB.fin.regime==='lucroReal'?'Lucro Real':'Simples Nacional';}
-function metricasCanal(ficha,canal){ // canal: 'balcao' | 'ifood'
+/* ===== CANAIS DE VENDA (delivery / marketplace) =====
+   Cada canal tem um id interno FIXO e um nome que é só rótulo. É o id que amarra o
+   preço dentro da ficha (ficha.precos[id]), então renomear "iFood" para o delivery
+   da cidade nos Parâmetros não desliga nada: as fichas continuam apontando pro mesmo
+   canal. O balcão não é um canal — é o que sobra do mix (100 − soma dos deliveries). */
+const CANAIS_MAX=3;
+function canaisVenda(){const f=(DB&&DB.fin)||{};return Array.isArray(f.canais)?f.canais.filter(c=>c&&c.id):[];}
+function canalPorId(id){return canaisVenda().find(c=>c.id===id)||null;}
+function canalMix(c){return clamp(+(c&&c.mix)||0,0,100);}
+function canalTaxa(c){return Math.max(0,+(c&&c.taxa)||0);}
+function mixDelivery(){return clamp(canaisVenda().reduce((s,c)=>s+canalMix(c),0),0,100);}
+function mixBalcao(){return 100-mixDelivery();}
+function precoDoCanal(ficha,c){const v=+(((ficha&&ficha.precos)||{})[c.id])||0;return v>0?v:(+(ficha&&ficha.precoVenda)||0);}
+function metricasCanal(ficha,canal){ // canal: 'balcao' | id de um canal de venda
   const custo=custoProduto(ficha);
-  const preco = canal==='ifood' ? (ficha.precoIfood||ficha.precoVenda||0) : (ficha.precoVenda||0);
-  const comissao = canal==='ifood' ? (DB.fin.comissaoIfood||0) : 0;
+  const c=(canal&&canal!=='balcao')?canalPorId(canal):null;
+  const preco = c ? precoDoCanal(ficha,c) : (ficha.precoVenda||0);
+  const comissao = c ? canalTaxa(c) : 0;
   const descPct=(comissao+impostoVarPct())/100;
   const mc = preco - custo - preco*descPct;       // margem de contribuição R$
   const mcPct = preco? mc/preco*100 : 0;
-  const precoLiq = preco*(1-comissao/100);        // líquido após a comissão do canal (iFood)
-  const cmv = precoLiq>0? custo/precoLiq*100 : 0; // CMV sobre o líquido recebido (no iFood considera a comissão)
-  return {preco,custo,comissaoPct:comissao,impostoPct:impostoVarPct(),mc,mcPct,cmv,markup:custo?preco/custo:0};
+  const precoLiq = preco*(1-comissao/100);        // líquido após a comissão do canal
+  const cmv = precoLiq>0? custo/precoLiq*100 : 0; // CMV sobre o líquido recebido
+  return {preco,custo,comissaoPct:comissao,impostoPct:impostoVarPct(),mc,mcPct,cmv,markup:custo?preco/custo:0,canal:c||null};
 }
-function metricasFicha(ficha){ // mistura por canal usando mix iFood global
-  const b=metricasCanal(ficha,'balcao'), i=metricasCanal(ficha,'ifood');
-  const mix=(DB.fat.mixIfood||0)/100;
-  const precoBlend=b.preco*(1-mix)+i.preco*mix;
-  const mcBlend=b.mc*(1-mix)+i.mc*mix;
+function metricasFicha(ficha){ // mistura balcão + cada canal, ponderando pelo mix de cada um
+  const cs=canaisVenda();
+  const b=metricasCanal(ficha,'balcao');
+  const porCanal=cs.map(c=>({canal:c,peso:canalMix(c)/100,m:metricasCanal(ficha,c.id)}));
+  const partes=[{peso:mixBalcao()/100,m:b}].concat(porCanal);
+  const precoBlend=partes.reduce((s,x)=>s+x.m.preco*x.peso,0);
+  const mcBlend=partes.reduce((s,x)=>s+x.m.mc*x.peso,0);
   const cmvBlend=precoBlend?(b.custo/precoBlend*100):0;
   const vendas=ficha.vendasMes||0;
-  return {balcao:b,ifood:i,custo:b.custo,precoBlend,mcBlend,cmvBlend,
+  // 'ifood' = 1º canal; mantido para telas que olham um canal de delivery só
+  const primeiro=porCanal.length?porCanal[0].m:b;
+  return {balcao:b,ifood:primeiro,canais:porCanal,custo:b.custo,precoBlend,mcBlend,cmvBlend,
     mcPctBlend:precoBlend?mcBlend/precoBlend*100:0,vendas,
     receita:precoBlend*vendas, mcTotal:mcBlend*vendas,
     health: healthFicha(b.cmv)};
@@ -937,14 +955,14 @@ function totaisGerais(R){
   fichasVendaveis().forEach(f=>{const m=metricasFicha(f);
     receitaEst+=m.receita; custoTot+=m.custo*m.vendas; vendas+=m.vendas;
     if(m.precoBlend>0){custoUnit+=m.custo;precoUnit+=m.precoBlend;}});  // base p/ fallback sem vendas
-  const mix=(DB.fat.mixIfood||0)/100;
+  const mix=mixDelivery()/100;
   // faturamento real: soma das Receitas lançadas no período; fallback p/ valor manual × nº de meses
   const recReal=(DB.lancamentos||[]).filter(l=>l.data>=R.de&&l.data<=R.ate&&grupoTipo(l.grupo)==='receita').reduce((s,l)=>s+(l.valor||0),0);
   const faturamento=recReal; // faturamento vem 100% das Receitas lançadas no período
   // CMV teórico: ponderado pela média de vendas; sem vendas preenchidas, usa a média do cardápio (fichas com preço)
   const cmvPct=receitaEst>0?(custoTot/receitaEst):(precoUnit>0?custoUnit/precoUnit:0);
-  const recIfood=faturamento*mix, recDireto=faturamento*(1-mix), cmvRS=faturamento*cmvPct;
-  const comissaoRS=recIfood*((DB.fin.comissaoIfood||0)/100);
+  const recDireto=faturamento*(mixBalcao()/100), recIfood=faturamento-recDireto, cmvRS=faturamento*cmvPct;
+  const comissaoRS=canaisVenda().reduce((s,c)=>s+faturamento*(canalMix(c)/100)*(canalTaxa(c)/100),0);
   const impostoRS=DB.fin.mei?impostoMensal(faturamento)*nm:impostoMensal(faturamento);
   const taxaCartaoRS=recDireto*((DB.fin.taxaCartao||0)/100);
   const custosVar=cmvRS+comissaoRS+impostoRS+taxaCartaoRS;
@@ -1730,6 +1748,16 @@ document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',e=>{e.
 function toggleSidebar(open){const sb=$('#sidebar'),bd=$('#backdrop');if(open===undefined)open=!sb.classList.contains('open');sb.classList.toggle('open',open);bd.classList.toggle('hidden',!open);}
 function normData(){
   DB.fin=DB.fin||{};const f=DB.fin;
+  DB.fat=DB.fat||{};
+  // --- migra o iFood fixo para a lista de canais (roda 1x, sem perder nada) ---
+  if(!Array.isArray(f.canais)){
+    f.canais=[{id:'ifood',nome:'iFood',taxa:(f.comissaoIfood!=null?+f.comissaoIfood:27),mix:clamp(+DB.fat.mixIfood||0,0,100)}];
+  }
+  f.canais=f.canais.filter(c=>c&&c.id).slice(0,CANAIS_MAX);
+  f.canais.forEach(c=>{c.nome=(''+(c.nome||'')).trim()||'Delivery';c.taxa=Math.max(0,+c.taxa||0);c.mix=clamp(+c.mix||0,0,100);});
+  Object.values(DB.fichas||{}).forEach(fi=>{if(!fi||typeof fi!=='object')return;
+    if(!fi.precos||typeof fi.precos!=='object')fi.precos={};
+    if(fi.precos.ifood==null&&+fi.precoIfood>0)fi.precos.ifood=+fi.precoIfood;});  // preço antigo do iFood
   if(f.regime==='mei'){f.mei=true;f.regime='simples';}            // migra regime antigo
   if(f.mei==null)f.mei=false;
   if(f.regime==null||!['simples','presumido','lucroReal'].includes(f.regime))f.regime='simples';
@@ -1809,7 +1837,7 @@ function viewDashboard(){
   const criticas=fichas.filter(x=>x.m.health==='critico');
   const atencao=fichas.filter(x=>x.m.health==='atencao');
   const saudaveis=fichas.filter(x=>x.m.health==='saudavel');
-  const prejuizoIfood=fichas.filter(x=>x.m.ifood.mc<0);
+  const prejuizoIfood=fichas.filter(x=>(x.m.canais||[]).some(y=>y.m.mc<0));
   const semPreco=fichas.filter(x=>x.f.precoVenda<=0);
   const diaEqTxt=!isFinite(t.diaEq)?'—':t.diaEq>30?'+30':Math.ceil(t.diaEq);
   const recLiquida=t.faturamento-t.impostoRS-t.comissaoRS-t.taxaCartaoRS;
@@ -2662,10 +2690,11 @@ function simRecalc(){
 }
 /* ---- BAIXAR / IMPORTAR FICHAS ---- */
 function fichaAOA(){
-  const header=['Prato','Categoria','Rendimento (porções)','Custo embalagem','Preço balcão','Preço iFood'];
+  const cs=canaisVenda();
+  const header=['Prato','Categoria','Rendimento (porções)','Custo embalagem','Preço balcão'].concat(cs.map(c=>'Preço '+c.nome));
   const arr=Object.values(DB.fichas);
-  const rows=arr.length?arr.map(f=>[f.nome,f.cat,f.porcoes||1,f.custoEmbalagem||0,f.precoVenda||0,f.precoIfood||0])
-    :[['Arroz com Frango','Prato Principal',1,1,18,22],['Kibe','Prato Principal',1,0,8,10]];
+  const rows=arr.length?arr.map(f=>[f.nome,f.cat,f.porcoes||1,f.custoEmbalagem||0,f.precoVenda||0].concat(cs.map(c=>((f.precos||{})[c.id])||0)))
+    :[['Arroz com Frango','Prato Principal',1,1,18].concat(cs.map(()=>22)),['Kibe','Prato Principal',1,0,8].concat(cs.map(()=>10))];
   return [header,...rows];
 }
 function baixarModeloFichas(){
@@ -2686,10 +2715,15 @@ function aplicarImportFichas(rows){rows=(rows||[]).filter(r=>r&&r.some(c=>(c||''
   const head=rows[0].map(c=>(c||'').toString().toLowerCase());const find=(...k)=>head.findIndex(h=>k.some(x=>h.indexOf(x)>=0));
   let iN=find('prato','ficha','nome','produto'),iC=find('categ','grupo'),iR=find('rendim','porç','porc'),iE=find('embal'),iB=find('balc','venda','preç','preco'),iI=find('ifood','delivery');
   let start=1;if(iN<0){iN=0;iC=1;iR=2;iE=3;iB=4;iI=5;start=0;}
+  // coluna de cada canal: procura pelo nome dele no cabeçalho; o 1º canal aceita a coluna antiga de iFood
+  const csImp=canaisVenda().map((c,ci)=>{const alvo=(c.nome||'').toLowerCase();
+    let idx=alvo?head.findIndex((h,k)=>k!==iB&&h.indexOf(alvo)>=0):-1;
+    if(idx<0&&ci===0)idx=iI;
+    return {c,idx};});
   let n=0;
   for(let r=start;r<rows.length;r++){const row=rows[r]||[];const nome=(row[iN]||'').toString().trim();if(!nome)continue;
     const cat=((iC>=0&&row[iC])?row[iC]:'Prato Principal').toString().trim()||'Prato Principal';
-    const nid=uid();DB.fichas[nid]={id:nid,nome,cat,porcoes:parseNumBR(iR>=0?row[iR]:1)||1,custoEmbalagem:parseNumBR(iE>=0?row[iE]:0),precoVenda:parseNumBR(iB>=0?row[iB]:0),precoIfood:parseNumBR(iI>=0?row[iI]:0),vendasMes:0,tempoPreparo:0,utensilios:'',modoPreparo:[],padraoFinalizacao:'',foto:'',comps:[],criada:hoje()};
+    const nid=uid();DB.fichas[nid]={id:nid,nome,cat,porcoes:parseNumBR(iR>=0?row[iR]:1)||1,custoEmbalagem:parseNumBR(iE>=0?row[iE]:0),precoVenda:parseNumBR(iB>=0?row[iB]:0),precoIfood:parseNumBR(iI>=0?row[iI]:0),precos:csImp.reduce((o,x)=>{const v=x.idx>=0?parseNumBR(row[x.idx]):0;if(v>0)o[x.c.id]=v;return o;},{}),vendasMes:0,tempoPreparo:0,utensilios:'',modoPreparo:[],padraoFinalizacao:'',foto:'',comps:[],criada:hoje()};
     if(cat&&!catList('prato').includes(cat))dbCats().prato.push(cat);
     n++;}
   if(!n)return toast('Nenhuma linha válida encontrada');save();viewFichas();toast(n+' ficha(s) importada(s), adicione os ingredientes');
@@ -2734,8 +2768,7 @@ function editFicha(id){
               <div class="field" style="margin:0"><label>Preço de venda praticado</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="f_preco" inputmode="numeric" value="${fmtMoneyInput(f.precoVenda||0)}" oninput="moneyMask(this);recalcFicha()"></div></div>
               <div class="field" style="margin:0"><label>Média de vendas / mês</label><input class="input" id="f_vendas" type="number" value="${f.vendasMes||''}" placeholder="0"></div>
             </div>
-            <div class="field" style="margin:12px 0 0"><label>Preço no iFood <span class="hint">opcional</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="f_precoIf" inputmode="numeric" value="${fmtMoneyInput(f.precoIfood||0)}" oninput="moneyMask(this);recalcFicha()"></div></div>
-            <div class="mc-line"><span style="color:var(--muted)">CMV (%)</span><span class="mc-v" id="f_mc">—</span></div>
+            ${canaisVenda().map(c=>`<div class="field" style="margin:12px 0 0"><label>Preço no ${esc(c.nome)} <span class="hint">opcional · taxa ${fmtPct(canalTaxa(c))}</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="f_precoC_${c.id}" inputmode="numeric" value="${fmtMoneyInput((f.precos&&f.precos[c.id])||0)}" oninput="moneyMask(this);recalcFicha()"></div></div>`).join('')}
             <div class="mc-line" style="border-top:0;margin-top:0;padding-top:4px"><span style="color:var(--muted)">CMV (%) iFood <span style="font-size:10px;color:var(--soft)">c/ comissão</span></span><span class="mc-v" id="f_mcIf">—</span></div>
           </div>
           <div id="f_calc"></div>
@@ -2866,13 +2899,18 @@ function recalcFicha(){
   if($('#ptab_c')){updPrepPreview();return;} // editor de preparado usa o mesmo painel de ingredientes
   const custo=fichaCustoAtual();
   const preco=moneyVal('f_preco')||0;
-  const precoIf=moneyVal('f_precoIf')||preco;
-  const impPct=impostoVarPct(), comIf=DB.fin.comissaoIfood||0;
+  const impPct=impostoVarPct();
+  const cs=canaisVenda();
+  const linhasCanal=cs.map(c=>{const pc=moneyVal('f_precoC_'+c.id)||preco;const tx=canalTaxa(c);
+    const mcC=pc-custo-pc*((tx+impPct)/100);
+    const liq=pc*(1-tx/100);
+    return {c,preco:pc,mc:mcC,cmv:liq>0?custo/liq*100:0,taxa:tx};});
+  const prim=linhasCanal[0]||null;
+  const precoIf=prim?prim.preco:preco, comIf=prim?prim.taxa:0;
   const mcB=preco-custo-preco*(impPct/100);
-  const mcI=precoIf-custo-precoIf*((comIf+impPct)/100);
+  const mcI=prim?prim.mc:mcB;
   const cmv=preco?custo/preco*100:0;
-  const precoIfLiq=precoIf*(1-comIf/100); // líquido após comissão do iFood
-  const cmvIf=precoIfLiq>0?custo/precoIfLiq*100:0; // CMV iFood sobre o que se recebe de fato
+  const cmvIf=prim?prim.cmv:cmv;
   const sug=DB.cmvAlvo?custo/(DB.cmvAlvo/100):0;
   const cc=cmvCorRef;
   const mcEl=$('#f_mc');if(mcEl)mcEl.innerHTML=preco?`<span style="color:${cc(cmv)}">${fmtPct(cmv)}</span>`:'—';
@@ -2881,13 +2919,17 @@ function recalcFicha(){
   box.innerHTML=`<div class="calc-box" style="margin-top:14px">
     <div class="line"><span>Custo insumos + embalagem (CMV R$)</span><b>${fmtBRL(custo)}</b></div>
     <div class="line big"><span>MC no balcão</span><b style="color:${mcB<0?'var(--red)':'var(--green)'}">${fmtBRL(mcB)}</b></div>
-    <div class="line big"><span>MC no iFood <span style="color:var(--soft);font-weight:400;font-size:11.5px">(após comissão ${fmtPct(comIf)})</span></span><b style="color:${mcI<0?'var(--red)':'var(--green)'}">${fmtBRL(mcI)}</b></div>
+    ${linhasCanal.map(x=>`<div class="line big"><span>MC no ${esc(x.c.nome)} <span style="color:var(--soft);font-weight:400;font-size:11.5px">(após comissão ${fmtPct(x.taxa)})</span></span><b style="color:${x.mc<0?'var(--red)':'var(--green)'}">${fmtBRL(x.mc)}</b></div>`).join('')}
   </div>`;
 }
+function coletarPrecosCanais(id){const base=(id&&DB.fichas[id]&&DB.fichas[id].precos)?Object.assign({},DB.fichas[id].precos):{};
+  canaisVenda().forEach(c=>{const el=document.getElementById('f_precoC_'+c.id);if(!el)return;const v=moneyVal('f_precoC_'+c.id)||0;
+    if(v>0)base[c.id]=v;else delete base[c.id];});   // canais fora da tela mantêm o preço guardado
+  return base;}
 function coletarFichaForm(id){const nome=($('#f_nome').value||'').trim();
   return {id:id||uid(),nome,cat:$('#f_cat').value.trim()||'Pratos',
     porcoes:1,rendGramas:parseFloat($('#f_rend').value)||0,rendUni:($('#f_renduni')?$('#f_renduni').value:'g'),custoEmbalagem:moneyVal('f_emb')||0,
-    precoVenda:moneyVal('f_preco')||0,precoIfood:moneyVal('f_precoIf')||0,
+    precoVenda:moneyVal('f_preco')||0,precos:coletarPrecosCanais(id),
     vendasMes:parseInt($('#f_vendas').value)||0,tempoPreparo:parseFloat($('#f_tempo')?.value)||0,
     utensilios:$('#f_utens')?.value||'',modoPreparo:draftModo.filter(s=>(s||'').trim()),
     padraoFinalizacao:$('#f_final')?.value||'',foto:draftFoto||'',comps:draftComps.filter(c=>c[0]&&c[1]>0),
@@ -3049,32 +3091,33 @@ function viewEngenharia(){
 /* ===================== FATURAMENTO ===================== */
 function viewFaturamento(){
   const R=periodoRange();
-  $('#topActions').innerHTML=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${periodoSeletor()}<button class="btn btn-ghost" onclick="editMixIfood()">${icoEdit} Editar % iFood</button></div>`;
+  $('#topActions').innerHTML=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${periodoSeletor()}<button class="btn btn-ghost" onclick="editMixIfood()">${icoEdit} Editar mix de canais</button></div>`;
   const t=totaisGerais(R);
   const recBalcao=t.recDireto, recIfood=t.recIfood;
-  const comissaoIfoodRS=recIfood*(DB.fin.comissaoIfood/100);
+  const comissaoIfoodRS=canaisVenda().reduce((sum,c)=>sum+t.faturamento*(canalMix(c)/100)*(canalTaxa(c)/100),0);
+  const mixDel=mixDelivery();
   const diaEqTxt=!isFinite(t.diaEq)?'—':t.diaEq>30?'> 30 dias':'dia '+Math.ceil(t.diaEq);
   const cmvFonteLbl={real:'CMV real',lanc:'CMV lançamentos',manual:'CMV digitado',teorico:'CMV teórico'}[t.cmvEqFonteUsada]||'CMV';
   $('#view').innerHTML=`
   <div class="kpi-grid">
     <div class="kpi"><div class="ic ic-navy">${ico('cash')}</div><div class="k-lbl">Faturamento</div><div class="k-val">${fmtBRL(t.faturamento)}</div><div class="k-sub" style="color:var(--soft);text-transform:capitalize">${R.label}</div></div>
     <div class="kpi"><div class="ic ic-gold">${ico('mc')}</div><div class="k-lbl">Ticket médio</div><div class="k-val">${fmtBRL(t.ticket)}</div><div class="k-sub">por pedido</div></div>
-    <div class="kpi"><div class="ic ic-${DB.fat.mixIfood>=50?'red':'navy'}">${ico('cmv')}</div><div class="k-lbl">Dependência iFood</div><div class="k-val">${fmtPct(DB.fat.mixIfood)}</div><div class="k-sub ${DB.fat.mixIfood>=50?'trend-down':''}">do faturamento</div></div>
+    <div class="kpi"><div class="ic ic-${mixDel>=50?'red':'navy'}">${ico('cmv')}</div><div class="k-lbl">Dependência delivery</div><div class="k-val">${fmtPct(mixDel)}</div><div class="k-sub ${mixDel>=50?'trend-down':''}">${canaisVenda().length===1?esc(canaisVenda()[0].nome):canaisVenda().length+' canais'}</div></div>
     <div class="kpi"><div class="ic ${isFinite(t.diaEq)&&t.diaEq<=30?'ic-green':'ic-amber'}">${ico('profit')}</div><div class="k-lbl">Ponto de equilíbrio</div><div class="k-val">${diaEqTxt}</div><div class="k-sub">${isFinite(t.faturamentoEq)?fmtBRL(t.faturamentoEq):'—'} · ${cmvFonteLbl} ${fmtPct(t.cmvEqPct)}</div></div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="dash-grid">
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">Mix de canais</div><div class="desc">Distribuição do faturamento</div></div></div>
-      <div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>🏪 Balcão / App próprio</span><b>${fmtPct(100-DB.fat.mixIfood)} · ${fmtBRL(recBalcao)}</b></div><div class="bar"><i style="width:${100-DB.fat.mixIfood}%;background:var(--navy)"></i></div></div>
-      <div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>🛵 iFood</span><b>${fmtPct(DB.fat.mixIfood)} · ${fmtBRL(recIfood)}</b></div><div class="bar"><i style="width:${DB.fat.mixIfood}%;background:var(--gold)"></i></div></div>
-      <div class="alert alert-${DB.fat.mixIfood>=50?'red':DB.fat.mixIfood>=35?'amber':'green'}" style="margin-top:6px">${DB.fat.mixIfood>=35?icoWarn:icoOk}<div>${DB.fat.mixIfood>=50?'Concentração alta no iFood, você paga <b>'+fmtBRL(comissaoIfoodRS)+'</b>/mês de comissão. Estimule o canal próprio.':DB.fat.mixIfood>=35?'Comissão iFood estimada: <b>'+fmtBRL(comissaoIfoodRS)+'</b>/mês. Vale incentivar o balcão.':'Dependência de delivery sob controle.'}</div></div>
+      <div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>🏪 Balcão / App próprio</span><b>${fmtPct(mixBalcao())} · ${fmtBRL(recBalcao)}</b></div><div class="bar"><i style="width:${mixBalcao()}%;background:var(--navy)"></i></div></div>
+      ${canaisVenda().map(c=>`<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>🛵 ${esc(c.nome)} <span style="color:var(--soft);font-size:11.5px">taxa ${fmtPct(canalTaxa(c))}</span></span><b>${fmtPct(canalMix(c))} · ${fmtBRL(t.faturamento*(canalMix(c)/100))}</b></div><div class="bar"><i style="width:${canalMix(c)}%;background:var(--gold)"></i></div></div>`).join('')}
+      <div class="alert alert-${mixDel>=50?'red':mixDel>=35?'amber':'green'}" style="margin-top:6px">${mixDel>=35?icoWarn:icoOk}<div>${mixDel>=50?'Concentração alta em delivery, você paga <b>'+fmtBRL(comissaoIfoodRS)+'</b>/mês de comissão. Estimule o canal próprio.':mixDel>=35?'Comissão de delivery estimada: <b>'+fmtBRL(comissaoIfoodRS)+'</b>/mês. Vale incentivar o balcão.':'Dependência de delivery sob controle.'}</div></div>
     </div>
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">Resultado estimado (modelo)</div><div class="desc">Projeção pelo CMV teórico e custos fixos. O resultado real está na Visão Geral e no DRE.</div></div></div>
       <table><tbody>
         <tr><td>Faturamento</td><td class="num"><b>${fmtBRL(t.faturamento)}</b></td></tr>
         <tr><td>(–) CMV (insumos + embalagem)</td><td class="num" style="color:var(--red)">${fmtBRL(-t.custoTot)}</td></tr>
-        <tr><td>(–) Comissão iFood</td><td class="num" style="color:var(--red)">${fmtBRL(-comissaoIfoodRS)}</td></tr>
+        <tr><td>(–) Comissão de delivery</td><td class="num" style="color:var(--red)">${fmtBRL(-comissaoIfoodRS)}</td></tr>
         <tr><td>(–) Impostos (${regimeLabel()}${DB.fin.mei?'':' '+fmtPct(DB.fin.aliquota)})</td><td class="num" style="color:var(--red)">${fmtBRL(-impostoMensal(t.faturamento))}</td></tr>
         <tr><td>(–) Custos fixos + pessoal</td><td class="num" style="color:var(--red)">${fmtBRL(-t.fixos)}</td></tr>
         <tr style="border-top:2px solid var(--navy)"><td><b>(=) Lucro líquido</b></td><td class="num"><b style="color:${t.lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(t.lucro)}</b></td></tr>
@@ -3083,14 +3126,18 @@ function viewFaturamento(){
   </div>`;
 }
 function editMixIfood(){
-  modal(`<div class="modal-head"><h3>Dependência iFood</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  const cs=canaisVenda();
+  modal(`<div class="modal-head"><h3>Mix de canais</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div class="field"><label>% do faturamento via iFood <span class="hint">mix de canal</span></label><input class="input" id="ft_mix" type="number" step="1" value="${DB.fat.mixIfood||''}" placeholder="0"></div>
-    <div style="font-size:12px;color:var(--soft)">O faturamento é calculado automaticamente a partir das <b>Receitas lançadas</b> em Financeiro → Lançamentos.</div>
+    ${cs.length?cs.map(c=>`<div class="field"><label>% do faturamento via ${esc(c.nome)}</label><input class="input" id="ft_mix_${c.id}" type="number" step="1" min="0" max="100" value="${c.mix||''}" placeholder="0"></div>`).join(''):`<div style="font-size:13px;color:var(--muted)">Nenhum canal de delivery cadastrado. Crie em <b>Financeiro → Parâmetros</b>.</div>`}
+    <div style="font-size:12px;color:var(--soft)">O que sobrar é balcão / app próprio. Os nomes e as taxas ficam em <b>Financeiro → Parâmetros</b>.</div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveMixIfood()">Salvar</button></div>`);
 }
-function saveMixIfood(){DB.fat.mixIfood=clamp(parseFloat($('#ft_mix').value)||0,0,100);save();closeModal();viewFaturamento();toast('Mix iFood atualizado');}
+function saveMixIfood(){const cs=canaisVenda();
+  cs.forEach(c=>{const el=document.getElementById('ft_mix_'+c.id);if(el)c.mix=clamp(parseFloat(el.value)||0,0,100);});
+  if(mixDelivery()>100)return toast('A soma dos canais passou de 100%');
+  DB.fin.canais=cs;save();closeModal();viewFaturamento();toast('Mix de canais atualizado');}
 
 /* ===================== DRE ===================== */
 function dreCustosDetalhe(){
@@ -4158,6 +4205,45 @@ function finCustosFixos(){
     <div style="border-top:1px solid var(--line);margin-top:16px;padding-top:12px;display:flex;justify-content:space-between;font-size:14px"><b>Total fixo + pessoal</b><b style="font-family:'Fraunces',serif">${fmtBRL(custosFixosTotais())}</b></div>
   </div>`;
 }
+/* ---- Editor de canais de venda (Parâmetros) ---- */
+function canaisEditorHTML(){const cs=canaisVenda();const bal=mixBalcao();const somaOk=mixDelivery()<=100;
+  return `<div style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+      <div style="font-size:12.5px;font-weight:600;color:var(--muted)">Canais de delivery</div>
+      ${cs.length<CANAIS_MAX?`<button class="btn btn-ghost btn-sm" onclick="canalAdd()" style="padding:4px 9px;font-size:11.5px">${icoPlus} Adicionar canal</button>`:`<span style="font-size:11px;color:var(--soft)">máximo de ${CANAIS_MAX}</span>`}
+    </div>
+    <div style="font-size:11.5px;color:var(--soft);margin-bottom:8px">O nome é livre: use o delivery da sua cidade. Renomear aqui <b>não apaga</b> os preços já digitados nas fichas técnicas.</div>
+    ${cs.length?`<div style="display:grid;grid-template-columns:minmax(110px,1fr) 92px 92px 34px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 4px"><span>Nome</span><span>Taxa %</span><span>% vendas</span><span></span></div>`:''}
+    ${cs.map((c,i)=>`<div style="display:grid;grid-template-columns:minmax(110px,1fr) 92px 92px 34px;gap:8px;align-items:center;margin-bottom:6px">
+      <input class="input" value="${esc(c.nome)}" placeholder="Ex.: iFood, Aiqfome" onchange="canalSet(${i},'nome',this.value)" style="padding:7px 9px">
+      <input class="input" type="number" step="0.5" min="0" value="${c.taxa}" title="Comissão que a plataforma cobra" onchange="canalSet(${i},'taxa',this.value)" style="padding:7px 9px">
+      <input class="input" type="number" step="1" min="0" max="100" value="${c.mix}" title="Quanto do seu faturamento vem por este canal" onchange="canalSet(${i},'mix',this.value)" style="padding:7px 9px">
+      <button class="btn btn-ghost btn-sm" title="Remover canal" onclick="canalDel(${i})" style="padding:4px 6px;color:var(--red)">✕</button>
+    </div>`).join('')}
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;margin-top:6px;padding-top:7px;border-top:1px solid var(--line)">
+      <span style="color:var(--muted)">🏪 Balcão / app próprio <span style="color:var(--soft)">(o que sobra)</span></span>
+      <b style="color:${somaOk?'var(--navy)':'var(--red)'}">${fmtPct(bal)}</b>
+    </div>
+    ${somaOk?'':`<div style="font-size:11.5px;color:var(--red);margin-top:4px">A soma dos canais passou de 100%. Ajuste os percentuais.</div>`}
+    ${canaisArquivados().length?`<div style="margin-top:8px;font-size:11.5px;color:var(--soft)">Removidos: ${canaisArquivados().map(c=>`<button class="btn btn-ghost btn-sm" title="Restaurar com os preços que já estavam nas fichas" onclick="canalRestaurar('${c.id}')" style="padding:2px 7px;font-size:11px;margin:2px 4px 0 0">↩ ${esc(c.nome)}</button>`).join('')}</div>`:''}
+  </div>`;}
+function canalAdd(){DB.fin.canais=canaisVenda();if(DB.fin.canais.length>=CANAIS_MAX)return toast('Máximo de '+CANAIS_MAX+' canais');
+  DB.fin.canais.push({id:'cv'+uid(),nome:'',taxa:0,mix:0});save();viewFinanceiro();}
+function canalSet(i,campo,v){const cs=canaisVenda();const c=cs[i];if(!c)return;
+  if(campo==='nome')c.nome=(''+v).trim()||'Delivery';
+  else if(campo==='taxa')c.taxa=Math.max(0,parseFloat(v)||0);
+  else c.mix=clamp(parseFloat(v)||0,0,100);
+  DB.fin.canais=cs;save();viewFinanceiro();}
+function canaisArquivados(){const f=DB.fin||{};return Array.isArray(f.canaisArq)?f.canaisArq.filter(c=>c&&c.id):[];}
+function canalDel(i){const cs=canaisVenda();const c=cs[i];if(!c)return;
+  if(!confirm('Remover o canal "'+(c.nome||'sem nome')+'"?\n\nOs preços já digitados nas fichas para ele ficam guardados. Você pode restaurar o canal depois e eles voltam.'))return;
+  cs.splice(i,1);DB.fin.canais=cs;
+  const arq=canaisArquivados().filter(x=>x.id!==c.id);arq.unshift(c);DB.fin.canaisArq=arq.slice(0,8);
+  save();viewFinanceiro();toast('Canal removido · dá para restaurar');}
+function canalRestaurar(id){const arq=canaisArquivados();const c=arq.find(x=>x.id===id);if(!c)return;
+  const cs=canaisVenda();if(cs.length>=CANAIS_MAX)return toast('Remova um canal antes de restaurar (máx. '+CANAIS_MAX+')');
+  cs.push(c);DB.fin.canais=cs;DB.fin.canaisArq=arq.filter(x=>x.id!==id);
+  save();viewFinanceiro();toast('Canal "'+c.nome+'" restaurado com os preços das fichas');}
 function finParam(){
   const fin=DB.fin;
   return `<div style="max-width:980px">
@@ -4184,7 +4270,7 @@ function finParam(){
 
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">Taxas e CMV</div><div class="desc">Comissão de delivery, cartão e metas de CMV</div></div></div>
-      <div class="field"><label>Comissão delivery <span class="hint">% iFood / marketplace</span></label><input class="input" type="number" step="0.5" value="${fin.comissaoIfood}" onchange="DB.fin.comissaoIfood=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+      ${canaisEditorHTML()}
       <div style="font-size:12.5px;font-weight:600;color:var(--muted);margin:4px 0 6px">Taxas de cartão / PIX</div>
       <div class="grid-3">
         <div class="field"><label>Débito <span class="hint">%</span></label><input class="input" type="number" step="0.1" value="${fin.taxaDebito!=null?fin.taxaDebito:''}" placeholder="0" onchange="DB.fin.taxaDebito=parseFloat(this.value)||0;syncAllTaxas();save();viewFinanceiro()"></div>
@@ -4453,7 +4539,7 @@ function esc(s){return (s==null?'':s).toString().replace(/"/g,'&quot;');}
 function exportDados(){const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='lidera-gestao-dados.json';a.click();toast('Dados exportados');}
 function importarBackup(input){const f=input&&input.files&&input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d||!d.insumos||!d.fichas)throw 0;DB=d;save();renderFoot();go('dashboard');toast('Backup importado com sucesso');}catch(e){toast('Arquivo inválido, selecione um backup do Lidera Gestão');}};rd.readAsText(f);}
 function comecarVazio(){if(!confirm('Isto apaga tudo e inicia o app vazio, sem dados de exemplo. Deseja continuar?'))return;
-  DB={insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};
+  DB={insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,canais:[{id:'ifood',nome:'iFood',taxa:27,mix:0}],taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};
   save();renderFoot();go('insumos');toast('App iniciado do zero, comece cadastrando seus insumos');}
 function viewConta(){
   DB.conta=DB.conta||{};const c=DB.conta;
@@ -4990,7 +5076,7 @@ let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false, MEMBRO
 let CLOUD_TS=null, SAVE_STATE='idle', SAVE_RETRY=0, CLOUD_CONFLICT=false, CLOUD_BASE=null, _mergeHouve=false;
 let IS_SUPER=false, MY_UID=null, MY_LIMITE=5, CONSULTORES=[], adminConsFiltro='';
 let DONO_MODE=false, DONO_UNIDADES=[], DONO_EMAIL='', DONO_UID=null; // cliente que administra várias unidades (usa organizacoes.consultor_id, sem ser consultor)
-function emptyDB(){return {insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};}
+function emptyDB(){return {insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,canais:[{id:'ifood',nome:'iFood',taxa:27,mix:0}],taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};}
 function localBackupKey(){return 'flow_bkp_'+((ORG&&ORG.id)||'x');}
 function setSaveStatus(state){
   SAVE_STATE=state;const el=document.getElementById('saveStatus');if(!el)return;
@@ -5770,7 +5856,7 @@ function buildDemoDados(s){
   (s.insumos||[]).forEach(a=>{const id=uid();K[a[0]]=id;insumos[id]={id,nome:a[1],cat:a[2],grupo:'CMV',sub:a[7]||a[2],tipo:'pronto',uni:a[3],preco:a[4],qtd:a[5]||1,fornecedor:a[6]||''};});
   (s.preparados||[]).forEach(a=>{const id=uid(),x=a[6]||{};K[a[0]]=id;insumos[id]={id,nome:a[1],cat:a[2],grupo:'CMV',sub:x.sub||a[2],tipo:'preparado',uni:a[3],rendimento:a[4],comps:(a[5]||[]).map(c=>[K[c[0]],c[1]]),fornecedor:'',modoPreparo:x.modo||[],utensilios:x.utens||'',tempoPreparo:x.tempo||'',foto:demoFoto(x.foto)};});
   const fichas={}, fIds=[];
-  (s.fichas||[]).forEach(a=>{const id=uid(),x=a[8]||{};fIds.push(id);fichas[id]={id,nome:a[0],cat:a[1],porcoes:1,custoEmbalagem:a[5]||0,precoVenda:a[2],precoIfood:a[3]||0,vendasMes:a[4]||0,tempoPreparo:a[6]||0,utensilios:x.utens||'',modoPreparo:x.modo||[],padraoFinalizacao:x.fin||'',foto:demoFoto(x.foto),comps:(a[7]||[]).map(c=>[K[c[0]],c[1]])};});
+  (s.fichas||[]).forEach(a=>{const id=uid(),x=a[8]||{};fIds.push(id);fichas[id]={id,nome:a[0],cat:a[1],porcoes:1,custoEmbalagem:a[5]||0,precoVenda:a[2],precoIfood:a[3]||0,precos:{ifood:a[3]||0},vendasMes:a[4]||0,tempoPreparo:a[6]||0,utensilios:x.utens||'',modoPreparo:x.modo||[],padraoFinalizacao:x.fin||'',foto:demoFoto(x.foto),comps:(a[7]||[]).map(c=>[K[c[0]],c[1]])};});
   const lanc=[], sem=[6,13,20,27];
   (s.receitas||[]).forEach(r=>{const per=Math.round(r.v/4);sem.forEach((d,i)=>{const v=i===3?r.v-per*3:per;lanc.push({id:uid(),data:D(d),grupo:'Receita',sub:r.sub,descricao:'Vendas · '+r.sub,valor:v,forma:r.forma||'',fornecedor:''});});});
   (s.cmv||[]).forEach(c=>lanc.push({id:uid(),data:D(c.d||10),grupo:'CMV',sub:c.sub,descricao:c.desc,valor:c.v,forma:'',fornecedor:c.forn||''}));
@@ -5779,6 +5865,7 @@ function buildDemoDados(s){
   const custosFixos=(s.fixos||[]).map(a=>({id:uid(),nome:a[0],valor:a[1],grupo:a[2],sub:a[3]||'',diaVenc:a[4]||10,desde:ym,forma:''}));
   const fin=Object.assign({regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:s.comissaoIfood||27,taxaDebito:1.99,taxaCartao:s.taxaCartao||3.2,taxaPix:0,provisoes:[],meiosPagamento:[],contasBancarias:[],contasPagar:[],contasReceber:[]},
     {custosFixos,funcionarios:s.funcionarios||[],socios:[],fornecedores:(s.fornecedores||[]).map(n=>({id:uid(),nome:n}))});
+  fin.canais=[{id:'ifood',nome:'iFood',taxa:(fin.comissaoIfood!=null?fin.comissaoIfood:27),mix:s.mixIfood||0}];
   const buffet=s.buffet?{precoVendaKg:''+s.buffet.kg,cubas:(s.buffet.cubas||[]).map((cb,i)=>({id:uid(),fichaId:fIds[cb[0]]||'',pesoKg:''+cb[1],x:22+(i%5)*112,y:40+Math.floor(i/5)*98,w:104,h:74,rot:0}))}:{precoVendaKg:'',cubas:[]};
   return {_demo:true,onboardingFeito:true,insumos,fichas,lancamentos:lanc,desperdicios,
     cmvRegistros:s.cmvReg?[{id:uid(),data:D(26),ei:s.cmvReg.ei,compras:s.cmvReg.compras,ef:s.cmvReg.ef,vendas:s.cmvReg.vendas}]:[],
@@ -6076,7 +6163,11 @@ function fecharWizard(){const w=document.getElementById('wizScreen');if(w)w.styl
 function wizNav(d){const n=wizState.step+d;if(n<1)return;if(n>WIZ.length)return wizFinish();wizState.step=n;wizRender();window.scrollTo(0,0);}
 function wizSalvarFechar(){syncAnamneseCustosFixos();save();fecharWizard();toast('Dados salvos');}
 function wizSync(){const f=DB.fin;
-  if((f.marketplaces||[]).length){f.comissaoIfood=f.marketplaces[0].comissao||f.comissaoIfood;const mix=f.marketplaces.reduce((s,m)=>s+(m.pctVendas||0),0);DB.fat.mixIfood=Math.min(100,mix);}
+  if((f.marketplaces||[]).length){
+    const mps=f.marketplaces.filter(m=>m&&(m.nome||m.comissao||m.pctVendas)).slice(0,CANAIS_MAX);
+    const atuais=canaisVenda();
+    f.canais=mps.map((m,i)=>{const ant=atuais[i];return {id:(ant&&ant.id)||(i===0?'ifood':'cv'+uid()),nome:(''+(m.nome||'')).trim()||(ant&&ant.nome)||(i===0?'iFood':'Delivery '+(i+1)),taxa:Math.max(0,+m.comissao||0)||(ant?ant.taxa:0),mix:clamp(+m.pctVendas||0,0,100)};});
+    f.comissaoIfood=f.canais.length?f.canais[0].taxa:f.comissaoIfood;DB.fat.mixIfood=mixDelivery();}
   const ops=(f.operadorasCartao||[]).filter(o=>o.taxaCredito);if(ops.length)f.taxaCartao=ops.reduce((s,o)=>s+(o.taxaCredito||0),0)/ops.length;
   syncAnamneseCustosFixos();} // espelha custos fixos da anamnese p/ aba Custos Fixos (faturamento vem só dos lançamentos)
 function wizFinish(){wizSync();DB.onboardingFeito=true;save();fecharWizard();toast('Onboarding concluído! 🎉');go('dashboard');}
