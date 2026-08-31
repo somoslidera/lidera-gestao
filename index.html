@@ -5571,7 +5571,6 @@ function dadosHTML(o,k,nm,arq){return `<div class="card card-pad">
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
    <button class="btn btn-primary btn-sm" onclick="abrirCliente('${o.id}')">Abrir app</button>
-   <button class="btn btn-ghost btn-sm" onclick="atividadesCliente('${o.id}','${nm}')">Atividades</button>
    <button class="btn btn-ghost btn-sm" onclick="donoModal('${o.id}')">👥 Dono / Unidades</button>
    <button class="btn btn-ghost btn-sm" onclick="apiModal('${o.id}')">🔌 API</button>
    ${arq?`<button class="btn btn-primary btn-sm" onclick="arquivarCliente('${o.id}',false)">↩ Restaurar</button>
@@ -5614,7 +5613,8 @@ function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=pro
       </div>`;});
     html+=`<button class="btn btn-ghost btn-sm" onclick="projAdd('${faseArg}')" style="margin-top:10px">+ Nova tarefa</button></div>`;});
   html+=`<div style="margin-top:12px;color:var(--soft);font-size:12px">Arraste o ícone ⠿ para reordenar tarefas e etapas. Clique nos textos para editar.</div>
-  <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="projAdd('')">+ Nova etapa / tarefa avulsa</button></div>`;
+  <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="projAdd('')">+ Nova etapa / tarefa avulsa</button>
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Ler um plano feito em outro app e trazer as etapas e tarefas">📄 Importar PDF<input type="file" accept="application/pdf,.pdf" style="display:none" onchange="projImportarPdf(this)"></label></div>`;
   return html;
 }
 function adminOverviewHTML(){const arqd=o=>!!(o.dados&&o.dados._arquivado);
@@ -5636,6 +5636,94 @@ function adminOverviewHTML(){const arqd=o=>!!(o.dados&&o.dados._arquivado);
   html+=`<div class="card card-pad" style="margin-top:14px;color:var(--muted);font-size:13.5px">👈 Selecione um restaurante na lista para ver os <b>dados de hoje</b> e o <b>controle de projeto</b> (tarefas, prazos e progresso).</div>`;
   return html;
 }
+/* ===== Importar plano de projeto de um PDF =====
+   O PDF vem de outro app, então o layout é desconhecido: a leitura é por heurística
+   (o que parece etapa vs o que parece tarefa) e SEMPRE passa por uma tela de conferência
+   antes de gravar. Nunca importa direto: é o plano do cliente. */
+const PROJ_RE_ETAPA=/^(etapa|fase|m[óo]dulo|sprint|bloco|passo)\b/i;
+const PROJ_RE_BULLET=/^[\u2022\u25AA\u25CF\u25E6\u00B7\-\u2013\u2014\*\u2610\u2611\u2612\u2713\u2714\[\]xX\s]+/;
+const PROJ_RE_DATA=/(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{2,4})/;
+const PROJ_RE_LIXO=/^(p[áa]gina|page)\s*\d+|^\d+\s*\/\s*\d+$|^https?:|^www\.|^\d{1,2}\s*$/i;
+function projPdfData(txt){const m=txt.match(PROJ_RE_DATA);if(!m)return '';
+  let[,d,mo,a]=m;a=a.length===2?('20'+a):a;
+  const dd=+d,mm=+mo;if(dd<1||dd>31||mm<1||mm>12)return '';
+  return a+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0');}
+function projPdfLimpa(t){return (t||'').replace(/\s+/g,' ').trim();}
+/* decide se a linha abre uma etapa nova */
+function projPdfEhEtapa(t){
+  if(PROJ_RE_ETAPA.test(t))return true;
+  if(/^\d{1,2}\s*[\.\)\-]\s*\S/.test(t)&&t.length<=70&&!PROJ_RE_BULLET.test(t))return true;   // "1. Gestão Financeira"
+  if(/[:：]\s*$/.test(t)&&t.length<=70)return true;                                            // "Financeiro:"
+  const semAcento=t.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(t.length<=48&&semAcento===semAcento.toUpperCase()&&/[A-Z]{3}/.test(semAcento)&&!/\d{2}[\/\.]/.test(t))return true; // TÍTULO EM CAIXA ALTA
+  return false;}
+function projPdfParse(pages){
+  const linhas=[];
+  pages.forEach(rows=>rows.forEach(r=>{const t=projPdfLimpa(r.items.map(i=>i.str).join(' '));
+    if(t&&!PROJ_RE_LIXO.test(t))linhas.push(t);}));
+  const fases=[];let atual=null;
+  linhas.forEach(t=>{
+    const ehBullet=PROJ_RE_BULLET.test(t)&&projPdfLimpa(t.replace(PROJ_RE_BULLET,'')).length>2;
+    if(!ehBullet&&projPdfEhEtapa(t)){
+      atual={nome:projPdfLimpa(t.replace(/[:：]\s*$/,'')),tarefas:[]};fases.push(atual);return;}
+    let corpo=projPdfLimpa(t.replace(PROJ_RE_BULLET,''));
+    if(corpo.length<3)return;
+    const prazo=projPdfData(corpo);
+    if(prazo)corpo=projPdfLimpa(corpo.replace(PROJ_RE_DATA,''));
+    corpo=projPdfLimpa(corpo.replace(/[\-\u2013\u2014\s]+$/,''));
+    if(corpo.length<3)return;
+    if(!atual){atual={nome:'Importado',tarefas:[]};fases.push(atual);}
+    const feito=/^[\u2611\u2612\u2713\u2714]|^\[\s*[xX]\s*\]/.test(t);
+    atual.tarefas.push({titulo:corpo,prazo,feito});});
+  return fases.filter(f=>f.tarefas.length);}
+let PROJ_IMP=null;
+async function projImportarPdf(input){const f=input&&input.files&&input.files[0];if(input)input.value='';if(!f)return;
+  const o=projCur();if(!o)return toast('Abra um restaurante antes de importar');
+  toast('Lendo o PDF…');
+  let fases;try{const buf=await f.arrayBuffer();const pages=await pdfRows(buf);fases=projPdfParse(pages);}
+  catch(e){return toast('Não consegui ler esse PDF. Se ele for uma imagem escaneada, o texto não pode ser extraído.');}
+  if(!fases.length)return toast('Não encontrei etapas e tarefas nesse PDF. Confira se o texto é selecionável (não é foto).');
+  PROJ_IMP=fases;projImportModal();}
+function projImportModal(){const fases=PROJ_IMP||[];
+  const nT=fases.reduce((s,f)=>s+f.tarefas.length,0);
+  modal(`<div class="modal-head"><h3>Importar plano do PDF</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Li <b>${fases.length}</b> etapa(s) e <b>${nT}</b> tarefa(s). <b>Confira antes de importar</b>: a leitura de PDF é automática e pode errar o que é etapa e o que é tarefa. Você pode editar os textos, mudar de etapa e remover o que não for.</div>
+    <div style="max-height:340px;overflow:auto">
+    ${fases.map((f,fi)=>`<div style="border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:9px">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <input class="input" value="${esc(f.nome)}" onchange="PROJ_IMP[${fi}].nome=this.value" style="flex:1;font-weight:700;font-family:'Fraunces',serif;padding:5px 8px">
+        <button class="btn btn-ghost btn-sm" title="Remover a etapa inteira" onclick="projImpDelFase(${fi})" style="color:var(--red);padding:4px 7px">✕</button>
+      </div>
+      ${f.tarefas.map((t,ti)=>`<div style="display:grid;grid-template-columns:22px minmax(120px,1fr) 132px 30px;gap:7px;align-items:center;padding:3px 0">
+        <input type="checkbox" ${t.feito?'checked':''} title="Já concluída" onchange="PROJ_IMP[${fi}].tarefas[${ti}].feito=this.checked" style="width:16px;height:16px">
+        <input class="input" value="${esc(t.titulo)}" onchange="PROJ_IMP[${fi}].tarefas[${ti}].titulo=this.value" style="padding:5px 8px;font-size:12.5px">
+        <input type="date" class="input" value="${t.prazo||''}" onchange="PROJ_IMP[${fi}].tarefas[${ti}].prazo=this.value" style="padding:5px 7px;font-size:12px">
+        <button class="btn btn-ghost btn-sm" title="Remover" onclick="projImpDelTarefa(${fi},${ti})" style="color:var(--red);padding:3px 6px">✕</button>
+      </div>`).join('')}
+    </div>`).join('')}
+    </div>
+    <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:11px;display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="proj_imp_modo" value="add" checked> Somar ao plano atual</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="proj_imp_modo" value="sub"> Substituir o plano atual <span style="color:var(--soft)">(apaga o que existe)</span></label>
+    </div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="projImportAplicar()">Importar</button></div>`,true,true);}
+function projImpDelFase(fi){PROJ_IMP.splice(fi,1);if(!PROJ_IMP.length){closeModal();return toast('Nada para importar');}projImportModal();}
+function projImpDelTarefa(fi,ti){PROJ_IMP[fi].tarefas.splice(ti,1);if(!PROJ_IMP[fi].tarefas.length)PROJ_IMP.splice(fi,1);
+  if(!PROJ_IMP.length){closeModal();return toast('Nada para importar');}projImportModal();}
+function projImportAplicar(){const o=projCur();if(!o||!PROJ_IMP)return closeModal();
+  const modo=(document.querySelector('input[name=proj_imp_modo]:checked')||{}).value||'add';
+  const p=projEnsure(o);
+  const novas=[];
+  PROJ_IMP.forEach((f,fi)=>{const fase=(f.nome||'Importado').trim().replace(/['"\\]/g,'')||'Importado';
+    f.tarefas.forEach((t,ti)=>{const tit=(t.titulo||'').trim();if(!tit)return;
+      novas.push({id:'p'+Date.now().toString(36)+fi+'_'+ti,titulo:tit,fase,feito:!!t.feito,feitoEm:t.feito?hojeISO():'',prazo:t.prazo||'',resp:''});});});
+  if(!novas.length){closeModal();return toast('Nada para importar');}
+  if(modo==='sub'){if(!confirm('Substituir o plano atual por '+novas.length+' tarefa(s) do PDF?\n\nO plano que está aí será apagado.'))return;p.tarefas=novas;}
+  else p.tarefas=p.tarefas.concat(novas);
+  PROJ_IMP=null;closeModal();renderAdminMain();renderAdminList();projSaveOrg(o);
+  toast(novas.length+' tarefa(s) importada(s)');}
 function projToggle(id){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;t.feito=!t.feito;t.feitoEm=t.feito?hojeISO():'';renderAdminMain();renderAdminList();projSaveOrg(o);}
 function projRespFase(fase){const o=projCur();if(!o)return;const p=projEnsure(o);
   const alvo=p.tarefas.filter(t=>t.fase===fase);if(!alvo.length)return;
@@ -6135,14 +6223,6 @@ async function atualizarDemos(){ // regrava os dados dos demos a partir do DEMO_
   }
   toast(n?(n+' demo(s) atualizado(s) ✓'):'Não foi possível atualizar (veja o console)');adminTab='demo';showAdmin();
 }
-async function atividadesCliente(orgId,nome){let ats=[];try{ats=(await sb.from('atividades').select('*').eq('org_id',orgId).order('criada_em',{ascending:false})).data||[];}catch(e){}
-  modal(`<div class="modal-head"><h3>Atividades: ${nome}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
-  <div class="modal-body">${ats.length?ats.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)"><div><b>${a.titulo}</b><div style="font-size:12px;color:var(--soft)">${a.descricao||''}${a.prazo?' · prazo '+a.prazo:''}</div></div><span class="tag ${a.status==='concluida'?'tag-green':a.status==='fazendo'?'tag-amber':'tag-navy'}">${a.status}</span></div>`).join(''):'<div style="font-size:13px;color:var(--soft);padding:6px 0">Nenhuma atividade ainda.</div>'}
-    <div style="margin-top:14px"><button class="btn btn-ghost btn-sm" onclick="addAtividade('${orgId}','${nome}')">${icoPlus} Nova atividade</button></div></div>
-  <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal()">Fechar</button></div>`);}
-async function addAtividade(orgId,nome){const titulo=prompt('Título da atividade:');if(!titulo)return;const desc=prompt('Descrição (opcional):')||'';
-  await sb.from('atividades').insert({org_id:orgId,titulo,descricao:desc,status:'aberta'});toast('Atividade criada');closeModal();atividadesCliente(orgId,nome);}
-
 /* ===================== ANAMNESE / ONBOARDING (WIZARD) ===================== */
 let wizState={step:1};
 function wzGet(path){const ps=path.split('.');let o=DB;for(const p of ps){if(o==null)return undefined;o=o[p];}return o;}
