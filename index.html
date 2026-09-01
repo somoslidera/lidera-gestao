@@ -3295,16 +3295,20 @@ function liqDe(l){const arr=(l&&Array.isArray(l.liquidacoes))?l.liquidacoes.filt
    (o lancamento entrou na data do fato), entao marcar como pago/recebido
    NAO cria lancamento nenhum: so registra que o dinheiro se moveu.        */
 function liqDoMes(tipo,ym){ // tipo: 'pagar' | 'receber'
-  const fim=ym+'-31', out=[];
+  const out=[];
   (DB.lancamentos||[]).forEach(l=>{
     if(!Array.isArray(l.liquidacoes)||!l.liquidacoes.length)return;      // à vista nao vira conta
     const ehRec=grupoTipo(l.grupo)==='receita';
     if((tipo==='receber')!==ehRec)return;
     l.liquidacoes.forEach((x,idx)=>{if(!x||!x.data)return;
-      // em aberto ate o fim do mes (inclui vencidas de meses anteriores) ou quitada dentro do mes
-      const emAberto=!x.pago&&x.data<=fim, quitadaNoMes=x.pago&&ymOf(x.data)===ym;
-      if(emAberto||quitadaNoMes)out.push({lanc:l,idx,liq:x});});});
+      if(ymOf(x.data)===ym)out.push({lanc:l,idx,liq:x});});});           // só o mês escolhido
   return out.sort((a,b)=>(a.liq.data||'').localeCompare(b.liq.data||''));}
+/* quantas parcelas ficaram para tras sem baixa (aparecem no mes delas, nao aqui) */
+function liqAtrasadasAntes(tipo,ym){const ini=ym+'-01';let n=0,v=0;
+  (DB.lancamentos||[]).forEach(l=>{if(!Array.isArray(l.liquidacoes))return;
+    const ehRec=grupoTipo(l.grupo)==='receita';if((tipo==='receber')!==ehRec)return;
+    l.liquidacoes.forEach(x=>{if(x&&x.data&&!x.pago&&x.data<ini){n++;v+=+x.valor||0;}});});
+  return {n,v};}
 function liqTogglePago(lancId,idx){const l=(DB.lancamentos||[]).find(x=>x.id===lancId);if(!l)return;
   const x=(l.liquidacoes||[])[idx];if(!x)return;
   x.pago=!x.pago;x.pagoEm=x.pago?hojeISO():'';
@@ -4357,6 +4361,7 @@ function finContas(key){
         <span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px" title="O valor já foi contabilizado no DRE na data do fato (entrada da nota). Dar baixa aqui move só o Fluxo de Caixa.">JÁ NO DRE</span>
       </div>
       <div style="font-size:11.5px;color:var(--muted);margin-bottom:9px">Vêm das compras e vendas já lançadas. Dar baixa <b>não lança de novo no DRE</b>: apenas registra que o dinheiro entrou ou saiu.</div>
+      ${(function(){const a=liqAtrasadasAntes(isPagar?'pagar':'receber',ym);return a.n?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${a.n}</b> parcela(s) de meses anteriores seguem sem baixa, somando <b>${fmtBRL(a.v)}</b>. Volte o mês para regularizar.</div></div>`:'';})()}
       <div class="comp-row" style="grid-template-columns:${gP};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Origem</span><span>Vencimento</span><span>Valor</span><span>Categoria</span><span>Situação</span><span></span></div>
       ${parc.map(x=>{const atras=!x.liq.pago&&x.liq.data<hoje;
         const desc=(x.lanc.descricao||'(sem descrição)')+(x.lanc.nfe?' · NF '+x.lanc.nfe:'')
@@ -4366,7 +4371,7 @@ function finContas(key){
         <div style="font-size:12.5px;${atras?'color:var(--red);font-weight:600':''}">${atras?'⚠ ':''}${fmtDataBR(x.liq.data)}</div>
         <div style="font-size:12.5px;font-weight:600">${fmtBRL(x.liq.valor)}</div>
         <div style="font-size:11.5px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.lanc.grupo||'')}${x.lanc.sub?' · '+esc(x.lanc.sub):''}</div>
-        <button class="icon-btn" onclick="liqTogglePago('${x.lanc.id}',${x.idx})" title="${x.liq.pago?'Desfazer a baixa':'Marcar como '+fLabel.toLowerCase()}" style="white-space:nowrap;width:auto;padding:0 10px;${x.liq.pago?'background:var(--green);color:#fff;border-color:var(--green)':''}">${x.liq.pago?'✓ '+fLabel:fLabel+'?'}</button>
+        <button class="icon-btn" onclick="liqTogglePago('${x.lanc.id}',${x.idx})" title="${x.liq.pago?'Desfazer a baixa':'Marcar como '+fLabel.toLowerCase()}" style="white-space:nowrap;width:auto;padding:0 10px;${x.liq.pago?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${x.liq.pago?'✓ ':'○ '}${fLabel}</button>
         <span></span>
       </div>`;}).join('')}
     </div>`;
