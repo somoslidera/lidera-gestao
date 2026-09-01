@@ -3648,10 +3648,15 @@ function lmParcelasModal(i){const r=lancDraft[i];if(!r)return;
   lmParcRender(i);}
 function lmParcGerar(i,n,intervalo){const r=lancDraft[i];if(!r)return;
   const total=lmTotalLinha(r);const base=r.data||hojeISO();
+  const mensal=(intervalo==='M');           // 'M' = mesmo dia do mês seguinte; número = dias corridos
   r.parcelasLista=[];const cada=+(total/n).toFixed(2);let acc=0;
   for(let k=0;k<n;k++){const v=(k===n-1)?+(total-acc).toFixed(2):cada;acc=+(acc+v).toFixed(2);
-    r.parcelasLista.push({data:diasSoma(base,intervalo*(k+1)),valor:v});}
+    r.parcelasLista.push({data:mensal?mesesSoma(base,k+1):diasSoma(base,(+intervalo)*(k+1)),valor:v});}
   lmParcRender(i);}
+function lmParcGerarSel(i){const n=parseInt(($('#pc_n')||{}).value)||0;
+  const iv=(($('#pc_iv')||{}).value)||'M';
+  if(!n)return toast('Escolha em quantas vezes');
+  lmParcGerar(i,n,iv==='M'?'M':parseInt(iv)||30);}
 function lmParcAdd(i){const r=lancDraft[i];const ult=r.parcelasLista[r.parcelasLista.length-1];
   r.parcelasLista.push({data:diasSoma((ult&&ult.data)||r.data||hojeISO(),30),valor:0});lmParcRender(i);}
 function lmParcDel(i,k){const r=lancDraft[i];r.parcelasLista.splice(k,1);lmParcRender(i);}
@@ -3667,16 +3672,23 @@ function lmParcRender(i){const r=lancDraft[i];const total=lmTotalLinha(r);
     <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px">
       Valor da linha: <b>${fmtBRL(total)}</b>${r.desc?' · '+esc(r.desc):''}${r.nf?' · NF '+esc(r.nf):''}
     </div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:7px">Atalhos (a partir de ${fmtDataBR(r.data||hojeISO())}):</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-      ${[[2,30,'2x 30/60'],[3,30,'3x 30/60/90'],[3,15,'3x 15/30/45'],[4,30,'4x mensal'],[6,30,'6x mensal']].map(([n,iv,l])=>`<button class="btn btn-ghost btn-sm" onclick="lmParcGerar(${i},${n},${iv})" style="padding:4px 9px;font-size:11.5px">${l}</button>`).join('')}
+    <div style="font-size:12px;color:var(--muted);margin-bottom:7px">Gerar as parcelas a partir de ${fmtDataBR(r.data||hojeISO())}:</div>
+    <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <select class="input" id="pc_n" style="width:96px;padding:6px 8px"><option value="">Parcelas…</option>${Array.from({length:12},(_,k)=>k+1).map(n=>`<option value="${n}" ${lista.length===n?'selected':''}>${n}x</option>`).join('')}</select>
+      <span style="font-size:12px;color:var(--soft)">a cada</span>
+      <select class="input" id="pc_iv" style="width:104px;padding:6px 8px">${[['M','1 mês'],[30,'30 dias'],[15,'15 dias'],[7,'7 dias'],[14,'14 dias'],[45,'45 dias'],[60,'60 dias']].map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select>
+      <button class="btn btn-primary btn-sm" onclick="lmParcGerarSel(${i})" style="padding:5px 11px;font-size:11.5px">Gerar</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+      <span style="font-size:11.5px;color:var(--soft)">Atalhos:</span>
+      ${[[2,'30','2x 30/60'],[3,'30','3x 30/60/90'],[3,'15','3x 15/30/45'],[4,'M','4x mensal'],[6,'M','6x mensal']].map(([n,iv,l])=>`<button class="btn btn-ghost btn-sm" onclick="lmParcGerar(${i},${n},'${iv}')" style="padding:4px 9px;font-size:11.5px">${l}</button>`).join('')}
       <button class="btn btn-ghost btn-sm" onclick="lmParcLimpar(${i})" style="padding:4px 9px;font-size:11.5px;color:var(--red)">à vista</button>
     </div>
     ${lista.length?`<div style="display:grid;grid-template-columns:34px 1fr 130px 34px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 5px"><span>#</span><span>Vencimento</span><span>Valor</span><span></span></div>`:`<div style="font-size:13px;color:var(--muted);padding:8px 0">Sem parcelas: a linha entra no fluxo de caixa na data do lançamento (à vista).</div>`}
     ${lista.map((x,k)=>`<div style="display:grid;grid-template-columns:34px 1fr 130px 34px;gap:8px;align-items:center;margin-bottom:6px">
       <span style="font-size:12px;color:var(--soft);text-align:center">${k+1}</span>
       <input type="date" class="input" value="${x.data||''}" onchange="lmParcSet(${i},${k},'data',this.value)" style="padding:6px 8px">
-      <div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="pc_v_${k}" inputmode="numeric" value="${fmtMoneyInput(x.valor||0)}" oninput="moneyMask(this)" onchange="lmParcSet(${i},${k},'valor')" style="padding:6px 8px"></div>
+      <div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="pc_v_${k}" inputmode="numeric" value="${fmtMoneyInput(x.valor||0)}" oninput="moneyMask(this)" onchange="lmParcSet(${i},${k},'valor')" style="padding:6px 8px 6px 34px"></div>
       <button class="btn btn-ghost btn-sm" title="Remover parcela" onclick="lmParcDel(${i},${k})" style="padding:4px 6px;color:var(--red)">✕</button>
     </div>`).join('')}
     ${lista.length?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
