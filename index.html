@@ -3288,9 +3288,10 @@ function liqValor(l,v){if(grupoTipo(l.grupo)!=='receita')return v;
   const m=meioDoLanc(l);if(!m||!receitaEhBruta())return v;
   return +(v*(1-meioTaxa(m)/100)).toFixed(2);}
 /* liquidações de um lançamento; sem elas, uma só, à vista */
-function liqDe(l){const arr=(l&&Array.isArray(l.liquidacoes))?l.liquidacoes.filter(x=>x&&x.data):[];
-  if(arr.length)return arr.map(x=>({data:x.data,valor:+x.valor||0,pago:!!x.pago,lanc:l}));
-  return [{data:l.data,valor:liqValor(l,+l.valor||0),pago:true,lanc:l}];}
+function liqDe(l){const src=(l&&Array.isArray(l.liquidacoes))?l.liquidacoes:[];
+  const arr=[];src.forEach((x,idx)=>{if(x&&x.data)arr.push({data:x.data,valor:+x.valor||0,pago:!!x.pago,idx,lanc:l});});
+  if(arr.length)return arr;
+  return [{data:l.data,valor:liqValor(l,+l.valor||0),pago:true,idx:null,lanc:l}];}   // à vista: já liquidado
 /* Parcelas em aberto viram Contas a Pagar/Receber. Elas JA estao no DRE
    (o lancamento entrou na data do fato), entao marcar como pago/recebido
    NAO cria lancamento nenhum: so registra que o dinheiro se moveu.        */
@@ -3940,35 +3941,48 @@ function finFluxo(){
   const hoje=hojeISO(), ate=diasSoma(hoje,fluxoJanela);
   const abertura=saldoContas();
   const saldoHoje=saldoEm(hoje);
-  // o passado do mês corrente + tudo que está agendado até a janela escolhida
-  const ym=curYM(), ini=ym+'-01';
-  const movs=liqEntreDatas(ini<hoje?ini:hoje,ate);
-  const dias={};
-  movs.forEach(x=>{const rec=grupoTipo(x.lanc.grupo)==='receita';
-    const d=dias[x.data]=dias[x.data]||{ent:0,sai:0,futuro:false,aberto:0};
-    if(!x.pago)d.futuro=true;                       // previsto = ainda sem baixa
-    if(!x.pago)d.aberto++;
-    if(rec)d.ent+=x.valor;else d.sai+=x.valor;});
-  const datas=Object.keys(dias).sort();
-  // acumulado parte do saldo real na véspera do primeiro dia mostrado
-  let acc=datas.length?saldoEm(diasSoma(datas[0],-1)):saldoHoje;
-  let menor={v:acc,d:datas[0]||hoje};
-  const rows=datas.map(dt=>{const x=dias[dt];const sd=x.ent-x.sai;acc=+(acc+sd).toFixed(2);
-    if(acc<menor.v){menor={v:acc,d:dt};}
-    const fut=x.futuro;
-    return `<tr${fut?' style="background:var(--bg)"':''}><td>${fmtDataBR(dt)}${fut?' <span class="tag tag-gray" style="font-size:9px">previsto</span>':''}</td>
-      <td class="num" style="color:var(--green)">${x.ent?fmtBRL(x.ent):'—'}</td>
-      <td class="num" style="color:var(--red)">${x.sai?fmtBRL(x.sai):'—'}</td>
-      <td class="num" style="color:${sd>=0?'var(--green)':'var(--red)'}">${fmtBRL(sd)}</td>
-      <td class="num" style="font-weight:700;color:${acc>=0?'var(--green)':'var(--red)'}">${fmtBRL(acc)}</td></tr>`;}).join('');
+  const ym=curYM(), ini=(ym+'-01')<hoje?(ym+'-01'):hoje;
+  // tudo em aberto ate a janela (inclusive vencido de antes, que ainda vai sair do caixa)
+  // + o que ja teve baixa dentro do periodo exibido
+  const movs=liqTodas().filter(x=>x.data&&x.data<=ate&&(!x.pago||x.data>=ini))
+    .sort((a,b)=>(a.data||'').localeCompare(b.data||'')
+      || ((grupoTipo(b.lanc.grupo)==='receita')-(grupoTipo(a.lanc.grupo)==='receita')));  // entradas antes das saídas no mesmo dia
+  // acumulado parte do saldo real na véspera do primeiro movimento
+  let acc=movs.length?saldoEm(diasSoma(movs[0].data,-1)):saldoHoje;
+  let menor={v:acc,d:movs.length?movs[0].data:hoje};
+  let diaAnt='';
+  const rows=movs.map(x=>{
+    const l=x.lanc, rec=grupoTipo(l.grupo)==='receita';
+    acc=+(acc+(rec?x.valor:-x.valor)).toFixed(2);
+    if(acc<menor.v)menor={v:acc,d:x.data};
+    const prev=!x.pago, atras=prev&&x.data<hoje;
+    const nParc=(l.liquidacoes||[]).length;
+    // linha 2: tudo que ajuda a reconhecer o lançamento
+    const info=[l.grupo?esc(l.grupo)+(l.sub?' · '+esc(l.sub):''):'',
+                l.fornecedor?'🏢 '+esc(l.fornecedor):'',
+                l.nfe?'NF '+esc(l.nfe):'',
+                nParc>1?('parcela '+(x.idx!=null?x.idx+1:1)+'/'+nParc):'',
+                l.forma?esc(l.forma):''].filter(Boolean).join(' · ');
+    const novoDia=x.data!==diaAnt; diaAnt=x.data;
+    return `<tr${prev?' style="background:var(--bg)"':''}>
+      <td style="white-space:nowrap;vertical-align:top;padding-top:11px">${novoDia?fmtDataBR(x.data):'<span style="color:var(--soft)">·</span>'}
+        ${atras?'<div style="font-size:10px;color:var(--red);font-weight:700">⚠ vencida</div>':(prev&&novoDia?'<div style="font-size:10px;color:var(--soft)">previsto</div>':'')}</td>
+      <td style="min-width:180px">
+        <div style="font-size:13px;font-weight:500">${esc(l.descricao||'(sem descrição)')}</div>
+        ${info?`<div style="font-size:11px;color:var(--soft);margin-top:2px">${info}</div>`:''}</td>
+      <td class="num" style="color:var(--green);white-space:nowrap">${rec?fmtBRL(x.valor):'—'}</td>
+      <td class="num" style="color:var(--red);white-space:nowrap">${rec?'—':fmtBRL(x.valor)}</td>
+      <td class="num" style="font-weight:700;white-space:nowrap;color:${acc>=0?'var(--green)':'var(--red)'}">${fmtBRL(acc)}</td>
+      <td class="num" style="white-space:nowrap">${prev?`<button class="icon-btn" onclick="liqTogglePago('${l.id}',${x.idx})" title="Marcar como ${rec?'recebido':'pago'}" style="width:auto;padding:0 9px;font-size:11px">○ baixar</button>`:`<span class="tag tag-green" style="font-size:9px">✓ baixado</span>`}</td>
+    </tr>`;}).join('');
   const vencidas=movs.filter(x=>!x.pago&&x.data<hoje);
-  const futuros=movs.filter(x=>!x.pago);           // o que ainda vai acontecer, mesmo se vencido
+  const futuros=movs.filter(x=>!x.pago);
   const aReceber=futuros.filter(x=>grupoTipo(x.lanc.grupo)==='receita').reduce((s,x)=>s+x.valor,0);
   const aPagar=futuros.filter(x=>grupoTipo(x.lanc.grupo)!=='receita').reduce((s,x)=>s+x.valor,0);
   const saldoFim=+(saldoHoje+aReceber-aPagar).toFixed(2);
   const furou=menor.v<0;
-  return `<div class="card card-pad" style="max-width:920px">
-    <div class="section-head"><div><div class="ttl">Fluxo de Caixa</div><div class="desc">Quando o dinheiro entra e sai de fato. Diferente do DRE, que mostra quando o fato aconteceu.</div></div>
+  return `<div class="card card-pad" style="max-width:1100px">
+    <div class="section-head"><div><div class="ttl">Fluxo de Caixa</div><div class="desc">Cada entrada e saída, na data em que o dinheiro se move. Diferente do DRE, que mostra quando o fato aconteceu.</div></div>
       <select class="input" style="max-width:180px" onchange="fluxoSetJanela(this.value)">${[[30,'Próximos 30 dias'],[60,'Próximos 60 dias'],[90,'Próximos 90 dias']].map(([v,l])=>`<option value="${v}" ${fluxoJanela===v?'selected':''}>${l}</option>`).join('')}</select></div>
     ${!abertura?`<div class="alert alert-amber" style="margin-bottom:12px">${icoWarn}<div>Sem <b>saldo inicial</b> o acumulado não representa o seu caixa real. Informe o saldo das contas em <b>Financeiro › Contas Bancárias</b>.</div></div>`:''}
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
@@ -3978,10 +3992,10 @@ function finFluxo(){
       <div class="dash-pill"><span>Saldo em ${fluxoJanela} dias</span><b style="color:${saldoFim>=0?'var(--green)':'var(--red)'}">${fmtBRL(saldoFim)}</b></div>
     </div>
     ${furou?`<div class="alert alert-red" style="margin-bottom:12px">${icoWarn}<div>O caixa fica <b>negativo em ${fmtDataBR(menor.d)}</b>, chegando a <b>${fmtBRL(menor.v)}</b>. Antecipe recebíveis, renegocie um vencimento ou segure uma compra.</div></div>`:''}
-    ${vencidas.length?`<div class="alert alert-amber" style="margin-bottom:12px">${icoWarn}<div><b>${vencidas.length}</b> parcela(s) já venceram e continuam <b>sem baixa</b>, somando ${fmtBRL(vencidas.reduce((s,x)=>s+x.valor,0))}. Dê baixa em <b>Contas a Pagar / a Receber</b> para o saldo ficar certo.</div></div>`:''}
-    <div class="scroll-x"><table><thead><tr><th>Dia</th><th class="num">Entradas</th><th class="num">Saídas</th><th class="num">Saldo do dia</th><th class="num">Acumulado</th></tr></thead>
-    <tbody>${rows||`<tr><td colspan="5" style="color:var(--soft);text-align:center;padding:14px">Nada previsto no período.</td></tr>`}</tbody></table></div>
-    <div style="font-size:11.5px;color:var(--soft);margin-top:10px">Saldo inicial das contas: <b>${fmtBRL(abertura)}</b>. O <b>saldo hoje</b> conta só o que teve baixa. As linhas em cinza são <b>previstas</b>: dê baixa em Contas a Pagar / a Receber quando o dinheiro se mover.</div>
+    ${vencidas.length?`<div class="alert alert-amber" style="margin-bottom:12px">${icoWarn}<div><b>${vencidas.length}</b> movimento(s) já venceram e continuam <b>sem baixa</b>, somando ${fmtBRL(vencidas.reduce((s,x)=>s+x.valor,0))}. Dê baixa para o saldo ficar certo.</div></div>`:''}
+    <div class="scroll-x"><table><thead><tr><th style="min-width:96px">Dia</th><th>Lançamento</th><th class="num">Entrada</th><th class="num">Saída</th><th class="num">Acumulado</th><th class="num">Situação</th></tr></thead>
+    <tbody>${rows||`<tr><td colspan="6" style="color:var(--soft);text-align:center;padding:14px">Nada previsto no período.</td></tr>`}</tbody></table></div>
+    <div style="font-size:11.5px;color:var(--soft);margin-top:10px">Saldo inicial das contas: <b>${fmtBRL(abertura)}</b>. O <b>saldo hoje</b> conta só o que teve baixa. As linhas em cinza são <b>previstas</b>.</div>
   </div>`;
 }
 function parseDataISO(v){if(v==null||v==='')return '';
