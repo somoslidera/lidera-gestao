@@ -1765,7 +1765,8 @@ function normData(){
          {id:'mrPix', nome:'PIX',              tipo:'PIX',    taxa:Math.max(0,+f.taxaPix||0)}];
   }
   f.meios=f.meios.filter(m=>m&&m.id);
-  f.meios.forEach(m=>{m.nome=(''+(m.nome||'')).trim()||'Meio de recebimento';m.tipo=m.tipo||'Crédito';m.taxa=Math.max(0,+m.taxa||0);});
+  f.meios.forEach(m=>{m.nome=(''+(m.nome||'')).trim()||'Meio de recebimento';m.tipo=m.tipo||'Crédito';m.taxa=Math.max(0,+m.taxa||0);
+    if(m.prazo==null)m.prazo=(m.tipo==='Crédito')?30:(m.tipo==='Débito'?1:0);m.prazo=Math.max(0,parseInt(m.prazo)||0);});
   if(f.receitaBruta==null)f.receitaBruta=true;
   sincronizarMeios();
   Object.values(DB.fichas||{}).forEach(fi=>{if(!fi||typeof fi!=='object')return;
@@ -2238,7 +2239,11 @@ function parseNFe(text){
   if(!itens.length)return null;
   const vNF=doc.getElementsByTagNameNS('*','vNF')[0];
   let total=vNF?parseFloat(vNF.textContent)||0:0; if(!total)total=itens.reduce((s,i)=>s+i.vTotal,0);
-  return {fornecedor,cnpj,nNF,data,total,itens};
+  // duplicatas: a própria nota traz o parcelamento (nº, vencimento e valor de cada parcela)
+  const dups=Array.from(doc.getElementsByTagNameNS('*','dup')).map(d=>({
+    n:one(d,'nDup'),venc:(one(d,'dVenc')||'').slice(0,10),valor:parseFloat(one(d,'vDup'))||0}))
+    .filter(x=>x.venc&&x.valor>0);
+  return {fornecedor,cnpj,nNF,data,total,itens,dups};
 }
 /* ----- Impostos e despesas que entram no custo real do produto -----
    Na nota, o preço do item (vProd) NÃO inclui ICMS-ST, IPI, frete, seguro e outras despesas,
@@ -2267,6 +2272,15 @@ function nfeCalcExtras(d){
   d.extrasSuspeito=somaProd>0&&d.totalExtras>somaProd*0.6;
   return d;
 }
+/* aplica as duplicatas da nota a um lançamento, na fatia que cabe a ele */
+function nfeAplicaDups(nv,d,fatia){const dups=(d&&d.dups)||[];
+  if(dups.length<=1)return nv;                       // à vista ou parcela única
+  const somaDup=dups.reduce((s,x)=>s+x.valor,0);if(somaDup<=0)return nv;
+  const alvo=+nv.valor||0;let acc=0;
+  nv.liquidacoes=dups.map((x,i)=>{const v=(i===dups.length-1)?+(alvo-acc).toFixed(2)
+      :+(alvo*(x.valor/somaDup)).toFixed(2);
+    acc=+(acc+v).toFixed(2);return {data:x.venc,valor:v,pago:false};});
+  return nv;}
 function nfeCustoItem(it,comImp){return +(((+it.vTotal||0)+(comImp?(+it.vExtra||0):0)).toFixed(2));}
 function nfeComImp(){const el=$('#nfe_imp');return el?!!el.checked:false;}
 function nfeImpRefresh(){const d=window._nfe;if(!d)return;const on=nfeComImp();
@@ -2331,7 +2345,13 @@ function parseDanfePdf(pages){
   }
   if(!itens.length)return null;
   if(!total)total=itens.reduce((s,i)=>s+(i.vTotal||0),0);
-  return {fornecedor,cnpj,nNF,data,total,itens,_pdf:true};
+  // quadro FATURA / DUPLICATAS: pares de vencimento + valor
+  const dups=[];{const iF=U.search(/FATURA|DUPLICATA/);
+    if(iF>=0){const seg=allText.slice(iF,iF+600);
+      const re=/(\d{2}\/\d{2}\/\d{2,4})\s+([\d\.]+,\d{2})/g;let m;
+      while((m=re.exec(seg))){const p=m[1].split('/');const a=p[2].length===2?('20'+p[2]):p[2];
+        dups.push({n:String(dups.length+1),venc:a+'-'+p[1]+'-'+p[0],valor:nfeBrNum(m[2])});}}}
+  return {fornecedor,cnpj,nNF,data,total,itens,dups,_pdf:true};
 }
 async function importarNFe(input){const f=input&&input.files&&input.files[0];if(input)input.value='';if(!f)return;
   const isPdf=/\.pdf$/i.test(f.name)||f.type==='application/pdf';
@@ -2430,10 +2450,14 @@ function nfeAplicar(){
   if($('#nfe_lanc')&&$('#nfe_lanc').checked){DB.lancamentos=DB.lancamentos||[];
     const modo=(document.querySelector('input[name=nfe_modo]:checked')||{}).value||'item';
     if(modo==='item'){
+      const somaItens=d.itens.reduce((s,it,i)=>s+((linkIds[i]&&it._custo>0)?it._custo:0),0);
       d.itens.forEach((it,idx)=>{const insId=linkIds[idx];if(!insId)return;const v=it._custo||0;if(v<=0)return;
-        DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:it._grupo||'CMV',sub:it._sub||'',descricao:it.desc||'Produto',fornecedor:d.fornecedor||'',valor:v,forma:'',fromNFe:true,insumoId:insId,nfe:d.nNF||''});});
-    } else {const vTot=comImp?(d.total||0):(d.somaProdutos||d.total||0); if(vTot>0)
-      DB.lancamentos.push({id:uid(),data:d.data||hojeISO(),grupo:'CMV',sub:'Entrada de Produtos',descricao:(d.fornecedor||'Compra')+(d.nNF?' · NF '+d.nNF:''),fornecedor:d.fornecedor||'',valor:vTot,forma:'',fromNFe:true,nfe:d.nNF||''});
+        const nv={id:uid(),data:d.data||hojeISO(),grupo:it._grupo||'CMV',sub:it._sub||'',descricao:it.desc||'Produto',fornecedor:d.fornecedor||'',valor:v,forma:'',fromNFe:true,insumoId:insId,nfe:d.nNF||''};
+        nfeAplicaDups(nv,d,v/(somaItens||1));   // parcelas da nota rateadas por item
+        DB.lancamentos.push(nv);});
+    } else {const vTot=comImp?(d.total||0):(d.somaProdutos||d.total||0); if(vTot>0){
+      const nv={id:uid(),data:d.data||hojeISO(),grupo:'CMV',sub:'Entrada de Produtos',descricao:(d.fornecedor||'Compra')+(d.nNF?' · NF '+d.nNF:''),fornecedor:d.fornecedor||'',valor:vTot,forma:'',fromNFe:true,nfe:d.nNF||''};
+      nfeAplicaDups(nv,d,1);DB.lancamentos.push(nv);}
     }
   }
   const impMsg=(comImp&&(d.totalExtras||0)>0.01)?` · ${fmtBRL(d.totalExtras)} de impostos somados ao custo`:'';
@@ -3247,6 +3271,61 @@ function ymNow(){return ymOf(hojeISO());} // mês-calendário atual (AAAA-MM)
 function ymMinus1(ym){let y=+ym.slice(0,4),m=+ym.slice(5,7)-1;if(m<1){m=12;y--;}return y+'-'+String(m).padStart(2,'0');}
 function grupoTipo(g){const c=DB.categorias&&DB.categorias[g];return c?c.tipo:'despesa';}
 function lancMes(ym){return (DB.lancamentos||[]).filter(l=>ymOf(l.data)===ym);}
+/* ===================== COMPETÊNCIA × CAIXA =====================
+   O lançamento tem DUAS dimensões de tempo:
+     l.data        -> COMPETÊNCIA: quando o fato aconteceu. É o que o DRE lê.
+     l.liquidacoes -> CAIXA: quando o dinheiro entra/sai. É o que o Fluxo lê.
+   Sem liquidacoes o lançamento é à vista e o caixa cai na própria data, então
+   todo o histórico anterior continua valendo sem migração.                      */
+function diasSoma(iso,n){if(!iso)return iso;const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+(+n||0));
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function mesesSoma(iso,n){if(!iso)return iso;const d=new Date(iso+'T12:00:00');const dia=d.getDate();
+  d.setDate(1);d.setMonth(d.getMonth()+(+n||0));
+  const ult=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(dia,ult));  // 31/01 + 1 mês = 28/02
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+/* o que de fato pinga na conta: receita no cartão entra líquida da taxa */
+function liqValor(l,v){if(grupoTipo(l.grupo)!=='receita')return v;
+  const m=meioDoLanc(l);if(!m||!receitaEhBruta())return v;
+  return +(v*(1-meioTaxa(m)/100)).toFixed(2);}
+/* liquidações de um lançamento; sem elas, uma só, à vista */
+function liqDe(l){const arr=(l&&Array.isArray(l.liquidacoes))?l.liquidacoes.filter(x=>x&&x.data):[];
+  if(arr.length)return arr.map(x=>({data:x.data,valor:+x.valor||0,pago:!!x.pago,lanc:l}));
+  return [{data:l.data,valor:liqValor(l,+l.valor||0),pago:true,lanc:l}];}
+function liqTodas(){const out=[];(DB.lancamentos||[]).forEach(l=>liqDe(l).forEach(x=>out.push(x)));return out;}
+function liqEntreDatas(de,ate){return liqTodas().filter(x=>x.data&&x.data>=de&&x.data<=ate);}
+/* saldo de abertura: soma das contas bancárias cadastradas */
+function saldoContas(){return ((DB.fin&&DB.fin.contasBancarias)||[]).reduce((s,c)=>s+(+c.saldo||0),0);}
+/* saldo em caixa numa data: abertura + tudo que liquidou até ali */
+function saldoEm(dataISO){return +(liqTodas().filter(x=>x.data&&x.data<=dataISO)
+  .reduce((s,x)=>s+(grupoTipo(x.lanc.grupo)==='receita'?x.valor:-x.valor),saldoContas())).toFixed(2);}
+/* gera as parcelas de uma compra: n vezes, a cada 30 dias (ou intervalo dado) */
+/* Aplica as liquidações de um lançamento novo.
+   Receita: usa o prazo da bandeira (D+0 dinheiro/pix, D+1 débito, D+30 crédito).
+   Despesa: usa a condição informada (à vista ou parcelado).
+   Se nada se aplicar, deixa sem liquidacoes = à vista.                     */
+function aplicarLiquidacoes(l,cond){
+  if(!l||!(+l.valor>0))return l;
+  const ehRec=grupoTipo(l.grupo)==='receita';
+  if(ehRec){
+    const m=meioDoLanc(l);const pz=m?meioPrazo(m):0;
+    const parc=Math.max(1,parseInt(m&&m.parcelas)||1);
+    if(!m||(pz===0&&parc===1))return l;                       // à vista de verdade
+    const liq=liqValor(l,+l.valor||0);
+    l.liquidacoes=parc>1?liqParcelas(diasSoma(l.data,pz),liq,parc)
+                        :[{data:diasSoma(l.data,pz),valor:liq,pago:false}];
+    return l;}
+  const c=cond||{};const n=Math.max(1,parseInt(c.parcelas)||1);
+  if(n<=1&&!c.vencimento)return l;                            // à vista
+  // sem vencimento informado, parcelado de fornecedor é 30/60/90 (sem entrada)
+  const base=c.vencimento||(n>1?mesesSoma(l.data,1):l.data);
+  l.liquidacoes=liqParcelas(l.data,+l.valor||0,n,base,c.intervaloDias);
+  return l;}
+function liqParcelas(dataBase,total,n,primeiroVenc,intervaloDias){n=Math.max(1,parseInt(n)||1);
+  const tot=+(+total||0).toFixed(2);const base=primeiroVenc||dataBase;
+  const cada=+(tot/n).toFixed(2);const out=[];let acc=0;
+  for(let i=0;i<n;i++){const v=(i===n-1)?+(tot-acc).toFixed(2):cada;acc=+(acc+v).toFixed(2);
+    out.push({data:intervaloDias?diasSoma(base,intervaloDias*i):mesesSoma(base,i),valor:v,pago:false});}
+  return out;}
 function dreLanc(ym){
   const receita={},despesa={};let recTot=0,despTot=0;
   const ls=lancMes(ym);
@@ -3335,6 +3414,7 @@ function renomearMeio(m,novo){const velho=m.nome;novo=(''+novo).trim();if(!novo|
 function meiosRec(){const f=(DB&&DB.fin)||{};return Array.isArray(f.meios)?f.meios.filter(m=>m&&m.id):[];}
 function meioPorId(id){return meiosRec().find(m=>m.id===id)||null;}
 function meioTaxa(m){return Math.max(0,+(m&&m.taxa)||0);}
+function meioPrazo(m){return Math.max(0,parseInt((m&&m.prazo))||0);}   // dias até o dinheiro cair
 function receitaEhBruta(){return (DB.fin||{}).receitaBruta!==false;}   // padrão: ligado
 /* acha o meio de um lançamento: pelo id gravado; senão pelo nome (sub ou forma) */
 function meioDoLanc(l){if(!l)return null;
@@ -3369,8 +3449,8 @@ function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast
   save();viewFinanceiro();toast('Lançamento registrado');}
 /* ----- Popup de lançamento (uma ou várias linhas) ----- */
 let lancDraft=[];
-const LM_GC='112px 116px 132px minmax(130px,1fr) 92px 124px 112px 104px 74px 110px 102px 30px';
-function lmBlank(){return {data:hojeISO(),grupo:'',sub:'',desc:'',nf:'',fornecedor:'',vunStr:'',vun:0,qtd:1,forma:'',insumoId:'',insSugerido:'',uni:'',descOrig:'',fromIA:false};}
+const LM_GC='112px 116px 132px minmax(130px,1fr) 92px 124px 112px 104px 74px 110px 102px 86px 30px';
+function lmBlank(){return {data:hojeISO(),grupo:'',sub:'',desc:'',nf:'',fornecedor:'',parcelas:1,vencimento:'',vunStr:'',vun:0,qtd:1,forma:'',insumoId:'',insSugerido:'',uni:'',descOrig:'',fromIA:false};}
 function lmTotalLinha(r){const q=+r.qtd||0,v=+r.vun||0;return Math.round(q*v*100)/100;}
 function lmAgrupar(rows){const map=new Map();
   rows.forEach(r=>{const key=lmNorm(r.descOrig||r.desc)+'|'+Math.round((+r.vun||0)*100);
@@ -3400,8 +3480,8 @@ function lancarModal(manterRascunho){if(!manterRascunho||!lancDraft.length)lancD
       <input class="input" style="width:150px;padding:7px 9px" list="lm_forn" id="lm_bulk_forn" placeholder="Fornecedor…" title="Mesmo fornecedor em todas" onchange="lmAplicarTodas('fornecedor',this.value)">
       <select class="input" style="width:130px;padding:7px 9px" id="lm_bulk_forma" title="Mesma forma em todas" onchange="lmAplicarTodas('forma',this.value)"><option value="">Forma…</option>${ordPt(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select>
     </div>
-    <div style="overflow-x:auto"><div style="min-width:1330px">
-      <div style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span>Categoria</span><span>Subcategoria</span><span>Descrição</span><span>NF nº</span><span>Produto</span><span>Fornecedor</span><span>Valor</span><span>Qtd</span><span style="text-align:right">Total</span><span>Forma</span><span></span></div>
+    <div style="overflow-x:auto"><div style="min-width:1420px">
+      <div style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span>Categoria</span><span>Subcategoria</span><span>Descrição</span><span>NF nº</span><span>Produto</span><span>Fornecedor</span><span>Valor</span><span>Qtd</span><span style="text-align:right">Total</span><span>Forma</span><span>Parcelas</span><span></span></div>
       <div id="lm_rows"></div>
     </div></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px">
@@ -3426,6 +3506,7 @@ function renderLmRows(){const el=$('#lm_rows');if(!el)return;const grupos=ordPt(
      <input class="input" style="min-width:0;text-align:center" type="number" step="0.001" min="0" value="${r.qtd||1}" title="Quantidade${r.uni?' ('+esc(r.uni)+')':''}" oninput="lancDraft[${i}].qtd=parseFloat(this.value)||0;lmRecalc(${i})">
      <div id="lm_tot_${i}" title="Total = quantidade × valor unitário" style="min-width:0;text-align:right;font-weight:600;font-size:13px;color:var(--ink);padding:9px 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${fmtBRL(lmTotalLinha(r))}</div>
      <select class="input" style="min-width:0" onchange="lancDraft[${i}].forma=this.value"><option value="" ${!r.forma?'selected':''}>—</option>${formas.map(x=>`<option ${x===r.forma?'selected':''}>${esc(x)}</option>`).join('')}</select>
+     <input class="input" type="number" min="1" max="36" step="1" style="min-width:0;text-align:center" value="${r.parcelas||1}" title="Em quantas vezes. 1 = à vista. Acima de 1, vence 30/60/90 a partir da data. O DRE registra o total na data do fato; o Fluxo divide nas parcelas." oninput="lancDraft[${i}].parcelas=parseInt(this.value)||1">
      <button class="btn btn-ghost btn-sm" title="Remover linha" style="color:var(--red);padding:6px 6px;${lancDraft.length>1?'':'visibility:hidden'}" onclick="lmRemoveRow(${i})">${icoX}</button>
    </div>`).join('');lmAtualizaTotal();}
 function lmAplicarTodas(campo,valor){
@@ -3628,6 +3709,7 @@ function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
       if(nv.fornecedor)ins.fornecedor=nv.fornecedor;}
     if(nv.fornecedor)ensureFornecedor(nv.fornecedor);
     const _m=meioDoLanc(nv);if(_m)nv.meioId=_m.id;
+    aplicarLiquidacoes(nv,{parcelas:r.parcelas,vencimento:r.vencimento});
     DB.lancamentos.push(nv);n++;lastYM=ymOf(nv.data);});
   if(!n)return toast('Preencha ao menos um item com categoria e valor');
   if(lastYM&&lastYM!==curYM())lancYM=lastYM;
@@ -3752,24 +3834,50 @@ function finLancamentos(){
   </div>`;
 }
 /* ----- Fluxo de Caixa ----- */
+let fluxoJanela=90;
+function fluxoSetJanela(n){fluxoJanela=parseInt(n)||90;viewFinanceiro();}
 function finFluxo(){
-  const ym=curYM(); const ls=lancMes(ym);
+  const hoje=hojeISO(), ate=diasSoma(hoje,fluxoJanela);
+  const abertura=saldoContas();
+  const saldoHoje=saldoEm(hoje);
+  // o passado do mês corrente + tudo que está agendado até a janela escolhida
+  const ym=curYM(), ini=ym+'-01';
+  const movs=liqEntreDatas(ini<hoje?ini:hoje,ate);
   const dias={};
-  ls.forEach(l=>{const rec=grupoTipo(l.grupo)==='receita';dias[l.data]=dias[l.data]||{ent:0,sai:0};if(rec)dias[l.data].ent+=l.valor||0;else dias[l.data].sai+=l.valor||0;});
+  movs.forEach(x=>{const rec=grupoTipo(x.lanc.grupo)==='receita';
+    const d=dias[x.data]=dias[x.data]||{ent:0,sai:0,futuro:x.data>hoje};
+    if(rec)d.ent+=x.valor;else d.sai+=x.valor;});
   const datas=Object.keys(dias).sort();
-  let acc=0;
-  const rows=datas.map(dt=>{const x=dias[dt];const sd=x.ent-x.sai;acc+=sd;return `<tr><td>${fmtDataBR(dt)}</td><td class="num" style="color:var(--green)">${fmtBRL(x.ent)}</td><td class="num" style="color:var(--red)">${fmtBRL(x.sai)}</td><td class="num" style="color:${sd>=0?'var(--green)':'var(--red)'}">${fmtBRL(sd)}</td><td class="num" style="font-weight:700;color:${acc>=0?'var(--green)':'var(--red)'}">${fmtBRL(acc)}</td></tr>`;}).join('');
-  const totEnt=datas.reduce((s,dt)=>s+dias[dt].ent,0), totSai=datas.reduce((s,dt)=>s+dias[dt].sai,0);
-  return `<div class="card card-pad" style="max-width:880px">
-    <div class="section-head"><div><div class="ttl">Fluxo de Caixa</div><div class="desc">Entradas e saídas por dia · saldo acumulado do mês</div></div>
-      <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()"></div>
+  // acumulado parte do saldo real na véspera do primeiro dia mostrado
+  let acc=datas.length?saldoEm(diasSoma(datas[0],-1)):saldoHoje;
+  let menor={v:acc,d:datas[0]||hoje};
+  const rows=datas.map(dt=>{const x=dias[dt];const sd=x.ent-x.sai;acc=+(acc+sd).toFixed(2);
+    if(acc<menor.v){menor={v:acc,d:dt};}
+    const fut=x.futuro;
+    return `<tr${fut?' style="background:var(--bg)"':''}><td>${fmtDataBR(dt)}${fut?' <span class="tag tag-gray" style="font-size:9px">previsto</span>':''}</td>
+      <td class="num" style="color:var(--green)">${x.ent?fmtBRL(x.ent):'—'}</td>
+      <td class="num" style="color:var(--red)">${x.sai?fmtBRL(x.sai):'—'}</td>
+      <td class="num" style="color:${sd>=0?'var(--green)':'var(--red)'}">${fmtBRL(sd)}</td>
+      <td class="num" style="font-weight:700;color:${acc>=0?'var(--green)':'var(--red)'}">${fmtBRL(acc)}</td></tr>`;}).join('');
+  const futuros=movs.filter(x=>x.data>hoje);
+  const aReceber=futuros.filter(x=>grupoTipo(x.lanc.grupo)==='receita').reduce((s,x)=>s+x.valor,0);
+  const aPagar=futuros.filter(x=>grupoTipo(x.lanc.grupo)!=='receita').reduce((s,x)=>s+x.valor,0);
+  const saldoFim=+(saldoHoje+aReceber-aPagar).toFixed(2);
+  const furou=menor.v<0;
+  return `<div class="card card-pad" style="max-width:920px">
+    <div class="section-head"><div><div class="ttl">Fluxo de Caixa</div><div class="desc">Quando o dinheiro entra e sai de fato. Diferente do DRE, que mostra quando o fato aconteceu.</div></div>
+      <select class="input" style="max-width:180px" onchange="fluxoSetJanela(this.value)">${[[30,'Próximos 30 dias'],[60,'Próximos 60 dias'],[90,'Próximos 90 dias']].map(([v,l])=>`<option value="${v}" ${fluxoJanela===v?'selected':''}>${l}</option>`).join('')}</select></div>
+    ${!abertura?`<div class="alert alert-amber" style="margin-bottom:12px">${icoWarn}<div>Sem <b>saldo inicial</b> o acumulado não representa o seu caixa real. Informe o saldo das contas em <b>Financeiro › Contas Bancárias</b>.</div></div>`:''}
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-      <div class="dash-pill"><span>Entradas</span><b style="color:var(--green)">${fmtBRL(totEnt)}</b></div>
-      <div class="dash-pill"><span>Saídas</span><b style="color:var(--red)">${fmtBRL(totSai)}</b></div>
-      <div class="dash-pill"><span>Saldo do mês</span><b style="color:${totEnt-totSai>=0?'var(--green)':'var(--red)'}">${fmtBRL(totEnt-totSai)}</b></div>
+      <div class="dash-pill"><span>Saldo hoje</span><b style="color:${saldoHoje>=0?'var(--green)':'var(--red)'}">${fmtBRL(saldoHoje)}</b></div>
+      <div class="dash-pill"><span>A receber</span><b style="color:var(--green)">${fmtBRL(aReceber)}</b></div>
+      <div class="dash-pill"><span>A pagar</span><b style="color:var(--red)">${fmtBRL(aPagar)}</b></div>
+      <div class="dash-pill"><span>Saldo em ${fluxoJanela} dias</span><b style="color:${saldoFim>=0?'var(--green)':'var(--red)'}">${fmtBRL(saldoFim)}</b></div>
     </div>
+    ${furou?`<div class="alert alert-red" style="margin-bottom:12px">${icoWarn}<div>O caixa fica <b>negativo em ${fmtDataBR(menor.d)}</b>, chegando a <b>${fmtBRL(menor.v)}</b>. Antecipe recebíveis, renegocie um vencimento ou segure uma compra.</div></div>`:''}
     <div class="scroll-x"><table><thead><tr><th>Dia</th><th class="num">Entradas</th><th class="num">Saídas</th><th class="num">Saldo do dia</th><th class="num">Acumulado</th></tr></thead>
-    <tbody>${rows||`<tr><td colspan="5" style="color:var(--soft);text-align:center;padding:14px">Nenhum lançamento neste mês.</td></tr>`}</tbody></table></div>
+    <tbody>${rows||`<tr><td colspan="5" style="color:var(--soft);text-align:center;padding:14px">Nada previsto no período.</td></tr>`}</tbody></table></div>
+    <div style="font-size:11.5px;color:var(--soft);margin-top:10px">Saldo inicial das contas: <b>${fmtBRL(abertura)}</b>. As linhas em cinza ainda não aconteceram: são parcelas e recebíveis agendados.</div>
   </div>`;
 }
 function parseDataISO(v){if(v==null||v==='')return '';
@@ -4284,12 +4392,13 @@ function meiosEditorHTML(){const ms=meiosRec();const bruta=receitaEhBruta();
       <div style="font-size:12.5px;font-weight:600;color:var(--muted)">Meios de recebimento e taxas</div>
       <button class="btn btn-ghost btn-sm" onclick="meioAdd()" style="padding:4px 9px;font-size:11.5px">${icoPlus} Adicionar bandeira</button>
     </div>
-    <div style="font-size:11.5px;color:var(--soft);margin-bottom:8px">Cada bandeira aqui vira <b>forma de pagamento</b> no lançamento e <b>subcategoria de Receita</b>. Renomear atualiza os lançamentos que já usavam o nome antigo.</div>
-    ${ms.length?`<div style="display:grid;grid-template-columns:minmax(120px,1fr) 118px 84px 34px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 4px"><span>Bandeira</span><span>Tipo</span><span>Taxa %</span><span></span></div>`:''}
-    ${ms.map((m,i)=>`<div style="display:grid;grid-template-columns:minmax(120px,1fr) 118px 84px 34px;gap:8px;align-items:center;margin-bottom:6px">
+    <div style="font-size:11.5px;color:var(--soft);margin-bottom:8px">Cada bandeira aqui vira <b>forma de pagamento</b> no lançamento e <b>subcategoria de Receita</b>. Renomear atualiza os lançamentos que já usavam o nome antigo. O <b>prazo</b> diz em quantos dias o dinheiro cai e é o que joga a venda para a data certa no <b>Fluxo de Caixa</b>.</div>
+    ${ms.length?`<div style="display:grid;grid-template-columns:minmax(110px,1fr) 108px 76px 84px 34px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 4px"><span>Bandeira</span><span>Tipo</span><span>Taxa %</span><span>Prazo</span><span></span></div>`:''}
+    ${ms.map((m,i)=>`<div style="display:grid;grid-template-columns:minmax(110px,1fr) 108px 76px 84px 34px;gap:8px;align-items:center;margin-bottom:6px">
       <input class="input" value="${esc(m.nome)}" placeholder="Ex.: Visa Crédito" onchange="meioSet(${i},'nome',this.value)" style="padding:7px 9px">
       <select class="input" onchange="meioSet(${i},'tipo',this.value)" style="padding:7px 9px">${['Crédito','Débito','PIX','Voucher','Dinheiro','Marketplace'].map(t=>`<option ${t===m.tipo?'selected':''}>${t}</option>`).join('')}</select>
       <input class="input" type="number" step="0.01" min="0" value="${m.taxa}" onchange="meioSet(${i},'taxa',this.value)" style="padding:7px 9px">
+      <div class="money-wrap" style="min-width:0"><span class="money-pre" style="font-size:11px">D+</span><input class="input money-inp" type="number" step="1" min="0" value="${meioPrazo(m)}" title="Dias até o dinheiro cair na conta" onchange="meioSet(${i},'prazo',this.value)" style="padding:7px 9px"></div>
       <button class="btn btn-ghost btn-sm" title="Remover" onclick="meioDel(${i})" style="padding:4px 6px;color:var(--red)">✕</button>
     </div>`).join('')}
     <label style="display:flex;gap:9px;align-items:flex-start;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-top:10px;cursor:pointer;font-size:12px">
@@ -4302,6 +4411,7 @@ function meioAdd(){const ms=meiosRec();ms.push({id:'mr'+uid(),nome:'',tipo:'Cré
 function meioSet(i,campo,v){const ms=meiosRec();const m=ms[i];if(!m)return;
   if(campo==='nome'){renomearMeio(m,(''+v).trim()||'Meio de recebimento');}
   else if(campo==='taxa')m.taxa=Math.max(0,parseFloat(v)||0);
+  else if(campo==='prazo')m.prazo=Math.max(0,parseInt(v)||0);
   else m.tipo=v;
   DB.fin.meios=ms;sincronizarMeios();save();viewFinanceiro();}
 function meioDel(i){const ms=meiosRec();const m=ms[i];if(!m)return;
