@@ -245,8 +245,17 @@ th.num{text-align:right}
   .modal-foot{padding:10px 16px calc(10px + env(safe-area-inset-bottom));flex:0 0 auto;flex-wrap:wrap;border-radius:0}
   .modal-foot .btn{flex:1 1 auto;justify-content:center;min-height:46px}
   /* --- cabecalhos, barras e espacamento --- */
-  .topbar{padding:0 12px;min-height:56px;gap:10px}
-  .topbar #pageTitle{font-size:17px}
+  /* --- barra superior em 2 linhas de altura fixa: titulo em cima, acoes numa regua rolavel embaixo --- */
+  .topbar{flex-wrap:wrap;padding:0;min-height:0;gap:0}
+  .topbar .menu-btn{margin:9px 0 9px 12px;flex:0 0 auto}
+  .topbar h1{flex:1 1 0;min-width:0;padding:9px 12px 9px 6px;font-size:17px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar #topActions{flex:0 0 100%;width:100%;max-width:100%;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;gap:8px;padding:0 12px 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .topbar #topActions::-webkit-scrollbar{display:none}
+  .topbar #topActions:empty{display:none}
+  .topbar #topActions>*{flex:0 0 auto}
+  .topbar #topActions>div{display:flex!important;flex-wrap:nowrap!important;gap:8px}
+  .topbar #topActions .btn{min-height:38px;padding:8px 12px;font-size:13px;white-space:nowrap}
+  .topbar #topActions .input,#topActions select.input{min-height:38px;font-size:15px;width:auto;min-width:150px;padding:6px 10px}
   .content{padding:12px}
   .card-pad{padding:14px}
   .section-head{flex-direction:column;align-items:stretch;gap:10px}
@@ -273,6 +282,9 @@ th.num{text-align:right}
   .fcard-acts button,.fcard-acts a{min-height:40px;min-width:40px;padding:8px 11px;border:1px solid var(--line);border-radius:9px;font-size:13px}
   .mob-hide{display:none!important}
   .mob-only{display:block}
+  /* tabela solta (documentos de cargo/POP, DRE) rola sozinha em vez de empurrar a pagina */
+  #view table{display:block;overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+  #view .scroll-x table{display:table}
 }
 @media(min-width:641px){.mob-only{display:none!important}}
 
