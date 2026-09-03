@@ -225,6 +225,57 @@ th.num{text-align:right}
   .backdrop{position:fixed;inset:0;background:rgba(16,32,63,.4);z-index:40}
 }
 @media(max-width:560px){.kpi-grid{grid-template-columns:1fr}.comp-row{grid-template-columns:24px 1fr 70px 64px 30px}}
+/* ===== CELULAR: a maioria dos clientes usa o Flow pelo telefone ===== */
+@media(max-width:640px){
+  /* --- toque: nada menor que ~40px --- */
+  .btn{min-height:42px;padding:10px 14px;font-size:14px}
+  .btn-sm{min-height:38px;padding:8px 12px;font-size:13px}
+  .icon-btn{width:38px;height:38px}
+  .mini-del{width:40px;height:40px}
+  .pill-filter button{min-height:38px;padding:8px 14px;font-size:13px}
+  /* 16px impede o iOS de dar zoom ao focar o campo */
+  .input,select.input,textarea.input{min-height:44px;font-size:16px;padding:10px 12px}
+  input[type=checkbox],input[type=radio]{width:20px;height:20px}
+  /* --- modal vira folha que sobe de baixo, ocupando a tela --- */
+  .modal-overlay{padding:0;align-items:flex-end}
+  .modal,.modal.wide{width:100%!important;max-width:100%!important;border-radius:18px 18px 0 0;max-height:96dvh;display:flex;flex-direction:column}
+  .modal-head{padding:14px 16px;flex:0 0 auto}
+  .modal-head h3{font-size:17px}
+  .modal-body{padding:14px 16px;max-height:none;flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .modal-foot{padding:10px 16px calc(10px + env(safe-area-inset-bottom));flex:0 0 auto;flex-wrap:wrap;border-radius:0}
+  .modal-foot .btn{flex:1 1 auto;justify-content:center;min-height:46px}
+  /* --- cabecalhos, barras e espacamento --- */
+  .topbar{padding:0 12px;min-height:56px;gap:10px}
+  .topbar #pageTitle{font-size:17px}
+  .content{padding:12px}
+  .card-pad{padding:14px}
+  .section-head{flex-direction:column;align-items:stretch;gap:10px}
+  .section-head>div:last-child{display:flex;flex-wrap:wrap;gap:8px}
+  .pill-filter{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .pill-filter::-webkit-scrollbar{display:none}
+  .pill-filter button{flex:0 0 auto}
+  .kpi{padding:14px}
+  .kpi .k-val{font-size:22px}
+  .dash-pill{flex:1 1 calc(50% - 10px);min-width:0}
+  /* --- linhas em grade viram pilha; o cabecalho de colunas some --- */
+  .comp-row,.mob-stack{grid-template-columns:1fr!important;gap:6px;padding:10px 0;margin-bottom:0;border-bottom:1px solid var(--line)}
+  .comp-row>*,.mob-stack>*{width:100%;min-width:0}
+  .comp-row>.mini-del,.comp-row>.icon-btn,.mob-stack>.btn{width:auto;justify-self:end}
+  .mob-head{display:none!important}
+  /* --- tabelas rolam dentro do card, sangrando ate a borda para ganhar espaco --- */
+  .card-pad>.scroll-x{margin:0 -14px;padding:0 14px}
+  .scroll-x tbody td .icon-btn{width:38px;height:38px}     /* mesma especificidade da regra de mesa */
+  .scroll-x tbody td .input{min-height:40px;font-size:15px}
+  .scroll-x tbody td{padding:8px 10px}
+  table input[type=checkbox]{width:22px;height:22px}
+  .pill-filter{max-width:100%}
+  .fcard-acts{gap:8px;flex-wrap:wrap}
+  .fcard-acts button,.fcard-acts a{min-height:40px;min-width:40px;padding:8px 11px;border:1px solid var(--line);border-radius:9px;font-size:13px}
+  .mob-hide{display:none!important}
+  .mob-only{display:block}
+}
+@media(min-width:641px){.mob-only{display:none!important}}
+
 .hidden{display:none!important}
 .scroll-x{overflow-x:auto}
 /* ===== Auth / Admin (SaaS) ===== */
@@ -3493,12 +3544,12 @@ function lancarModal(manterRascunho){if(!manterRascunho||!lancDraft.length)lancD
   modal(`<div class="modal-head"><h3>Novo lançamento</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-      <div style="font-size:12.5px;color:var(--muted)">Preencha um ou mais itens e use <b>+ Adicionar linha</b> para lançar vários de uma vez.</div>
+      <div style="font-size:12.5px;color:var(--muted)">Preencha um ou mais itens e use <b>+ ${ehMobile()?'Adicionar item':'Adicionar linha'}</b> para lançar vários de uma vez.</div>
       ${iaBtn}
     </div>
     <div id="lm_ia_status" style="display:none;font-size:12.5px;margin-bottom:10px;padding:9px 12px;border-radius:10px"></div>
     <datalist id="lm_forn">${fornList}</datalist>
-    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <div class="${ehMobile()?'mob-hide':''}" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <span style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700">Aplicar a todas</span>
       <input type="date" class="input" style="width:138px;padding:7px 9px" id="lm_bulk_data" title="Mesma data em todas as linhas" onchange="lmAplicarTodas('data',this.value)">
       <select class="input" style="width:150px;padding:7px 9px" id="lm_bulk_grupo" title="Mesma categoria em todas" onchange="lmAplicarTodas('grupo',this.value)"><option value="">Categoria…</option>${ordPt(Object.keys(DB.categorias||{})).map(g=>`<option>${esc(g)}</option>`).join('')}</select>
@@ -3507,19 +3558,47 @@ function lancarModal(manterRascunho){if(!manterRascunho||!lancDraft.length)lancD
       <input class="input" style="width:150px;padding:7px 9px" list="lm_forn" id="lm_bulk_forn" placeholder="Fornecedor…" title="Mesmo fornecedor em todas" onchange="lmAplicarTodas('fornecedor',this.value)">
       <select class="input" style="width:130px;padding:7px 9px" id="lm_bulk_forma" title="Mesma forma em todas" onchange="lmAplicarTodas('forma',this.value)"><option value="">Forma…</option>${ordPt(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select>
     </div>
-    <div style="overflow-x:auto"><div style="min-width:1420px">
-      <div style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span>Categoria</span><span>Subcategoria</span><span>Descrição</span><span>NF nº</span><span>Produto</span><span>Fornecedor</span><span>Valor</span><span>Qtd</span><span style="text-align:right">Total</span><span>Forma</span><span>Parcelas</span><span></span></div>
+    <div style="${ehMobile()?'':'overflow-x:auto'}"><div style="${ehMobile()?'':'min-width:1420px'}">
+      <div class="mob-hide" style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span>Categoria</span><span>Subcategoria</span><span>Descrição</span><span>NF nº</span><span>Produto</span><span>Fornecedor</span><span>Valor</span><span>Qtd</span><span style="text-align:right">Total</span><span>Forma</span><span>Parcelas</span><span></span></div>
       <div id="lm_rows"></div>
     </div></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px">
-      <button class="btn btn-ghost btn-sm" onclick="lmAddRow()">${icoPlus} Adicionar linha</button>
+      <button class="btn btn-ghost btn-sm" onclick="lmAddRow()">${icoPlus} ${ehMobile()?'Adicionar item':'Adicionar linha'}</button>
       <div style="font-size:12.5px;color:var(--muted)">Total dos itens: <b id="lm_total" class="serif" style="font-size:18px;color:var(--navy);margin-left:4px">R$ 0,00</b></div>
     </div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="lancarModalSalvar()">Lançar</button></div>`,true,true);
   const mc=document.querySelector('#modalRoot .modal');if(mc){mc.style.maxWidth='1420px';mc.style.width='min(1420px,96vw)';}
   renderLmRows();}
-function renderLmRows(){const el=$('#lm_rows');if(!el)return;const grupos=ordPt(Object.keys(DB.categorias));const formas=ordPt(DB.formasPagamento||[]);
+function ehMobile(){return window.innerWidth<=640;}
+let _mobW=window.innerWidth<=640;
+window.addEventListener('resize',()=>{const m=window.innerWidth<=640;if(m!==_mobW){_mobW=m;
+  try{if(typeof current!=='undefined'&&current&&typeof go==='function'&&!document.querySelector('#modalRoot .modal'))go(current);}catch(e){}}});
+/* No celular cada linha do lançamento vira um cartão com os campos empilhados e rotulados:
+   a grade de 13 colunas não cabe e não dá para operar com o dedo. */
+function renderLmRowsMobile(el){const grupos=ordPt(Object.keys(DB.categorias));const formas=ordPt(DB.formasPagamento||[]);
+  const L=(t,inner)=>`<div style="display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center"><span style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700">${t}</span><div style="min-width:0">${inner}</div></div>`;
+  el.innerHTML=lancDraft.map((r,i)=>`
+   <div style="border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;display:grid;gap:9px;background:var(--card)">
+     <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">Item ${i+1}</b>
+       <button class="btn btn-ghost btn-sm" style="color:var(--red);padding:6px 10px;${lancDraft.length>1?'':'visibility:hidden'}" onclick="lmRemoveRow(${i})">${icoX} remover</button></div>
+     ${L('Data',`<input type="date" class="input" value="${r.data||''}" onchange="lancDraft[${i}].data=this.value">`)}
+     ${L('Categoria',`<select class="input" onchange="lancDraft[${i}].grupo=this.value;lancDraft[${i}].sub='';lmSubRefresh(${i})"><option value="" ${!r.grupo?'selected':''}>—</option>${grupos.map(g=>`<option ${g===r.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>`)}
+     ${L('Subcat.',`<select class="input" id="lm_sub_${i}" onchange="lancDraft[${i}].sub=this.value">${subOptions(r.grupo,r.sub)}</select>`)}
+     ${L('Descrição',lmDescCel(r,i))}
+     ${L('NF nº',`<input class="input" value="${esc(r.nf||'')}" placeholder="número da nota" oninput="lancDraft[${i}].nf=this.value">`)}
+     ${L('Produto',lmProdutoCel(r,i))}
+     ${L('Fornecedor',`<input class="input" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value">`)}
+     <div style="display:grid;grid-template-columns:1fr 84px;gap:8px">
+       ${L('Valor',`<div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${r.vunStr||''}" placeholder="0,00" oninput="lancDraft[${i}].vun=moneyMask(this);lancDraft[${i}].vunStr=this.value;lmRecalc(${i})"></div>`)}
+       <div><span style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700">Qtd</span><input class="input" type="number" step="0.001" min="0" value="${r.qtd||1}" style="text-align:center;margin-top:4px" oninput="lancDraft[${i}].qtd=parseFloat(this.value)||0;lmRecalc(${i})"></div>
+     </div>
+     ${L('Total',`<div id="lm_tot_${i}" style="font-weight:700;font-size:16px;color:var(--navy)">${fmtBRL(lmTotalLinha(r))}</div>`)}
+     ${L('Forma',`<select class="input" onchange="lancDraft[${i}].forma=this.value"><option value="" ${!r.forma?'selected':''}>—</option>${formas.map(x=>`<option ${x===r.forma?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
+     ${L('Parcelas',lmParcelasCel(r,i))}
+   </div>`).join('');lmAtualizaTotal();}
+function renderLmRows(){const el=$('#lm_rows');if(!el)return;
+  if(ehMobile())return renderLmRowsMobile(el);const grupos=ordPt(Object.keys(DB.categorias));const formas=ordPt(DB.formasPagamento||[]);
   el.innerHTML=lancDraft.map((r,i)=>`
    <div style="display:grid;grid-template-columns:${LM_GC};gap:8px;align-items:center;margin-bottom:6px">
      <input type="date" class="input" style="min-width:0" value="${r.data||''}" onchange="lancDraft[${i}].data=this.value">
@@ -3975,6 +4054,22 @@ function finFluxo(){
       <td class="num" style="font-weight:700;white-space:nowrap;color:${acc>=0?'var(--green)':'var(--red)'}">${fmtBRL(acc)}</td>
       <td class="num" style="white-space:nowrap">${prev?`<button class="icon-btn" onclick="liqTogglePago('${l.id}',${x.idx})" title="Marcar como ${rec?'recebido':'pago'}" style="width:auto;padding:0 9px;font-size:11px">○ baixar</button>`:`<span class="tag tag-green" style="font-size:9px">✓ baixado</span>`}</td>
     </tr>`;}).join('');
+  // versão celular: cartões em vez de tabela
+  let accM=movs.length?saldoEm(diasSoma(movs[0].data,-1)):saldoHoje;
+  const cards=movs.map(x=>{const l=x.lanc, rec=grupoTipo(l.grupo)==='receita';
+    accM=+(accM+(rec?x.valor:-x.valor)).toFixed(2);
+    const prev=!x.pago, atras=prev&&x.data<hoje;const nParc=(l.liquidacoes||[]).length;
+    const info=[l.grupo?esc(l.grupo)+(l.sub?' · '+esc(l.sub):''):'',l.fornecedor?esc(l.fornecedor):'',l.nfe?'NF '+esc(l.nfe):'',nParc>1?('parcela '+(x.idx+1)+'/'+nParc):''].filter(Boolean).join(' · ');
+    return `<div style="border:1px solid ${atras?'var(--red)':'var(--line)'};border-radius:12px;padding:11px 12px;margin-bottom:8px;${prev?'background:var(--bg)':''}">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <div style="font-size:12px;color:${atras?'var(--red)':'var(--soft)'};font-weight:${atras?'700':'500'}">${atras?'⚠ vencida · ':(prev?'previsto · ':'')}${fmtDataBR(x.data)}</div>
+        <div style="font-size:15px;font-weight:700;color:${rec?'var(--green)':'var(--red)'}">${rec?'+':'−'} ${fmtBRL(x.valor)}</div></div>
+      <div style="font-size:14px;font-weight:600;margin-top:3px">${esc(l.descricao||'(sem descrição)')}</div>
+      ${info?`<div style="font-size:11.5px;color:var(--soft);margin-top:2px">${info}</div>`:''}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px">
+        <div style="font-size:12px;color:var(--muted)">Saldo após: <b style="color:${accM>=0?'var(--green)':'var(--red)'}">${fmtBRL(accM)}</b></div>
+        ${prev?`<button class="btn btn-ghost btn-sm" onclick="liqTogglePago('${l.id}',${x.idx})">○ Dar baixa</button>`:`<span class="tag tag-green">✓ baixado</span>`}
+      </div></div>`;}).join('');
   const vencidas=movs.filter(x=>!x.pago&&x.data<hoje);
   const futuros=movs.filter(x=>!x.pago);
   const aReceber=futuros.filter(x=>grupoTipo(x.lanc.grupo)==='receita').reduce((s,x)=>s+x.valor,0);
@@ -3993,8 +4088,10 @@ function finFluxo(){
     </div>
     ${furou?`<div class="alert alert-red" style="margin-bottom:12px">${icoWarn}<div>O caixa fica <b>negativo em ${fmtDataBR(menor.d)}</b>, chegando a <b>${fmtBRL(menor.v)}</b>. Antecipe recebíveis, renegocie um vencimento ou segure uma compra.</div></div>`:''}
     ${vencidas.length?`<div class="alert alert-amber" style="margin-bottom:12px">${icoWarn}<div><b>${vencidas.length}</b> movimento(s) já venceram e continuam <b>sem baixa</b>, somando ${fmtBRL(vencidas.reduce((s,x)=>s+x.valor,0))}. Dê baixa para o saldo ficar certo.</div></div>`:''}
-    <div class="scroll-x"><table><thead><tr><th style="min-width:96px">Dia</th><th>Lançamento</th><th class="num">Entrada</th><th class="num">Saída</th><th class="num">Acumulado</th><th class="num">Situação</th></tr></thead>
-    <tbody>${rows||`<tr><td colspan="6" style="color:var(--soft);text-align:center;padding:14px">Nada previsto no período.</td></tr>`}</tbody></table></div>
+    ${ehMobile()
+      ?(cards||`<div style="color:var(--soft);text-align:center;padding:14px">Nada previsto no período.</div>`)
+      :`<div class="scroll-x"><table><thead><tr><th style="min-width:96px">Dia</th><th>Lançamento</th><th class="num">Entrada</th><th class="num">Saída</th><th class="num">Acumulado</th><th class="num">Situação</th></tr></thead>
+    <tbody>${rows||`<tr><td colspan="6" style="color:var(--soft);text-align:center;padding:14px">Nada previsto no período.</td></tr>`}</tbody></table></div>`}
     <div style="font-size:11.5px;color:var(--soft);margin-top:10px">Saldo inicial das contas: <b>${fmtBRL(abertura)}</b>. O <b>saldo hoje</b> conta só o que teve baixa. As linhas em cinza são <b>previstas</b>.</div>
   </div>`;
 }
@@ -4376,7 +4473,7 @@ function finContas(key){
       </div>
       <div style="font-size:11.5px;color:var(--muted);margin-bottom:9px">Vêm das compras e vendas já lançadas. Dar baixa <b>não lança de novo no DRE</b>: apenas registra que o dinheiro entrou ou saiu.</div>
       ${(function(){const a=liqAtrasadasAntes(isPagar?'pagar':'receber',ym);return a.n?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${a.n}</b> parcela(s) de meses anteriores seguem sem baixa, somando <b>${fmtBRL(a.v)}</b>. Volte o mês para regularizar.</div></div>`:'';})()}
-      <div class="comp-row" style="grid-template-columns:${gP};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Origem</span><span>Vencimento</span><span>Valor</span><span>Categoria</span><span>Situação</span><span></span></div>
+      <div class="comp-row mob-head" style="grid-template-columns:${gP};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Origem</span><span>Vencimento</span><span>Valor</span><span>Categoria</span><span>Situação</span><span></span></div>
       ${parc.map(x=>{const atras=!x.liq.pago&&x.liq.data<hoje;
         const desc=(x.lanc.descricao||'(sem descrição)')+(x.lanc.nfe?' · NF '+x.lanc.nfe:'')
           +((x.lanc.liquidacoes||[]).length>1?' · '+(x.idx+1)+'/'+x.lanc.liquidacoes.length:'');
@@ -4390,7 +4487,7 @@ function finContas(key){
       </div>`;}).join('')}
     </div>`;
   return `<div class="card card-pad" style="max-width:1220px">
-    <div class="section-head"><div><div class="ttl">${isPagar?'Contas a Pagar':'Contas a Receber'}</div><div class="desc">Previsão do que ainda ${isPagar?'sai':'entra'}. Dar baixa move o Fluxo de Caixa e no Fluxo de Caixa</div></div>
+    <div class="section-head"><div><div class="ttl">${isPagar?'Contas a Pagar':'Contas a Receber'}</div><div class="desc">Previsão do que ainda ${isPagar?'sai':'entra'}. Dar baixa registra o dinheiro no Fluxo de Caixa, sem lançar de novo no DRE.</div></div>
       <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()"></div>
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <div class="dash-pill"><span>Total do mês</span><b>${fmtBRL(total+pAberto+pFeito)}</b></div>
@@ -4400,7 +4497,7 @@ function finContas(key){
     ${blocoParcelas}
     <div style="font-size:13px;font-weight:700;margin-bottom:3px">Contas avulsas</div>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:9px">Compromissos que ainda não viraram lançamento.</div>
-    <div class="comp-row" style="grid-template-columns:${gC};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Descrição</span><span>Grupo</span><span>Subcategoria</span><span>Vencimento</span><span>Valor</span><span>Forma</span><span>${fLabel}</span><span></span></div>
+    <div class="comp-row mob-head" style="grid-template-columns:${gC};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Descrição</span><span>Grupo</span><span>Subcategoria</span><span>Vencimento</span><span>Valor</span><span>Forma</span><span>${fLabel}</span><span></span></div>
     ${linhas||`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhuma conta avulsa neste mês.</div>`}
     <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:8px">${icoPlus} Adicionar conta avulsa</button>
     <div style="font-size:11.5px;color:var(--soft);margin-top:8px">Conta avulsa é o que <b>ainda não foi lançado</b> (ex.: aluguel do mês que vem). Ao marcar <b>${fLabel}</b>, ela entra no DRE e no Fluxo. As parcelas acima já estão no DRE e só movem o Fluxo.</div>
@@ -4525,7 +4622,7 @@ function finVisao(t){
 function finCustosFixos(){
   return `<div class="card card-pad" style="max-width:1120px">
     <div class="section-head"><div><div class="ttl">Custos fixos mensais (recorrentes)</div><div class="desc">Aluguel, energia, etc., com dia de vencimento aparecem todo mês em Contas a Pagar</div></div></div>
-    <div class="comp-row" style="grid-template-columns:1.5fr 1.1fr 1.1fr 78px 124px 124px 30px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Nome</span><span>Grupo</span><span>Subcategoria</span><span>Dia venc.</span><span>Valor previsto</span><span>Forma</span><span></span></div>
+    <div class="comp-row mob-head" style="grid-template-columns:1.5fr 1.1fr 1.1fr 78px 124px 124px 30px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Nome</span><span>Grupo</span><span>Subcategoria</span><span>Dia venc.</span><span>Valor previsto</span><span>Forma</span><span></span></div>
     ${finRecorrentes()}
     <div style="margin-top:18px"><div class="ttl" style="font-size:13px;margin-bottom:8px">Provisões a reservar / mês</div>
       ${finList('provisoes',[{f:'nome',ph:'Nome',w:'1.5fr'},{f:'valor',type:'money',w:'120px'}])}</div>
@@ -4540,8 +4637,8 @@ function meiosEditorHTML(){const ms=meiosRec();const bruta=receitaEhBruta();
       <button class="btn btn-ghost btn-sm" onclick="meioAdd()" style="padding:4px 9px;font-size:11.5px">${icoPlus} Adicionar bandeira</button>
     </div>
     <div style="font-size:11.5px;color:var(--soft);margin-bottom:8px">Cada bandeira aqui vira <b>forma de pagamento</b> no lançamento e <b>subcategoria de Receita</b>. Renomear atualiza os lançamentos que já usavam o nome antigo. O <b>prazo</b> diz em quantos dias o dinheiro cai e é o que joga a venda para a data certa no <b>Fluxo de Caixa</b>.</div>
-    ${ms.length?`<div style="display:grid;grid-template-columns:minmax(110px,1fr) 108px 76px 84px 34px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 4px"><span>Bandeira</span><span>Tipo</span><span>Taxa %</span><span>Prazo (dias)</span><span></span></div>`:''}
-    ${ms.map((m,i)=>`<div style="display:grid;grid-template-columns:minmax(110px,1fr) 108px 76px 84px 34px;gap:8px;align-items:center;margin-bottom:6px">
+    ${ms.length?`<div class="mob-head" style="display:grid;grid-template-columns:minmax(110px,1fr) 108px 76px 84px 34px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 4px"><span>Bandeira</span><span>Tipo</span><span>Taxa %</span><span>Prazo (dias)</span><span></span></div>`:''}
+    ${ms.map((m,i)=>`<div class="mob-stack" style="display:grid;grid-template-columns:minmax(110px,1fr) 108px 76px 84px 34px;gap:8px;align-items:center;margin-bottom:6px">
       <input class="input" value="${esc(m.nome)}" placeholder="Ex.: Visa Crédito" onchange="meioSet(${i},'nome',this.value)" style="padding:7px 9px">
       <select class="input" onchange="meioSet(${i},'tipo',this.value)" style="padding:7px 9px">${['Crédito','Débito','PIX','Voucher','Dinheiro','Marketplace'].map(t=>`<option ${t===m.tipo?'selected':''}>${t}</option>`).join('')}</select>
       <input class="input" type="number" step="0.01" min="0" value="${m.taxa}" onchange="meioSet(${i},'taxa',this.value)" style="padding:7px 9px">
@@ -4571,8 +4668,8 @@ function canaisEditorHTML(){const cs=canaisVenda();const bal=mixBalcao();const s
       ${cs.length<CANAIS_MAX?`<button class="btn btn-ghost btn-sm" onclick="canalAdd()" style="padding:4px 9px;font-size:11.5px">${icoPlus} Adicionar canal</button>`:`<span style="font-size:11px;color:var(--soft)">máximo de ${CANAIS_MAX}</span>`}
     </div>
     <div style="font-size:11.5px;color:var(--soft);margin-bottom:8px">O nome é livre: use o delivery da sua cidade. Renomear aqui <b>não apaga</b> os preços já digitados nas fichas técnicas.</div>
-    ${cs.length?`<div style="display:grid;grid-template-columns:minmax(110px,1fr) 92px 92px 34px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 4px"><span>Nome</span><span>Taxa %</span><span>% vendas</span><span></span></div>`:''}
-    ${cs.map((c,i)=>`<div style="display:grid;grid-template-columns:minmax(110px,1fr) 92px 92px 34px;gap:8px;align-items:center;margin-bottom:6px">
+    ${cs.length?`<div class="mob-head" style="display:grid;grid-template-columns:minmax(110px,1fr) 92px 92px 34px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 4px"><span>Nome</span><span>Taxa %</span><span>% vendas</span><span></span></div>`:''}
+    ${cs.map((c,i)=>`<div class="mob-stack" style="display:grid;grid-template-columns:minmax(110px,1fr) 92px 92px 34px;gap:8px;align-items:center;margin-bottom:6px">
       <input class="input" value="${esc(c.nome)}" placeholder="Ex.: iFood, Aiqfome" onchange="canalSet(${i},'nome',this.value)" style="padding:7px 9px">
       <input class="input" type="number" step="0.5" min="0" value="${c.taxa}" title="Comissão que a plataforma cobra" onchange="canalSet(${i},'taxa',this.value)" style="padding:7px 9px">
       <input class="input" type="number" step="1" min="0" max="100" value="${c.mix}" title="Quanto do seu faturamento vem por este canal" onchange="canalSet(${i},'mix',this.value)" style="padding:7px 9px">
