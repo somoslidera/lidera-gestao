@@ -3540,6 +3540,7 @@ function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast
   save();viewFinanceiro();toast('Lançamento registrado');}
 /* ----- Popup de lançamento (uma ou várias linhas) ----- */
 let lancDraft=[];
+let lmEdit=null; // {nf,forn,ids:[...]} quando o modal está editando uma nota já lançada
 const LM_GC='112px 116px 132px minmax(130px,1fr) 92px 124px 112px 104px 74px 110px 102px 86px 30px';
 function lmBlank(){return {data:hojeISO(),grupo:'',sub:'',desc:'',nf:'',fornecedor:'',parcelas:1,parcelasLista:[],vencimento:'',vunStr:'',vun:0,qtd:1,forma:'',insumoId:'',insSugerido:'',uni:'',descOrig:'',fromIA:false};}
 function lmTotalLinha(r){const q=+r.qtd||0,v=+r.vun||0;return Math.round(q*v*100)/100;}
@@ -3551,7 +3552,7 @@ function lmAgrupar(rows){const map=new Map();
   return Array.from(map.values()).map(g=>{const q=+g.qtd||0;
     g.vun=q>0?(g._tot/q):g._tot;g.vunStr=fmtMoneyInput(g.vun);delete g._tot;return g;});}
 function subOptions(grupo,sel){const subs=ordPt((DB.categorias[grupo]||{subs:[]}).subs);return `<option value="">—</option>`+subs.map(s=>`<option ${s===sel?'selected':''}>${esc(s)}</option>`).join('');}
-function lancarModal(manterRascunho){if(!manterRascunho||!lancDraft.length)lancDraft=[lmBlank()];
+function lancarModal(manterRascunho){if(!manterRascunho)lmEdit=null;if(!manterRascunho||!lancDraft.length)lancDraft=[lmBlank()];
   const fornList=((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('');
   const temIA=(typeof CLOUD!=='undefined'&&CLOUD&&sb);
   const svgCam=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
@@ -3565,12 +3566,30 @@ function lancarModal(manterRascunho){if(!manterRascunho||!lancDraft.length)lancD
     <button class="btn btn-ghost lm-ia-btn" style="width:100%;min-height:44px;margin-top:8px;justify-content:center" onclick="document.getElementById('lm_nota_file').click()">🖼 Galeria ou PDF</button>
     <div style="font-size:12px;color:var(--soft);text-align:center;margin-top:8px">A IA lê os itens e preenche tudo. Ou preencha à mão abaixo.</div>
   </div>`:'';
-  modal(`<div class="modal-head"><h3>Novo lançamento</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  const grupoOpts=ordPt(Object.keys(DB.categorias||{})).map(g=>`<option>${esc(g)}</option>`).join(''), formaOpts=ordPt(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('');
+  const LB=(t,inner)=>`<div style="display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center"><span style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700">${t}</span><div style="min-width:0">${inner}</div></div>`;
+  // celular: o mesmo "aplicar a todas" do desktop, em bloco recolhível (abre sozinho quando há mais de um item)
+  const bulkMob=`<details class="mob-only" id="lm_bulk_m" ${lancDraft.length>1?'open':''} style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px;background:var(--bg)">
+      <summary style="font-size:13px;font-weight:700;color:var(--navy);cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">Aplicar a todos os itens <span style="font-weight:400;color:var(--soft);font-size:11.5px">data, categoria, NF, fornecedor…</span></summary>
+      <div style="display:grid;gap:8px;margin-top:10px">
+        ${LB('Data',`<input type="date" class="input" onchange="lmAplicarTodas('data',this.value)">`)}
+        ${LB('Categoria',`<select class="input" id="lm_bulkm_grupo" onchange="lmAplicarTodas('grupo',this.value)"><option value="">Categoria…</option>${grupoOpts}</select>`)}
+        ${LB('Subcat.',`<select class="input" id="lm_bulkm_sub" onchange="lmAplicarTodas('sub',this.value)"><option value="">Subcategoria…</option></select>`)}
+        ${LB('NF nº',`<input class="input" placeholder="número da nota" onchange="lmAplicarTodas('nf',this.value)">`)}
+        ${LB('Fornecedor',`<input class="input" list="lm_forn" placeholder="fornecedor" onchange="lmAplicarTodas('fornecedor',this.value)">`)}
+        ${LB('Forma',`<select class="input" onchange="lmAplicarTodas('forma',this.value)"><option value="">Forma…</option>${formaOpts}</select>`)}
+      </div>
+    </details>`;
+  const editando=!!lmEdit;
+  const titulo=editando?('Editar nota'+(lmEdit.nf?' · NF '+esc(lmEdit.nf):'')):'Novo lançamento';
+  const intro=editando?`Altere os itens da nota. <b>Remover um item exclui o lançamento</b>; <b>+ ${ehMobile()?'Adicionar item':'Adicionar linha'}</b> acrescenta um item novo à mesma nota.`
+    :`Preencha um ou mais itens e use <b>+ ${ehMobile()?'Adicionar item':'Adicionar linha'}</b> para lançar vários de uma vez.`;
+  modal(`<div class="modal-head"><h3>${titulo}</h3><button class="x" onclick="lmEdit=null;closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    ${iaMob}
+    ${editando?'':iaMob}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-      <div style="font-size:12.5px;color:var(--muted)">Preencha um ou mais itens e use <b>+ ${ehMobile()?'Adicionar item':'Adicionar linha'}</b> para lançar vários de uma vez.</div>
-      ${iaBtn}
+      <div style="font-size:12.5px;color:var(--muted)">${intro}</div>
+      ${editando?'':iaBtn}
     </div>
     <div id="lm_ia_status" style="display:none;font-size:12.5px;margin-bottom:10px;padding:9px 12px;border-radius:10px"></div>
     <datalist id="lm_forn">${fornList}</datalist>
@@ -3581,8 +3600,9 @@ function lancarModal(manterRascunho){if(!manterRascunho||!lancDraft.length)lancD
       <select class="input" style="width:150px;padding:7px 9px" id="lm_bulk_sub" title="Mesma subcategoria em todas" onchange="lmAplicarTodas('sub',this.value)"><option value="">Subcategoria…</option></select>
       <input class="input" style="width:118px;padding:7px 9px" id="lm_bulk_nf" placeholder="NF nº…" title="Mesmo número de nota em todas as linhas" onchange="lmAplicarTodas('nf',this.value)">
       <input class="input" style="width:150px;padding:7px 9px" list="lm_forn" id="lm_bulk_forn" placeholder="Fornecedor…" title="Mesmo fornecedor em todas" onchange="lmAplicarTodas('fornecedor',this.value)">
-      <select class="input" style="width:130px;padding:7px 9px" id="lm_bulk_forma" title="Mesma forma em todas" onchange="lmAplicarTodas('forma',this.value)"><option value="">Forma…</option>${ordPt(DB.formasPagamento||[]).map(x=>`<option>${esc(x)}</option>`).join('')}</select>
+      <select class="input" style="width:130px;padding:7px 9px" id="lm_bulk_forma" title="Mesma forma em todas" onchange="lmAplicarTodas('forma',this.value)"><option value="">Forma…</option>${formaOpts}</select>
     </div>
+    ${bulkMob}
     <div style="${ehMobile()?'':'overflow-x:auto'}"><div style="${ehMobile()?'':'min-width:1420px'}">
       <div class="mob-hide" style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span>Categoria</span><span>Subcategoria</span><span>Descrição</span><span>NF nº</span><span>Produto</span><span>Fornecedor</span><span>Valor</span><span>Qtd</span><span style="text-align:right">Total</span><span>Forma</span><span>Parcelas</span><span></span></div>
       <div id="lm_rows"></div>
@@ -3592,7 +3612,7 @@ function lancarModal(manterRascunho){if(!manterRascunho||!lancDraft.length)lancD
       <div style="font-size:12.5px;color:var(--muted)">Total dos itens: <b id="lm_total" class="serif" style="font-size:18px;color:var(--navy);margin-left:4px">R$ 0,00</b></div>
     </div>
   </div>
-  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="lancarModalSalvar()">Lançar</button></div>`,true,true);
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="lmEdit=null;closeModal()">Cancelar</button><button class="btn btn-primary" onclick="lancarModalSalvar()">${editando?'Salvar alterações':'Lançar'}</button></div>`,true,true);
   const mc=document.querySelector('#modalRoot .modal');if(mc){mc.style.maxWidth='1420px';mc.style.width='min(1420px,96vw)';}
   renderLmRows();}
 function ehMobile(){return window.innerWidth<=640;}
@@ -3641,7 +3661,7 @@ function renderLmRows(){const el=$('#lm_rows');if(!el)return;
      <button class="btn btn-ghost btn-sm" title="Remover linha" style="color:var(--red);padding:6px 6px;${lancDraft.length>1?'':'visibility:hidden'}" onclick="lmRemoveRow(${i})">${icoX}</button>
    </div>`).join('');lmAtualizaTotal();}
 function lmAplicarTodas(campo,valor){
-  if(campo==='grupo'){lancDraft.forEach(r=>{r.grupo=valor;const subs=((DB.categorias[valor]||{subs:[]}).subs)||[];if(!lmFuzzyFind(subs,r.sub))r.sub='';});const bs=$('#lm_bulk_sub');if(bs)bs.innerHTML=`<option value="">Subcategoria…</option>`+ordPt(((DB.categorias[valor]||{subs:[]}).subs)||[]).map(s=>`<option>${esc(s)}</option>`).join('');}
+  if(campo==='grupo'){lancDraft.forEach(r=>{r.grupo=valor;const subs=((DB.categorias[valor]||{subs:[]}).subs)||[];if(!lmFuzzyFind(subs,r.sub))r.sub='';});const subsHtml=`<option value="">Subcategoria…</option>`+ordPt(((DB.categorias[valor]||{subs:[]}).subs)||[]).map(s=>`<option>${esc(s)}</option>`).join('');['#lm_bulk_sub','#lm_bulkm_sub'].forEach(q=>{const bs=$(q);if(bs)bs.innerHTML=subsHtml;});}
   else{lancDraft.forEach(r=>{r[campo]=valor;});}
   renderLmRows();}
 function lmAtualizaTotal(){const el=$('#lm_total');if(!el)return;const t=lancDraft.reduce((s,r)=>s+lmTotalLinha(r),0);el.textContent=fmtBRL(t);}
@@ -3883,7 +3903,7 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
     const novas=lmAgrupar(lidas);
     const vazio=lancDraft.length===1&&!lancDraft[0].grupo&&!lancDraft[0].desc&&!lancDraft[0].vunStr;
     lancDraft=vazio?novas:lancDraft.concat(novas);
-    renderLmRows();
+    renderLmRows();const _bm=$('#lm_bulk_m');if(_bm&&lancDraft.length>1)_bm.open=true;
     const bn=$('#lm_bulk_nf');if(bn&&nfNota)bn.value=nfNota;
     const semCat=novas.filter(r=>!r.grupo).length,semProd=novas.filter(r=>!r.insumoId&&!r.insSugerido).length,outroF=novas.filter(r=>!r.insumoId&&r.insSugerido).length;
     const avisos=[];if(semCat)avisos.push(semCat+' sem categoria');if(semProd)avisos.push(semProd+' produto(s) não cadastrado(s)');if(outroF)avisos.push(outroF+' já existe(m) com outro fornecedor — clique pra vincular ou cadastrar');
@@ -3894,7 +3914,41 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
   }catch(e){lmIaStatus('Erro ao processar a nota: '+((e&&e.message)||e)+'.','erro');}
   finally{lmLoading(false);btns.forEach(b=>{b.disabled=false;b.style.opacity='';});}
 }
+/* ----- Editar a nota inteira (todos os lançamentos da mesma NF + fornecedor) ----- */
+function notaItens(nfe,fornecedor){const k=nfKey(nfe);if(!k)return [];const f=(fornecedor||'').trim().toLowerCase();
+  return (DB.lancamentos||[]).filter(l=>!l.autoTaxa&&nfKey(l.nfe)===k&&(!f||!(l.fornecedor||'').trim()||(l.fornecedor||'').trim().toLowerCase()===f));}
+function editNota(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)return;
+  const itens=notaItens(l.nfe,l.fornecedor);if(!itens.length)return editLancamento(id);
+  lancDraft=itens.map(x=>{const q=(x.qtd!=null&&+x.qtd>0)?+x.qtd:1;const vun=q?(x.valor||0)/q:(x.valor||0);
+    return Object.assign(lmBlank(),{_id:x.id,data:x.data,grupo:x.grupo,sub:x.sub||'',desc:x.descricao||'',descOrig:x.descricao||'',nf:x.nfe||'',fornecedor:x.fornecedor||'',vun,vunStr:fmtMoneyInput(vun),qtd:q,uni:x.uni||'',forma:x.forma||'',insumoId:x.insumoId||'',fromIA:!!x.insumoId,
+      parcelasLista:(x.liquidacoes||[]).map(p=>({data:p.data,valor:+p.valor||0,pago:!!p.pago}))});});
+  lmEdit={nf:l.nfe||'',forn:l.fornecedor||'',ids:itens.map(x=>x.id)};
+  lancarModal(true);}
+function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
+  const semProd=lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo==='CMV'&&!(r.insumoId&&DB.insumos[r.insumoId])).length;
+  if(semProd>0 && !confirm('Atenção: '+semProd+(semProd===1?' item de CMV não está vinculado a um produto cadastrado.':' itens de CMV não estão vinculados a produtos cadastrados.')+'\n\nSem o vínculo, o gasto não atualiza o custo do produto nem o estoque. Deseja salvar mesmo assim?')) return;
+  const vivos=new Set();let n=0,prodAtu=0,novos=0,lastYM=null;
+  const remov=lmEdit.ids.filter(id=>!lancDraft.some(r=>r._id===id&&lmTotalLinha(r)&&r.grupo));
+  if(!lancDraft.some(r=>lmTotalLinha(r)&&r.grupo))return toast('Preencha ao menos um item com categoria e valor');
+  if(remov.length&&!confirm(remov.length+(remov.length===1?' item desta nota será excluído.':' itens desta nota serão excluídos.')+'\n\nConfirmar?'))return;
+  lancDraft.forEach(r=>{const valor=lmTotalLinha(r);if(!valor||!r.grupo)return;
+    let nv=r._id?DB.lancamentos.find(x=>x.id===r._id):null;
+    if(!nv){nv={id:uid()};DB.lancamentos.push(nv);novos++;}
+    Object.assign(nv,{data:r.data||hojeISO(),grupo:r.grupo,sub:r.sub||'',descricao:(r.desc||'').trim(),nfe:(r.nf||'').trim(),fornecedor:(r.fornecedor||'').trim(),valor,forma:r.forma||''});
+    if((+r.qtd||1)!==1){nv.qtd=+r.qtd;if(r.uni)nv.uni=r.uni;}else{delete nv.qtd;}
+    const ins=r.insumoId&&DB.insumos[r.insumoId];
+    if(ins){nv.insumoId=r.insumoId;if(valor>0&&r.qtd>0){ins.preco=valor;ins.qtd=r.qtd;if(r.uni)ins.uni=r.uni;prodAtu++;}if(nv.fornecedor)ins.fornecedor=nv.fornecedor;}else delete nv.insumoId;
+    if(nv.fornecedor)ensureFornecedor(nv.fornecedor);
+    const _m=meioDoLanc(nv);if(_m)nv.meioId=_m.id;else delete nv.meioId;
+    if(r.parcelasLista&&r.parcelasLista.length)nv.liquidacoes=r.parcelasLista.map(x=>({data:x.data,valor:+x.valor||0,pago:!!x.pago}));
+    else{delete nv.liquidacoes;aplicarLiquidacoes(nv,{parcelas:r.parcelas,vencimento:r.vencimento});}
+    syncTaxaLanc(nv);vivos.add(nv.id);n++;lastYM=ymOf(nv.data);});
+  if(remov.length)DB.lancamentos=DB.lancamentos.filter(l=>!remov.includes(l.id)&&!remov.includes(l.fromTaxa));
+  if(lastYM&&lastYM!==curYM())lancYM=lastYM;
+  lmEdit=null;save();closeModal();viewFinanceiro();
+  toast('Nota atualizada · '+n+' item(ns)'+(novos?' · '+novos+' novo(s)':'')+(remov.length?' · '+remov.length+' excluído(s)':'')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':''));}
 function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
+  if(lmEdit)return lancarModalSalvarEdicao();
   // itens de CMV que serão lançados sem produto vinculado (amarelo) → confirma antes
   const semProd=lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo==='CMV'&&!(r.insumoId&&DB.insumos[r.insumoId])).length;
   if(semProd>0 && !confirm('Atenção: '+semProd+(semProd===1?' item de CMV não está vinculado a um produto cadastrado (aparece em amarelo).':' itens de CMV não estão vinculados a produtos cadastrados (aparecem em amarelo).')+'\n\nSem o vínculo, o gasto não atualiza o custo do produto nem o estoque. Deseja lançar mesmo assim?')) return;
@@ -3953,6 +4007,10 @@ function editLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!
   modal(`<div class="modal-head"><h3>Editar lançamento</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     ${l.fromConta?`<div class="alert alert-amber" style="margin-bottom:12px">${icoWarn}<div>Este lançamento veio de uma <b>Conta a Pagar/Receber</b>. Editar aqui altera só o lançamento; o ideal é ajustar na conta de origem.</div></div>`:''}
+    ${(()=>{const it=nfKey(l.nfe)?notaItens(l.nfe,l.fornecedor):[];if(!it.length)return '';const tot=it.reduce((s,x)=>s+(x.valor||0),0);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:14px">
+        <div style="font-size:12.5px"><b>NF ${esc(l.nfe)}</b> · ${it.length} ${it.length===1?'item':'itens'} · ${fmtBRL(tot)}<div style="color:var(--soft);font-size:11.5px">Aqui você edita só este item.</div></div>
+        <button class="btn btn-primary btn-sm" style="flex:0 0 auto" onclick="editNota('${l.id}')">Editar a nota inteira</button></div>`;})()}
     <div class="grid-2">
       <div class="field"><label>Data</label><input type="date" class="input" id="el_data" value="${l.data||''}"></div>
       <div class="field"><label>Valor</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="el_valor" inputmode="numeric" value="${fmtMoneyInput(l.valor||0)}" oninput="moneyMask(this)"></div></div>
@@ -4010,7 +4068,7 @@ function lancMobileHTML(ls,ativo,filtTot,fl,grupos){
 function lancRowsHTML(ls,ativo){return ls.length?ls.map(l=>{const rec=grupoTipo(l.grupo)==='receita';const auto=l.autoTaxa;return `<tr${auto?' style="background:var(--bg)"':''}>
       <td>${fmtDataBR(l.data)}</td><td>${esc(l.grupo)}</td><td>${esc(l.sub||'—')}${auto?' <span style="font-size:9.5px;color:var(--soft);border:1px solid var(--line);border-radius:5px;padding:0 4px;letter-spacing:.3px">AUTO</span>':''}</td><td>${esc(l.descricao||'—')}</td><td style="white-space:nowrap">${l.nfe?esc(l.nfe):'<span style="color:var(--soft)">—</span>'}</td><td style="color:var(--soft)">${esc(l.fornecedor||'—')}</td><td style="color:var(--soft)">${esc(l.forma||'—')}</td>
       <td class="num" style="color:${rec?'var(--green)':'var(--red)'};font-weight:600;white-space:nowrap">${rec?'+':'−'} ${fmtBRL(l.valor)}</td>
-      <td class="num">${auto?`<span style="font-size:10.5px;color:var(--soft)" title="Taxa calculada automaticamente sobre o recebível. Ajuste o % em Parâmetros.">automático</span>`:`<div style="display:inline-flex;gap:6px"><button class="icon-btn" title="Editar" onclick="editLancamento('${l.id}')">${icoEdit}</button><button class="icon-btn" title="Excluir" style="color:var(--red)" onclick="delLancamento('${l.id}')">${icoX}</button></div>`}</td></tr>`;}).join(''):`<tr><td colspan="9" style="color:var(--soft);text-align:center;padding:14px">${ativo?'Nenhum lançamento com esse filtro.':'Nenhum lançamento neste mês. Use o formulário acima.'}</td></tr>`;}
+      <td class="num">${auto?`<span style="font-size:10.5px;color:var(--soft)" title="Taxa calculada automaticamente sobre o recebível. Ajuste o % em Parâmetros.">automático</span>`:`<div style="display:inline-flex;gap:6px"><button class="icon-btn" title="Editar" onclick="editLancamento('${l.id}')">${icoEdit}</button>${nfKey(l.nfe)?`<button class="icon-btn" title="Editar a nota inteira (todos os itens da NF ${esc(l.nfe)})" style="width:auto;padding:0 6px;font-size:10px;font-weight:700;letter-spacing:.3px" onclick="editNota('${l.id}')">NF</button>`:''}<button class="icon-btn" title="Excluir" style="color:var(--red)" onclick="delLancamento('${l.id}')">${icoX}</button></div>`}</td></tr>`;}).join(''):`<tr><td colspan="9" style="color:var(--soft);text-align:center;padding:14px">${ativo?'Nenhum lançamento com esse filtro.':'Nenhum lançamento neste mês. Use o formulário acima.'}</td></tr>`;}
 function lancFootHTML(ls,ativo,filtTot){return ativo&&ls.length?`<tr><td colspan="7" style="text-align:right;font-weight:600;border-top:2px solid var(--navy)">Total filtrado</td><td class="num" style="font-weight:700;color:${filtTot>=0?'var(--green)':'var(--red)'};border-top:2px solid var(--navy)">${fmtBRL(filtTot)}</td><td style="border-top:2px solid var(--navy)"></td></tr>`:'';}
 function lancRefreshTabela(){
   const tb=$('#lancTbody'); if(!tb)return viewFinanceiro();
