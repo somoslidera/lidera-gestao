@@ -2166,8 +2166,12 @@ function gerenciarCategorias(t){catTab=t||catTab||'insumo';dbCats();DB.fin=DB.fi
   if(catTab==='fornecedor'){
     const fs=DB.fin.fornecedores;
     body=`<div style="display:flex;gap:8px;margin-bottom:6px"><input class="input" id="cat_new" placeholder="Novo fornecedor..." onkeydown="if(event.key==='Enter')addCatItem()"><button class="btn btn-primary" style="padding:0 18px" onclick="addCatItem()">${icoPlus}</button></div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:13px">Os fornecedores ficam disponíveis ao cadastrar um insumo.</div>
-    <div class="cat-scroll">${fs.length?fs.map(f=>`<div class="cat-row"><span>${esc(f.nome||'(sem nome)')}</span><button class="mini-del" onclick="delForn('${f.id}')">${icoX}</button></div>`).join(''):'<div style="font-size:13px;color:var(--soft);padding:8px 0">Nenhum fornecedor cadastrado.</div>'}</div>`;
+    <div style="font-size:12px;color:var(--muted);margin-bottom:13px">Os fornecedores ficam disponíveis ao cadastrar um insumo. A <b>condição de pagamento</b> é aplicada sozinha nos lançamentos desse fornecedor (ex.: 3x a cada 30 dias).</div>
+    <div class="cat-scroll">${fs.length?fs.map(f=>`<div class="cat-row" style="flex-wrap:wrap;gap:8px"><span style="flex:1 1 150px;min-width:0">${esc(f.nome||'(sem nome)')}</span>
+      <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--soft)">Pagamento
+        <select class="input" style="width:96px;padding:5px 7px" onchange="fornCondSet('${f.id}','condN',this.value)"><option value="">à vista</option>${Array.from({length:12},(_,k)=>k+1).map(n=>`<option value="${n}" ${(+f.condN||0)===n?'selected':''}>${n}x</option>`).join('')}</select>
+        <select class="input" style="width:100px;padding:5px 7px" ${+f.condN>0?'':'disabled'} onchange="fornCondSet('${f.id}','condIv',this.value)">${[['30','30 dias'],['M','mensal'],['15','15 dias'],['7','7 dias'],['14','14 dias'],['21','21 dias'],['28','28 dias'],['45','45 dias'],['60','60 dias']].map(([v,l])=>`<option value="${v}" ${(f.condIv||'30')===v?'selected':''}>${l}</option>`).join('')}</select></span>
+      <button class="mini-del" onclick="delForn('${f.id}')">${icoX}</button></div>`).join(''):'<div style="font-size:13px;color:var(--soft);padding:8px 0">Nenhum fornecedor cadastrado.</div>'}</div>`;
   }else if(catTab==='insumo'){
     const grupos=ordPt(Object.keys(DB.categorias||{}));
     if(!grupos.includes(catGrupoIns))catGrupoIns=grupos.includes('CMV')?'CMV':(grupos[0]||'');
@@ -2202,6 +2206,11 @@ function delSubIns(g,sub){const c=DB.categorias[g];if(!c)return;
   if(usoProd||usoLanc){if(!confirm('A subcategoria "'+sub+'" está em uso em '+usoProd+' produto(s) e '+usoLanc+' lançamento(s).\n\nRemover mesmo assim? Os registros antigos mantêm o nome, mas ela some da lista de escolha.'))return;}
   c.subs=c.subs.filter(x=>x!==sub);save();gerenciarCategorias();}
 function delCatIdx(i){dbCats();if(i>=0)DB.cats[catTab].splice(i,1);save();gerenciarCategorias();}
+function fornCondSet(id,campo,v){const f=(DB.fin.fornecedores||[]).find(x=>x.id===id);if(!f)return;
+  if(campo==='condN'){f.condN=parseInt(v)||0;if(f.condN&&!f.condIv)f.condIv='30';}else f.condIv=v||'30';
+  save();gerenciarCategorias('fornecedor');}
+function fornCond(nome){const n=(nome||'').trim().toLowerCase();if(!n)return null;const f=((DB.fin&&DB.fin.fornecedores)||[]).find(x=>(x.nome||'').trim().toLowerCase()===n);
+  return (f&&+f.condN>0)?{n:+f.condN,iv:f.condIv||'30',nome:f.nome}:null;}
 function delForn(id){if(!confirm('Remover este fornecedor?'))return;DB.fin.fornecedores=(DB.fin.fornecedores||[]).filter(f=>f.id!==id);save();gerenciarCategorias();}
 
 /* ---- IMPORTAR / MODELO DE INSUMOS (planilha) ---- */
@@ -3374,6 +3383,18 @@ function liqAtrasadasAntes(tipo,ym){const ini=ym+'-01';let n=0,v=0;
     const ehRec=grupoTipo(l.grupo)==='receita';if((tipo==='receber')!==ehRec)return;
     l.liquidacoes.forEach(x=>{if(x&&x.data&&!x.pago&&x.data<ini){n++;v+=+x.valor||0;}});});
   return {n,v};}
+function liqNome(l){const f=(l.fornecedor||'').trim(),nf=(l.nfe||'').trim();
+  if(f&&nf)return f+' · NF '+nf;if(f)return f+(l.descricao?' · '+l.descricao:'');return (l.descricao||'(sem descrição)')+(nf?' · NF '+nf:'');}
+/* parcelas dos itens de uma mesma nota (NF + fornecedor + vencimento + nº da parcela) viram UMA linha no Contas a Pagar */
+function liqAgrupar(parc){const map=new Map();
+  parc.forEach(x=>{const l=x.lanc;const k=nfKey(l.nfe)?('nf|'+nfKey(l.nfe)+'|'+(l.fornecedor||'').trim().toLowerCase()+'|'+x.liq.data+'|'+x.idx):('id|'+l.id+'|'+x.idx);
+    let g=map.get(k);if(!g){g={key:k,nome:liqNome(l),data:x.liq.data,idx:x.idx,n:(l.liquidacoes||[]).length,valor:0,pago:true,ids:[],itens:[],cats:new Set()};map.set(k,g);}
+    g.valor=+(g.valor+(+x.liq.valor||0)).toFixed(2);g.pago=g.pago&&!!x.liq.pago;g.ids.push(l.id);g.itens.push(x);g.cats.add((l.grupo||'')+(l.sub?' · '+l.sub:''));});
+  return Array.from(map.values()).map(g=>{g.cat=g.cats.size===1?[...g.cats][0]:[...new Set(g.itens.map(x=>x.lanc.grupo||''))].join(', ');return g;}).sort((a,b)=>(a.data||'').localeCompare(b.data||''));}
+function liqTogglePagoMulti(ids,idx){const ls=(''+ids).split(',').map(id=>(DB.lancamentos||[]).find(x=>x.id===id)).filter(Boolean);if(!ls.length)return;
+  const todos=ls.every(l=>l.liquidacoes&&l.liquidacoes[idx]&&l.liquidacoes[idx].pago);const novo=!todos;
+  ls.forEach(l=>{const x=(l.liquidacoes||[])[idx];if(!x)return;x.pago=novo;x.pagoEm=novo?hojeISO():'';});
+  save();viewFinanceiro();toast(novo?'Baixado, entrou no Fluxo de Caixa':'Baixa desfeita');}
 function liqTogglePago(lancId,idx){const l=(DB.lancamentos||[]).find(x=>x.id===lancId);if(!l)return;
   const x=(l.liquidacoes||[])[idx];if(!x)return;
   x.pago=!x.pago;x.pagoEm=x.pago?hojeISO():'';
@@ -3608,8 +3629,8 @@ function lancarModal(manterRascunho){if(!manterRascunho)lmEdit=null;if(!manterRa
       <div id="lm_rows"></div>
     </div></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px">
-      <button class="btn btn-ghost btn-sm" onclick="lmAddRow()">${icoPlus} ${ehMobile()?'Adicionar item':'Adicionar linha'}</button>
-      <div style="font-size:12.5px;color:var(--muted)">Total dos itens: <b id="lm_total" class="serif" style="font-size:18px;color:var(--navy);margin-left:4px">R$ 0,00</b></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn btn-ghost btn-sm" onclick="lmAddRow()">${icoPlus} ${ehMobile()?'Adicionar item':'Adicionar linha'}</button><button class="btn btn-ghost btn-sm" onclick="lmNotaParcelar()" title="Parcela o total da nota. Cada item recebe a sua fatia e o Contas a Pagar mostra a nota inteira.">Parcelar a nota</button><span id="lm_nota_parc" style="font-size:11.5px;color:var(--muted)"></span></div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)"><span>Total da nota</span><div class="money-wrap" style="width:150px"><span class="money-pre">R$</span><input class="input money-inp" id="lm_total" inputmode="numeric" value="0,00" style="font-weight:700;font-size:16px;color:var(--navy)" title="Edite o total (imposto, frete ou desconto) e o Flow rateia a diferença entre os itens" oninput="moneyMask(this)" onchange="lmSetTotal()"></div><span style="font-size:11px;color:var(--soft)">edite para ratear imposto ou desconto</span></div>
     </div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="lmEdit=null;closeModal()">Cancelar</button><button class="btn btn-primary" onclick="lancarModalSalvar()">${editando?'Salvar alterações':'Lançar'}</button></div>`,true,true);
@@ -3633,7 +3654,7 @@ function renderLmRowsMobile(el){const grupos=ordPt(Object.keys(DB.categorias));c
      ${L('Descrição',lmDescCel(r,i))}
      ${L('NF nº',`<input class="input" value="${esc(r.nf||'')}" placeholder="número da nota" oninput="lancDraft[${i}].nf=this.value">`)}
      ${L('Produto',lmProdutoCel(r,i))}
-     ${L('Fornecedor',`<input class="input" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value">`)}
+     ${L('Fornecedor',`<input class="input" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value" onchange="lmNotaAutoCond()">`)}
      <div style="display:grid;grid-template-columns:1fr 84px;gap:8px">
        ${L('Valor',`<div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${r.vunStr||''}" placeholder="0,00" oninput="lancDraft[${i}].vun=moneyMask(this);lancDraft[${i}].vunStr=this.value;lmRecalc(${i})"></div>`)}
        <div><span style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700">Qtd</span><input class="input" type="number" step="0.001" min="0" value="${r.qtd||1}" style="text-align:center;margin-top:4px" oninput="lancDraft[${i}].qtd=parseFloat(this.value)||0;lmRecalc(${i})"></div>
@@ -3652,7 +3673,7 @@ function renderLmRows(){const el=$('#lm_rows');if(!el)return;
      ${lmDescCel(r,i)}
      <input class="input" style="min-width:0" value="${esc(r.nf||'')}" placeholder="nº" title="Número da nota fiscal" oninput="lancDraft[${i}].nf=this.value">
      ${lmProdutoCel(r,i)}
-     <input class="input" style="min-width:0" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value">
+     <input class="input" style="min-width:0" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value" onchange="lmNotaAutoCond()">
      <div class="money-wrap" style="min-width:0"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${r.vunStr||''}" placeholder="0,00" title="Valor unitário" oninput="lancDraft[${i}].vun=moneyMask(this);lancDraft[${i}].vunStr=this.value;lmRecalc(${i})"></div>
      <input class="input" style="min-width:0;text-align:center" type="number" step="0.001" min="0" value="${r.qtd||1}" title="Quantidade${r.uni?' ('+esc(r.uni)+')':''}" oninput="lancDraft[${i}].qtd=parseFloat(this.value)||0;lmRecalc(${i})">
      <div id="lm_tot_${i}" title="Total = quantidade × valor unitário" style="min-width:0;text-align:right;font-weight:600;font-size:13px;color:var(--ink);padding:9px 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${fmtBRL(lmTotalLinha(r))}</div>
@@ -3663,8 +3684,17 @@ function renderLmRows(){const el=$('#lm_rows');if(!el)return;
 function lmAplicarTodas(campo,valor){
   if(campo==='grupo'){lancDraft.forEach(r=>{r.grupo=valor;const subs=((DB.categorias[valor]||{subs:[]}).subs)||[];if(!lmFuzzyFind(subs,r.sub))r.sub='';});const subsHtml=`<option value="">Subcategoria…</option>`+ordPt(((DB.categorias[valor]||{subs:[]}).subs)||[]).map(s=>`<option>${esc(s)}</option>`).join('');['#lm_bulk_sub','#lm_bulkm_sub'].forEach(q=>{const bs=$(q);if(bs)bs.innerHTML=subsHtml;});}
   else{lancDraft.forEach(r=>{r[campo]=valor;});}
-  renderLmRows();}
-function lmAtualizaTotal(){const el=$('#lm_total');if(!el)return;const t=lancDraft.reduce((s,r)=>s+lmTotalLinha(r),0);el.textContent=fmtBRL(t);}
+  renderLmRows();if(campo==='fornecedor')lmNotaAutoCond();}
+function lmAtualizaTotal(){const el=$('#lm_total');if(!el)return;const t=lancDraft.reduce((s,r)=>s+lmTotalLinha(r),0);if(document.activeElement!==el)el.value=fmtMoneyInput(t);
+  const pi=$('#lm_nota_parc');if(pi)pi.innerHTML=lmNotaParcInfo();}
+/* Total da nota editado à mão (imposto, frete, desconto): a diferença é rateada proporcionalmente entre os itens */
+function lmSetTotal(){const alvo=moneyVal('lm_total');const rows=lancDraft.filter(r=>lmTotalLinha(r)>0);const atual=+rows.reduce((s,r)=>s+lmTotalLinha(r),0).toFixed(2);
+  if(!(alvo>0)||!rows.length||Math.abs(alvo-atual)<0.005){lmAtualizaTotal();return;}
+  let acc=0;rows.forEach((r,k)=>{const novo=(k===rows.length-1)?+(alvo-acc).toFixed(2):+(lmTotalLinha(r)*alvo/atual).toFixed(2);acc=+(acc+novo).toFixed(2);
+    const q=+r.qtd||1;r.vun=novo/q;r.vunStr=fmtMoneyInput(r.vun);lmReescalaParcelas(r,novo);});
+  renderLmRows();toast((alvo>atual?'Acréscimo':'Desconto')+' de '+fmtBRL(Math.abs(alvo-atual))+' rateado entre '+rows.length+' item(ns)');}
+function lmReescalaParcelas(r,novoTotal){const L=r.parcelasLista||[];if(!L.length)return;const soma=L.reduce((s,x)=>s+(+x.valor||0),0);let acc=0;
+  L.forEach((p,k)=>{const v=(k===L.length-1)?+(novoTotal-acc).toFixed(2):+(soma>0?(+p.valor||0)*novoTotal/soma:novoTotal/L.length).toFixed(2);acc=+(acc+v).toFixed(2);p.valor=v;});}
 function lmRecalc(i){const r=lancDraft[i];if(!r)return;const el=$('#lm_tot_'+i);if(el)el.textContent=fmtBRL(lmTotalLinha(r));lmAtualizaTotal();}
 /* ----- Vínculo com o catálogo de Produtos ----- */
 function lmDescCel(r,i){
@@ -3709,6 +3739,7 @@ function lmDesvincular(i){const r=lancDraft[i];if(!r)return;r.insumoId='';if(r.d
 function lmVoltarLanc(){lancarModal(true);}
 function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
   nfeEnsureCats();
+  setTimeout(()=>{const b=document.getElementById('lv_busca');if(b&&!ehMobile())b.focus();},60);
   const orig=r.descOrig||r.desc||'';
   const lista=Object.values(DB.insumos||{}).filter(x=>x.tipo!=='preparado').sort((a,b)=>ordPt([a.nome,b.nome])[0]===a.nome?-1:1);
   const sel=r.insSugerido||'';
@@ -3723,6 +3754,7 @@ function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
     <div style="border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px">
       <div style="font-size:13px;font-weight:700;margin-bottom:4px">Vincular a um produto já cadastrado</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${apelidoTxt}O <b>valor pago e o fornecedor do produto serão atualizados</b> com os dados deste lançamento.</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input class="input" id="lv_busca" placeholder="🔎 Digite o nome ou as iniciais do produto…" autocomplete="off" oninput="lvFiltrar()" style="flex:1;min-width:0"><span id="lv_cnt" style="font-size:11px;color:var(--soft);white-space:nowrap">${lista.length} produtos</span></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <select class="input" id="lv_ins" style="flex:1 1 220px;min-width:0">${lista.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${esc(x.nome)}${x.fornecedor?' · '+esc(x.fornecedor):''}</option>`).join('')}</select>
         <button class="btn btn-primary" style="flex:0 0 auto" onclick="lmVincularExistente(${i})">Vincular</button>
@@ -3761,6 +3793,15 @@ function lmAplicarVinculo(i,insId){const r=lancDraft[i],ins=DB.insumos[insId];if
   if(orig&&lmNorm(orig)!==lmNorm(ins.nome)){ins.apelidos=ins.apelidos||[];
     if(!ins.apelidos.some(a=>lmNorm(a)===lmNorm(orig)))ins.apelidos.push(orig);}
   return n;}
+/* filtra a lista de produtos pelo que foi digitado: trechos do nome, do fornecedor ou as iniciais (ex.: "pf" → Peito de Frango) */
+function lvFiltrar(){const bruto=(($('#lv_busca')||{}).value||'').trim();const q=lmNorm(bruto);const sel=$('#lv_ins');if(!sel)return;
+  const lista=Object.values(DB.insumos||{}).filter(x=>x.tipo!=='preparado');
+  const toks=q.split(' ').filter(Boolean);
+  const m=lista.filter(x=>{if(!toks.length)return true;const n=lmNorm(x.nome+' '+(x.fornecedor||''));const ini=lmNorm(x.nome).split(' ').filter(w=>w.length>2||w===lmNorm(x.nome)).map(w=>w[0]).join('');
+    return toks.every(t=>n.includes(t)||n.split(' ').some(w=>w.startsWith(t)))||(toks.length===1&&ini.startsWith(q));})
+    .sort((a,b)=>{const an=lmNorm(a.nome),bn=lmNorm(b.nome);const ap=toks.length&&an.startsWith(toks[0])?0:1,bp=toks.length&&bn.startsWith(toks[0])?0:1;return ap-bp||an.localeCompare(bn);});
+  sel.innerHTML=m.length?m.map(x=>`<option value="${x.id}">${esc(x.nome)}${x.fornecedor?' · '+esc(x.fornecedor):''}</option>`).join(''):`<option value="">Nenhum produto com "${esc(bruto)}"</option>`;
+  const cnt=$('#lv_cnt');if(cnt)cnt.textContent=(toks.length?m.length+' de ':'')+lista.length+' produtos';}
 function lmVincularExistente(i){const r=lancDraft[i];if(!r)return lmVoltarLanc();
   const insId=$('#lv_ins')&&$('#lv_ins').value;const ins=insId&&DB.insumos[insId];
   if(!ins)return toast('Selecione um produto');
@@ -3792,36 +3833,67 @@ function lmParcelasCel(r,i){const n=(r.parcelasLista&&r.parcelasLista.length)||0
   const txt=n>1?(n+'x'):(n===1?'1x':'à vista');
   const prim=n?fmtDataBR(r.parcelasLista[0].data):'';
   return `<button class="btn btn-ghost btn-sm" title="${n?('Vencimentos: '+r.parcelasLista.map(x=>fmtDataBR(x.data)+' '+fmtBRL(x.valor)).join(' · ')):'Clique para parcelar e definir os vencimentos'}" onclick="lmParcelasModal(${i})" style="min-width:0;padding:6px 6px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${n>1?'color:var(--navy);border-color:var(--navy)':'color:var(--soft)'}">${txt}${n>1?'<br><span style="font-size:9.5px;color:var(--soft)">1ª '+prim+'</span>':''}</button>`;}
-function lmParcelasModal(i){const r=lancDraft[i];if(!r)return;
+/* Parcelamento da NOTA inteira: linha virtual (i=-1) com o total; ao concluir, cada item recebe a sua fatia de cada parcela
+   (mesmas datas), e o Contas a Pagar agrupa por NF + fornecedor + vencimento, mostrando a nota inteira. */
+let lmNotaRow=null;
+function lmRow(i){return i<0?lmNotaRow:lancDraft[i];}
+function lmGerarLista(total,base,n,intervalo){const mensal=(intervalo==='M');const out=[];const cada=+(total/n).toFixed(2);let acc=0;
+  for(let k=0;k<n;k++){const v=(k===n-1)?+(total-acc).toFixed(2):cada;acc=+(acc+v).toFixed(2);out.push({data:mensal?mesesSoma(base,k+1):diasSoma(base,(+intervalo)*(k+1)),valor:v});}return out;}
+function lmNotaRows(){return lancDraft.filter(r=>lmTotalLinha(r)>0);}
+function lmNotaParcelasAtuais(){const rows=lmNotaRows();if(!rows.length)return null;const L0=rows[0].parcelasLista||[];if(!L0.length)return null;
+  const key=L=>L.map(p=>p.data).join(',');if(!rows.every(r=>key(r.parcelasLista||[])===key(L0)))return null;
+  return L0.map((p,k)=>({data:p.data,valor:+rows.reduce((s,r)=>s+(+r.parcelasLista[k].valor||0),0).toFixed(2)}));}
+function lmNotaParcelar(){const rows=lmNotaRows();if(!rows.length)return toast('Informe os valores dos itens antes de parcelar a nota');
+  const total=+rows.reduce((s,r)=>s+lmTotalLinha(r),0).toFixed(2);const ref=rows[0];
+  let atual=lmNotaParcelasAtuais();
+  if(!atual&&!lancDraft.some(r=>(r.parcelasLista||[]).length)){const c=fornCond(ref.fornecedor);if(c)atual=lmGerarLista(total,ref.data||hojeISO(),c.n,c.iv);}
+  lmNotaRow={data:ref.data,desc:'Nota inteira · '+rows.length+' item(ns)',nf:ref.nf,fornecedor:ref.fornecedor,qtd:1,vun:total,parcelasLista:atual?atual.map(p=>({data:p.data,valor:p.valor})):[]};
+  lmParcRender(-1);}
+function lmNotaAplicarParcelas(lista){const rows=lmNotaRows();const total=+rows.reduce((s,r)=>s+lmTotalLinha(r),0).toFixed(2);
+  if(!lista.length){rows.forEach(r=>{r.parcelasLista=[];r.parcelas=1;});return;}
+  const accP=lista.map(()=>0); // quanto de cada parcela já foi distribuído; o último item absorve os centavos
+  rows.forEach((r,ri)=>{const tot=lmTotalLinha(r);const ult=ri===rows.length-1;let accR=0;
+    r.parcelasLista=lista.map((p,k)=>{let v;if(ult)v=+((+p.valor||0)-accP[k]).toFixed(2);else if(k===lista.length-1)v=+(tot-accR).toFixed(2);else v=+((+p.valor||0)*tot/total).toFixed(2);
+      accR=+(accR+v).toFixed(2);accP[k]=+(accP[k]+v).toFixed(2);return {data:p.data,valor:v};});
+    r.parcelas=lista.length;});}
+function lmCondLabel(c){return c.n+'x '+(c.iv==='M'?'mensal':(c.n===1?'em ':'a cada ')+c.iv+' dias');}
+/* condição de pagamento padrão do fornecedor: aplicada sozinha quando a nota ainda não tem parcelas */
+function lmNotaAutoCond(silencioso){if(lancDraft.some(r=>(r.parcelasLista||[]).length))return false;const rows=lmNotaRows();if(!rows.length)return false;
+  const c=fornCond(rows[0].fornecedor);if(!c)return false;
+  const total=+rows.reduce((s,r)=>s+lmTotalLinha(r),0).toFixed(2);
+  lmNotaAplicarParcelas(lmGerarLista(total,rows[0].data||hojeISO(),c.n,c.iv));
+  if(!silencioso){renderLmRows();toast('Condição do fornecedor aplicada: '+lmCondLabel(c));}
+  return true;}
+function lmNotaParcInfo(){const rows=lmNotaRows();const at=lmNotaParcelasAtuais();
+  if(at)return `<b style="color:var(--navy)">${at.length}x</b> · 1ª ${fmtDataBR(at[0].data)} · ${fmtBRL(at[0].valor)}`;
+  if(lancDraft.some(r=>(r.parcelasLista||[]).length))return 'parcelas definidas item a item';
+  const c=rows.length?fornCond(rows[0].fornecedor):null;if(c)return `${lmCondLabel(c)} <span style="color:var(--soft)">(padrão de ${esc(c.nome)})</span>`;
+  return rows.length?'à vista':'';}
+function lmParcelasModal(i){const r=lmRow(i);if(!r)return;
   const total=lmTotalLinha(r);
   if(!(total>0))return toast('Informe o valor da linha antes de parcelar');
   if(!r.parcelasLista||!r.parcelasLista.length)r.parcelasLista=[];
   lmParcRender(i);}
-function lmParcGerar(i,n,intervalo){const r=lancDraft[i];if(!r)return;
-  const total=lmTotalLinha(r);const base=r.data||hojeISO();
-  const mensal=(intervalo==='M');           // 'M' = mesmo dia do mês seguinte; número = dias corridos
-  r.parcelasLista=[];const cada=+(total/n).toFixed(2);let acc=0;
-  for(let k=0;k<n;k++){const v=(k===n-1)?+(total-acc).toFixed(2):cada;acc=+(acc+v).toFixed(2);
-    r.parcelasLista.push({data:mensal?mesesSoma(base,k+1):diasSoma(base,(+intervalo)*(k+1)),valor:v});}
-  lmParcRender(i);}
+function lmParcGerar(i,n,intervalo){const r=lmRow(i);if(!r)return; // 'M' = mesmo dia do mês seguinte; número = dias corridos
+  r.parcelasLista=lmGerarLista(lmTotalLinha(r),r.data||hojeISO(),n,intervalo);lmParcRender(i);}
 function lmParcGerarSel(i){const n=parseInt(($('#pc_n')||{}).value)||0;
   const iv=(($('#pc_iv')||{}).value)||'M';
   if(!n)return toast('Escolha em quantas vezes');
   lmParcGerar(i,n,iv==='M'?'M':parseInt(iv)||30);}
-function lmParcAdd(i){const r=lancDraft[i];const ult=r.parcelasLista[r.parcelasLista.length-1];
+function lmParcAdd(i){const r=lmRow(i);const ult=r.parcelasLista[r.parcelasLista.length-1];
   r.parcelasLista.push({data:diasSoma((ult&&ult.data)||r.data||hojeISO(),30),valor:0});lmParcRender(i);}
-function lmParcDel(i,k){const r=lancDraft[i];r.parcelasLista.splice(k,1);lmParcRender(i);}
-function lmParcSet(i,k,campo,v){const r=lancDraft[i];const p=r.parcelasLista[k];if(!p)return;
+function lmParcDel(i,k){const r=lmRow(i);r.parcelasLista.splice(k,1);lmParcRender(i);}
+function lmParcSet(i,k,campo,v){const r=lmRow(i);const p=r.parcelasLista[k];if(!p)return;
   if(campo==='data')p.data=v; else p.valor=moneyVal('pc_v_'+k);
   lmParcRender(i);}
-function lmParcRender(i){const r=lancDraft[i];const total=lmTotalLinha(r);
+function lmParcRender(i){const r=lmRow(i);const total=lmTotalLinha(r);
   const lista=r.parcelasLista||[];
   const soma=+lista.reduce((s,x)=>s+(+x.valor||0),0).toFixed(2);
   const dif=+(total-soma).toFixed(2);
   modal(`<div class="modal-head"><h3>Parcelamento</h3><button class="x" onclick="lmParcFechar(${i})">${icoX}</button></div>
   <div class="modal-body">
     <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px">
-      Valor da linha: <b>${fmtBRL(total)}</b>${r.desc?' · '+esc(r.desc):''}${r.nf?' · NF '+esc(r.nf):''}
+      ${i<0?'Valor da nota':'Valor da linha'}: <b>${fmtBRL(total)}</b>${r.desc?' · '+esc(r.desc):''}${r.nf?' · NF '+esc(r.nf):''}${i<0&&r.fornecedor?' · '+esc(r.fornecedor):''}
     </div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:7px">Gerar as parcelas a partir de ${fmtDataBR(r.data||hojeISO())}:</div>
     <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
@@ -3849,14 +3921,15 @@ function lmParcRender(i){const r=lancDraft[i];const total=lmTotalLinha(r);
     </div>`:''}
   </div>
   <div class="modal-foot"><button class="btn btn-primary" onclick="lmParcFechar(${i})">Concluir</button></div>`,true,true);}
-function lmParcLimpar(i){lancDraft[i].parcelasLista=[];lmParcRender(i);}
-function lmParcFechar(i){const r=lancDraft[i];const lista=r.parcelasLista||[];
+function lmParcLimpar(i){lmRow(i).parcelasLista=[];lmParcRender(i);}
+function lmParcFechar(i){const r=lmRow(i);const lista=r.parcelasLista||[];
   const total=lmTotalLinha(r);
   const soma=+lista.reduce((s,x)=>s+(+x.valor||0),0).toFixed(2);
   if(lista.length&&Math.abs(total-soma)>=0.01)
     return toast('A soma das parcelas ('+fmtBRL(soma)+') não bate com o valor da linha ('+fmtBRL(total)+')');
   if(lista.some(x=>!x.data))return toast('Toda parcela precisa de uma data de vencimento');
   r.parcelas=lista.length||1;
+  if(i<0)lmNotaAplicarParcelas(lista);
   lancarModal(true);}
 function lmSubRefresh(i){const s=$('#lm_sub_'+i);if(s)s.innerHTML=subOptions(lancDraft[i].grupo,lancDraft[i].sub);}
 function lmAddRow(){lancDraft.push(lmBlank());renderLmRows();}
@@ -3903,7 +3976,7 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
     const novas=lmAgrupar(lidas);
     const vazio=lancDraft.length===1&&!lancDraft[0].grupo&&!lancDraft[0].desc&&!lancDraft[0].vunStr;
     lancDraft=vazio?novas:lancDraft.concat(novas);
-    renderLmRows();const _bm=$('#lm_bulk_m');if(_bm&&lancDraft.length>1)_bm.open=true;
+    renderLmRows();const _bm=$('#lm_bulk_m');if(_bm&&lancDraft.length>1)_bm.open=true;lmNotaAutoCond();
     const bn=$('#lm_bulk_nf');if(bn&&nfNota)bn.value=nfNota;
     const semCat=novas.filter(r=>!r.grupo).length,semProd=novas.filter(r=>!r.insumoId&&!r.insSugerido).length,outroF=novas.filter(r=>!r.insumoId&&r.insSugerido).length;
     const avisos=[];if(semCat)avisos.push(semCat+' sem categoria');if(semProd)avisos.push(semProd+' produto(s) não cadastrado(s)');if(outroF)avisos.push(outroF+' já existe(m) com outro fornecedor — clique pra vincular ou cadastrar');
@@ -3949,6 +4022,7 @@ function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
   toast('Nota atualizada · '+n+' item(ns)'+(novos?' · '+novos+' novo(s)':'')+(remov.length?' · '+remov.length+' excluído(s)':'')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':''));}
 function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
   if(lmEdit)return lancarModalSalvarEdicao();
+  lmNotaAutoCond(true); // condição padrão do fornecedor, se a nota ficou sem parcelas
   // itens de CMV que serão lançados sem produto vinculado (amarelo) → confirma antes
   const semProd=lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo==='CMV'&&!(r.insumoId&&DB.insumos[r.insumoId])).length;
   if(semProd>0 && !confirm('Atenção: '+semProd+(semProd===1?' item de CMV não está vinculado a um produto cadastrado (aparece em amarelo).':' itens de CMV não estão vinculados a produtos cadastrados (aparecem em amarelo).')+'\n\nSem o vínculo, o gasto não atualiza o custo do produto nem o estoque. Deseja lançar mesmo assim?')) return;
@@ -4578,15 +4652,14 @@ function finContas(key){
       <div style="font-size:11.5px;color:var(--muted);margin-bottom:9px">Vêm das compras e vendas já lançadas. Dar baixa <b>não lança de novo no DRE</b>: apenas registra que o dinheiro entrou ou saiu.</div>
       ${(function(){const a=liqAtrasadasAntes(isPagar?'pagar':'receber',ym);return a.n?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${a.n}</b> parcela(s) de meses anteriores seguem sem baixa, somando <b>${fmtBRL(a.v)}</b>. Volte o mês para regularizar.</div></div>`:'';})()}
       <div class="comp-row mob-head" style="grid-template-columns:${gP};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Origem</span><span>Vencimento</span><span>Valor</span><span>Categoria</span><span>Situação</span><span></span></div>
-      ${parc.map(x=>{const atras=!x.liq.pago&&x.liq.data<hoje;
-        const desc=(x.lanc.descricao||'(sem descrição)')+(x.lanc.nfe?' · NF '+x.lanc.nfe:'')
-          +((x.lanc.liquidacoes||[]).length>1?' · '+(x.idx+1)+'/'+x.lanc.liquidacoes.length:'');
+      ${liqAgrupar(parc).map(g=>{const atras=!g.pago&&g.data<hoje;
+        const desc=g.nome+(g.n>1?' · '+(g.idx+1)+'/'+g.n:'');
         return `<div class="comp-row" style="grid-template-columns:${gP};align-items:center">
-        <div style="min-width:0;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(desc)}">${esc(desc)}</div>
-        <div style="font-size:12.5px;${atras?'color:var(--red);font-weight:600':''}">${atras?'⚠ ':''}${fmtDataBR(x.liq.data)}</div>
-        <div style="font-size:12.5px;font-weight:600">${fmtBRL(x.liq.valor)}</div>
-        <div style="font-size:11.5px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.lanc.grupo||'')}${x.lanc.sub?' · '+esc(x.lanc.sub):''}</div>
-        <button class="icon-btn" onclick="liqTogglePago('${x.lanc.id}',${x.idx})" title="${x.liq.pago?'Desfazer a baixa':'Marcar como '+fLabel.toLowerCase()}" style="white-space:nowrap;width:auto;padding:0 10px;${x.liq.pago?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${x.liq.pago?'✓ ':'○ '}${fLabel}</button>
+        <div style="min-width:0;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(desc)}${g.itens.length>1?' · '+g.itens.length+' itens da nota':''}">${esc(desc)}${g.itens.length>1?` <span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px">${g.itens.length} ITENS</span>`:''}</div>
+        <div style="font-size:12.5px;${atras?'color:var(--red);font-weight:600':''}">${atras?'⚠ ':''}${fmtDataBR(g.data)}</div>
+        <div style="font-size:12.5px;font-weight:600">${fmtBRL(g.valor)}</div>
+        <div style="font-size:11.5px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(g.cat)}">${esc(g.cat)}</div>
+        <button class="icon-btn" onclick="liqTogglePagoMulti('${g.ids.join(',')}',${g.idx})" title="${g.pago?'Desfazer a baixa':'Marcar como '+fLabel.toLowerCase()}${g.itens.length>1?' (todos os itens da nota)':''}" style="white-space:nowrap;width:auto;padding:0 10px;${g.pago?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${g.pago?'✓ ':'○ '}${fLabel}</button>
         <span></span>
       </div>`;}).join('')}
     </div>`;
