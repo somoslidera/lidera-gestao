@@ -6221,7 +6221,7 @@ function renderAdminList(){const el=$('#admin_listc');if(!el)return;
   let lista=adminTab==='demo'?ADMIN_ORGS.filter(dem):adminTab==='arquivados'?ADMIN_ORGS.filter(o=>arqd(o)&&!dem(o)):ADMIN_ORGS.filter(o=>!arqd(o)&&!dem(o));
   if(IS_SUPER&&adminConsFiltro){if(adminConsFiltro==='__lidera__')lista=lista.filter(o=>!o.consultor_id);else lista=lista.filter(o=>o.consultor_id===adminConsFiltro);}
   const q=adminBusca.trim().toLowerCase();
-  if(q)lista=lista.filter(o=>(o.nome||'').toLowerCase().includes(q));
+  if(q)lista=lista.filter(o=>(o.nome||'').toLowerCase().includes(q)||(cadDe(o).segmento||'').toLowerCase().includes(q)||(cadDe(o).socios||'').toLowerCase().includes(q));
   lista=lista.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
   el.innerHTML=lista.length?lista.map(o=>{const p=(o.dados&&o.dados._projeto)?o.dados._projeto:null;const pct=p?projPct(p):0;const atr=p?projAtrasadas(p):0;const sel=o.id===adminSel;const susp=o.status==='suspenso';return `
     <div onclick="adminSelOrg('${o.id}')" style="cursor:pointer;padding:9px 10px;border-radius:9px;margin:2px 0;${sel?'background:var(--navy);color:#fff':''}">
@@ -6230,7 +6230,7 @@ function renderAdminList(){const el=$('#admin_listc');if(!el)return;
         ${atr?`<span title="${atr} atrasada(s)" style="color:${sel?'#ffb4b4':'var(--red)'};font-size:11px;font-weight:600">⚠ ${atr}</span>`:''}
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:3px">
-        <span style="font-size:11px;${sel?'color:#cdd6ea':'color:var(--soft)'}">${IS_SUPER?esc(consNome(o.consultor_id)):(susp?'suspenso':esc(o.responsavel||'')||'—')}</span>
+        <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${sel?'color:#cdd6ea':'color:var(--soft)'}">${IS_SUPER?esc(consNome(o.consultor_id)):(susp?'suspenso':esc(o.responsavel||'')||'—')}${cadDe(o).segmento?' · '+esc(cadDe(o).segmento):''}</span>
         <span style="font-size:11px;${sel?'color:#cdd6ea':'color:var(--soft)'}">${p?pct+'%':'—'}</span>
       </div>
       ${p?`<div style="height:4px;border-radius:3px;background:${sel?'rgba(255,255,255,.25)':'var(--line)'};margin-top:5px"><div style="height:4px;border-radius:3px;width:${pct}%;background:${pct>=100?'var(--green)':'var(--gold)'}"></div></div>`:''}
@@ -6245,17 +6245,52 @@ function renderAdminMain(){const el=$('#admin_main');if(!el)return;
   const o=ADMIN_ORGS.find(x=>x.id===adminSel);
   if(!o){adminSel=null;el.innerHTML=adminOverviewHTML();return;}
   const k=kpisDe(o.dados);const susp=o.status==='suspenso';const arq=!!(o.dados&&o.dados._arquivado);const nm=(o.nome||'').replace(/'/g,'');
+  const cad=cadDe(o);
   el.innerHTML=`
    <div class="card card-pad">
      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
        <div><div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700">${esc(o.nome||'')}</div>
-       <div style="font-size:12.5px;color:var(--soft);margin-top:2px">${esc(o.responsavel||'')||'sem responsável'} · <span class="tag ${arq?'tag-gray':susp?'tag-red':o.status==='teste'?'tag-amber':'tag-green'}">${arq?'arquivado':o.status}</span></div></div>
+       <div style="font-size:12.5px;color:var(--soft);margin-top:2px">${esc(o.responsavel||'')||'sem responsável'}${cad.segmento?' · '+esc(cad.segmento):''}${cad.socios?' · '+esc(cadSociosLinha(cad)):''} · <span class="tag ${arq?'tag-gray':susp?'tag-red':o.status==='teste'?'tag-amber':'tag-green'}">${arq?'arquivado':o.status}</span></div></div>
        <button class="btn btn-ghost btn-sm" onclick="adminSel=null;renderAdmin()">✕ Fechar</button>
      </div>
-     <div class="pill-filter" style="margin:14px 0 0"><button class="${adminProjTab==='dados'?'on':''}" onclick="adminProjTab='dados';renderAdminMain()">Dados de hoje</button><button class="${adminProjTab==='projeto'?'on':''}" onclick="adminProjTab='projeto';renderAdminMain()">Controle de projeto</button></div>
+     <div class="pill-filter" style="margin:14px 0 0"><button class="${adminProjTab==='dados'?'on':''}" onclick="adminProjTab='dados';renderAdminMain()">Dados de hoje</button><button class="${adminProjTab==='cadastro'?'on':''}" onclick="adminProjTab='cadastro';renderAdminMain()">Cadastro</button><button class="${adminProjTab==='projeto'?'on':''}" onclick="adminProjTab='projeto';renderAdminMain()">Controle de projeto</button></div>
    </div>
-   <div style="margin-top:14px">${adminProjTab==='projeto'?projetoHTML(o):dadosHTML(o,k,nm,arq)}</div>`;
+   <div style="margin-top:14px">${adminProjTab==='projeto'?projetoHTML(o):adminProjTab==='cadastro'?cadastroHTML(o):dadosHTML(o,k,nm,arq)}</div>`;
 }
+/* ---- Cadastro do cliente (admin): segmento, sócios, redes, perfil comportamental. Fica em dados._cadastro,
+   salvo por merge (lê o dados atual, troca só _cadastro) para não pisar no que o cliente está usando no app. ---- */
+const CAD_SEGMENTOS=['Buffet / Self-service','Restaurante à la carte','Hamburgueria','Pizzaria','Marmitaria','Lanchonete','Bar / Boteco','Cafeteria','Padaria','Confeitaria / Doceria','Churrascaria','Japonês / Sushi','Açaí / Sorveteria','Só delivery (dark kitchen)','Food truck','Outro'];
+const CAD_CAMPOS=[
+ ['segmento','Segmento','Ex.: Buffet, Hamburgueria, Pizzaria…','input'],
+ ['socios','Nome dos sócios','Um por linha','textarea'],
+ ['instagram','Instagram','@usuario ou link','input'],
+ ['google','Google Perfil de Empresas','Link do perfil (ou nome como aparece no Google)','input'],
+ ['perfil','Perfil Comportamental','Ex.: João: Dominância (D) · Maria: Influência (I) · link do relatório','textarea']];
+function cadDe(o){return (o&&o.dados&&o.dados._cadastro)||{};}
+function cadSociosLinha(c){return (c.socios||'').split('\n').map(x=>x.trim()).filter(Boolean).join(', ');}
+function cadLink(campo,v){v=(v||'').trim();if(!v)return '';
+  if(campo==='instagram'){const u=/^https?:/i.test(v)?v:'https://instagram.com/'+v.replace(/^@/,'').replace(/^instagram\.com\//i,'');return u;}
+  if(campo==='google')return /^https?:/i.test(v)?v:'https://www.google.com/search?q='+encodeURIComponent(v);
+  return '';}
+function cadastroHTML(o){const c=cadDe(o);
+  return `<div class="card card-pad" style="max-width:760px">
+    <div class="section-head" style="margin-bottom:6px"><div><div class="ttl">Cadastro do cliente</div><div class="desc">Informações de relacionamento. Só a Lidera vê; o cliente não enxerga no app.</div></div><span id="cad_status" style="font-size:12px;color:var(--soft)"></span></div>
+    <datalist id="cad_seg_opts">${CAD_SEGMENTOS.map(x=>`<option value="${esc(x)}"></option>`).join('')}</datalist>
+    ${CAD_CAMPOS.map(([k,l,ph,tipo])=>{const link=cadLink(k,c[k]);
+      return `<div class="field"><label>${l}${link?` <a href="${esc(link)}" target="_blank" rel="noopener" style="font-weight:600;color:var(--gold);margin-left:6px;font-size:11.5px">abrir ↗</a>`:''}</label>
+        ${tipo==='textarea'?`<textarea class="input" rows="${k==='socios'?3:3}" placeholder="${esc(ph)}" oninput="cadSet('${o.id}','${k}',this.value)">${esc(c[k]||'')}</textarea>`
+        :`<input class="input" ${k==='segmento'?'list="cad_seg_opts"':''} value="${esc(c[k]||'')}" placeholder="${esc(ph)}" oninput="cadSet('${o.id}','${k}',this.value)" onchange="renderAdminList()">`}</div>`;}).join('')}
+    <div style="font-size:11.5px;color:var(--soft);margin-top:4px">Salva sozinho ao digitar. O segmento aparece na lista de clientes e serve para buscar (ex.: digite "pizzaria" na busca).</div>
+  </div>`;}
+let _cadSaveT=null;
+function cadSet(orgId,campo,valor){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;o.dados=o.dados||{};o.dados._cadastro=o.dados._cadastro||{};o.dados._cadastro[campo]=valor;
+  const st=$('#cad_status');if(st){st.textContent='Salvando…';st.style.color='var(--amber)';}
+  clearTimeout(_cadSaveT);_cadSaveT=setTimeout(()=>cadSaveOrg(o),700);}
+async function cadSaveOrg(o){if(!o)return;const st=$('#cad_status');
+  try{const cur=(await sb.from('organizacoes').select('dados').eq('id',o.id).single()).data;const dados=(cur&&cur.dados)||{};dados._cadastro=o.dados._cadastro||{};
+    const r=await sb.from('organizacoes').update({dados}).eq('id',o.id);if(r&&r.error)throw r.error;
+    Object.assign(o.dados,dados);if(st){st.textContent='Salvo ✓';st.style.color='var(--green)';}}
+  catch(e){if(st){st.textContent='Erro ao salvar';st.style.color='var(--red)';}toast('Erro ao salvar o cadastro');}}
 function dadosHTML(o,k,nm,arq){return `<div class="card card-pad">
   <div class="kpi-grid" style="margin:0 0 14px">
    <div class="kpi"><div class="k-lbl">Faturamento</div><div class="k-val" style="font-size:20px">${fmtBRL(k.fat)}</div></div>
