@@ -908,12 +908,20 @@ function fichasVendaveis(){return Object.values(DB.fichas);}
 const INSS_FAIXAS_2026=[{ate:1621.00,aliq:7.5,ded:0},{ate:2902.84,aliq:9,ded:24.32},{ate:4354.27,aliq:12,ded:111.41},{ate:8475.55,aliq:14,ded:198.49}];
 function inssFaixas(){return (DB.fin.inssFaixas&&DB.fin.inssFaixas.length)?DB.fin.inssFaixas:INSS_FAIXAS_2026;}
 function inssProgressivo(bruto){if(!bruto||bruto<=0)return 0;const f=inssFaixas();let alq=f[f.length-1];for(const x of f){if(bruto<=x.ate){alq=x;break;}}return Math.max(0,bruto*(alq.aliq/100)-alq.ded);}
-function custoFuncionario(f){
-  const bruto=(f.salario||0)+(f.premio||0); // base de INSS/FGTS/provisões
-  const porFora=f.porFora||0;               // não entra na base
+/* Campos personalizados da folha (horas extras, DSR, adicional, faltas…): definidos em fin.folhaCampos
+   [{id,nome,tipo:'provento'|'desconto',base:bool}] e lançados por funcionário e mês em f.camposMes[ym][id]. */
+function folhaCampos(){return (DB.fin&&DB.fin.folhaCampos)||[];}
+function funcExtras(f,ym){ym=ym||ymNow();const vals=(f.camposMes&&f.camposMes[ym])||{};let provBase=0,provFora=0,desc=0;const det=[];
+  folhaCampos().forEach(c=>{const v=+vals[c.id]||0;if(!v)return;det.push({nome:c.nome,tipo:c.tipo,valor:v});
+    if(c.tipo==='desconto')desc+=v;else if(c.base===false)provFora+=v;else provBase+=v;});
+  return {provBase,provFora,desc,prov:provBase+provFora,det};}
+function custoFuncionario(f,ym){
+  const ex=funcExtras(f,ym);
+  const bruto=(f.salario||0)+(f.premio||0)+ex.provBase; // base de INSS/FGTS/provisões (inclui extras que entram na base)
+  const porFora=(f.porFora||0)+ex.provFora;             // não entra na base (inclui extras marcados como fora da base)
   const beneficios=(f.beneficios||0)+((f.custoRefeicaoDia||0)*(f.diasTrabalhados||0)*(f.qtdVales||0))+(f.vt||0);
   const vales=f.vales||0;
-  const consumo=f.consumo||0;
+  const consumo=(f.consumo||0)+ex.desc;                 // descontos personalizados (faltas, atrasos…)
   const regime=f.regime||'CLT';
   const isCLT=regime==='CLT';
   const inss=isCLT?inssProgressivo(bruto):(regime==='Sócio'?Math.min(bruto,8475.55)*((DB.fin.inssSocio||11)/100):0); // pró-labore: INSS 11% até o teto
@@ -924,7 +932,7 @@ function custoFuncionario(f){
   const inssPat=isCLT?bruto*((DB.fin.encINSS||0)/100):0;                   // INSS patronal, quando o regime exigir (Simples anexo IV, lucro presumido…)
   const liquido=bruto+porFora-vales-consumo-inss;
   const total=bruto+porFora+beneficios+fgts+prov+inssPat;     // custo da empresa
-  return {bruto,porFora,beneficios,vales,consumo,inss,inssPat,fgts,prov13,provFerias,prov,encargos:fgts+prov+inssPat,liquido,total,base:bruto,benef:beneficios};
+  return {bruto,porFora,beneficios,vales,consumo,inss,inssPat,fgts,prov13,provFerias,prov,encargos:fgts+prov+inssPat,liquido,total,base:bruto,benef:beneficios,extrasProv:ex.prov,extrasDesc:ex.desc,extrasDet:ex.det};
 }
 const PROV_13=8.33, PROV_FER=2.78, PROV_PADRAO=11.11; // provisões padrão: 13º (1/12) + terço constitucional de férias
 function folhaTotal(){return (DB.fin.funcionarios||[]).reduce((s,f)=>s+custoFuncionario(f).total,0);}
@@ -4447,6 +4455,50 @@ function funcCatsModal(){modal(`<div class="modal-head"><h3>Categorias de funcio
     <div style="font-size:11.5px;color:var(--soft);margin-top:12px">Freelancers não têm categoria — são marcados pelo regime na hora de cadastrar o funcionário.</div>
   </div>
   <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal();viewFolha()">Fechar</button></div>`);}
+/* ----- Campos personalizados da folha ----- */
+const FOLHA_CAMPOS_SUGESTOES=[['Horas extras','provento',true],['DSR','provento',true],['Adicional noturno','provento',true],['Insalubridade','provento',true],['Comissão','provento',true],['Gratificação','provento',false],['Faltas','desconto',false],['Atrasos','desconto',false]];
+function folhaCamposRows(){const cs=folhaCampos();if(!cs.length)return '<div style="font-size:13px;color:var(--soft);padding:6px 0">Nenhum campo ainda. Use as sugestões ou crie o seu.</div>';
+  return cs.map((c,k)=>`<div style="display:grid;grid-template-columns:1fr 118px 150px 30px;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)">
+    <input class="input" value="${esc(c.nome)}" onchange="DB.fin.folhaCampos[${k}].nome=this.value;save()" style="padding:6px 9px">
+    <select class="input" style="padding:6px 8px" onchange="DB.fin.folhaCampos[${k}].tipo=this.value;save();folhaCamposRefresh()"><option value="provento" ${c.tipo!=='desconto'?'selected':''}>Provento (+)</option><option value="desconto" ${c.tipo==='desconto'?'selected':''}>Desconto (−)</option></select>
+    ${c.tipo==='desconto'?'<span style="font-size:11px;color:var(--soft)">reduz o líquido</span>':`<label style="display:flex;align-items:center;gap:6px;font-size:11.5px;cursor:pointer" title="Entra na base de INSS, FGTS e provisões (horas extras, DSR e adicionais entram; gratificação eventual pode ficar fora)"><input type="checkbox" ${c.base!==false?'checked':''} onchange="DB.fin.folhaCampos[${k}].base=this.checked;save()" style="width:15px;height:15px"> base de encargos</label>`}
+    <button class="mini-del" onclick="folhaCampoDel(${k})">${icoX}</button></div>`).join('');}
+function folhaCamposRefresh(){const el=$('#fcp_list');if(el)el.innerHTML=folhaCamposRows();}
+function folhaCampoAdd(nome,tipo,base){DB.fin.folhaCampos=folhaCampos().slice();nome=(nome||'').trim();if(!nome)return;
+  if(DB.fin.folhaCampos.some(c=>c.nome.toLowerCase()===nome.toLowerCase()))return toast('Esse campo já existe');
+  DB.fin.folhaCampos.push({id:uid(),nome,tipo:tipo||'provento',base:base!==false});save();folhaCamposRefresh();}
+function folhaCampoAddNovo(){const el=$('#fcp_novo');if(!el)return;folhaCampoAdd(el.value,$('#fcp_tipo').value,true);el.value='';}
+function folhaCampoDel(k){const c=folhaCampos()[k];if(!c)return;const uso=(DB.fin.funcionarios||[]).some(f=>f.camposMes&&Object.values(f.camposMes).some(v=>+v[c.id]));
+  if(uso&&!confirm('"'+c.nome+'" já tem valores lançados em algum mês. Remover o campo apaga esses valores da folha. Continuar?'))return;
+  DB.fin.folhaCampos=folhaCampos().filter(x=>x.id!==c.id);save();folhaCamposRefresh();}
+function folhaCamposModal(){modal(`<div class="modal-head"><h3>Campos personalizados da folha</h3><button class="x" onclick="closeModal();viewFolha()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Crie os campos que a sua folha usa além do salário. Depois, em cada funcionário, lance o valor do mês pelo botão <b>＋/−</b>.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${FOLHA_CAMPOS_SUGESTOES.map(([n,t,b])=>`<button class="btn btn-ghost btn-sm" style="padding:4px 9px;font-size:11.5px" onclick="folhaCampoAdd('${n}','${t}',${b})">${t==='desconto'?'−':'+'} ${n}</button>`).join('')}</div>
+    <div style="display:flex;gap:8px;margin-bottom:6px"><input class="input" id="fcp_novo" placeholder="Novo campo (ex.: Adicional de caixa)" onkeydown="if(event.key==='Enter'){folhaCampoAddNovo();event.preventDefault();}"><select class="input" id="fcp_tipo" style="width:130px"><option value="provento">Provento (+)</option><option value="desconto">Desconto (−)</option></select><button class="btn btn-primary btn-sm" onclick="folhaCampoAddNovo()">${icoPlus}</button></div>
+    <div id="fcp_list" style="margin-top:8px">${folhaCamposRows()}</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal();viewFolha()">Fechar</button></div>`,true);}
+function funcExtrasModal(i){const f=DB.fin.funcionarios[i];if(!f)return;const ym=curFolhaYM();const cs=folhaCampos();
+  const vals=(f.camposMes&&f.camposMes[ym])||{};
+  modal(`<div class="modal-head"><h3>Extras · ${esc(f.nome||'—')}</h3><button class="x" onclick="closeModal();viewFolha()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Valores de <b>${ymLabel(ym)}</b>. Proventos somam ao bruto; descontos reduzem o líquido. <a onclick="closeModal();folhaCamposModal()" style="color:var(--gold);font-weight:600;cursor:pointer">Gerenciar campos</a></div>
+    ${cs.length?cs.map(c=>`<div style="display:grid;grid-template-columns:1fr 150px;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line)">
+      <div><div style="font-size:13px;font-weight:600">${c.tipo==='desconto'?'−':'+'} ${esc(c.nome)}</div><div style="font-size:11px;color:var(--soft)">${c.tipo==='desconto'?'desconto':(c.base!==false?'provento · entra na base de encargos':'provento · fora da base')}</div></div>
+      <div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" id="fx_${c.id}" value="${fmtMoneyInput(+vals[c.id]||0)}" oninput="moneyMask(this)"></div></div>`).join('')
+    :`<div style="font-size:13px;color:var(--soft);padding:8px 0">Nenhum campo criado ainda. Clique em <b>Gerenciar campos</b> para adicionar horas extras, DSR, adicionais…</div>`}
+    <div style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="funcExtrasCopiar(${i})" title="Copia os valores do mês anterior para este mês">↩ Copiar do mês anterior</button></div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal();viewFolha()">Cancelar</button><button class="btn btn-primary" onclick="funcExtrasSave(${i})">Salvar</button></div>`,true);}
+function funcExtrasSave(i){const f=DB.fin.funcionarios[i];if(!f)return;const ym=curFolhaYM();
+  f.camposMes=f.camposMes||{};const o={};folhaCampos().forEach(c=>{const v=moneyVal('fx_'+c.id);if(v)o[c.id]=v;});
+  if(Object.keys(o).length)f.camposMes[ym]=o;else delete f.camposMes[ym];
+  if((f.freq||'mensal')!=='mensal')funcSyncPago(f,ym);
+  save();closeModal();viewFolha();toast('Extras de '+ymLabel(ym)+' salvos');}
+function funcExtrasCopiar(i){const f=DB.fin.funcionarios[i];if(!f)return;const ym=curFolhaYM();const ant=(f.camposMes&&f.camposMes[ymMinus1(ym)])||{};
+  if(!Object.keys(ant).length)return toast('O mês anterior não tem extras');
+  folhaCampos().forEach(c=>{const el=$('#fx_'+c.id);if(el)el.value=fmtMoneyInput(+ant[c.id]||0);});toast('Valores copiados, confira e salve');}
 function funcRmLanc(funcId,ym){DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromFunc!==(funcId+(ym?'|'+ym:'')));}
 function funcRmAllLancs(funcId){DB.lancamentos=(DB.lancamentos||[]).filter(l=>!(l.fromFunc||'').startsWith(funcId+'|'));}
 function funcDel(i){
@@ -4471,6 +4523,7 @@ function funcDelAplicar(escopo){
     f.ate=ymMinus1(d.ym);
     // limpa pagosMes e lançamentos de d.ym em diante
     if(f.pagosMes)Object.keys(f.pagosMes).forEach(k=>{if(k>=d.ym)delete f.pagosMes[k];});
+    if(f.pagtos)Object.keys(f.pagtos).forEach(k=>{if(k>=d.ym)delete f.pagtos[k];});
     DB.lancamentos=(DB.lancamentos||[]).filter(l=>{if(!(l.fromFunc||'').startsWith('fn_'+d.id+'|'))return true;const lym=l.fromFunc.split('|')[1];return lym<d.ym;});
     save();closeModal();viewFolha();toast('Encerrado a partir de '+ymLabel(d.ym));
   } else {
@@ -4480,15 +4533,63 @@ function funcDelAplicar(escopo){
   }
   window._delFunc=null;
 }
+const FREQ_LABEL={mensal:'Mensal',quinzenal:'Quinzenal',semanal:'Semanal',diario:'Diário'};
+function funcPagtos(f,ym){return ((f.pagtos&&f.pagtos[ym])||[]);}
+function funcPagoTotal(f,ym){return +funcPagtos(f,ym).reduce((s,p)=>s+(+p.valor||0),0).toFixed(2);}
+function funcSugestao(f,ym){const liq=custoFuncionario(f,ym).liquido;const falta=+(liq-funcPagoTotal(f,ym)).toFixed(2);const fr=f.freq||'mensal';
+  const parcela=fr==='quinzenal'?liq/2:fr==='semanal'?liq/4:fr==='diario'?liq/Math.max(1,f.diasTrabalhados||22):liq;
+  const n=funcPagtos(f,ym).length;const hoje=hojeISO();const dd=(iso)=>fmtDataBR(iso).slice(0,5);
+  const desc=fr==='quinzenal'?((n+1)+'ª quinzena'):fr==='semanal'?('semana '+dd(hoje)):fr==='diario'?('diária '+dd(hoje)):'líquido';
+  const v=falta>0?Math.min(+parcela.toFixed(2),falta):+parcela.toFixed(2);
+  return {valor:Math.max(0,v),desc,falta,liq};}
+function funcPagtosModal(i){const f=DB.fin.funcionarios[i];if(!f)return;const ym=curFolhaYM();
+  const m=custoFuncionario(f,ym);const pagos=funcPagtos(f,ym);const tot=funcPagoTotal(f,ym);const sug=funcSugestao(f,ym);
+  const completo=m.liquido>0&&tot>=m.liquido-0.01;
+  modal(`<div class="modal-head"><h3>Pagamentos · ${esc(f.nome||'—')}</h3><button class="x" onclick="closeModal();viewFolha()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <div class="dash-pill"><span>${ymLabel(ym)} · ${FREQ_LABEL[f.freq||'mensal']}</span><b>líquido ${fmtBRL(m.liquido)}</b></div>
+      <div class="dash-pill"><span>Pago</span><b style="color:var(--green)">${fmtBRL(tot)}</b></div>
+      <div class="dash-pill"><span>Falta</span><b style="color:${sug.falta>0.005?'var(--amber)':'var(--green)'}">${fmtBRL(Math.max(0,sug.falta))}</b></div>
+    </div>
+    ${pagos.length?`<div style="display:grid;grid-template-columns:96px 1fr 120px 60px 30px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 5px"><span>Data</span><span>Descrição</span><span style="text-align:right">Valor</span><span style="text-align:center">DRE</span><span></span></div>
+    ${pagos.map((p,k)=>`<div style="display:grid;grid-template-columns:96px 1fr 120px 60px 30px;gap:8px;align-items:center;padding:6px 2px;border-top:1px solid var(--line);font-size:12.5px">
+      <span>${fmtDataBR(p.data)}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.desc||'')}</span><b style="text-align:right">${fmtBRL(p.valor)}</b><span style="text-align:center;color:${p.lanc?'var(--green)':'var(--soft)'}">${p.lanc?'✓':'—'}</span>
+      <button class="mini-del" title="Remover este pagamento (e o lançamento dele)" onclick="funcPagtoDel(${i},'${p.id}')">${icoX}</button></div>`).join('')}`
+    :`<div style="font-size:13px;color:var(--soft);padding:6px 0 10px">Nenhum pagamento registrado em ${ymLabel(ym)}.</div>`}
+    <div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px;background:var(--bg)">
+      <div style="font-size:12.5px;font-weight:700;margin-bottom:8px">${completo?'Mês completo. Registrar mais um?':'Registrar pagamento'}</div>
+      <div class="grid-2">
+        <div class="field" style="margin:0"><label>Data</label><input type="date" class="input" id="fp_data" value="${hojeISO()}"></div>
+        <div class="field" style="margin:0"><label>Valor</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="fp_valor" inputmode="numeric" value="${fmtMoneyInput(sug.valor)}" oninput="moneyMask(this)"></div></div>
+      </div>
+      <div class="field" style="margin:10px 0 0"><label>Descrição</label><input class="input" id="fp_desc" value="${esc(sug.desc)}" placeholder="Ex.: 1ª quinzena"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;margin-top:10px;cursor:pointer"><input type="checkbox" id="fp_lanc" checked style="width:16px;height:16px"> Lançar no DRE (Mão-de-Obra · Salários) e no Fluxo de Caixa</label>
+    </div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal();viewFolha()">Fechar</button><button class="btn btn-primary" onclick="funcPagtoAdd(${i})">${icoPlus} Registrar pagamento</button></div>`,true);}
+function funcPagtoAdd(i){const f=DB.fin.funcionarios[i];if(!f)return;const ym=curFolhaYM();
+  const data=$('#fp_data').value||hojeISO();const valor=moneyVal('fp_valor');if(!(valor>0))return toast('Informe o valor do pagamento');
+  const desc=($('#fp_desc').value||'').trim();const lanc=!!($('#fp_lanc')&&$('#fp_lanc').checked);
+  f.pagtos=f.pagtos||{};f.pagtos[ym]=f.pagtos[ym]||[];const p={id:uid(),data,desc,valor,lanc};f.pagtos[ym].push(p);
+  if(lanc){DB.lancamentos=DB.lancamentos||[];DB.lancamentos.push({id:uid(),fromFunc:'fn_'+f.id+'|'+ym+'|'+p.id,data,grupo:'Mão-de-Obra',sub:'Salários',descricao:(f.nome||'Funcionário')+(desc?' · '+desc:''),valor,forma:f.forma||''});}
+  funcSyncPago(f,ym);save();funcPagtosModal(i);toast(lanc?'Pagamento registrado e lançado no DRE':'Pagamento registrado');}
+function funcPagtoDel(i,pid){const f=DB.fin.funcionarios[i];if(!f)return;const ym=curFolhaYM();
+  f.pagtos[ym]=(f.pagtos[ym]||[]).filter(p=>p.id!==pid);
+  DB.lancamentos=(DB.lancamentos||[]).filter(l=>!(l.fromFunc||'').endsWith('|'+pid));
+  funcSyncPago(f,ym);save();funcPagtosModal(i);toast('Pagamento removido');}
+function funcSyncPago(f,ym){f.pagosMes=f.pagosMes||{};const liq=custoFuncionario(f,ym).liquido;
+  if(liq>0&&funcPagoTotal(f,ym)>=liq-0.01)f.pagosMes[ym]=true;else delete f.pagosMes[ym];}
 function funcTogglePago(i){
   const f=DB.fin.funcionarios[i];if(!f)return;
+  if((f.freq||'mensal')!=='mensal')return funcPagtosModal(i);   // quinzenal / semanal / diário: pagamentos parciais
   const ym=curFolhaYM();f.pagosMes=f.pagosMes||{};
   if(f.pagosMes[ym]){
     if(!confirm(`Desmarcar pagamento de ${ymLabel(ym)} para ${f.nome||'este funcionário'}? O lançamento correspondente também será removido.`))return;
     delete f.pagosMes[ym];funcRmLanc('fn_'+f.id,ym);save();viewFolha();toast('Pagamento desmarcado');return;
   }
   // não pago ainda: abre confirmação de lançar no DRE
-  window._payFunc={i,id:f.id,nome:f.nome||'',ym,liquido:custoFuncionario(f).liquido};
+  window._payFunc={i,id:f.id,nome:f.nome||'',ym,liquido:custoFuncionario(f,ym).liquido};
   modal(`<div class="modal-head"><h3>Marcar como pago</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div style="font-size:13.5px;margin-bottom:4px"><b>${esc(f.nome||'—')}</b> · ${ymLabel(ym)}</div>
@@ -4540,12 +4641,14 @@ function funcEdit(i){
       <div class="field"><label>Dia de vencimento</label><input class="input" id="fn_dia" type="number" min="0" max="31" value="${f.diaVenc||''}" placeholder="Ex.: 5"></div>
       <div class="field"><label>Início (mês)</label><input class="input" id="fn_desde" type="month" value="${f.desde||ymNow()}"></div>
     </div>
+    <div class="field"><label>Como é pago <span class="hint">define como o pagamento é registrado na folha</span></label><select class="input" id="fn_freq">${[['mensal','Mensal (uma vez por mês)'],['quinzenal','Quinzenal (2 pagamentos por mês)'],['semanal','Semanal'],['diario','Diário (diária)']].map(([v,l])=>`<option value="${v}" ${(f.freq||'mensal')===v?'selected':''}>${l}</option>`).join('')}</select>
+      <div style="font-size:11.5px;color:var(--soft);margin-top:5px">Quinzenal, semanal e diário: cada pagamento é registrado com data e valor, e o mês fecha quando a soma chega ao líquido.</div></div>
     <div class="field"><label>Observação</label><input class="input" id="fn_obs" value="${esc(f.observacao||'')}" placeholder="Opcional"></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="funcSave(${i==null?'null':i})">Salvar</button></div>`,true);
 }
 function funcSave(i){
-  const o={categoria:$('#fn_cat').value,regime:$('#fn_reg').value,nome:($('#fn_nome').value||'').trim(),cargo:($('#fn_cargo').value||'').trim(),salario:moneyVal('fn_bruto'),porFora:moneyVal('fn_pfora'),vales:moneyVal('fn_vales'),consumo:moneyVal('fn_cons'),beneficios:moneyVal('fn_bnf'),diaVenc:parseInt($('#fn_dia').value)||0,desde:$('#fn_desde').value||ymNow(),observacao:($('#fn_obs').value||'').trim()};
+  const o={categoria:$('#fn_cat').value,regime:$('#fn_reg').value,nome:($('#fn_nome').value||'').trim(),cargo:($('#fn_cargo').value||'').trim(),salario:moneyVal('fn_bruto'),porFora:moneyVal('fn_pfora'),vales:moneyVal('fn_vales'),consumo:moneyVal('fn_cons'),beneficios:moneyVal('fn_bnf'),diaVenc:parseInt($('#fn_dia').value)||0,desde:$('#fn_desde').value||ymNow(),freq:($('#fn_freq')&&$('#fn_freq').value)||'mensal',observacao:($('#fn_obs').value||'').trim()};
   DB.fin.funcionarios=DB.fin.funcionarios||[];
   if(i==null){DB.fin.funcionarios.push({...FIN_TEMPLATES.funcionarios(),...o});}
   else {DB.fin.funcionarios[i]={...DB.fin.funcionarios[i],...o};}
@@ -4555,33 +4658,42 @@ function finFolha(){
   const ym=curFolhaYM();
   // ativos no mês: desde <= ym e (sem ate ou ate >= ym)
   const todos=DB.fin.funcionarios||[];
-  const ativos=todos.map((f,i)=>({f,i,m:custoFuncionario(f)})).filter(({f})=>(!f.desde||f.desde<=ym)&&(!f.ate||f.ate>=ym));
-  const tot={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0};
+  const ativos=todos.map((f,i)=>({f,i,m:custoFuncionario(f,ym)})).filter(({f})=>(!f.desde||f.desde<=ym)&&(!f.ate||f.ate>=ym));
+  const temCampos=folhaCampos().length>0;
+  const tot={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0,extrasProv:0,extrasDesc:0};
   ativos.forEach(({m})=>Object.keys(tot).forEach(k=>tot[k]+=m[k]||0));
   const pagos=ativos.filter(({f})=>f.pagosMes&&f.pagosMes[ym]).length;
   const cats=funcCats(),GRUPOS=[...cats,'Sócios','Freelancers'];
   const porCat={};GRUPOS.forEach(c=>porCat[c]=[]);
   ativos.forEach(({f,i,m})=>{const r=f.regime||'CLT';const g=r==='Sócio'?'Sócios':r==='Freelancer'?'Freelancers':(cats.includes(f.categoria)?f.categoria:(cats[0]||'Sem categoria'));(porCat[g]=porCat[g]||[]).push({f,i,m});});
-  const head=`<tr style="background:var(--bg);color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px 10px;min-width:190px">Funcionário</th><th class="num">Bruto</th><th class="num">Por fora</th><th class="num">Vales</th><th class="num">Consumo</th><th class="num">Benef.</th><th class="num">INSS</th><th class="num">FGTS</th><th class="num">13º+Férias</th><th class="num">Líquido</th><th class="num">Custo total</th><th style="width:110px;text-align:center">Pago</th><th style="width:32px"></th></tr>`;
+  const head=`<tr style="background:var(--bg);color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px 10px;min-width:190px">Funcionário</th><th class="num">Bruto</th><th class="num">Por fora</th><th class="num">Vales</th><th class="num">Consumo</th><th class="num">Benef.</th>${temCampos?'<th class="num" title="Campos personalizados: proventos do mês">Extras +</th><th class="num" title="Campos personalizados: descontos do mês">Extras −</th>':''}<th class="num">INSS</th><th class="num">FGTS</th><th class="num">13º+Férias</th><th class="num">Líquido</th><th class="num">Custo total</th><th style="width:110px;text-align:center">Pago</th><th style="width:32px"></th></tr>`;
   const rowsByCat=GRUPOS.map(cat=>{const lst=porCat[cat]||[];if(!lst.length)return '';
-    const sub={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0};lst.forEach(x=>Object.keys(sub).forEach(k=>sub[k]+=x.m[k]||0));
-    const rows=lst.map(({f,i,m})=>{const pg=!!(f.pagosMes&&f.pagosMes[ym]);return `<tr style="border-top:1px solid var(--line)">
+    const sub={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0,extrasProv:0,extrasDesc:0};lst.forEach(x=>Object.keys(sub).forEach(k=>sub[k]+=x.m[k]||0));
+    const rows=lst.map(({f,i,m})=>{const pg=!!(f.pagosMes&&f.pagosMes[ym]);const fr=f.freq||'mensal';
+      const extrasTip=(m.extrasDet||[]).map(d=>(d.tipo==='desconto'?'− ':'+ ')+d.nome+' '+fmtBRL(d.valor)).join(' · ');
+      let pagoCel;
+      if(fr==='mensal')pagoCel=`<button class="icon-btn" onclick="funcTogglePago(${i})" title="Marcar como ${pg?'pendente':'pago'} em ${ymLabel(ym)}" style="white-space:nowrap;width:auto;padding:0 10px;${pg?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${pg?'✓ Pago':'○ Pendente'}</button>`;
+      else{const pt=funcPagoTotal(f,ym),np=funcPagtos(f,ym).length;const parcial=pt>0&&!pg;
+        pagoCel=`<button class="icon-btn" onclick="funcPagtosModal(${i})" title="${FREQ_LABEL[fr]} · ${np} pagamento(s) em ${ymLabel(ym)} · clique para registrar" style="white-space:nowrap;width:auto;padding:0 10px;line-height:1.2;${pg?'background:var(--green-bg);color:var(--green);border-color:var(--green)':parcial?'background:var(--amber-bg);color:var(--amber);border-color:var(--amber)':''}">${pg?'✓ ':parcial?'◐ ':'○ '}${np?fmtBRL(pt):'Registrar'}<br><span style="font-size:9.5px;opacity:.8">${FREQ_LABEL[fr].toLowerCase()} · ${np} pagto${np===1?'':'s'}</span></button>`;}
+      return `<tr style="border-top:1px solid var(--line)">
       <td style="padding:8px 10px;min-width:190px"><div style="font-weight:600;font-size:13px;white-space:nowrap">${esc(f.nome||'—')}</div><div style="font-size:11px;color:var(--soft);white-space:nowrap">${esc(f.cargo||'')}${f.regime&&f.regime!=='CLT'?` · ${esc(f.regime)}`:''}</div></td>
       <td class="num">${fmtBRL(m.bruto)}</td><td class="num">${fmtBRL(m.porFora)}</td><td class="num" style="color:${m.vales>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.vales)}</td><td class="num" style="color:${m.consumo>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.consumo)}</td><td class="num">${fmtBRL(m.beneficios)}</td>
+      ${temCampos?`<td class="num" style="color:${m.extrasProv>0?'var(--green)':'var(--soft)'}" title="${esc(extrasTip)}">${fmtBRL(m.extrasProv)}</td><td class="num" style="color:${m.extrasDesc>0?'var(--red)':'var(--soft)'}" title="${esc(extrasTip)}">${fmtBRL(m.extrasDesc)}</td>`:''}
       <td class="num" style="color:var(--muted)">${fmtBRL(m.inss)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.fgts)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.prov)}</td>
       <td class="num"><b>${fmtBRL(m.liquido)}</b></td><td class="num"><b style="color:var(--navy);font-family:'Fraunces',serif">${fmtBRL(m.total)}</b></td>
-      <td style="text-align:center"><button class="icon-btn" onclick="funcTogglePago(${i})" title="Marcar como ${pg?'pendente':'pago'} em ${ymLabel(ym)}" style="white-space:nowrap;width:auto;padding:0 10px;${pg?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${pg?'✓ Pago':'○ Pendente'}</button></td>
-      <td><span style="display:inline-flex;gap:4px"><button class="icon-btn" title="Editar" onclick="funcEdit(${i})">${icoEdit}</button><button class="mini-del" title="Remover" onclick="funcDel(${i})">${icoX}</button></span></td>
+      <td style="text-align:center">${pagoCel}</td>
+      <td><span style="display:inline-flex;gap:4px"><button class="icon-btn" title="Extras do mês (horas extras, DSR, descontos…)" onclick="funcExtrasModal(${i})" style="width:auto;padding:0 7px;font-size:10.5px;font-weight:700;${m.extrasProv||m.extrasDesc?'color:var(--navy);border-color:var(--navy)':''}">＋/−</button><button class="icon-btn" title="Editar" onclick="funcEdit(${i})">${icoEdit}</button><button class="mini-del" title="Remover" onclick="funcDel(${i})">${icoX}</button></span></td>
     </tr>`;}).join('');
-    return `<tr><td colspan="13" style="padding:14px 10px 4px;font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;font-weight:700">${cat} <span style="color:var(--soft);margin-left:6px;font-weight:600;letter-spacing:0">${lst.length} ${lst.length===1?'pessoa':'pessoas'}</span></td></tr>
+    return `<tr><td colspan="${temCampos?15:13}" style="padding:14px 10px 4px;font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;font-weight:700">${cat} <span style="color:var(--soft);margin-left:6px;font-weight:600;letter-spacing:0">${lst.length} ${lst.length===1?'pessoa':'pessoas'}</span></td></tr>
     ${rows}
-    <tr style="background:rgba(29,53,115,.04)"><td style="padding:8px 10px;font-size:11.5px;color:var(--muted);font-weight:600">Subtotal ${cat}</td><td class="num">${fmtBRL(sub.bruto)}</td><td class="num">${fmtBRL(sub.porFora)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.vales)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.consumo)}</td><td class="num">${fmtBRL(sub.beneficios)}</td><td class="num">${fmtBRL(sub.inss)}</td><td class="num">${fmtBRL(sub.fgts)}</td><td class="num">${fmtBRL(sub.prov)}</td><td class="num"><b>${fmtBRL(sub.liquido)}</b></td><td class="num"><b style="color:var(--navy)">${fmtBRL(sub.total)}</b></td><td></td><td></td></tr>`;
+    <tr style="background:rgba(29,53,115,.04)"><td style="padding:8px 10px;font-size:11.5px;color:var(--muted);font-weight:600">Subtotal ${cat}</td><td class="num">${fmtBRL(sub.bruto)}</td><td class="num">${fmtBRL(sub.porFora)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.vales)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.consumo)}</td><td class="num">${fmtBRL(sub.beneficios)}</td>${temCampos?`<td class="num" style="color:var(--green)">${fmtBRL(sub.extrasProv)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.extrasDesc)}</td>`:''}<td class="num">${fmtBRL(sub.inss)}</td><td class="num">${fmtBRL(sub.fgts)}</td><td class="num">${fmtBRL(sub.prov)}</td><td class="num"><b>${fmtBRL(sub.liquido)}</b></td><td class="num"><b style="color:var(--navy)">${fmtBRL(sub.total)}</b></td><td></td><td></td></tr>`;
   }).join('');
   return `<div class="card card-pad" style="max-width:1320px">
     <div class="section-head"><div><div class="ttl">Folha de pagamento</div><div class="desc">Controle mensal. Marque <b>Pago</b> para registrar o pagamento, com opção de lançar no DRE.</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="folhaYM=this.value;viewFinanceiro()">
         <button class="btn btn-ghost btn-sm" onclick="funcCatsModal()">${icoEdit} Categorias</button>
+        <button class="btn btn-ghost btn-sm" onclick="folhaCamposModal()" title="Horas extras, DSR, adicionais, descontos…">＋/− Campos extras</button>
         <button class="btn btn-primary btn-sm" onclick="funcEdit(null)">${icoPlus} Novo funcionário</button>
       </div></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px;margin:14px 0 18px">
@@ -4595,6 +4707,7 @@ function finFolha(){
     ${ativos.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead>${head}</thead><tbody>${rowsByCat}</tbody></table></div>`:`<div style="text-align:center;padding:36px 0;color:var(--soft)">${todos.length?`Nenhum funcionário ativo em <b>${ymLabel(ym)}</b>. Selecione outro mês ou cadastre.`:'Nenhum funcionário cadastrado.'} <a class="tag tag-gold" style="cursor:pointer" onclick="funcEdit(null)">Adicionar →</a></div>`}
     <div style="font-size:11.5px;color:var(--soft);margin-top:14px;border-top:1px solid var(--line);padding-top:10px;line-height:1.55">
       <b>Como funciona:</b> os funcionários aparecem a partir do <b>mês de cadastro</b> (início). Marcar como pago abre a opção de também lançar no DRE. Excluir pergunta se quer remover só dos meses posteriores ou completamente.<br>
+      <b>Campos extras (＋/−):</b> horas extras, DSR, adicionais e descontos são lançados por funcionário e por mês; proventos marcados como "base de encargos" entram no cálculo de INSS, FGTS e provisões. <b>Quinzenal, semanal e diário:</b> cada pagamento é registrado com data e valor (e lançado no DRE e no Fluxo na data em que saiu); o mês fica <b>✓</b> quando a soma alcança o líquido.<br>
       <b>Como calculamos:</b> INSS pela tabela progressiva 2026 sobre o bruto (CLT). FGTS, INSS patronal e provisões de 13º/férias saem dos percentuais das <b>Configurações financeiras</b> (padrão: FGTS 8%, INSS patronal 0% e provisões 11,11% = 13º 8,33% + terço de férias 2,78%) sobre o bruto — o salário de férias já está nos 12 salários, por isso provisionamos só o adicional. <b>Por Fora</b> não entra na base de INSS/FGTS/provisões. <b>Vales</b> e <b>Consumo</b> reduzem o líquido. Freelancers/PJ não têm encargos.
     </div>
   </div>`;
