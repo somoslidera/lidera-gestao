@@ -6239,7 +6239,35 @@ function projPdfEhEtapa(t){
   const semAcento=t.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   if(t.length<=48&&semAcento===semAcento.toUpperCase()&&/[A-Z]{3}/.test(semAcento)&&!/\d{2}[\/\.]/.test(t))return true; // TÍTULO EM CAIXA ALTA
   return false;}
+/* Modelo Lidera "Plano de Guerra" (PDF gerado por nós): cada etapa tem "ETAPA nn / Nome" e um bloco
+   "ATIVIDADES DA ETAPA" com itens "▸". Só esse bloco vira tarefa; metas-âncora, resumo da jornada,
+   KPIs e marcos ficam de fora. Item quebrado em duas linhas é emendado. */
+function projPdfParsePLL(pages){
+  const fases=[];let etapaNum='',etapaNome='',modo=null,pend=null,atual=null;
+  const flush=()=>{if(pend!==null&&atual){const t=projPdfLimpa(pend);if(t.length>2)atual.tarefas.push({titulo:t,prazo:'',feito:false});}pend=null;};
+  pages.forEach(rows=>{const L=rows.map(r=>projPdfLimpa(r.items.map(i=>i.str).join(' '))).filter(Boolean);
+    for(let k=0;k<L.length;k++){const t=L[k];
+      const m=t.match(/^ETAPA\s*(\d{1,2})?\s*(.*)$/i);
+      if(m&&!/DESSA ETAPA|DA ETAPA/i.test(t)){flush();modo=null;let num=m[1]||'',nome=projPdfLimpa(m[2]||'');
+        // o número grande da etapa pode cair na linha do nome, na de baixo ou junto do subtítulo: olha as 3 linhas seguintes
+        const mm=nome.match(/^(\d{1,2})\s+(.+)$/);if(mm&&!num){num=mm[1];nome=mm[2];}
+        for(let j=k+1;j<Math.min(L.length,k+4)&&(!num||!nome);j++){const x=L[j];const mn=x.match(/^(\d{1,2})(?:\s|$)/);
+          if(!num&&mn){num=mn[1];continue;}
+          if(!nome&&!/^\d/.test(x)&&!/^(POR QUE|ATIVIDADES)/i.test(x))nome=x;}
+        etapaNum=num;etapaNome=projPdfLimpa(nome);continue;}
+      if(/^ATIVIDADES DA ETAPA/i.test(t)){flush();modo='ativ';
+        const nomeFull=(etapaNum?'Etapa '+etapaNum.padStart(2,'0')+' · ':'')+(etapaNome||'Etapa');
+        atual=fases.find(f=>f.nome===nomeFull);if(!atual){atual={nome:nomeFull,tarefas:[]};fases.push(atual);}continue;}
+      if(modo!=='ativ')continue;
+      if(/^(INDICADORES DE SUCESSO|KPIS?\b|MARCO DESSA ETAPA|[\u25C6\u25C7])/i.test(t)){flush();modo=null;continue;}
+      if(/^[\u25B8\u25BA\u25B6\u2023\u25CF\u2022]/.test(t)){flush();pend=t.replace(/^[\u25B8\u25BA\u25B6\u2023\u25CF\u2022\s]+/,'');}
+      else if(pend!==null)pend+=' '+t;   // continuação do item na linha de baixo
+    }
+    flush();modo=null;});
+  return fases.filter(f=>f.tarefas.length);}
 function projPdfParse(pages){
+  const txtTudo=pages.map(rows=>rows.map(r=>r.items.map(i=>i.str).join(' ')).join('\n')).join('\n');
+  if(/ATIVIDADES DA ETAPA/i.test(txtTudo)){const f=projPdfParsePLL(pages);if(f.length)return f;}
   const linhas=[];
   pages.forEach(rows=>rows.forEach(r=>{const t=projPdfLimpa(r.items.map(i=>i.str).join(' '));
     if(t&&!PROJ_RE_LIXO.test(t))linhas.push(t);}));
