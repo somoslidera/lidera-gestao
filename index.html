@@ -4659,16 +4659,19 @@ function finFolha(){
   // ativos no mês: desde <= ym e (sem ate ou ate >= ym)
   const todos=DB.fin.funcionarios||[];
   const ativos=todos.map((f,i)=>({f,i,m:custoFuncionario(f,ym)})).filter(({f})=>(!f.desde||f.desde<=ym)&&(!f.ate||f.ate>=ym));
-  const temCampos=folhaCampos().length>0;
+  const campos=folhaCampos();const temCampos=campos.length>0;
+  const valCampo=(f,c)=>+(((f.camposMes||{})[ym]||{})[c.id])||0;
+  const corCampo=(c,v)=>!v?'var(--soft)':(c.tipo==='desconto'?'var(--red)':'var(--green)');
   const tot={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0,extrasProv:0,extrasDesc:0};
   ativos.forEach(({m})=>Object.keys(tot).forEach(k=>tot[k]+=m[k]||0));
   const pagos=ativos.filter(({f})=>f.pagosMes&&f.pagosMes[ym]).length;
   const cats=funcCats(),GRUPOS=[...cats,'Sócios','Freelancers'];
   const porCat={};GRUPOS.forEach(c=>porCat[c]=[]);
   ativos.forEach(({f,i,m})=>{const r=f.regime||'CLT';const g=r==='Sócio'?'Sócios':r==='Freelancer'?'Freelancers':(cats.includes(f.categoria)?f.categoria:(cats[0]||'Sem categoria'));(porCat[g]=porCat[g]||[]).push({f,i,m});});
-  const head=`<tr style="background:var(--bg);color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px 10px;min-width:190px">Funcionário</th><th class="num">Bruto</th><th class="num">Por fora</th><th class="num">Vales</th><th class="num">Consumo</th><th class="num">Benef.</th>${temCampos?'<th class="num" title="Campos personalizados: proventos do mês">Extras +</th><th class="num" title="Campos personalizados: descontos do mês">Extras −</th>':''}<th class="num">INSS</th><th class="num">FGTS</th><th class="num">13º+Férias</th><th class="num">Líquido</th><th class="num">Custo total</th><th style="width:110px;text-align:center">Pago</th><th style="width:32px"></th></tr>`;
+  const head=`<tr style="background:var(--bg);color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px"><th style="text-align:left;padding:8px 10px;min-width:190px">Funcionário</th><th class="num">Bruto</th><th class="num">Por fora</th><th class="num">Vales</th><th class="num">Consumo</th><th class="num">Benef.</th>${campos.map(c=>`<th class="num" title="${c.tipo==='desconto'?'Desconto: reduz o líquido':('Provento'+(c.base!==false?' · entra na base de encargos':' · fora da base'))}">${c.tipo==='desconto'?'− ':''}${esc(c.nome)}</th>`).join('')}<th class="num">INSS</th><th class="num">FGTS</th><th class="num">13º+Férias</th><th class="num">Líquido</th><th class="num">Custo total</th><th style="width:110px;text-align:center">Pago</th><th style="width:32px"></th></tr>`;
   const rowsByCat=GRUPOS.map(cat=>{const lst=porCat[cat]||[];if(!lst.length)return '';
     const sub={bruto:0,porFora:0,vales:0,consumo:0,beneficios:0,inss:0,fgts:0,prov:0,liquido:0,total:0,extrasProv:0,extrasDesc:0};lst.forEach(x=>Object.keys(sub).forEach(k=>sub[k]+=x.m[k]||0));
+    const subCampos={};campos.forEach(c=>{subCampos[c.id]=lst.reduce((s,x)=>s+valCampo(x.f,c),0);});
     const rows=lst.map(({f,i,m})=>{const pg=!!(f.pagosMes&&f.pagosMes[ym]);const fr=f.freq||'mensal';
       const extrasTip=(m.extrasDet||[]).map(d=>(d.tipo==='desconto'?'− ':'+ ')+d.nome+' '+fmtBRL(d.valor)).join(' · ');
       let pagoCel;
@@ -4678,15 +4681,15 @@ function finFolha(){
       return `<tr style="border-top:1px solid var(--line)">
       <td style="padding:8px 10px;min-width:190px"><div style="font-weight:600;font-size:13px;white-space:nowrap">${esc(f.nome||'—')}</div><div style="font-size:11px;color:var(--soft);white-space:nowrap">${esc(f.cargo||'')}${f.regime&&f.regime!=='CLT'?` · ${esc(f.regime)}`:''}</div></td>
       <td class="num">${fmtBRL(m.bruto)}</td><td class="num">${fmtBRL(m.porFora)}</td><td class="num" style="color:${m.vales>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.vales)}</td><td class="num" style="color:${m.consumo>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.consumo)}</td><td class="num">${fmtBRL(m.beneficios)}</td>
-      ${temCampos?`<td class="num" style="color:${m.extrasProv>0?'var(--green)':'var(--soft)'}" title="${esc(extrasTip)}">${fmtBRL(m.extrasProv)}</td><td class="num" style="color:${m.extrasDesc>0?'var(--red)':'var(--soft)'}" title="${esc(extrasTip)}">${fmtBRL(m.extrasDesc)}</td>`:''}
+      ${campos.map(c=>{const v=valCampo(f,c);return `<td class="num" style="color:${corCampo(c,v)}">${fmtBRL(v)}</td>`;}).join('')}
       <td class="num" style="color:var(--muted)">${fmtBRL(m.inss)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.fgts)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.prov)}</td>
       <td class="num"><b>${fmtBRL(m.liquido)}</b></td><td class="num"><b style="color:var(--navy);font-family:'Fraunces',serif">${fmtBRL(m.total)}</b></td>
       <td style="text-align:center">${pagoCel}</td>
       <td><span style="display:inline-flex;gap:4px"><button class="icon-btn" title="Extras do mês (horas extras, DSR, descontos…)" onclick="funcExtrasModal(${i})" style="width:auto;padding:0 7px;font-size:10.5px;font-weight:700;${m.extrasProv||m.extrasDesc?'color:var(--navy);border-color:var(--navy)':''}">＋/−</button><button class="icon-btn" title="Editar" onclick="funcEdit(${i})">${icoEdit}</button><button class="mini-del" title="Remover" onclick="funcDel(${i})">${icoX}</button></span></td>
     </tr>`;}).join('');
-    return `<tr><td colspan="${temCampos?15:13}" style="padding:14px 10px 4px;font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;font-weight:700">${cat} <span style="color:var(--soft);margin-left:6px;font-weight:600;letter-spacing:0">${lst.length} ${lst.length===1?'pessoa':'pessoas'}</span></td></tr>
+    return `<tr><td colspan="${13+campos.length}" style="padding:14px 10px 4px;font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;font-weight:700">${cat} <span style="color:var(--soft);margin-left:6px;font-weight:600;letter-spacing:0">${lst.length} ${lst.length===1?'pessoa':'pessoas'}</span></td></tr>
     ${rows}
-    <tr style="background:rgba(29,53,115,.04)"><td style="padding:8px 10px;font-size:11.5px;color:var(--muted);font-weight:600">Subtotal ${cat}</td><td class="num">${fmtBRL(sub.bruto)}</td><td class="num">${fmtBRL(sub.porFora)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.vales)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.consumo)}</td><td class="num">${fmtBRL(sub.beneficios)}</td>${temCampos?`<td class="num" style="color:var(--green)">${fmtBRL(sub.extrasProv)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.extrasDesc)}</td>`:''}<td class="num">${fmtBRL(sub.inss)}</td><td class="num">${fmtBRL(sub.fgts)}</td><td class="num">${fmtBRL(sub.prov)}</td><td class="num"><b>${fmtBRL(sub.liquido)}</b></td><td class="num"><b style="color:var(--navy)">${fmtBRL(sub.total)}</b></td><td></td><td></td></tr>`;
+    <tr style="background:rgba(29,53,115,.04)"><td style="padding:8px 10px;font-size:11.5px;color:var(--muted);font-weight:600">Subtotal ${cat}</td><td class="num">${fmtBRL(sub.bruto)}</td><td class="num">${fmtBRL(sub.porFora)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.vales)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.consumo)}</td><td class="num">${fmtBRL(sub.beneficios)}</td>${campos.map(c=>`<td class="num" style="color:${corCampo(c,subCampos[c.id])}">${fmtBRL(subCampos[c.id])}</td>`).join('')}<td class="num">${fmtBRL(sub.inss)}</td><td class="num">${fmtBRL(sub.fgts)}</td><td class="num">${fmtBRL(sub.prov)}</td><td class="num"><b>${fmtBRL(sub.liquido)}</b></td><td class="num"><b style="color:var(--navy)">${fmtBRL(sub.total)}</b></td><td></td><td></td></tr>`;
   }).join('');
   return `<div class="card card-pad" style="max-width:1320px">
     <div class="section-head"><div><div class="ttl">Folha de pagamento</div><div class="desc">Controle mensal. Marque <b>Pago</b> para registrar o pagamento, com opção de lançar no DRE.</div></div>
