@@ -5789,17 +5789,17 @@ function viewEstoque(){
       <select class="input" style="max-width:220px" onchange="estoqueFiltro=this.value;viewEstoque()">${cats.map(c=>`<option ${c===estoqueFiltro?'selected':''}>${c}</option>`).join('')}</select>
       <input class="input" id="estBusca" value="${esc(buscaEst)}" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="buscaEst=this.value;filtrarLinhas(this,'#estoqueTbody')"></div>
     <div class="card"><div class="scroll-x"><table>
-      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Categoria','grupo')}${thS('estoque','Subcategoria','sub')}${thS('estoque','Fornecedor','fornecedor')}${thS('estoque','Custo un.','custo',1)}${thS('estoque','Unid.','uni',1)}${thS('estoque','Mínimo','min',1)}${thS('estoque','Atual','atual',1)}${thS('estoque','Necessid.','necessidade',1)}${thS('estoque','Valor estoque','valorEstoque',1)}${thS('estoque','Status','comprar',1)}</tr></thead>
+      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Mínimo','min',1)}${thS('estoque','Atual','atual',1)}${thS('estoque','Categoria','grupo')}${thS('estoque','Subcategoria','sub')}${thS('estoque','Fornecedor','fornecedor')}${thS('estoque','Custo un.','custo',1)}${thS('estoque','Unid.','uni',1)}${thS('estoque','Necessid.','necessidade',1)}${thS('estoque','Valor estoque','valorEstoque',1)}${thS('estoque','Status','comprar',1)}</tr></thead>
       <tbody id="estoqueTbody">${filt.map(x=>`
         <tr>
-          <td><b>${x.nome}</b></td>
+          <td><b>${x.nome}</b><div style="font-size:11px;color:var(--soft)">${uSym(x.uni)}</div></td>
+          <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.min||''}" placeholder="0" oninput="DB.insumos['${x.ins.id}'].estoqueMin=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
+          <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.atual||''}" placeholder="0" oninput="DB.insumos['${x.ins.id}'].estoqueAtual=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
           <td>${ehInsumoCMV(x.ins)?`<span class="tag tag-gray">CMV</span>`:`<span class="tag tag-amber" title="Não entra na apuração do CMV">${esc(x.grupo)} · fora do CMV</span>`}</td>
           <td>${(x.sub||x.cat)?`<span style="font-size:12.5px">${esc(x.sub||x.cat)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
           <td><input class="input" style="min-width:130px" value="${esc(x.ins.fornecedor)}" placeholder="Fornecedor" oninput="DB.insumos['${x.ins.id}'].fornecedor=this.value;finTouch()"></td>
           <td class="num">${fmtBRL(x.custo)}</td>
           <td class="num">${uSym(x.uni)}</td>
-          <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.min||''}" placeholder="0" oninput="DB.insumos['${x.ins.id}'].estoqueMin=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
-          <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.atual||''}" placeholder="0" oninput="DB.insumos['${x.ins.id}'].estoqueAtual=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
           <td class="num">${x.necessidade?fmtN(x.necessidade,x.necessidade%1?2:0)+' '+uSym(x.uni):'—'}</td>
           <td class="num">${fmtBRL(x.valorEstoque)}</td>
           <td class="num"><span class="tag ${x.comprar?'tag-red':'tag-green'}">${x.comprar?'COMPRAR':'OK'}</span></td>
