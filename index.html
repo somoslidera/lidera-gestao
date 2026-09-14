@@ -2105,8 +2105,25 @@ function editInsumo(id){
       <div class="field"><label>Fornecedor <span class="hint">opcional · digite para cadastrar um novo</span></label><input class="input" id="i_forn" list="forn_dl" value="${esc(i.fornecedor||'')}" placeholder="Nome do fornecedor">${fornDatalist()}</div>
     </div>
     <div id="pronto_block">
+      ${embDatalist()}
+      <div class="field"><label>Como você compra <span class="hint">padrão de compra</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select class="input" id="i_emb_on" style="flex:1 1 200px;min-width:0" onchange="updEmb()"><option value="" ${insEmb(i)?'':'selected'}>Na mesma unidade acima</option><option value="1" ${insEmb(i)?'selected':''}>Em embalagem / unidade de compra</option></select>
+          <div id="i_emb_box" style="display:${insEmb(i)?'flex':'none'};gap:6px;align-items:center;flex-wrap:wrap">
+            <input class="input" id="i_emb_nome" list="emb_dl" value="${esc(i.embNome||'')}" placeholder="pé, pacote, caixa…" style="width:132px" oninput="updEmb()">
+            <span style="font-size:12px;color:var(--muted)">com</span>
+            <input class="input" id="i_emb_qtd" type="number" step="0.001" min="0" value="${i.embQtd||''}" placeholder="12" style="width:88px;text-align:right" oninput="updEmb()">
+            <span class="u-sym" style="font-size:12px;color:var(--muted)">${uSym(i.uni)}</span>
+          </div>
+        </div>
+        <div style="font-size:11.5px;color:var(--soft);margin-top:5px">Ex.: alface em <b>pé</b> com <b>12</b> un (folhas); farinha em <b>pacote</b> com <b>400</b> gr. Na nota a quantidade vem em embalagens e o Flow converte para a unidade da ficha. A unidade do produto nunca muda por um lançamento.</div>
+      </div>
       <div style="border:1px solid var(--gold-soft);background:var(--amber-bg);border-radius:11px;padding:14px;margin-bottom:6px">
         <div style="font-size:12.5px;font-weight:700;color:var(--gold);margin-bottom:10px">Informações da compra <span style="font-weight:400;color:var(--muted)">· calcula o preço automaticamente</span></div>
+        <div class="grid-2" id="i_emb_n_box" style="display:${insEmb(i)?'grid':'none'};margin-bottom:10px">
+          <div class="field" style="margin:0"><label>Embalagens compradas <span class="hint"><span id="i_emb_lbl">${esc(i.embNome||'')}</span></span></label><input class="input" id="i_emb_n" type="number" step="0.001" min="0" value="${insEmb(i)&&i.qtd?+(i.qtd/insEmb(i).qtd).toFixed(3):''}" placeholder="Ex.: 2" oninput="updEmb()"></div>
+          <div class="field" style="margin:0"><label>&nbsp;</label><div style="font-size:12.5px;color:var(--muted);padding-top:9px" id="i_emb_calc"></div></div>
+        </div>
         <div class="grid-2">
           <div class="field" style="margin:0"><label>Quantidade comprada <span class="hint">(<span class="u-sym">${uSym(i.uni)}</span>)</span></label><input class="input" id="i_qtd" type="number" step="0.001" value="${i.qtd}" oninput="updInsPreview()" placeholder="Ex.: 100"></div>
           <div class="field" style="margin:0"><label>Valor pago pela embalagem</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="i_preco" inputmode="numeric" value="${fmtMoneyInput(i.preco||0)}" oninput="moneyMask(this);updInsPreview()"></div></div>
@@ -2140,12 +2157,20 @@ function renderInsCompList(){
 function insCompCost(idx){const r=draftInsComps[idx];const ins=r&&DB.insumos[r[0]];const el=$('#ic_cst'+idx);if(el)el.textContent=fmtBRL(ins?custoInsumoBase(ins)*(r[1]||0):0);}
 function addInsComp(){draftInsComps.push(['',0]);renderInsCompList();updInsPreview();}
 function fmtBRLp(v){return v>0&&v<0.1?'R$ '+(+v).toFixed(4).replace('.',','):fmtBRL(v);}
+function updEmb(){const on=$('#i_emb_on')&&$('#i_emb_on').value==='1';const box=$('#i_emb_box'),nb=$('#i_emb_n_box');if(box)box.style.display=on?'flex':'none';if(nb)nb.style.display=on?'grid':'none';
+  if(!on){updInsPreview();return;}
+  const nome=($('#i_emb_nome').value||'').trim(),per=parseFloat($('#i_emb_qtd').value)||0,n=parseFloat($('#i_emb_n').value)||0;const uni=$('#i_uni').value;
+  const lbl=$('#i_emb_lbl');if(lbl)lbl.textContent=nome?nome+'(s)':'';
+  if(per>0&&n>0){$('#i_qtd').value=+(n*per).toFixed(3);}
+  const c=$('#i_emb_calc');if(c)c.textContent=(per>0&&n>0)?`${n} × ${per} ${uSym(uni)} = ${+(n*per).toFixed(3)} ${uSym(uni)}`:'';
+  updInsPreview();}
 function updInsPreview(){const el=$('#i_preview');if(!el)return;const uni=$('#i_uni').value;
   if(draftInsTipo==='preparado'){let total=0;draftInsComps.forEach(([cid,q])=>{const ins=DB.insumos[cid];if(ins)total+=custoInsumoBase(ins)*(q||0);});
     const rend=parseFloat($('#i_rend').value)||1;const c=total/(rend||1);
     el.innerHTML=`Custo da receita: <b>${fmtBRL(total)}</b> · Custo por ${uSym(uni)}: <b style="color:var(--navy)">${fmtBRLp(c)}</b>`;
   }else{const p=moneyVal('i_preco'),q=parseFloat($('#i_qtd').value)||1;const c=p/(q||1);
-    el.innerHTML=`Preço por ${uSym(uni)}: <b style="color:var(--navy)">${fmtBRLp(c)}</b>`;}}
+    const on=$('#i_emb_on')&&$('#i_emb_on').value==='1';const per=on?parseFloat($('#i_emb_qtd').value)||0:0;const nome=on?($('#i_emb_nome').value||'embalagem').trim():'';
+    el.innerHTML=`Preço por ${uSym(uni)}: <b style="color:var(--navy)">${fmtBRLp(c)}</b>${per>0?` · por ${esc(nome)}: <b style="color:var(--navy)">${fmtBRL(c*per)}</b>`:''}`;}}
 function saveInsumo(id){const nome=$('#i_nome').value.trim();if(!nome)return toast('Informe o nome do insumo');
   const uni=$('#i_uni').value;
   const grupo=$('#i_grupo')?$('#i_grupo').value.trim():'';
@@ -2157,8 +2182,12 @@ function saveInsumo(id){const nome=$('#i_nome').value.trim();if(!nome)return toa
   if(draftInsTipo==='preparado'){const comps=draftInsComps.filter(c=>c[0]&&c[1]>0);
     if(!comps.length)return toast('Adicione ao menos um ingrediente');
     obj={id:id||uid(),nome,cat,grupo,sub,tipo:'preparado',uni,rendimento:parseFloat($('#i_rend').value)||1,comps,fornecedor:forn};
-  }else{obj={id:id||uid(),nome,cat,grupo,sub,tipo:'pronto',uni,preco:moneyVal('i_preco'),qtd:parseFloat($('#i_qtd').value)||1,fornecedor:forn};}
-  DB.insumos[obj.id]=obj;save();closeModal();viewInsumos();toast(id?'Insumo atualizado':'Insumo adicionado');}
+  }else{obj={id:id||uid(),nome,cat,grupo,sub,tipo:'pronto',uni,preco:moneyVal('i_preco'),qtd:parseFloat($('#i_qtd').value)||1,fornecedor:forn};
+    const embOn=$('#i_emb_on')&&$('#i_emb_on').value==='1';const embNome=embOn?($('#i_emb_nome').value||'').trim():'';const embQtd=embOn?parseFloat($('#i_emb_qtd').value)||0:0;
+    if(embOn&&(!embNome||!(embQtd>0)))return toast('Informe o nome da embalagem e quanto ela contém');
+    obj.embNome=embNome;obj.embQtd=embQtd;}
+  // merge: preserva estoque, mínimo, apelidos e outros campos que o modal não edita
+  DB.insumos[obj.id]=Object.assign({},DB.insumos[obj.id]||{},obj);save();closeModal();viewInsumos();toast(id?'Insumo atualizado':'Insumo adicionado');}
 function delInsumo(id){
   const usadoFicha=Object.values(DB.fichas).some(f=>(f.comps||[]).some(c=>c[0]===id));
   const usadoPrep=Object.values(DB.insumos).some(x=>x.tipo==='preparado'&&(x.comps||[]).some(c=>c[0]===id));
@@ -3738,15 +3767,34 @@ function lmAcharInsumo(desc,fornecedor){
   return {id:cands[0].id,mesmoForn:false};                    // existe, mas de outro fornecedor
 }
 function lmProdutoCel(r,i){const ins=r.insumoId&&DB.insumos[r.insumoId];
-  if(ins)return `<div title="Vinculado ao produto: ${esc(ins.nome)}" style="display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;color:var(--green);background:var(--green-bg);border-radius:9px;padding:7px 8px"><span style="flex:0 0 auto">✓</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)}</span><button title="Desvincular" onclick="lmDesvincular(${i})" style="flex:0 0 auto;margin-left:auto;color:var(--soft);font-size:14px;line-height:1">×</button></div>`;
+  if(ins){const qi=lmQtdNaUnidade(r,ins);const emb=insEmb(ins);const ru=r.uni||'';
+    if(qi==null&&+r.qtd>0)return `<button title="A nota veio em '${esc(ru||'?')}' e o produto é em ${uSym(ins.uni)}. Clique para dizer quanto cada embalagem contém (padrão de compra)." style="display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;color:var(--amber);border:1px solid var(--amber);background:var(--amber-bg);border-radius:9px;padding:7px 8px;width:100%;text-align:left" onclick="lmPadraoCompraModal(${i})"><span style="flex:0 0 auto">⚠</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)} · ${esc(ru)} ≠ ${uSym(ins.uni)}</span></button>`;
+    const conv=(qi!=null&&(emb||(ru&&ru!==ins.uni)))?` = ${fmtN(qi,qi%1?2:0)} ${uSym(ins.uni)}`:'';
+    return `<div title="Vinculado ao produto: ${esc(ins.nome)}${emb?' · comprado em '+esc(emb.nome)+' com '+emb.qtd+' '+uSym(ins.uni):''}${conv}" style="display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;color:var(--green);background:var(--green-bg);border-radius:9px;padding:7px 8px"><span style="flex:0 0 auto">✓</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)}${conv?`<span style="color:var(--muted)">${conv}</span>`:''}</span><button title="Desvincular" onclick="lmDesvincular(${i})" style="flex:0 0 auto;margin-left:auto;color:var(--soft);font-size:14px;line-height:1">×</button></div>`;}
   if(!r.fromIA)return `<button class="btn btn-ghost btn-sm" title="Vincular a um produto do catálogo (opcional)" style="min-width:0;color:var(--soft);padding:7px 8px;font-size:11.5px;white-space:nowrap" onclick="lmVincularModal(${i})">＋ produto</button>`;
   const sug=r.insSugerido&&DB.insumos[r.insSugerido];
   if(sug)return `<button class="btn btn-ghost btn-sm" title="Existe '${esc(sug.nome)}', mas de outro fornecedor. Clique para vincular ou cadastrar novo." style="min-width:0;color:var(--amber);border-color:var(--amber);background:var(--amber-bg);padding:7px 8px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="lmVincularModal(${i})">⚠ outro fornec.</button>`;
   return `<button class="btn btn-ghost btn-sm" title="Produto não encontrado — clique para vincular a um existente ou cadastrar" style="min-width:0;color:var(--amber);border-color:var(--amber);background:var(--amber-bg);padding:7px 8px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="lmVincularModal(${i})">＋ não cadastrado</button>`;}
+function lmPadraoCompraModal(i){const r=lancDraft[i];const ins=r&&DB.insumos[r.insumoId];if(!ins)return;
+  modal(`<div class="modal-head"><h3>Padrão de compra · ${esc(ins.nome)}</h3><button class="x" onclick="lmVoltarLanc()">${icoX}</button></div>
+  <div class="modal-body">
+    ${embDatalist()}
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">A nota traz <b>${fmtN(+r.qtd||0,(+r.qtd)%1?3:0)} ${esc(r.uni||'un')}</b>, mas o produto é medido em <b>${uSym(ins.uni)}</b> (a unidade da ficha técnica). Diga quanto cada embalagem contém e o Flow converte, sem mudar a unidade do produto.</div>
+    <div class="grid-2">
+      <div class="field"><label>Você compra em</label><input class="input" id="pc_emb_nome" list="emb_dl" value="${esc(ins.embNome||'')}" placeholder="pé, pacote, caixa…"></div>
+      <div class="field"><label>Cada uma tem <span class="hint">${uSym(ins.uni)}</span></label><input class="input" id="pc_emb_qtd" type="number" step="0.001" min="0" value="${ins.embQtd||''}" placeholder="Ex.: 400"></div>
+    </div>
+    <div style="font-size:11.5px;color:var(--soft)">Se o produto deveria ser em outra unidade, edite-o em <b>Produtos</b>. O lançamento nunca troca a unidade sozinho.</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="lmVoltarLanc()">Cancelar</button><button class="btn btn-primary" onclick="lmPadraoCompraSalvar(${i})">Salvar padrão</button></div>`);}
+function lmPadraoCompraSalvar(i){const r=lancDraft[i];const ins=r&&DB.insumos[r.insumoId];if(!ins)return lmVoltarLanc();
+  const nome=($('#pc_emb_nome').value||'').trim(),per=parseFloat($('#pc_emb_qtd').value)||0;if(!nome||!(per>0))return toast('Informe a embalagem e quanto ela contém');
+  ins.embNome=nome;ins.embQtd=per;lancDraft.forEach(x=>{if(x.insumoId===ins.id&&(!x.uni||x.uni==='un'))x.uni=nome;});
+  save();lancarModal(true);toast('Padrão de compra salvo: '+nome+' com '+per+' '+uSym(ins.uni));}
 function lmDesvincular(i){const r=lancDraft[i];if(!r)return;r.insumoId='';if(r.descOrig)r.desc=r.descOrig;renderLmRows();}
 function lmVoltarLanc(){lancarModal(true);}
 function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
-  nfeEnsureCats();
+  nfeEnsureCats();lancDraft.forEach(x=>{delete x._lpAtivo;});r._lpAtivo=true;
   setTimeout(()=>{const b=document.getElementById('lv_busca');if(b&&!ehMobile())b.focus();},60);
   const orig=r.descOrig||r.desc||'';
   const lista=Object.values(DB.insumos||{}).filter(x=>x.tipo!=='preparado').sort((a,b)=>ordPt([a.nome,b.nome])[0]===a.nome?-1:1);
@@ -3776,9 +3824,18 @@ function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
         <div class="field"><label>Categoria</label><select class="input" id="lp_grupo" onchange="lpSubRefresh()">${insGrupoOptions(gruSel)}</select></div>
         <div class="field"><label>Subcategoria</label><select class="input" id="lp_sub" onchange="lpSubMaybeNew()">${insSubOptions(gruSel,subSel)}</select></div>
       </div>
+      ${embDatalist()}
       <div class="grid-2">
-        <div class="field"><label>Unidade</label><select class="input" id="lp_uni">${UNIDADES.map(u=>`<option value="${u}" ${u===(r.uni||'un')?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
-        <div class="field"><label>Quantidade comprada</label><input class="input" id="lp_qtd" type="number" step="0.001" value="${r.qtd||1}"></div>
+        <div class="field"><label>Unidade de uso <span class="hint">a da ficha técnica</span></label><select class="input" id="lp_uni" onchange="updLpEmb()">${UNIDADES.map(u=>`<option value="${u}" ${u===(r.uni||'un')?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
+        <div class="field"><label>Como você compra</label><select class="input" id="lp_emb_on" onchange="updLpEmb()"><option value="">Na mesma unidade</option><option value="1">Em embalagem (pé, pacote, caixa…)</option></select></div>
+      </div>
+      <div class="grid-2" id="lp_emb_box" style="display:none">
+        <div class="field"><label>Embalagem</label><input class="input" id="lp_emb_nome" list="emb_dl" placeholder="pé, pacote, caixa…" oninput="updLpEmb()"></div>
+        <div class="field"><label>Cada uma tem <span class="hint" id="lp_emb_u">${uSym(r.uni||'un')}</span></label><input class="input" id="lp_emb_qtd" type="number" step="0.001" min="0" placeholder="Ex.: 400" oninput="updLpEmb()"></div>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label>Quantidade comprada <span class="hint" id="lp_qtd_hint">${r.qtd?'veio da nota: '+r.qtd:''}</span></label><input class="input" id="lp_qtd" type="number" step="0.001" value="${r.qtd||1}"></div>
+        <div class="field"><label>&nbsp;</label><div id="lp_emb_calc" style="font-size:12px;color:var(--muted);padding-top:9px"></div></div>
       </div>
       <div class="grid-2">
         <div class="field"><label>Valor pago <span class="hint">total</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="lp_preco" inputmode="numeric" value="${fmtMoneyInput(lmTotalLinha(r))}" oninput="moneyMask(this)"></div></div>
@@ -3791,11 +3848,11 @@ function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
 function lmAplicarVinculo(i,insId){const r=lancDraft[i],ins=DB.insumos[insId];if(!r||!ins)return 0;
   const alvo=lmNorm(r.descOrig||r.desc);
   // a linha clicada SEMPRE vincula — mesmo sem descrição (é o caso do lançamento manual)
-  r.insumoId=insId;if(r.fromIA)r.desc=ins.nome;if(!r.uni&&ins.uni)r.uni=ins.uni;let n=1;
+  r.insumoId=insId;if(r.fromIA)r.desc=ins.nome;const _e=insEmb(ins);if(!r.uni||(_e&&r.uni==='un'))r.uni=_e?_e.nome:ins.uni;let n=1;
   // só linhas da mesma nota se propagam: no manual cada linha é independente
   if(alvo&&r.fromIA)lancDraft.forEach((x,j)=>{if(j===i||x.insumoId||!x.fromIA)return;
     const xd=lmNorm(x.descOrig||x.desc);
-    if(xd&&xd===alvo){x.insumoId=insId;x.desc=ins.nome;if(!x.uni&&ins.uni)x.uni=ins.uni;n++;}});
+    if(xd&&xd===alvo){x.insumoId=insId;x.desc=ins.nome;if(!x.uni||(_e&&x.uni==='un'))x.uni=_e?_e.nome:ins.uni;n++;}});
   // memoriza o apelido para as próximas notas
   const orig=(r.descOrig||'').trim();
   if(orig&&lmNorm(orig)!==lmNorm(ins.nome)){ins.apelidos=ins.apelidos||[];
@@ -3818,21 +3875,28 @@ function lmVincularExistente(i){const r=lancDraft[i];if(!r)return lmVoltarLanc()
   toast(n>1?('Vinculado a '+ins.nome+' · '+n+' linhas'):('Vinculado a '+ins.nome));}
 function lpSubRefresh(){const g=$('#lp_grupo')?$('#lp_grupo').value:'';const s=$('#lp_sub');if(s)s.innerHTML=insSubOptions(g,'');}
 function lpSubMaybeNew(){const s=$('#lp_sub');if(!s||s.value!=='__new__')return;const g=$('#lp_grupo').value;const nome=(prompt('Nova subcategoria em "'+g+'":')||'').trim();if(!nome){s.value='';return;}DB.categorias[g]=DB.categorias[g]||{tipo:'despesa',subs:[]};if(!DB.categorias[g].subs.includes(nome))DB.categorias[g].subs.push(nome);save();s.innerHTML=insSubOptions(g,nome);}
+function updLpEmb(){const on=$('#lp_emb_on')&&$('#lp_emb_on').value==='1';const box=$('#lp_emb_box');if(box)box.style.display=on?'grid':'none';
+  const u=$('#lp_emb_u');if(u)u.textContent=uSym($('#lp_uni').value);
+  const r=lancDraft.find(x=>x&&x._lpAtivo)||null;const nNota=r?(+r.qtd||0):0;const per=on?parseFloat($('#lp_emb_qtd').value)||0:0;const c=$('#lp_emb_calc');
+  if(on&&per>0&&nNota>0){$('#lp_qtd').value=+(nNota*per).toFixed(3);if(c)c.textContent=`${nNota} ${($('#lp_emb_nome').value||'embalagem').trim()}(s) × ${per} = ${+(nNota*per).toFixed(3)} ${uSym($('#lp_uni').value)}`;}
+  else if(c)c.textContent='';}
 function lmSalvarNovoProduto(i){const r=lancDraft[i];if(!r)return lmVoltarLanc();
   const nome=($('#lp_nome').value||'').trim();if(!nome)return toast('Informe o nome do produto');
+  const embOn=$('#lp_emb_on')&&$('#lp_emb_on').value==='1';const embNome=embOn?($('#lp_emb_nome').value||'').trim():'';const embQtd=embOn?parseFloat($('#lp_emb_qtd').value)||0:0;
+  if(embOn&&(!embNome||!(embQtd>0)))return toast('Informe a embalagem e quanto ela contém');
   const grupo=$('#lp_grupo')?$('#lp_grupo').value.trim():'';
   let sub=$('#lp_sub')?$('#lp_sub').value.trim():''; if(sub==='__new__')sub='';
   const cat=sub||grupo||'Mercearia',uni=$('#lp_uni').value||'un';
   const qtd=parseFloat($('#lp_qtd').value)||1,preco=moneyVal('lp_preco'),forn=($('#lp_forn').value||'').trim();
   ensureFornecedor(forn);
   const nid=uid();const orig=(r.descOrig||'').trim();
-  DB.insumos[nid]={id:nid,nome,cat,grupo,sub,tipo:'pronto',uni,qtd,preco,fornecedor:forn,apelidos:(orig&&lmNorm(orig)!==lmNorm(nome))?[orig]:[]};
+  DB.insumos[nid]={id:nid,nome,cat,grupo,sub,tipo:'pronto',uni,qtd,preco,fornecedor:forn,embNome,embQtd,apelidos:(orig&&lmNorm(orig)!==lmNorm(nome))?[orig]:[]};
   // a linha clicada sempre vincula; as outras linhas da MESMA nota com descrição idêntica
   // vinculam junto (mantém "AGUA ... C/" e "AGUA ... S/" separadas)
   const alvo=lmNorm(orig||r.desc);
-  r.insumoId=nid;if(r.fromIA)r.desc=nome;if(!r.qtd)r.qtd=qtd;if(!r.uni)r.uni=uni;if(forn&&!r.fornecedor)r.fornecedor=forn;let n=1;
+  r.insumoId=nid;if(r.fromIA)r.desc=nome;if(!r.qtd)r.qtd=embQtd>0?+(qtd/embQtd).toFixed(3):qtd;if(!r.uni||(embQtd>0&&r.uni==='un'))r.uni=embQtd>0?embNome:uni;if(forn&&!r.fornecedor)r.fornecedor=forn;let n=1;
   if(alvo&&r.fromIA)lancDraft.forEach((x,j)=>{if(j===i||x.insumoId||!x.fromIA)return;const xd=lmNorm(x.descOrig||x.desc);
-    if(xd&&xd===alvo){x.insumoId=nid;x.desc=nome;if(!x.qtd)x.qtd=qtd;if(!x.uni)x.uni=uni;if(forn&&!x.fornecedor)x.fornecedor=forn;n++;}});
+    if(xd&&xd===alvo){x.insumoId=nid;x.desc=nome;if(!x.qtd)x.qtd=qtd;if(!x.uni||(embQtd>0&&x.uni==='un'))x.uni=embQtd>0?embNome:uni;if(forn&&!x.fornecedor)x.fornecedor=forn;n++;}});
   save();lancarModal(true);
   toast(n>1?('Produto cadastrado · '+n+' linhas vinculadas'):'Produto cadastrado e vinculado');}
 /* ---- Parcelamento com vencimentos livres (30/60/90, 15/30/45, ou datas soltas) ----
@@ -4008,7 +4072,7 @@ function editNota(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)retu
 function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
   const semProd=lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo==='CMV'&&!(r.insumoId&&DB.insumos[r.insumoId])).length;
   if(semProd>0 && !confirm('Atenção: '+semProd+(semProd===1?' item de CMV não está vinculado a um produto cadastrado.':' itens de CMV não estão vinculados a produtos cadastrados.')+'\n\nSem o vínculo, o gasto não atualiza o custo do produto nem o estoque. Deseja salvar mesmo assim?')) return;
-  const vivos=new Set();let n=0,prodAtu=0,novos=0,lastYM=null;
+  const vivos=new Set();let n=0,prodAtu=0,novos=0,lastYM=null;const semConv=[];
   const remov=lmEdit.ids.filter(id=>!lancDraft.some(r=>r._id===id&&lmTotalLinha(r)&&r.grupo));
   if(!lancDraft.some(r=>lmTotalLinha(r)&&r.grupo))return toast('Preencha ao menos um item com categoria e valor');
   if(remov.length&&!confirm(remov.length+(remov.length===1?' item desta nota será excluído.':' itens desta nota serão excluídos.')+'\n\nConfirmar?'))return;
@@ -4018,7 +4082,7 @@ function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
     Object.assign(nv,{data:r.data||hojeISO(),grupo:r.grupo,sub:r.sub||'',descricao:(r.desc||'').trim(),nfe:(r.nf||'').trim(),fornecedor:(r.fornecedor||'').trim(),valor,forma:r.forma||''});
     if((+r.qtd||1)!==1){nv.qtd=+r.qtd;if(r.uni)nv.uni=r.uni;}else{delete nv.qtd;}
     const ins=r.insumoId&&DB.insumos[r.insumoId];
-    if(ins){nv.insumoId=r.insumoId;if(valor>0&&r.qtd>0){ins.preco=valor;ins.qtd=r.qtd;if(r.uni)ins.uni=r.uni;prodAtu++;}if(nv.fornecedor)ins.fornecedor=nv.fornecedor;}else delete nv.insumoId;
+    if(ins){nv.insumoId=r.insumoId;if(valor>0&&r.qtd>0){const qi=lmQtdNaUnidade(r,ins);if(qi>0){ins.preco=valor;ins.qtd=qi;prodAtu++;}else semConv.push(ins.nome);}if(nv.fornecedor)ins.fornecedor=nv.fornecedor;}else delete nv.insumoId;
     if(nv.fornecedor)ensureFornecedor(nv.fornecedor);
     const _m=meioDoLanc(nv);if(_m)nv.meioId=_m.id;else delete nv.meioId;
     if(r.parcelasLista&&r.parcelasLista.length)nv.liquidacoes=r.parcelasLista.map(x=>({data:x.data,valor:+x.valor||0,pago:!!x.pago}));
@@ -4027,7 +4091,7 @@ function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
   if(remov.length)DB.lancamentos=DB.lancamentos.filter(l=>!remov.includes(l.id)&&!remov.includes(l.fromTaxa));
   if(lastYM&&lastYM!==curYM())lancYM=lastYM;
   lmEdit=null;save();closeModal();viewFinanceiro();
-  toast('Nota atualizada · '+n+' item(ns)'+(novos?' · '+novos+' novo(s)':'')+(remov.length?' · '+remov.length+' excluído(s)':'')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':''));}
+  toast('Nota atualizada · '+n+' item(ns)'+(novos?' · '+novos+' novo(s)':'')+(remov.length?' · '+remov.length+' excluído(s)':'')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':'')+lmSemConvMsg(semConv));}
 function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
   if(lmEdit)return lancarModalSalvarEdicao();
   lmNotaAutoCond(true); // condição padrão do fornecedor, se a nota ficou sem parcelas
@@ -4037,14 +4101,14 @@ function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
   // avisa se alguma NF do rascunho já foi lançada antes (mesma nota + mesmo fornecedor)
   const jaLancadas=[...new Set(lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo&&nfKey(r.nf)&&nfJaLancada(r.nf,r.fornecedor)).map(r=>(r.nf||'').trim()))];
   if(jaLancadas.length && !confirm('A NF '+jaLancadas.join(', ')+(jaLancadas.length===1?' já foi lançada':' já foram lançadas')+' para esse fornecedor.\n\nDeseja lançar mesmo assim?')) return;
-  let n=0,lastYM=null,prodAtu=0;
+  let n=0,lastYM=null,prodAtu=0;const semConv=[];
   lancDraft.forEach(r=>{const valor=lmTotalLinha(r);if(!valor||!r.grupo)return;
     const nv={id:uid(),data:r.data||hojeISO(),grupo:r.grupo,sub:r.sub||'',descricao:(r.desc||'').trim(),nfe:(r.nf||'').trim(),fornecedor:(r.fornecedor||'').trim(),valor,forma:r.forma||''};
     if((+r.qtd||1)!==1){nv.qtd=+r.qtd;if(r.uni)nv.uni=r.uni;}
     const ins=r.insumoId&&DB.insumos[r.insumoId];
     if(ins){nv.insumoId=r.insumoId;
       // atualiza o custo real pago: preço, qtd e unidade sempre juntos (trio coerente = custo/unidade correto)
-      if(valor>0&&r.qtd>0){ins.preco=valor;ins.qtd=r.qtd;if(r.uni)ins.uni=r.uni;prodAtu++;}
+      if(valor>0&&r.qtd>0){const qi=lmQtdNaUnidade(r,ins);if(qi>0){ins.preco=valor;ins.qtd=qi;prodAtu++;}else semConv.push(ins.nome);}
       if(nv.fornecedor)ins.fornecedor=nv.fornecedor;}
     if(nv.fornecedor)ensureFornecedor(nv.fornecedor);
     const _m=meioDoLanc(nv);if(_m)nv.meioId=_m.id;
@@ -4055,7 +4119,8 @@ function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
   if(!n)return toast('Preencha ao menos um item com categoria e valor');
   if(lastYM&&lastYM!==curYM())lancYM=lastYM;
   save();closeModal();viewFinanceiro();
-  toast((n===1?'Lançamento registrado':n+' lançamentos registrados')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':''));}
+  toast((n===1?'Lançamento registrado':n+' lançamentos registrados')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':'')+lmSemConvMsg(semConv));}
+function lmSemConvMsg(arr){return arr.length?' · custo NÃO atualizado em '+arr.join(', ')+': a nota veio em outra unidade. Defina o padrão de compra no produto.':'';}
 function delLancamento(id){DB.lancamentos=DB.lancamentos.filter(l=>l.id!==id&&l.fromTaxa!==id);save();viewFinanceiro();}
 function formaSelect(val,onchange){const fs=ordPt(DB.formasPagamento||[]);return `<select class="input" title="Forma de pagamento" onchange="${onchange}"><option value="">—</option>${fs.map(x=>`<option ${x===(val||'')?'selected':''}>${esc(x)}</option>`).join('')}</select>`;}
 function formasEditRows(){const fs=DB.formasPagamento||[];
@@ -5713,6 +5778,19 @@ function delCmvReg(id){if(!confirm('Remover esta contagem?'))return;DB.cmvRegist
 /* ===================== ESTOQUE & COMPRAS ===================== */
 let estoqueTab='contagem', estoqueFiltro='Todos', estoqueCmvF='todos', buscaEst='', _cmvZeraEstoque=false;
 function custoUnitCompra(ins){return ins.qtd?ins.preco/ins.qtd:0;} // custo por unidade de compra
+/* Padrão de compra: o produto tem a unidade de USO (g/ml/un, a mesma da ficha técnica) e, opcionalmente,
+   uma embalagem de compra (pé com 12 folhas, pacote com 400 g). A nota traz "2 UN" = 2 embalagens;
+   o Flow converte para a unidade do produto e NUNCA troca a unidade do produto a partir de um lançamento. */
+const EMB_SUGESTOES=['pacote','pé','caixa','fardo','saco','garrafa','lata','bandeja','dúzia','maço','balde','galão','pote','engradado'];
+function insEmb(ins){return (ins&&ins.embNome&&+ins.embQtd>0)?{nome:ins.embNome,qtd:+ins.embQtd}:null;}
+function uniCompat(a,b){return !!(BASE[a]&&BASE[a]===BASE[b]);}
+function lmQtdNaUnidade(r,ins){const q=+r.qtd||0;if(!(q>0)||!ins)return null;const ru=r.uni||'';const emb=insEmb(ins);
+  if(emb&&(!ru||ru==='un'||!BASE[ru]))return q*emb.qtd;                  // 2 pacotes → 800 g / 2 pés → 24 folhas
+  if(ru&&uniCompat(ru,ins.uni))return q*TO_BASE[ru]/TO_BASE[ins.uni];  // 2 kg → 2000 g
+  if(emb)return q*emb.qtd;
+  if(!ru||ru===ins.uni)return q;
+  return null;}                                                          // ex.: nota em UN, produto em kg e sem embalagem
+function embDatalist(){return `<datalist id="emb_dl">${EMB_SUGESTOES.map(x=>`<option value="${x}"></option>`).join('')}</datalist>`;}
 function estoqueItens(){
   return Object.values(DB.insumos).filter(i=>i.tipo!=='preparado'&&i.noEstoque!==false).map(i=>{
     const custo=custoUnitCompra(i);
