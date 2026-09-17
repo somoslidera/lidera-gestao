@@ -3372,7 +3372,24 @@ function lancSetFiltro(k,v){lancFiltro[k]=v;lancRefreshTabela();}
 function lancSetFiltroData(v){lancFiltro.data=v;const nym=v?ymOf(v):null;if(nym&&nym!==curYM()){lancYM=nym;viewFinanceiro();}else{lancRefreshTabela();}}
 function lancLimparFiltro(){lancFiltro={data:'',grupo:'',sub:'',desc:'',nf:'',fornecedor:'',forma:''};viewFinanceiro();}
 /* nº da NF: compara só os dígitos, então "0001234", "1234" e "NF 1.234" são a mesma nota */
-function nfKey(nf){return (''+(nf==null?'':nf)).replace(/\D/g,'').replace(/^0+/,'');}
+/* Número interno de nota: quando o cliente lança uma compra sem NF (ou com cupom fiscal), o Flow gera "INT-0007",
+   sequencial por restaurante, só para agrupar os itens da mesma compra. É editável como qualquer NF.
+   A chave de comparação leva o prefixo "i" para nunca colidir com uma NF real de mesmo número. */
+const NF_INT_RE=/^\s*INT[-\s]?0*(\d+)\s*$/i;
+function nfInterna(nf){return NF_INT_RE.test(''+(nf==null?'':nf));}
+function nfKey(nf){const s=''+(nf==null?'':nf);const m=s.match(NF_INT_RE);if(m)return 'i'+m[1];return s.replace(/\D/g,'').replace(/^0+/,'');}
+function nfProximaInterna(){DB.fin=DB.fin||{};let n=+DB.fin.seqNota||0;
+  (DB.lancamentos||[]).forEach(l=>{const m=(''+(l.nfe||'')).match(NF_INT_RE);if(m)n=Math.max(n,+m[1]);});  // nunca repete um número já usado
+  n++;DB.fin.seqNota=n;return 'INT-'+String(n).padStart(4,'0');}
+/* numera as linhas de DESPESA sem NF: mesma data + mesmo fornecedor = mesma nota.
+   Linha avulsa (aluguel, energia…) não recebe número; compra com vários itens, item vindo da IA ou de produto, sim. */
+function lmNumerarSemNF(rows,numFixo){const grupos=new Map();
+  rows.forEach(r=>{if((r.nf||'').trim())return;if(grupoTipo(r.grupo)==='receita')return;
+    const k=(r.fornecedor||'').trim().toLowerCase()+'|'+(r.data||'');if(!grupos.has(k))grupos.set(k,[]);grupos.get(k).push(r);});
+  const gerados=[];
+  grupos.forEach(arr=>{const ehNota=arr.length>1||arr.some(r=>r.fromIA||r.insumoId||r.grupo==='CMV');if(!ehNota&&!numFixo)return;
+    const num=numFixo||nfProximaInterna();arr.forEach(r=>{r.nf=num;});if(!numFixo)gerados.push(num);});
+  return gerados;}
 function nfJaLancada(nf,fornecedor,ignoraId){const k=nfKey(nf);if(!k)return false;
   const f=(fornecedor||'').trim().toLowerCase();
   return (DB.lancamentos||[]).some(l=>l.id!==ignoraId&&nfKey(l.nfe)===k&&(!f||!(l.fornecedor||'').trim()||(l.fornecedor||'').trim().toLowerCase()===f));}
@@ -3633,7 +3650,7 @@ function lancarModal(manterRascunho){if(!manterRascunho)lmEdit=null;if(!manterRa
         ${LB('Data',`<input type="date" class="input" onchange="lmAplicarTodas('data',this.value)">`)}
         ${LB('Categoria',`<select class="input" id="lm_bulkm_grupo" onchange="lmAplicarTodas('grupo',this.value)"><option value="">Categoria…</option>${grupoOpts}</select>`)}
         ${LB('Subcat.',`<select class="input" id="lm_bulkm_sub" onchange="lmAplicarTodas('sub',this.value)"><option value="">Subcategoria…</option></select>`)}
-        ${LB('NF nº',`<input class="input" placeholder="número da nota" onchange="lmAplicarTodas('nf',this.value)">`)}
+        ${LB('NF nº',`<input class="input" placeholder="NF ou cupom (vazio gera nº interno)" onchange="lmAplicarTodas('nf',this.value)">`)}
         ${LB('Fornecedor',`<input class="input" list="lm_forn" placeholder="fornecedor" onchange="lmAplicarTodas('fornecedor',this.value)">`)}
         ${LB('Forma',`<select class="input" onchange="lmAplicarTodas('forma',this.value)"><option value="">Forma…</option>${formaOpts}</select>`)}
       </div>
@@ -3656,7 +3673,7 @@ function lancarModal(manterRascunho){if(!manterRascunho)lmEdit=null;if(!manterRa
       <input type="date" class="input" style="width:138px;padding:7px 9px" id="lm_bulk_data" title="Mesma data em todas as linhas" onchange="lmAplicarTodas('data',this.value)">
       <select class="input" style="width:150px;padding:7px 9px" id="lm_bulk_grupo" title="Mesma categoria em todas" onchange="lmAplicarTodas('grupo',this.value)"><option value="">Categoria…</option>${ordPt(Object.keys(DB.categorias||{})).map(g=>`<option>${esc(g)}</option>`).join('')}</select>
       <select class="input" style="width:150px;padding:7px 9px" id="lm_bulk_sub" title="Mesma subcategoria em todas" onchange="lmAplicarTodas('sub',this.value)"><option value="">Subcategoria…</option></select>
-      <input class="input" style="width:118px;padding:7px 9px" id="lm_bulk_nf" placeholder="NF nº…" title="Mesmo número de nota em todas as linhas" onchange="lmAplicarTodas('nf',this.value)">
+      <input class="input" style="width:118px;padding:7px 9px" id="lm_bulk_nf" placeholder="NF nº…" title="Mesmo número de nota (ou cupom fiscal) em todas as linhas. Se ficar vazio, o Flow gera um número interno (INT-0001) para agrupar a compra." onchange="lmAplicarTodas('nf',this.value)">
       <input class="input" style="width:150px;padding:7px 9px" list="lm_forn" id="lm_bulk_forn" placeholder="Fornecedor…" title="Mesmo fornecedor em todas" onchange="lmAplicarTodas('fornecedor',this.value)">
       <select class="input" style="width:130px;padding:7px 9px" id="lm_bulk_forma" title="Mesma forma em todas" onchange="lmAplicarTodas('forma',this.value)"><option value="">Forma…</option>${formaOpts}</select>
     </div>
@@ -4073,6 +4090,8 @@ function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
   const semProd=lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo==='CMV'&&!(r.insumoId&&DB.insumos[r.insumoId])).length;
   if(semProd>0 && !confirm('Atenção: '+semProd+(semProd===1?' item de CMV não está vinculado a um produto cadastrado.':' itens de CMV não estão vinculados a produtos cadastrados.')+'\n\nSem o vínculo, o gasto não atualiza o custo do produto nem o estoque. Deseja salvar mesmo assim?')) return;
   const vivos=new Set();let n=0,prodAtu=0,novos=0,lastYM=null;const semConv=[];
+  {const validas=lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo);const numNota=(validas.find(r=>(r.nf||'').trim())||{}).nf||lmEdit.nf||'';
+   if(numNota)validas.forEach(r=>{if(!(r.nf||'').trim()&&grupoTipo(r.grupo)!=='receita')r.nf=numNota;});else lmNumerarSemNF(validas);}
   const remov=lmEdit.ids.filter(id=>!lancDraft.some(r=>r._id===id&&lmTotalLinha(r)&&r.grupo));
   if(!lancDraft.some(r=>lmTotalLinha(r)&&r.grupo))return toast('Preencha ao menos um item com categoria e valor');
   if(remov.length&&!confirm(remov.length+(remov.length===1?' item desta nota será excluído.':' itens desta nota serão excluídos.')+'\n\nConfirmar?'))return;
@@ -4095,6 +4114,7 @@ function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
 function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
   if(lmEdit)return lancarModalSalvarEdicao();
   lmNotaAutoCond(true); // condição padrão do fornecedor, se a nota ficou sem parcelas
+  const nfGeradas=lmNumerarSemNF(lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo));
   // itens de CMV que serão lançados sem produto vinculado (amarelo) → confirma antes
   const semProd=lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo==='CMV'&&!(r.insumoId&&DB.insumos[r.insumoId])).length;
   if(semProd>0 && !confirm('Atenção: '+semProd+(semProd===1?' item de CMV não está vinculado a um produto cadastrado (aparece em amarelo).':' itens de CMV não estão vinculados a produtos cadastrados (aparecem em amarelo).')+'\n\nSem o vínculo, o gasto não atualiza o custo do produto nem o estoque. Deseja lançar mesmo assim?')) return;
@@ -4119,7 +4139,7 @@ function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
   if(!n)return toast('Preencha ao menos um item com categoria e valor');
   if(lastYM&&lastYM!==curYM())lancYM=lastYM;
   save();closeModal();viewFinanceiro();
-  toast((n===1?'Lançamento registrado':n+' lançamentos registrados')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':'')+lmSemConvMsg(semConv));}
+  toast((n===1?'Lançamento registrado':n+' lançamentos registrados')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':'')+(nfGeradas.length?' · sem NF: nº interno '+nfGeradas.join(', ')+' gerado para agrupar a nota':'')+lmSemConvMsg(semConv));}
 function lmSemConvMsg(arr){return arr.length?' · custo NÃO atualizado em '+arr.join(', ')+': a nota veio em outra unidade. Defina o padrão de compra no produto.':'';}
 function delLancamento(id){DB.lancamentos=DB.lancamentos.filter(l=>l.id!==id&&l.fromTaxa!==id);save();viewFinanceiro();}
 function formaSelect(val,onchange){const fs=ordPt(DB.formasPagamento||[]);return `<select class="input" title="Forma de pagamento" onchange="${onchange}"><option value="">—</option>${fs.map(x=>`<option ${x===(val||'')?'selected':''}>${esc(x)}</option>`).join('')}</select>`;}
@@ -4177,7 +4197,9 @@ function editLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!
 }
 function saveLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)return closeModal();
   const valor=moneyVal('el_valor');if(!valor)return toast('Informe o valor');
+  const nfAntes=l.nfe||'',fornAntes=l.fornecedor||'';const irmaos=nfKey(nfAntes)?notaItens(nfAntes,fornAntes).filter(x=>x.id!==id):[];
   l.data=$('#el_data').value||l.data;l.grupo=$('#el_grupo').value;l.sub=$('#el_sub').value||'';l.descricao=($('#el_desc').value||'').trim();l.nfe=($('#el_nfe')?($('#el_nfe').value||'').trim():(l.nfe||''));l.fornecedor=($('#el_fornecedor')?($('#el_fornecedor').value||'').trim():(l.fornecedor||''));l.valor=valor;l.forma=$('#el_forma').value||'';
+  if(irmaos.length&&nfKey(l.nfe)&&nfKey(l.nfe)!==nfKey(nfAntes)&&confirm('Esta nota tem mais '+irmaos.length+(irmaos.length===1?' item':' itens')+' com o número '+nfAntes+'.\n\nAplicar o novo número ('+l.nfe+') a todos, para continuarem agrupados?'))irmaos.forEach(x=>{x.nfe=l.nfe;});
   syncTaxaLanc(l);save();closeModal();viewFinanceiro();toast('Lançamento atualizado');}
 function lancFiltrados(ym){
   const fl=lancFiltro, ativo=fl.data||fl.grupo||fl.sub||fl.desc||fl.nf||fl.fornecedor||fl.forma;
