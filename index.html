@@ -3504,6 +3504,36 @@ function dreLanc(ym){
     despesa[TAXA_GRUPO][TAXA_SUB]=(despesa[TAXA_GRUPO][TAXA_SUB]||0)+tx.total;despTot+=tx.total;}
   return {receita,despesa,recTot,despTot,resultado:recTot-despTot,taxasRec:tx};
 }
+/* DRE condensado na Estrutura de Referência PLL. É SÓ visualização: categorias e lançamentos não mudam.
+   Cada grupo/subcategoria do plano de contas cai em um dos 7 centros, nesta ordem. */
+const DRE_CENTROS=[
+ {id:'cmv',nome:'CMV',max:30,ref:'≤ 30%'},
+ {id:'cmo',nome:'CMO',max:25,ref:'≤ 25%'},
+ {id:'fixas',nome:'Despesas Fixas e Operacionais',max:15,ref:'≤ 15%'},
+ {id:'impostos',nome:'Impostos',max:8,ref:'≤ 8%'},
+ {id:'taxas',nome:'Taxas de cartão',max:3,ref:'≤ 3%'},
+ {id:'mkt',nome:'Marketing',min:2,max:5,ref:'2% a 5%'},
+ {id:'manut',nome:'Manutenção',min:1,max:2,ref:'1% a 2%'}];
+const DRE_LUCRO_REF=15;
+function dreCentroDe(grupo,sub){const g=lmNorm(grupo),s=lmNorm(sub);
+  if(g==='cmv')return 'cmv';
+  if(g==='mao de obra'||g==='encargos sociais'||g==='beneficios')return 'cmo';
+  if(g==='impostos')return 'impostos';
+  if(g==='publicidade'||g.includes('marketing'))return 'mkt';
+  if(s.includes('manuten'))return 'manut';
+  if(g==='despesas financeiras'&&s.includes('taxa')&&(s.includes('cart')||s.includes('receb')))return 'taxas';
+  return 'fixas';}
+function dreCentros(d){const alvo=DB.cmvAlvo||30;const cs=DRE_CENTROS.map(c=>Object.assign({},c,{total:0,itens:[]}));const m={};cs.forEach(c=>m[c.id]=c);
+  m.cmv.max=alvo;m.cmv.ref='≤ '+fmtN(alvo,alvo%1?1:0)+'%';   // o CMV usa a meta do próprio restaurante (padrão 30%)
+  Object.keys(d.despesa).forEach(g=>Object.entries(d.despesa[g]).forEach(([sub,v])=>{const c=m[dreCentroDe(g,sub)];c.total+=v;c.itens.push({g,s:sub,v});}));
+  cs.forEach(c=>c.itens.sort((a,b)=>b.v-a.v));return cs;}
+function dreCentroStatus(c,p,temRec){if(!temRec)return {cor:'var(--soft)',txt:''};
+  if(c.min!=null&&p<c.min)return {cor:'var(--amber)',txt:'abaixo da faixa'};
+  if(p<=c.max)return {cor:'var(--green)',txt:'dentro'};
+  if(p<=c.max*1.15)return {cor:'var(--amber)',txt:'no limite'};
+  return {cor:'var(--red)',txt:'acima'};}
+const dreOpen=new Set();   // centros começam recolhidos: o DRE abre em 7 linhas
+function dreToggleCentro(id){if(dreOpen.has(id))dreOpen.delete(id);else dreOpen.add(id);viewDRE();}
 const dreCollapsed=new Set();
 function dreToggle(g){if(dreCollapsed.has(g))dreCollapsed.delete(g);else dreCollapsed.add(g);viewDRE();}
 function viewDRE(){
@@ -3513,7 +3543,8 @@ function viewDRE(){
   const cmvRS=Object.values(d.despesa['CMV']||{}).reduce((a,b)=>a+b,0);
   const cmvPct=pct(cmvRS), alvo=DB.cmvAlvo||30;
   const cmvCls=cmvClasse(cmvPct);const cmvStatus=cmvCls==='excelente'?['CMV excelente','var(--green)']:cmvCls==='atencao'?['dentro do aceitável','var(--amber)']:['acima da meta','var(--red)'];
-  const ordered=Object.keys(DB.categorias).filter(g=>d.despesa[g]);
+  const centros=dreCentros(d);
+  const mob=ehMobile();   // no celular a referência vai embaixo do nome (3 colunas); no desktop tem coluna própria
   const recGrupos=Object.keys(d.receita);
   const lucro=d.resultado;
   const barC=v=>v>=15?'var(--green)':v>=0?'var(--amber)':'var(--red)';
@@ -3526,25 +3557,26 @@ function viewDRE(){
   <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:20px" class="dash-grid">
     <div class="card"><div class="card-pad" style="padding-bottom:6px"><div class="ttl">Demonstrativo de Resultado (DRE)</div><div class="desc">Resultado real do mês, receitas e despesas lançadas</div></div>
       <table class="dre-table"><tbody>
-        ${(function(){const colR=dreCollapsed.has('__rec__');return `<tr class="grp" onclick="dreToggle('__rec__')" style="cursor:pointer"><td><span style="display:inline-block;width:12px;color:var(--muted)">${colR?'▸':'▾'}</span> Receita Bruta</td><td class="num">${fmtBRL(rec)}</td><td class="num" style="color:var(--soft)">${rec?'100%':'—'}</td></tr>`
-          +(colR?'':recGrupos.map(g=>Object.entries(d.receita[g]).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${pctTxt(v)}</td></tr>`).join('')).join(''));})()}
-        ${ordered.map(g=>{const subs=d.despesa[g];const subtot=Object.values(subs).reduce((a,b)=>a+b,0);const col=dreCollapsed.has(g);
-          return `<tr class="dre-cat" onclick="dreToggle('${g.replace(/'/g,"\\'")}')" style="cursor:pointer"><td style="font-size:10.5px;letter-spacing:.6px;color:var(--gold);text-transform:uppercase;font-weight:700;padding:9px 13px 5px"><span style="display:inline-block;width:12px;color:var(--muted)">${col?'▸':'▾'}</span> ${g}</td><td class="num" style="font-weight:700;color:var(--red)">${fmtBRL(-subtot)}</td><td class="num" style="color:var(--soft)">${pctTxt(subtot)}</td></tr>`
-          +(col?'':Object.entries(subs).map(([s,v])=>`<tr class="ind"><td>${s}${(g===TAXA_GRUPO&&s===TAXA_SUB)?` <span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px" title="Calculado a partir das receitas × a taxa de cada bandeira (Financeiro → Parâmetros). Não é um lançamento.">CALCULADO</span>`:''}</td><td class="num" style="color:var(--red)">${fmtBRL(-v)}</td><td class="num" style="color:var(--soft)">${pctTxt(v)}</td></tr>`).join(''));}).join('')}
-        <tr class="total"><td>(=) Resultado líquido</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(lucro)}</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${pctTxt(lucro)}</td></tr>
+        <tr style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--soft)"><td style="padding:4px 13px"></td><td class="num" style="padding:4px 13px">R$</td><td class="num" style="padding:4px 13px">% receita</td>${mob?'':'<td class="num" style="padding:4px 13px;white-space:nowrap">Ref. PLL</td>'}</tr>
+        ${(function(){const colR=dreCollapsed.has('__rec__');return `<tr class="grp" onclick="dreToggle('__rec__')" style="cursor:pointer"><td><span style="display:inline-block;width:12px;color:var(--muted)">${colR?'▸':'▾'}</span> Receita Bruta</td><td class="num">${fmtBRL(rec)}</td><td class="num" style="color:var(--soft)">${rec?'100%':'—'}</td>${mob?'':'<td></td>'}</tr>`
+          +(colR?'':recGrupos.map(g=>Object.entries(d.receita[g]).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${pctTxt(v)}</td>${mob?'':'<td></td>'}</tr>`).join('')).join(''));})()}
+        ${centros.map(c=>{const p=pct(c.total);const st=dreCentroStatus(c,p,!!rec);const ab=dreOpen.has(c.id);const varios=new Set(c.itens.map(x=>x.g)).size>1;
+          return `<tr class="dre-cat" onclick="dreToggleCentro('${c.id}')" style="cursor:pointer" title="${c.itens.length?'Clique para ver o que compõe este centro':'Nenhum lançamento neste centro no mês'}"><td style="font-size:11px;letter-spacing:.5px;color:var(--gold);text-transform:uppercase;font-weight:700;padding:10px 13px 8px"><span style="display:inline-block;width:12px;color:var(--muted)">${c.itens.length?(ab?'▾':'▸'):''}</span> ${c.nome}${mob?`<div style="font-size:10.5px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted);margin:2px 0 0 15px"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${st.cor};margin-right:4px"></span>ref. ${c.ref}</div>`:''}</td><td class="num" style="font-weight:700;color:${c.total?'var(--red)':'var(--soft)'}">${fmtBRL(-c.total)}</td><td class="num" style="font-weight:700;color:${st.cor}">${pctTxt(c.total)}</td>${mob?'':`<td class="num" style="font-size:11.5px;color:var(--muted);white-space:nowrap" title="${st.txt}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${st.cor};margin-right:5px"></span>${c.ref}</td>`}</tr>`
+          +(ab?c.itens.map(x=>`<tr class="ind"><td>${varios?`<span style="color:var(--soft)">${esc(x.g)} › </span>`:''}${esc(x.s)}${(x.g===TAXA_GRUPO&&x.s===TAXA_SUB)?` <span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px" title="Calculado a partir das receitas × a taxa de cada bandeira (Financeiro → Parâmetros). Não é um lançamento.">CALCULADO</span>`:''}</td><td class="num" style="color:var(--red)">${fmtBRL(-x.v)}</td><td class="num" style="color:var(--soft)">${pctTxt(x.v)}</td>${mob?'':'<td></td>'}</tr>`).join(''):'');}).join('')}
+        <tr class="total"><td>(=) Lucro líquido${mob?`<div style="font-size:10.5px;font-weight:500;color:var(--muted);margin-top:2px">ref. ≥ ${DRE_LUCRO_REF}%</div>`:''}</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(lucro)}</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${pctTxt(lucro)}</td>${mob?'':`<td class="num" style="font-size:11.5px;white-space:nowrap;font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${!rec?'var(--soft)':pct(lucro)>=DRE_LUCRO_REF?'var(--green)':pct(lucro)>=0?'var(--amber)':'var(--red)'};margin-right:5px"></span>≥ ${DRE_LUCRO_REF}%</td>`}</tr>
       </tbody></table>
     </div>
     <div>
       <div class="card card-pad" style="margin-bottom:16px"><div class="k-lbl">Margem líquida</div>
         <div class="k-val" style="color:${lucro>=0?'var(--green)':'var(--red)'};font-size:34px">${pctTxt(lucro)}</div>
         <div class="bar"><i style="width:${clamp(pct(lucro),2,100)}%;background:${barC(pct(lucro))}"></i></div>
-        <div style="font-size:12.5px;color:var(--muted);margin-top:10px">${lucro>=0?'Operação no azul. ':'Resultado negativo. '}Referência em food service: 10–15%.</div></div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:10px">${lucro>=0?'Operação no azul. ':'Resultado negativo. '}Referência PLL: lucro líquido de <b>${DRE_LUCRO_REF}%</b> ou mais.</div></div>
       <div class="card card-pad" style="margin-bottom:16px"><div class="k-lbl">CMV real</div>
         <div class="k-val" style="color:${rec?cmvCorRef(cmvPct):'var(--soft)'};font-size:34px">${rec?fmtPct(cmvPct):'—'}</div>
         <div style="font-size:12.5px;color:var(--muted);margin-top:6px">Meta (CMV alvo): ${fmtPct(alvo)}${rec?` · <b style="color:${cmvStatus[1]}">${cmvStatus[0]}</b>`:' · sem receita lançada'}</div></div>
-      <div class="card card-pad"><div class="ttl" style="margin-bottom:14px">Composição da receita</div>
-        ${ordered.map(g=>{const v=pct(Object.values(d.despesa[g]).reduce((a,b)=>a+b,0));return `<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${g}</span><b>${rec?fmtPct(v):'—'}</b></div><div class="bar"><i style="width:${clamp(v,0,100)}%;background:var(--gold)"></i></div></div>`;}).join('')}
-        <div style="margin-top:4px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>Resultado</span><b>${pctTxt(lucro)}</b></div><div class="bar"><i style="width:${clamp(pct(lucro),0,100)}%;background:var(--green)"></i></div></div>
+      <div class="card card-pad"><div class="ttl" style="margin-bottom:4px">Composição da receita</div><div class="desc" style="margin-bottom:14px">Cada centro comparado à Estrutura de Referência PLL</div>
+        ${centros.map(c=>{const v=pct(c.total);const st=dreCentroStatus(c,v,!!rec);return `<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><span>${c.nome} <span style="font-size:11px;color:var(--soft)">${c.ref}</span></span><b style="color:${st.cor}">${rec?fmtPct(v):'—'}</b></div><div class="bar"><i style="width:${clamp(v,0,100)}%;background:${rec?st.cor:'var(--gold)'}"></i></div></div>`;}).join('')}
+        <div style="margin-top:4px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>Lucro líquido <span style="font-size:11px;color:var(--soft)">≥ ${DRE_LUCRO_REF}%</span></span><b>${pctTxt(lucro)}</b></div><div class="bar"><i style="width:${clamp(pct(lucro),0,100)}%;background:var(--green)"></i></div></div>
       </div>
     </div>
   </div>`}`;
