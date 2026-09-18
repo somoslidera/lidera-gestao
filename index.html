@@ -3528,6 +3528,7 @@ function dreCentros(d){const alvo=DB.cmvAlvo||30;const cs=DRE_CENTROS.map(c=>Obj
   Object.keys(d.despesa).forEach(g=>Object.entries(d.despesa[g]).forEach(([sub,v])=>{const c=m[dreCentroDe(g,sub)];c.total+=v;c.itens.push({g,s:sub,v});}));
   cs.forEach(c=>c.itens.sort((a,b)=>b.v-a.v));return cs;}
 function dreCentroStatus(c,p,temRec){if(!temRec)return {cor:'var(--soft)',txt:''};
+  if(!(c.total>0))return {cor:'var(--green)',txt:'sem gasto no mês'};   // zerado fica verde, não amarelo
   if(c.min!=null&&p<c.min)return {cor:'var(--amber)',txt:'abaixo da faixa'};
   if(p<=c.max)return {cor:'var(--green)',txt:'dentro'};
   if(p<=c.max*1.15)return {cor:'var(--amber)',txt:'no limite'};
