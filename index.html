@@ -6562,6 +6562,17 @@ function gpGcalLink(o,r){const d=(r.data||'').replace(/-/g,'');if(!d)return '';c
   const fim=new Date(2000,0,1,h,m+60);const ini=d+'T'+p(h)+p(m)+'00',end=d+'T'+p(fim.getHours())+p(fim.getMinutes())+'00';
   const emails=((o.dados&&o.dados.equipe)||[]).map(x=>(x&&x.email||'').trim()).filter(Boolean).slice(0,6);
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent('PLL - '+(o.nome||''))+'&dates='+ini+'/'+end+'&ctz=America/Sao_Paulo&details='+encodeURIComponent((r.tipo||'Acompanhamento')+(r.resumo?'\n\n'+r.resumo:''))+(emails.length?'&add='+encodeURIComponent(emails.join(',')):'');}
+/* Ponte Flow → Google Agenda pelo n8n. O n8n valida a sessão (token do Supabase) e só atende admin ou consultor.
+   Se o n8n estiver fora do ar ou sem credencial do Google, nada quebra: a reunião fica no Flow e o botão manual continua lá. */
+const N8N_AGENDA_URL='https://automacoes_n8n-main.8rp28i.easypanel.host/webhook/flow-agenda';
+async function gpAgendaGoogle(o,r,acao,opts){opts=opts||{};
+  try{const ses=await sb.auth.getSession();const token=ses&&ses.data&&ses.data.session&&ses.data.session.access_token;if(!token)return {ok:false,motivo:'sessão expirada'};
+    const emails=((o.dados&&o.dados.equipe)||[]).map(x=>(x&&x.email||'').trim()).filter(Boolean);
+    const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),20000);
+    const resp=await fetch(N8N_AGENDA_URL,{method:'POST',headers:{'Content-Type':'application/json'},signal:ctrl.signal,body:JSON.stringify({token,acao,eventId:r.gcalId||'',
+      titulo:'PLL - '+(o.nome||''),descricao:(r.tipo||'Acompanhamento')+(r.resumo?'\n\n'+r.resumo:'')+'\n\nAgendado pelo Flow.',data:r.data,hora:r.hora||'09:00',duracaoMin:opts.duracaoMin||60,convidar:!!opts.convidar,convidados:emails})});
+    clearTimeout(t);const j=await resp.json().catch(()=>null);return j||{ok:false,motivo:'resposta inválida do n8n'};}
+  catch(e){return {ok:false,motivo:(e&&e.name==='AbortError')?'o n8n demorou a responder':'não consegui falar com o n8n'};}}
 async function gpAcaoTarefa(orgId,rid,idx){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const r=gpCrm(o).reunioes.find(x=>x.id===rid);if(!r||!r.acoes||!r.acoes[idx])return;
   const bruto=r.acoes[idx];const m=bruto.match(/^([^:]{2,40}):\s*(.+)$/);const resp=m?m[1].trim():'';const tit=(m?m[2]:bruto).trim();
   const i=gpInfo(o);const fase=(i.etapa&&i.etapa!=='Sem plano'&&i.etapa!=='Concluído')?i.etapa:'Outras';const p=projEnsure(o);
@@ -6805,6 +6816,14 @@ function gpReuniaoModal(orgId,rid,modo){const o=ADMIN_ORGS.find(x=>x.id===orgId)
     </div>
     <div class="field"><label>Tipo</label><select class="input" id="gr_tipo">${GP_TIPOS_REUNIAO.map(t=>`<option ${(r?r.tipo:'Acompanhamento')===t?'selected':''}>${t}</option>`).join('')}</select></div>
     <div class="field"><label id="gr_lbl_resumo">${_grModo==='feita'?'Resumo e decisões':'Pauta'}</label><textarea class="input" id="gr_resumo" rows="3" placeholder="O que foi tratado, decisões, pontos de atenção…">${esc(r?r.resumo||'':'')}</textarea></div>
+    <div id="gr_so_agendar" style="display:${_grModo==='agendar'?'block':'none'};border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:14px;background:var(--bg)">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" id="gr_gcal" style="width:16px;height:16px" checked> ${r&&r.gcalId?'Atualizar o evento no Google Agenda':'Criar no Google Agenda, com link do Meet'}</label>
+      <div style="font-size:11.5px;color:var(--soft);margin:3px 0 8px 24px">Entra na agenda "PLL | Acelerados" como "PLL - ${esc(o.nome||'')}". As anotações do Gemini dessa reunião voltam sozinhas para cá.</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-left:24px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer" title="${esc(((o.dados&&o.dados.equipe)||[]).map(x=>x&&x.email).filter(Boolean).join(', ')||'Nenhum e-mail cadastrado na Equipe deste cliente')}"><input type="checkbox" id="gr_convidar" style="width:15px;height:15px" checked> Convidar o cliente por e-mail <span style="color:var(--soft)">(${((o.dados&&o.dados.equipe)||[]).filter(x=>x&&x.email).length} e-mail(s))</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px">Duração <select class="input" id="gr_dur" style="width:auto;padding:4px 8px;font-size:12.5px">${[30,45,60,90,120].map(m=>`<option value="${m}" ${m===60?'selected':''}>${m} min</option>`).join('')}</select></label>
+      </div>
+    </div>
     <details style="margin-bottom:14px" ${r&&(r.links||r.participantes)?'open':''}><summary style="font-size:12.5px;font-weight:600;color:var(--navy);cursor:pointer">Links e participantes <span style="font-weight:400;color:var(--soft)">anotações, transcrição, gravação</span></summary>
       <div class="field" style="margin-top:10px"><label>Participantes</label><input class="input" id="gr_part" value="${esc(r?r.participantes||'':'')}" placeholder="Quem participou"></div>
       ${GP_LINKS.map(([k,ic,rot])=>`<div class="field"><label>${ic} ${rot}</label><input class="input" id="gr_l_${k}" value="${esc(r&&r.links?r.links[k]||'':'')}" placeholder="https://…"></div>`).join('')}
@@ -6823,7 +6842,7 @@ function gpReuniaoModal(orgId,rid,modo){const o=ADMIN_ORGS.find(x=>x.id===orgId)
   </div>
   <div class="modal-foot">${r?`<button class="btn btn-ghost" style="color:var(--red);margin-right:auto" onclick="gpReuniaoDel('${orgId}','${rid}')">Excluir</button>`:''}<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="gpReuniaoSalvar('${orgId}','${rid||''}')">Salvar</button></div>`,true);}
 function gpReuniaoModo(m){_grModo=m;['feita','agendar'].forEach(x=>{const b=$('#gr_m_'+x);if(b)b.classList.toggle('on',x===m);});
-  const s=$('#gr_so_feita');if(s)s.style.display=m==='feita'?'block':'none';const l=$('#gr_lbl_resumo');if(l)l.textContent=m==='feita'?'Resumo e decisões':'Pauta';
+  const s=$('#gr_so_feita');if(s)s.style.display=m==='feita'?'block':'none';const sa=$('#gr_so_agendar');if(sa)sa.style.display=m==='agendar'?'block':'none';const l=$('#gr_lbl_resumo');if(l)l.textContent=m==='feita'?'Resumo e decisões':'Pauta';
   const d=$('#gr_data');const h=hojeISO();if(d){if(m==='agendar'&&d.value<=h)d.value=diasSoma(h,7);if(m==='feita'&&d.value>h)d.value=h;}}
 async function gpReuniaoSalvar(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const crm=gpCrm(o);const h=hojeISO();
   const data=$('#gr_data').value;if(!data)return toast('Informe a data');
@@ -6839,9 +6858,14 @@ async function gpReuniaoSalvar(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===orgI
         p.tarefas.push({id:'c'+Date.now()+k,titulo:tit,fase,feito:false,prazo,resp,deReuniao:r.id});criadas++;});
       if(criadas)keys.push('_projeto');}
     const pd=$('#gr_prox_data');if(pd&&pd.value&&pd.value>h&&!crm.reunioes.some(x=>!x.realizada&&x.data===pd.value))crm.reunioes.push({id:uid(),data:pd.value,hora:($('#gr_prox_hora')&&$('#gr_prox_hora').value)||'',tipo:'Acompanhamento',resumo:'',realizada:false});}
-  closeModal();gpRefresh();toast((feita?'Reunião registrada':'Reunião agendada')+(criadas?' · '+criadas+' tarefa(s) criada(s)':''));
-  await adminSaveKeys(o,keys);}
-async function gpReuniaoDel(orgId,rid){if(!confirm('Excluir esta reunião do histórico?'))return;const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const crm=gpCrm(o);crm.reunioes=crm.reunioes.filter(x=>x.id!==rid);(_crmDel[o.id]=_crmDel[o.id]||new Set()).add(rid);closeModal();gpRefresh();await adminSaveKeys(o,['_crm']);}
+  const querGoogle=!feita&&$('#gr_gcal')&&$('#gr_gcal').checked&&data>=h;const gOpts={convidar:!!($('#gr_convidar')&&$('#gr_convidar').checked),duracaoMin:parseInt(($('#gr_dur')||{}).value)||60};
+  closeModal();gpRefresh();toast((feita?'Reunião registrada':'Reunião agendada')+(criadas?' · '+criadas+' tarefa(s) criada(s)':'')+(querGoogle?' · criando no Google Agenda…':''));
+  await adminSaveKeys(o,keys);
+  if(querGoogle){const g=await gpAgendaGoogle(o,r,r.gcalId?'atualizar':'criar',gOpts);
+    if(g&&g.ok){if(g.eventId)r.gcalId=g.eventId;r.links=Object.assign({},r.links||{},g.link?{evento:g.link}:{},g.meet?{meet:g.meet}:{});gpRefresh();await adminSaveKeys(o,['_crm']);toast('No Google Agenda'+(g.meet?' com Meet':'')+(gOpts.convidar?' · convite enviado':''));}
+    else toast('Ficou só no Flow: '+((g&&g.motivo)||'erro')+'. Use o botão "Criar no Google Agenda" na linha do tempo.');}}
+async function gpReuniaoDel(orgId,rid){if(!confirm('Excluir esta reunião do histórico?'))return;const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const crm=gpCrm(o);
+  {const rr=crm.reunioes.find(x=>x.id===rid);if(rr&&rr.gcalId&&!rr.realizada&&rr.data>=hojeISO()&&confirm('Excluir também o evento do Google Agenda? O cliente convidado recebe o aviso de cancelamento.')){const g=await gpAgendaGoogle(o,rr,'excluir',{convidar:true});if(!(g&&g.ok))toast('Não consegui excluir no Google: '+((g&&g.motivo)||'erro'));}}crm.reunioes=crm.reunioes.filter(x=>x.id!==rid);(_crmDel[o.id]=_crmDel[o.id]||new Set()).add(rid);closeModal();gpRefresh();await adminSaveKeys(o,['_crm']);}
 let _gpNotaT=null;
 function gpNotas(orgId,v){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;gpCrm(o).notas=v;const st=$('#gp_nota_st');if(st){st.textContent='Salvando…';st.style.color='var(--amber)';}
   clearTimeout(_gpNotaT);_gpNotaT=setTimeout(async()=>{const ok=await adminSaveKeys(o,['_crm']);const s=$('#gp_nota_st');if(s){s.textContent=ok?'Salvo ✓':'Erro';s.style.color=ok?'var(--green)':'var(--red)';}},800);}
