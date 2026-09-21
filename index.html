@@ -6556,7 +6556,7 @@ async function adminSaveKeys(o,keys){if(!o)return false;keys=(keys||[]).filter(B
   if(keys.includes('_crm'))ok=(await crmSalvar(o))&&ok;
   const resto=keys.filter(k=>k!=='_crm');if(resto.length)ok=(await adminSaveOrgKeys(o,resto))&&ok;return ok;}
 /* links da reunião (anotações do Gemini, transcrição, gravação, evento) */
-const GP_LINKS=[['notas','📝','Anotações'],['transcricao','🗒','Transcrição'],['gravacao','🎥','Gravação'],['evento','📅','Evento']];
+const GP_LINKS=[['meet','🎦','Entrar no Meet'],['notas','📝','Anotações'],['transcricao','🗒','Transcrição'],['gravacao','🎥','Gravação'],['evento','📅','Evento']];
 function gpLinksHTML(r,compacto){const l=(r&&r.links)||{};return GP_LINKS.filter(([k])=>l[k]).map(([k,ic,rot])=>`<a href="${esc(l[k])}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${rot}" style="text-decoration:none;${compacto?'font-size:13px;margin-right:4px':'display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--navy);border:1px solid var(--line);border-radius:8px;padding:3px 8px;margin:0 6px 4px 0;background:var(--card)'}">${ic}${compacto?'':' '+rot}</a>`).join('');}
 function gpGcalLink(o,r){const d=(r.data||'').replace(/-/g,'');if(!d)return '';const hm=(r.hora||'09:00').split(':');const h=+hm[0]||9,m=+hm[1]||0;const p=n=>String(n).padStart(2,'0');
   const fim=new Date(2000,0,1,h,m+60);const ini=d+'T'+p(h)+p(m)+'00',end=d+'T'+p(fim.getHours())+p(fim.getMinutes())+'00';
@@ -6680,6 +6680,7 @@ function renderGestao(){const el=$('#admin_main');if(!el)return;const infos=gpCa
       <div class="pill-filter" style="margin:0">${[['tabela','☰ Lista'],['kanban','▥ Etapas'],['agenda','🗓 Agenda']].map(([v,l])=>`<button class="${GP.view===v?'on':''}" onclick="gpSet('view','${v}')">${l}</button>`).join('')}</div>
       <select class="input" style="width:auto;padding:7px 10px;font-size:12.5px" onchange="gpSet('ord',this.value)" title="Ordenar">${[['critico','Ordenar: mais críticos primeiro'],['reuniao','Mais tempo sem reunião'],['proxreun','Próxima reunião mais perto'],['prazo','Prazo da próxima tarefa'],['parado','Parados há mais tempo'],['progasc','Menor progresso'],['progdesc','Maior progresso'],['nome','Nome (A a Z)']].map(([v,l])=>`<option value="${v}" ${GP.ord===v?'selected':''}>${l}</option>`).join('')}</select>
       <span id="gp_cont" style="font-size:12.5px;color:var(--soft)"></span>
+      ${(function(){const s=Object.values(ADMIN_CRM).map(c=>c&&c.syncEm||'').sort().pop();return s?`<span title="Última vez em que a sincronização trouxe novidades do Google Agenda e das anotações do Gemini" style="font-size:11.5px;color:var(--soft)">🔄 agenda e anotações: ${fmtDataBR(s.slice(0,10)).slice(0,5)} ${s.slice(11,16)}</span>`:'';})()}
       ${ativo?`<a onclick="gpLimpar()" style="font-size:12.5px;color:var(--gold);font-weight:600;cursor:pointer">Limpar filtros ✕</a>`:''}
       <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="gpExportCSV()">⬇ Exportar</button>
     </div>
@@ -6790,7 +6791,7 @@ function gpRefresh(){renderAdminMain();renderAdminList();}
 async function gpConcluir(orgId,taskId){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===taskId);if(!t)return;
   t.feito=true;t.feitoEm=hojeISO();gpRefresh();toast('Tarefa concluída: '+t.titulo.slice(0,60));await adminSaveKeys(o,['_projeto']);}
 async function gpConfirmarReuniao(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const r=gpCrm(o).reunioes.find(x=>x.id===rid);if(!r)return;
-  r.realizada=true;gpRefresh();toast('Reunião confirmada. Registre o resumo quando puder.');await adminSaveKeys(o,['_crm']);gpReuniaoModal(orgId,rid);}
+  r.realizada=true;r.editado=true;gpRefresh();toast('Reunião confirmada. Registre o resumo quando puder.');await adminSaveKeys(o,['_crm']);gpReuniaoModal(orgId,rid);}
 let _grModo='feita';
 function gpReuniaoModal(orgId,rid,modo){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const crm=gpCrm(o);const r=rid?crm.reunioes.find(x=>x.id===rid):null;const i=gpInfo(o);
   _grModo=r?(r.realizada?'feita':'agendar'):(modo||'feita');const h=hojeISO();
@@ -6828,7 +6829,7 @@ async function gpReuniaoSalvar(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===orgI
   const data=$('#gr_data').value;if(!data)return toast('Informe a data');
   const feita=_grModo==='feita';if(feita&&data>h)return toast('Reunião que já aconteceu não pode ter data futura. Use "Agendar".');
   let r=rid?crm.reunioes.find(x=>x.id===rid):null;if(!r){r={id:uid()};crm.reunioes.push(r);}
-  Object.assign(r,{data,hora:$('#gr_hora').value||'',tipo:$('#gr_tipo').value,resumo:($('#gr_resumo').value||'').trim(),realizada:feita,participantes:(($('#gr_part')||{}).value||'').trim()});
+  Object.assign(r,{data,hora:$('#gr_hora').value||'',tipo:$('#gr_tipo').value,resumo:($('#gr_resumo').value||'').trim(),realizada:feita,participantes:(($('#gr_part')||{}).value||'').trim(),editado:true});
   {const lk={};GP_LINKS.forEach(([k])=>{const v=(($('#gr_l_'+k)||{}).value||'').trim();if(v)lk[k]=v;});if(Object.keys(lk).length)r.links=lk;else delete r.links;}
   const keys=['_crm'];let criadas=0;
   if(feita){r.passos=($('#gr_passos').value||'').trim();
@@ -6849,7 +6850,7 @@ async function gpEtapaManual(orgId,v){const o=ADMIN_ORGS.find(x=>x.id===orgId);i
 let gpHistQ='';
 function gpHistBusca(v){gpHistQ=v;const el=$('#gp_timeline');const o=projCur();if(el&&o)el.innerHTML=gpTimelineHTML(o);}
 let _gpCtxT=null;
-function gpContexto(orgId,v){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;gpCrm(o).contexto=v;const st=$('#gp_ctx_st');if(st){st.textContent='Salvando…';st.style.color='var(--amber)';}
+function gpContexto(orgId,v){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;gpCrm(o).contexto=v;gpCrm(o).contextoAuto=false;const st=$('#gp_ctx_st');if(st){st.textContent='Salvando…';st.style.color='var(--amber)';}
   clearTimeout(_gpCtxT);_gpCtxT=setTimeout(async()=>{const ok=await adminSaveKeys(o,['_crm']);const s=$('#gp_ctx_st');if(s){s.textContent=ok?'Salvo ✓':'Erro';s.style.color=ok?'var(--green)':'var(--red)';}},800);}
 function gpTimelineHTML(o){const h=hojeISO();const grupo=gpGrupo(o).length>1;const q=lmNorm(gpHistQ);
   let rs=gpReunioesGrupo(o).slice().sort((a,b)=>((b.data||'')+(b.hora||'')).localeCompare((a.data||'')+(a.hora||'')));
@@ -6860,7 +6861,7 @@ function gpTimelineHTML(o){const h=hojeISO();const grupo=gpGrupo(o).length>1;con
     return `<div style="display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)">
       <div style="flex:0 0 12px;display:flex;flex-direction:column;align-items:center;padding-top:4px"><span style="width:10px;height:10px;border-radius:50%;background:${fut?'var(--navy)':pend?'var(--amber)':'var(--green)'}"></span></div>
       <div style="flex:1;min-width:0">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:13.5px">${fmtDataBR(r.data)}${r.hora?' · '+esc(r.hora):''}</b><span class="tag ${fut?'tag-gray':pend?'tag-amber':'tag-green'}">${fut?'agendada · '+gpEm(r.data):pend?'a confirmar':'realizada · '+gpHa(r.data)}</span><span style="font-size:12px;color:var(--soft)">${esc(r.tipo||'')}</span>${grupo?`<span class="tag tag-gray" title="Unidade em que a reunião está registrada">🏬 ${esc(r._un||'')}</span>`:''}${r.origem==='gemini'?`<span title="Resumo gerado a partir das anotações e da transcrição do Gemini" style="font-size:10.5px;color:var(--soft)">✨ importada</span>`:''}</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:13.5px">${fmtDataBR(r.data)}${r.hora?' · '+esc(r.hora):''}</b><span class="tag ${fut?'tag-gray':pend?'tag-amber':'tag-green'}">${fut?'agendada · '+gpEm(r.data):pend?'a confirmar':'realizada · '+gpHa(r.data)}</span><span style="font-size:12px;color:var(--soft)">${esc(r.tipo||'')}</span>${grupo?`<span class="tag tag-gray" title="Unidade em que a reunião está registrada">🏬 ${esc(r._un||'')}</span>`:''}${r.origem==='gemini'?`<span title="Resumo gerado a partir das anotações e da transcrição do Gemini" style="font-size:10.5px;color:var(--soft)">✨ importada do Gemini</span>`:r.origem==='agenda'?`<span title="Veio do Google Agenda${r.semAnotacoes?'. Não há anotações do Gemini para esta data: confira se a reunião aconteceu e registre o resumo.':''}" style="font-size:10.5px;color:${r.semAnotacoes?'var(--amber)':'var(--soft)'}">📅 da agenda${r.semAnotacoes?' · sem anotações':''}</span>`:''}</div>
         ${r.titulo?`<div style="font-size:12.5px;font-weight:600;margin-top:3px">${esc(r.titulo)}</div>`:''}
         ${r.participantes?`<div style="font-size:11.5px;color:var(--soft);margin-top:2px">👥 ${esc(r.participantes)}</div>`:''}
         ${r.resumo?`<div style="font-size:13px;color:var(--muted);margin-top:5px;white-space:pre-wrap;line-height:1.5">${esc(r.resumo)}</div>`:''}
