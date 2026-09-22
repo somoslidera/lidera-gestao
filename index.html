@@ -6802,7 +6802,7 @@ function gpGcalLink(o,r){const d=(r.data||'').replace(/-/g,'');if(!d)return '';c
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent('PLL - '+(o.nome||''))+'&dates='+ini+'/'+end+'&ctz=America/Sao_Paulo&details='+encodeURIComponent((r.tipo||'Acompanhamento')+(r.resumo?'\n\n'+r.resumo:''))+(emails.length?'&add='+encodeURIComponent(emails.join(',')):'');}
 /* Ponte Flow → Google Agenda pelo n8n. O n8n valida a sessão (token do Supabase) e só atende admin ou consultor.
    Se o n8n estiver fora do ar ou sem credencial do Google, nada quebra: a reunião fica no Flow e o botão manual continua lá. */
-const N8N_AGENDA_URL='https://automacoes_n8n-main.8rp28i.easypanel.host/webhook/flow-agenda';
+const N8N_AGENDA_URL='https://automacoes_n8n-webhook.8rp28i.easypanel.host/webhook/flow-agenda';   // serviço de webhooks do n8n (modo fila)
 async function gpAgendaGoogle(o,r,acao,opts){opts=opts||{};
   try{const ses=await sb.auth.getSession();const token=ses&&ses.data&&ses.data.session&&ses.data.session.access_token;if(!token)return {ok:false,motivo:'sessão expirada'};
     const emails=((o.dados&&o.dados.equipe)||[]).map(x=>(x&&x.email||'').trim()).filter(Boolean);
