@@ -645,6 +645,151 @@ thead th{letter-spacing:.7px}
 .cloud-banner{background:linear-gradient(90deg,#A48A57,#8d743f)}
 @keyframes lmspin{to{transform:rotate(360deg)}}
 .lm-spin{width:36px;height:36px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--navy);animation:lmspin .8s linear infinite}
+/* ===== GESTÃO DE PROJETOS (admin) · componentes do cockpit, painel do cliente e reuniões ===== */
+.gp-ico{width:15px;height:15px;flex:0 0 auto;vertical-align:-3px}
+.gp-stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.gp-stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;transition:.15s;position:relative;display:flex;flex-direction:column;gap:2px;min-width:0}
+.gp-stat:hover{border-color:var(--soft);transform:translateY(-1px);box-shadow:var(--shadow)}
+.gp-stat.on{border-color:var(--navy);box-shadow:0 0 0 2px rgba(29,53,115,.18)}
+.gp-stat .l{font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gp-stat .v{font-family:'Fraunces',serif;font-size:26px;font-weight:700;line-height:1.05;letter-spacing:-.5px}
+.gp-stat .s{font-size:11.5px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gp-stat.on::after{content:'✓ filtrando';position:absolute;top:8px;right:10px;font-size:10px;font-weight:700;color:var(--navy)}
+.gp-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.gp-search{position:relative;flex:1 1 240px;min-width:0}
+.gp-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--soft);pointer-events:none}
+.gp-search .input{padding-left:34px}
+.gp-search .clr{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--soft)}
+.gp-search .clr:hover{background:var(--bg);color:var(--ink)}
+.gp-fsel{appearance:none;-webkit-appearance:none;border:1px solid var(--line);background:var(--card) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239AA1B1' stroke-width='2.2'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 9px center/13px;border-radius:20px;padding:7px 28px 7px 12px;font-size:12.5px;font-weight:600;color:var(--muted);max-width:100%;cursor:pointer;line-height:1.2}
+.gp-fsel:hover{border-color:var(--soft)}
+.gp-fsel.on{background-color:var(--blue-bg);border-color:var(--navy);color:var(--navy)}
+.gp-seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:3px;gap:2px}
+.gp-seg button{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.gp-seg button:hover{color:var(--ink);background:var(--bg)}
+.gp-seg button.on{background:var(--navy);color:#fff}
+.gp-seg button svg{width:14px;height:14px}
+.gp-link{color:var(--navy);font-weight:600;cursor:pointer;font-size:12.5px}
+.gp-link:hover{text-decoration:underline}
+.gp-mini{font-size:11px;color:var(--soft)}
+.gp-prog{height:5px;border-radius:3px;background:var(--line);overflow:hidden;flex:1;min-width:40px}
+.gp-prog i{display:block;height:100%;background:var(--gold);border-radius:3px}
+.gp-prog.done i{background:var(--green)}
+.gp-motivo{font-size:11.5px;line-height:1.35;display:flex;gap:5px;align-items:flex-start}
+.gp-motivo::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex:0 0 auto;margin-top:6px;opacity:.8}
+.gp-motivo.n2{color:var(--red)}.gp-motivo.n1{color:var(--amber)}.gp-motivo.n0{color:var(--soft)}
+.gp-check{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);color:transparent;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;transition:.15s}
+.gp-check svg{width:13px;height:13px}
+.gp-check:hover{border-color:var(--green);color:var(--green);background:var(--green-bg)}
+.gp-tbl thead th{position:sticky;top:0;background:var(--card);z-index:1}
+.gp-tbl tbody tr{cursor:pointer;vertical-align:top;transition:background .12s}
+.gp-tbl tbody td{padding:12px 13px}
+.gp-tbl tbody tr:hover{background:var(--bg)}
+.gp-tbl .nm{font-weight:700;font-size:13.5px;color:var(--ink)}
+.gp-grupo{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;color:var(--navy);background:var(--blue-bg);border-radius:6px;padding:1px 7px;margin:3px 0;cursor:pointer;white-space:nowrap}
+.gp-grupo svg{width:11px;height:11px}
+.gp-rlin{display:flex;gap:6px;align-items:baseline;font-size:12.5px;white-space:nowrap}
+.gp-rlin .k{flex:0 0 52px;font-size:10.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--soft)}
+.gp-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 13px;cursor:pointer;box-shadow:var(--shadow);border-left-width:4px;transition:.15s}
+.gp-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-lg)}
+.gp-card .h{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.gp-card .nm{font-weight:700;font-size:14px;min-width:0}
+.gp-card .foot{display:flex;justify-content:space-between;gap:8px;margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-size:11.5px;color:var(--soft);align-items:center}
+.gp-kb{display:flex;gap:12px;align-items:flex-start;min-width:max-content;padding-bottom:6px}
+.gp-kb-col{flex:0 0 268px;width:268px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px}
+.gp-kb-col .hd{display:flex;justify-content:space-between;align-items:center;gap:6px;margin:0 2px 8px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--gold)}
+.gp-kb-col .hd span{color:var(--soft);font-weight:600;text-transform:none;letter-spacing:0;white-space:nowrap}
+.gp-kb-col .gp-card{margin-bottom:8px}
+.gp-ag-row{display:flex;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.gp-ag-row .d{flex:0 0 66px;font-size:12.5px;font-weight:700;color:var(--navy);line-height:1.25}
+.gp-ag-row .d small{display:block;font-weight:500;color:var(--soft);font-size:11px}
+.gp-ag-row.conf .d{color:var(--amber)}
+.gp-ag-row .b{flex:1;min-width:0;cursor:pointer}
+.gp-ag-row .b .t{font-weight:600;font-size:13px}
+.gp-ag-row .b .s{font-size:11.5px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gp-ag-day{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--soft);margin:10px 0 2px}
+.gp-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:12px}
+.gp-fact{border:1px solid var(--line);border-radius:11px;padding:8px 11px;min-width:0}
+.gp-fact .k{font-size:10.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--soft)}
+.gp-fact .v{font-size:13px;font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gp-fact .s{font-size:11.5px;color:var(--soft);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* plano do projeto */
+.pt-fase{border:1px solid var(--line);border-radius:14px;background:var(--card);margin-top:10px;box-shadow:var(--shadow)}
+.pt-fase>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;flex-wrap:wrap}
+.pt-fase>summary::-webkit-details-marker{display:none}
+.pt-fase>summary .car{width:18px;height:18px;color:var(--soft);transition:transform .15s;flex:0 0 auto}
+.pt-fase[open]>summary .car{transform:rotate(90deg)}
+.pt-fase>summary .ttl{flex:1;min-width:140px;font-weight:700;font-family:'Fraunces',serif;font-size:16px;border:1px solid transparent;background:transparent;padding:3px 6px;border-radius:8px;color:var(--ink)}
+.pt-fase>summary .ttl:hover,.pt-fase>summary .ttl:focus{border-color:var(--line);background:var(--bg);outline:none}
+.pt-fase>summary .cnt{font-size:12px;color:var(--soft);white-space:nowrap;display:flex;align-items:center;gap:8px}
+.pt-fase>summary .cnt .gp-prog{width:70px;flex:0 0 70px}
+.pt-fase .body{padding:0 14px 12px}
+.pt-fase.cur{border-color:var(--gold)}
+.pt-fase.cur>summary .ttl{color:var(--navy)}
+.pt-row{display:grid;grid-template-columns:16px 20px minmax(0,1fr) 150px 148px 30px;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)}
+.pt-row:first-child{border-top:0}
+.pt-row .drag{color:var(--soft);cursor:grab;user-select:none;text-align:center;font-size:14px}
+.pt-row input[type=checkbox]{width:18px;height:18px;cursor:pointer;margin:0}
+.pt-row .inp{border:1px solid transparent;background:transparent;padding:6px 8px;border-radius:8px;font-size:13px;color:var(--ink);min-width:0;width:100%}
+.pt-row .inp:hover{border-color:var(--line);background:var(--bg)}
+.pt-row .inp:focus{border-color:var(--navy);background:var(--card);outline:none}
+.pt-row.done .inp.t{text-decoration:line-through;color:var(--soft)}
+.pt-row .inp.late{border-color:var(--red-bg);background:var(--red-bg);color:var(--red);font-weight:600}
+.pt-row .del{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--soft)}
+.pt-row .del:hover{background:var(--red-bg);color:var(--red)}
+.pt-row .del svg{width:14px;height:14px}
+.pt-late{font-size:10.5px;font-weight:700;color:var(--red);white-space:nowrap}
+/* reuniões: linha do tempo */
+.gp-tl{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.gp-tl .dt{flex:0 0 74px;text-align:left}
+.gp-tl .dt b{display:block;font-size:13.5px}
+.gp-tl .dt small{display:block;font-size:11px;color:var(--soft);line-height:1.3}
+.gp-tl .dt .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:1px}
+.gp-tl .bd{flex:1;min-width:0}
+.gp-tl .meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--soft)}
+.gp-tl .res{font-size:13px;color:var(--muted);margin-top:5px;white-space:pre-wrap;line-height:1.5}
+.gp-tl .sec{color:var(--soft);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;margin:8px 0 3px}
+.gp-tl .ac{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;padding:2px 0}
+.gp-tl .ac span{flex:1;min-width:0}
+.gp-tl .acts{flex:0 0 auto;display:flex;gap:6px;align-items:flex-start}
+.gp-lk{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--navy);border:1px solid var(--line);border-radius:8px;padding:3px 8px;margin:4px 6px 0 0;background:var(--card);text-decoration:none;white-space:nowrap}
+.gp-lk svg{width:12px;height:12px}
+.gp-lk:hover{border-color:var(--navy)}
+.gp-lk.dash{border-style:dashed;border-color:var(--navy)}
+.gp-lk.ic{padding:3px 6px;margin:2px 3px 0 0}
+.gp-note-box{border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:var(--bg);margin-bottom:14px}
+.gp-note-box label.t{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer}
+.gp-note-box .d{font-size:11.5px;color:var(--soft);margin:3px 0 8px 24px}
+.gp-reun-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+.gp-tl-btns{display:flex;gap:8px;flex-wrap:wrap}
+.gp-side details>summary{list-style:none;cursor:pointer;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.gp-side details>summary::-webkit-details-marker{display:none}
+body.dark .gp-stat,body.dark .gp-card,body.dark .pt-fase,body.dark .gp-seg,body.dark .gp-fsel,body.dark .gp-lk,body.dark .gp-check{background-color:var(--card)}
+body.dark .gp-tbl thead th{background:var(--card)}
+body.dark .gp-kb-col,body.dark .gp-note-box{background:#121B30}
+@media(max-width:900px){.gp-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.gp-reun-grid{grid-template-columns:1fr}}
+@media(max-width:640px){
+  .gp-check{width:30px;height:30px}
+  .gp-stats{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;margin:0 -14px;padding-left:14px;padding-right:14px}
+  .gp-stats::-webkit-scrollbar{display:none}
+  .gp-stat{flex:0 0 auto;min-width:118px;padding:9px 11px}
+  .gp-stat .v{font-size:21px}.gp-stat .s{display:none}.gp-stat.on::after{content:'✓';top:7px;right:8px}
+  .gp-fsel{font-size:13px;padding:9px 30px 9px 12px;min-height:38px}
+  .gp-seg button{min-height:34px;padding:6px 10px}
+  .pt-row{grid-template-columns:16px 20px minmax(0,1fr) 30px;row-gap:4px}
+  .pt-row .r2{grid-column:3/5;display:flex;gap:8px;align-items:center}
+  .pt-row .r2 .inp{flex:1;min-height:36px;font-size:14px}
+  .pt-row .inp.t{font-size:15px;min-height:38px}
+  .pt-fase>summary{padding:11px 12px}.pt-fase .body{padding:0 10px 10px}.pt-fase>summary .cnt .gp-prog{display:none}
+  #gp_fpanel .gp-fsel{flex:1 1 44%;min-width:0}
+  .gp-tl{flex-direction:column;gap:4px;position:relative;padding-right:0}
+  .gp-tl .dt{flex:none;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding-right:44px}
+  .gp-tl .dt small{display:inline}
+  .gp-tl .acts{position:absolute;right:0;top:10px}
+  .gp-tl-btns{display:flex;gap:8px;width:100%;flex-wrap:nowrap}.gp-tl-btns .btn{flex:1;justify-content:center;padding-left:6px;padding-right:6px}
+  .gp-tl .meta{padding-right:44px}
+  .gp-fact .v{white-space:normal}
+}
 </style>
 </head>
 <body>
@@ -1888,7 +2033,7 @@ const icoSun=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 function applyTheme(t){document.body.classList.toggle('dark',t==='dark');try{localStorage.setItem('flow_theme',t);}catch(e){}const b=document.getElementById('themeBtn');if(b)b.innerHTML=t==='dark'?icoSun:icoMoon;const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',t==='dark'?'#0E1626':'#1D3573');}
 function toggleTheme(){applyTheme(document.body.classList.contains('dark')?'light':'dark');}
 
-function toast(msg){const el=document.createElement('div');el.className='toast';el.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>${msg}`;$('#toastRoot').appendChild(el);setTimeout(()=>{el.style.opacity='0';el.style.transition='.3s';setTimeout(()=>el.remove(),300);},2200);}
+function toast(msg,ms){const el=document.createElement('div');el.className='toast';el.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>${msg}`;$('#toastRoot').appendChild(el);setTimeout(()=>{el.style.opacity='0';el.style.transition='.3s';setTimeout(()=>el.remove(),300);},ms||2200);}
 function modal(html,wide,noBg){$('#modalRoot').innerHTML=`<div class="modal-overlay"${noBg?'':' onclick="if(event.target===this)closeModal()"'}><div class="modal ${wide?'wide':''}">${html}</div></div>`;}
 function closeModal(){$('#modalRoot').innerHTML='';}
 const icoX=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
@@ -6565,9 +6710,9 @@ async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin(
   const sub=IS_SUPER?'Controle geral de consultores, clientes e projetos':`Seus clientes${MY_LIMITE?` · limite ${MY_LIMITE}`:''}`;
   b.innerHTML=`<div class="admin-wrap">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-      <div><div style="font-family:'Fraunces',serif;font-size:26px;font-weight:700">${titulo}</div>
+      <div><div style="font-family:'Fraunces',serif;font-size:${ehMobile()?'22px':'26px'};font-weight:700">${titulo}</div>
       <div style="font-size:13px;color:var(--muted)">${sub}</div></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">${IS_SUPER?`<button class="btn btn-ghost" onclick="showConsultores()">👥 Consultores</button><button class="btn btn-ghost" onclick="showFormacaoAdmin()">🎓 Formação</button>`:''}<button class="btn btn-primary" onclick="novoCliente()">${icoPlus} Novo cliente</button><button class="btn btn-ghost" onclick="logout()">Sair</button></div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;max-width:100%">${IS_SUPER?`<button class="btn btn-ghost btn-sm" onclick="showConsultores()">👥 Consultores</button><button class="btn btn-ghost btn-sm" onclick="showFormacaoAdmin()">🎓 Formação</button>`:''}<button class="btn btn-primary btn-sm" onclick="novoCliente()">${icoPlus} Novo cliente</button><button class="btn btn-ghost btn-sm" onclick="logout()">Sair</button></div></div>
     <div id="admin_modo" style="margin-bottom:14px"></div>
     <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
       <aside id="admin_side" style="flex:0 0 300px;width:300px;max-width:100%"><div style="color:var(--muted)">Carregando…</div></aside>
@@ -6581,9 +6726,9 @@ async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin(
 }
 function consNome(id){if(!id)return 'Lidera';const c=CONSULTORES.find(x=>x.id===id);return c?(c.nome||c.email||'Consultor'):(IS_SUPER?'Lidera · grupo '+donoNome(id):'Lidera');}
 function renderAdmin(){
-  const gestao=(adminModo==='gestao'&&!adminSel);
-  const mo=$('#admin_modo');if(mo)mo.innerHTML=`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="pill-filter" style="margin:0"><button class="${adminModo==='gestao'&&!adminSel?'on':''}" onclick="adminSetModo('gestao')">📊 Gestão de projetos</button><button class="${adminModo==='clientes'||adminSel?'on':''}" onclick="adminSetModo('clientes')">🏪 Clientes</button></div>${(adminSel&&adminModo==='gestao')?`<a onclick="adminSel=null;renderAdmin()" style="font-size:12.5px;color:var(--gold);font-weight:600;cursor:pointer">← Voltar à gestão</a>`:''}</div>`;
-  const sd=$('#admin_side');if(sd)sd.style.display=gestao?'none':'';
+  const gestao=(adminModo==='gestao'&&!adminSel);const escondeLista=gestao||(ehMobile()&&!!adminSel);
+  const mo=$('#admin_modo');if(mo)mo.innerHTML=`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="pill-filter" style="margin:0"><button class="${adminModo==='gestao'&&!adminSel?'on':''}" onclick="adminSetModo('gestao')">📊 Gestão de projetos</button><button class="${adminModo==='clientes'||adminSel?'on':''}" onclick="adminSetModo('clientes')">🏪 Clientes</button></div>${adminSel&&(adminModo==='gestao'||ehMobile())?`<button class="btn btn-ghost btn-sm" onclick="adminSel=null;renderAdmin()">← ${adminModo==='gestao'?'Voltar à gestão':'Voltar à lista'}</button>`:''}</div>`;
+  const sd=$('#admin_side');if(sd)sd.style.display=escondeLista?'none':'';
   renderAdminSide();renderAdminMain();}
 function renderAdminSide(){const el=$('#admin_side');if(!el)return;
   const arqd=o=>!!(o.dados&&o.dados._arquivado), dem=o=>!!(o.dados&&o.dados._demo);
@@ -6625,19 +6770,29 @@ function renderAdminMain(){const el=$('#admin_main');if(!el)return;
   const o=ADMIN_ORGS.find(x=>x.id===adminSel);
   if(!o){adminSel=null;el.innerHTML=adminOverviewHTML();return;}
   const k=kpisDe(o.dados);const susp=o.status==='suspenso';const arq=!!(o.dados&&o.dados._arquivado);const nm=(o.nome||'').replace(/'/g,'');
-  const cad=cadDe(o);
+  const cad=cadDe(o);const i=gpInfo(o);const mob=ehMobile();
+  const tabs=[['dados','Dados de hoje'],['cadastro','Cadastro'],['projeto','Controle de projeto'],['reunioes','Reuniões']];
   el.innerHTML=`
-   <div class="card card-pad">
-     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
-       <div><div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700">${esc(o.nome||'')}</div>
-       <div style="font-size:12.5px;color:var(--soft);margin-top:2px">${esc(o.responsavel||'')||'sem responsável'}${cad.segmento?' · '+esc(cad.segmento):''}${cad.socios?' · '+esc(cadSociosLinha(cad)):''} · <span class="tag ${arq?'tag-gray':susp?'tag-red':o.status==='teste'?'tag-amber':'tag-green'}">${arq?'arquivado':o.status}</span></div></div>
-       <button class="btn btn-ghost btn-sm" onclick="adminSel=null;renderAdmin()">✕ Fechar</button>
+   <div class="card card-pad" style="padding:${mob?'14px':'18px 22px'}">
+     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+       <div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="font-family:'Fraunces',serif;font-size:${mob?'20px':'22px'};font-weight:700;line-height:1.15">${esc(o.nome||'')}</div>${gpSitTag(i)}<span class="tag ${arq?'tag-gray':susp?'tag-red':o.status==='teste'?'tag-amber':'tag-green'}">${arq?'arquivado':esc(o.status||'')}</span></div>
+       <div class="gp-mini" style="font-size:12.5px;margin-top:3px">${esc([o.responsavel||'',cad.segmento||'',cadSociosLinha(cad),IS_SUPER?consNome(o.consultor_id):''].filter(Boolean).join(' · '))||'sem responsável'}</div></div>
+       <div style="display:flex;gap:6px;flex:0 0 auto">${mob?'':`<button class="btn btn-ghost btn-sm" onclick="gpReuniaoModal('${o.id}')">${icoGpCal} Registrar reunião</button>`}<button class="icon-btn" title="Fechar" onclick="adminSel=null;renderAdmin()">${icoX}</button></div>
      </div>
-     <div class="pill-filter" style="margin:14px 0 0"><button class="${adminProjTab==='dados'?'on':''}" onclick="adminProjTab='dados';renderAdminMain()">Dados de hoje</button><button class="${adminProjTab==='cadastro'?'on':''}" onclick="adminProjTab='cadastro';renderAdminMain()">Cadastro</button><button class="${adminProjTab==='projeto'?'on':''}" onclick="adminProjTab='projeto';renderAdminMain()">Controle de projeto</button><button class="${adminProjTab==='reunioes'?'on':''}" onclick="adminProjTab='reunioes';renderAdminMain()">Reuniões</button></div>
-     ${gpResumoClienteHTML(o)}
+     ${gpResumoClienteHTML(o,i)}
+     <div class="pill-filter" style="margin:14px 0 0">${tabs.map(([v,l])=>`<button class="${adminProjTab===v?'on':''}" onclick="adminProjTab='${v}';renderAdminMain()">${l}</button>`).join('')}</div>
    </div>
-   <div style="margin-top:14px">${adminProjTab==='projeto'?projetoHTML(o):adminProjTab==='reunioes'?reunioesHTML(o):adminProjTab==='cadastro'?cadastroHTML(o):dadosHTML(o,k,nm,arq)}</div>`;
+   <div style="margin-top:12px">${adminProjTab==='projeto'?projetoHTML(o):adminProjTab==='reunioes'?reunioesHTML(o):adminProjTab==='cadastro'?cadastroHTML(o):dadosHTML(o,k,nm,arq)}</div>`;
 }
+function gpResumoClienteHTML(o,i){i=i||gpInfo(o);const h=hojeISO();const t=i.prox;const atras=t&&t.prazo&&t.prazo<h;
+  const fact=(k,v,s,cor)=>`<div class="gp-fact"><div class="k">${k}</div><div class="v" style="${cor?'color:'+cor:''}" title="${esc(v.replace(/<[^>]+>/g,''))}">${v}</div>${s?`<div class="s">${s}</div>`:''}</div>`;
+  const corU=!i.ultR?'var(--amber)':i.diasSem>GP_DIAS_CRITICO?'var(--red)':i.diasSem>GP_DIAS_ATENCAO?'var(--amber)':'';
+  return `<div class="gp-facts">
+    ${fact('Etapa atual',esc(i.etapa||'—')+(i.etapaAuto?'':' <span class="gp-mini">· manual</span>'),i.etapaTot?`${i.etapaFeitas}/${i.etapaTot} nesta etapa · ${i.pct}% do projeto`:(i.ts.length?i.pct+'% do projeto':''))}
+    ${fact('Próxima tarefa',t?esc(t.titulo):'<span class="gp-mini">nada pendente</span>',t?[t.resp,t.prazo?(atras?'atrasada '+gpHa(t.prazo):'até '+fmtDataBR(t.prazo).slice(0,5)+' · '+gpEm(t.prazo)):'sem prazo'].filter(Boolean).join(' · '):'',atras?'var(--red)':'')}
+    ${fact('Última reunião',i.ultR?fmtDataBR(i.ultR.data).slice(0,5)+' <span style="font-weight:400">· '+gpHa(i.ultR.data)+'</span>':'nunca',i.ultR?esc(i.ultR.tipo||'')+(i.nReun>1?' · '+i.nReun+' reuniões':''):'',corU)}
+    ${fact('Próxima reunião',i.proxR?fmtDataBR(i.proxR.data).slice(0,5)+(i.proxR.hora?' '+esc(i.proxR.hora):'')+' <span style="font-weight:400;color:var(--muted)">· '+gpEm(i.proxR.data)+'</span>':`<a class="gp-link" onclick="gpReuniaoModal('${o.id}','','agendar')">+ Agendar</a>`,i.proxR?esc(i.proxR.tipo||''):(i.pendConf.length?`<a class="gp-link" style="color:var(--amber);font-size:11.5px" onclick="gpConfirmarReuniao('${i.pendConf[i.pendConf.length-1]._org||o.id}','${i.pendConf[i.pendConf.length-1].id}')">${fmtDataBR(i.pendConf[i.pendConf.length-1].data).slice(0,5)} aconteceu?</a>`:''),i.proxR?'var(--navy)':'')}
+  </div>`;}
 /* ---- Cadastro do cliente (admin): segmento, sócios, redes, perfil comportamental. Fica em dados._cadastro,
    salvo por merge (lê o dados atual, troca só _cadastro) para não pisar no que o cliente está usando no app. ---- */
 const CAD_SEGMENTOS=['Buffet / Self-service','Restaurante à la carte','Hamburgueria','Pizzaria','Marmitaria','Lanchonete','Bar / Boteco','Cafeteria','Padaria','Confeitaria / Doceria','Churrascaria','Japonês / Sushi','Açaí / Sorveteria','Só delivery (dark kitchen)','Food truck','Outro'];
@@ -6687,45 +6842,48 @@ function dadosHTML(o,k,nm,arq){return `<div class="card card-pad">
      <button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirCliente('${o.id}','${nm}')">${icoTrash} Excluir</button>`
      :`<button class="btn btn-ghost btn-sm" onclick="arquivarCliente('${o.id}',true)">Arquivar</button>`}
   </div></div>`;}
+let _ptOpen={};
 function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=projAtrasadas(p);const h=hojeISO();const cont=p.tarefas.filter(x=>x.fase!=='Onboarding');const feitas=cont.filter(x=>x.feito).length;
+  const info=gpInfo(o);const mob=ehMobile();
   const fases=[];p.tarefas.forEach(t=>{let g=fases.find(f=>f.nome===t.fase);if(!g){g={nome:t.fase,itens:[]};fases.push(g);}g.itens.push(t);});
   // sugestões de responsável: a Lidera, o dono e quem está na Equipe do restaurante
   const respOpts=[...new Set(['Lidera','Cliente'].concat((((o.dados||{}).equipe)||[]).map(m=>(m&&m.nome||'').trim()).filter(Boolean)))];
   let html=`<datalist id="proj_resp_opts">${respOpts.map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>
-  <div class="card card-pad">
+  <div class="card card-pad" style="padding:${mob?'14px':'16px 22px'}">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-      <div style="font-weight:700">Progresso do projeto <span style="font-size:11px;color:var(--soft);font-weight:500">(Onboarding não conta)</span></div>
-      <div style="font-size:13px;color:var(--soft)">${feitas}/${cont.length} tarefas${atr?` · <span style="color:var(--red);font-weight:600">${atr} atrasada(s)</span>`:''}</div>
+      <div style="font-weight:700">Progresso do projeto <span class="gp-mini">(Onboarding não conta)</span></div>
+      <div style="font-size:12.5px;color:var(--soft)">${feitas}/${cont.length} tarefas${atr?` · <span style="color:var(--red);font-weight:600">${atr} atrasada${atr>1?'s':''}</span>`:''}</div>
     </div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <div style="flex:1;height:12px;border-radius:7px;background:var(--line);overflow:hidden"><div style="height:12px;width:${pct}%;background:${pct>=100?'var(--green)':'var(--gold)'};transition:width .3s"></div></div>
-      <div style="font-weight:700;font-size:18px;color:${pct>=100?'var(--green)':'var(--navy)'}">${pct}%</div>
-    </div>
+    <div style="display:flex;align-items:center;gap:12px"><div class="gp-prog ${pct>=100?'done':''}" style="height:10px"><i style="width:${pct}%"></i></div><div style="font-weight:700;font-size:18px;font-family:'Fraunces',serif;color:${pct>=100?'var(--green)':'var(--navy)'}">${pct}%</div></div>
+    ${p.tarefas.length?'':`<div class="alert alert-amber" style="margin:12px 0 0">${icoWarn}<div>Este cliente ainda não tem plano de projeto. Crie a primeira etapa abaixo ou importe um PDF do Plano de Guerra.</div></div>`}
   </div>`;
-  fases.forEach(f=>{const done=f.itens.filter(x=>x.feito).length;const fa=esc(f.nome);const faseArg=f.nome.replace(/['"\\]/g,'');
-    html+=`<div class="card card-pad proj-fase" style="margin-top:12px" ondragover="projDragOver(event)" ondragleave="projDragLeave(event)" ondrop="projDropFase(event,'${fa}')">
-      <div draggable="true" ondragstart="projDragStart(event,'fase','${fa}')" ondragend="projDragEnd(event)" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span title="Arrastar etapa" style="color:var(--soft);font-size:15px;cursor:grab;flex:0 0 auto;user-select:none">⠿</span>
-        <input class="input" value="${fa}" onchange="projRenameFase('${fa}',this.value)" title="Editar nome da etapa" style="flex:1;min-width:120px;font-weight:700;font-family:'Fraunces',serif;font-size:16px;border-color:transparent;background:transparent;padding:3px 6px">
-        ${f.nome==='Onboarding'?`<span class="tag tag-gray" style="flex:0 0 auto">não conta no %</span>`:''}
-        <button class="btn btn-ghost btn-sm" title="Definir o responsável de todas as tarefas desta etapa de uma vez" onclick="projRespFase('${fa}')" style="flex:0 0 auto;padding:4px 8px;font-size:11.5px">👤 Responsável da etapa</button>
-        <span style="font-size:12px;color:var(--soft);flex:0 0 auto">${done}/${f.itens.length}</span>
-        <button class="btn btn-ghost btn-sm" title="Excluir a etapa inteira e as tarefas dela" onclick="projDelFase('${fa}')" style="flex:0 0 auto;padding:4px 7px;color:var(--red)">✕</button>
-      </div>`;
+  fases.forEach(f=>{const done=f.itens.filter(x=>x.feito).length;const pend=f.itens.length-done;const fa=esc(f.nome);const faseArg=f.nome.replace(/['"\\]/g,'');const cur=f.nome===info.etapa;
+    const late=f.itens.filter(t=>!t.feito&&t.prazo&&t.prazo<h).length;const key=o.id+'|'+f.nome;const aberta=(key in _ptOpen)?_ptOpen[key]:(pend>0);
+    const w=f.itens.length?Math.round(done/f.itens.length*100):0;
+    html+=`<details class="pt-fase ${cur?'cur':''}" ${aberta?'open':''} ontoggle="_ptOpen['${esc(key)}']=this.open" ondragover="projDragOver(event)" ondragleave="projDragLeave(event)" ondrop="projDropFase(event,'${fa}')">
+      <summary draggable="true" ondragstart="projDragStart(event,'fase','${fa}')" ondragend="projDragEnd(event)" title="Clique para abrir ou recolher a etapa. Arraste para reordenar.">
+        <span class="car">${icoGpChev}</span>
+        <input class="ttl" value="${fa}" onclick="event.preventDefault();event.stopPropagation()" onkeydown="if(event.key==='Enter')this.blur()" onchange="projRenameFase('${fa}',this.value)" title="Clique para renomear a etapa">
+        ${cur?`<span class="tag tag-gold">etapa atual</span>`:''}${f.nome==='Onboarding'?`<span class="tag tag-gray">não conta no %</span>`:''}${late?`<span class="tag tag-red">${late} atrasada${late>1?'s':''}</span>`:''}${(pend===0&&f.itens.length)?`<span class="tag tag-green">concluída</span>`:''}
+        <span class="cnt"><span class="gp-prog ${w>=100?'done':''}"><i style="width:${w}%"></i></span>${done}/${f.itens.length}</span>
+        ${mob?'':`<button class="icon-btn" title="Definir o responsável de todas as tarefas desta etapa de uma vez" onclick="event.preventDefault();event.stopPropagation();projRespFase('${fa}')">${icoGpUsers}</button>
+        <button class="icon-btn" title="Excluir a etapa inteira e as tarefas dela" style="color:var(--red)" onclick="event.preventDefault();event.stopPropagation();projDelFase('${fa}')">${icoTrash}</button>`}
+      </summary>
+      <div class="body">`;
     f.itens.forEach(t=>{const over=!t.feito&&t.prazo&&t.prazo<h;
-      html+=`<div data-id="${t.id}" ondragover="projDragOver(event)" ondragleave="projDragLeave(event)" ondrop="projDropTask(event,'${t.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
-        <span draggable="true" ondragstart="projDragStart(event,'task','${t.id}')" ondragend="projDragEnd(event)" title="Arrastar tarefa" style="color:var(--soft);cursor:grab;flex:0 0 auto;user-select:none">⠿</span>
-        <input type="checkbox" ${t.feito?'checked':''} onchange="projToggle('${t.id}')" style="width:18px;height:18px;flex:0 0 auto;cursor:pointer">
-        <input class="input" value="${esc(t.titulo)}" onchange="projRename('${t.id}',this.value)" title="Editar descrição da tarefa" style="flex:1;min-width:150px;padding:6px 8px;${t.feito?'text-decoration:line-through;color:var(--soft)':''}">
-        ${over?`<span style="color:var(--red);font-size:11px;font-weight:600;flex:0 0 auto">⚠ Atrasada</span>`:''}
-        <input class="input" list="proj_resp_opts" value="${esc(t.resp||'')}" placeholder="Responsável" title="Quem é responsável por esta tarefa" onchange="projResp('${t.id}',this.value)" style="width:150px;flex:0 0 auto;padding:6px 8px">
-        <input type="date" class="input" value="${t.prazo||''}" onchange="projPrazo('${t.id}',this.value)" style="width:148px;flex:0 0 auto;padding:6px 8px;${over?'border-color:var(--red);color:var(--red)':''}">
-        <button class="btn btn-ghost btn-sm" title="Excluir tarefa" onclick="projDel('${t.id}')" style="padding:4px 8px;color:var(--red);flex:0 0 auto">✕</button>
+      html+=`<div class="pt-row ${t.feito?'done':''}" data-id="${t.id}" ondragover="projDragOver(event)" ondragleave="projDragLeave(event)" ondrop="projDropTask(event,'${t.id}')">
+        <span class="drag" draggable="true" ondragstart="projDragStart(event,'task','${t.id}')" ondragend="projDragEnd(event)" title="Arrastar tarefa">⠿</span>
+        <input type="checkbox" ${t.feito?'checked':''} onchange="projToggle('${t.id}')" title="${t.feito?'Concluída'+(t.feitoEm?' em '+fmtDataBR(t.feitoEm):''):'Marcar como concluída'}">
+        <input class="inp t" value="${esc(t.titulo)}" onchange="projRename('${t.id}',this.value)" title="Clique para editar a descrição">
+        ${mob?`<button class="del" title="Excluir tarefa" onclick="projDel('${t.id}')">${icoTrash}</button><div class="r2">`:''}
+        <input class="inp" list="proj_resp_opts" value="${esc(t.resp||'')}" placeholder="Responsável" title="Quem é responsável por esta tarefa" onchange="projResp('${t.id}',this.value)">
+        <input type="date" class="inp ${over?'late':''}" value="${t.prazo||''}" onchange="projPrazo('${t.id}',this.value)" title="${over?'Atrasada '+gpHa(t.prazo):'Prazo'}">
+        ${mob?`${over?`<span class="pt-late">atrasada</span>`:''}</div>`:`<button class="del" title="Excluir tarefa" onclick="projDel('${t.id}')">${icoTrash}</button>`}
       </div>`;});
-    html+=`<button class="btn btn-ghost btn-sm" onclick="projAdd('${faseArg}')" style="margin-top:10px">+ Nova tarefa</button></div>`;});
-  html+=`<div style="margin-top:12px;color:var(--soft);font-size:12px">Arraste o ícone ⠿ para reordenar tarefas e etapas. Clique nos textos para editar.</div>
-  <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="projAdd('')">+ Nova etapa / tarefa avulsa</button>
-    <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Ler um plano feito em outro app e trazer as etapas e tarefas">📄 Importar PDF<input type="file" accept="application/pdf,.pdf" style="display:none" onchange="projImportarPdf(this)"></label></div>`;
+    html+=`<div style="display:flex;gap:8px;flex-wrap:nowrap;margin-top:8px;align-items:center"><button class="btn btn-ghost btn-sm" onclick="projAdd('${faseArg}')">${icoPlus} Nova tarefa</button>${mob?`<button class="btn btn-ghost btn-sm" onclick="projRespFase('${fa}')">${icoGpUsers} Responsável</button><button class="icon-btn" title="Excluir a etapa inteira" style="color:var(--red);margin-left:auto" onclick="projDelFase('${fa}')">${icoTrash}</button>`:''}</div></div></details>`;});
+  html+=`<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn btn-ghost btn-sm" onclick="projAdd('')">${icoPlus} Nova etapa / tarefa avulsa</button>
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Ler um plano feito em outro app e trazer as etapas e tarefas">${icoGpDoc} Importar PDF<input type="file" accept="application/pdf,.pdf" style="display:none" onchange="projImportarPdf(this)"></label>
+    <span class="gp-mini">${mob?'Toque no nome da etapa ou da tarefa para editar.':'Arraste o ícone ⠿ para reordenar. Clique nos textos para editar. Etapas concluídas ficam recolhidas.'}</span></div>`;
   return html;
 }
 function adminOverviewHTML(){const arqd=o=>!!(o.dados&&o.dados._arquivado);
@@ -6793,9 +6951,30 @@ async function adminSaveOrgKeys(o,keys){if(!o)return false;keys=keys.filter(Bool
 async function adminSaveKeys(o,keys){if(!o)return false;keys=(keys||[]).filter(Boolean);let ok=true;
   if(keys.includes('_crm'))ok=(await crmSalvar(o))&&ok;
   const resto=keys.filter(k=>k!=='_crm');if(resto.length)ok=(await adminSaveOrgKeys(o,resto))&&ok;return ok;}
+/* ícones SVG do módulo de gestão (mesma família dos ico* do app) */
+const gpI=(d,sw)=>`<svg class="gp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw||2}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const icoGpList=gpI('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'),
+ icoGpKanban=gpI('<rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="4" height="8" rx="1"/>'),
+ icoGpCal=gpI('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'),
+ icoGpClock=gpI('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+ icoGpCheck=gpI('<path d="M20 6L9 17l-5-5"/>',2.5),
+ icoGpSearch=gpI('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>'),
+ icoGpFilter=gpI('<path d="M3 5h18l-7 8v5l-4 2v-7z"/>'),
+ icoGpDown=gpI('<path d="M12 4v12M6 10l6 6 6-6M4 20h16"/>'),
+ icoGpSync=gpI('<path d="M21 12a9 9 0 0 1-15.5 6.3M3 12a9 9 0 0 1 15.5-6.3M21 3v6h-6M3 21v-6h6"/>'),
+ icoGpBuild=gpI('<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/>'),
+ icoGpChev=gpI('<path d="M9 6l6 6-6 6"/>',2.2),
+ icoGpUsers=gpI('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4.5-6.2"/>'),
+ icoGpVideo=gpI('<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/>'),
+ icoGpDoc=gpI('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h8"/>'),
+ icoGpMic=gpI('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
+ icoGpPlay=gpI('<circle cx="12" cy="12" r="9"/><path d="M10 8l6 4-6 4z"/>'),
+ icoGpExt=gpI('<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>'),
+ icoGpPin=gpI('<path d="M12 21s7-6.5 7-11.5a7 7 0 0 0-14 0C5 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>'),
+ icoGpSpark=gpI('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>');
 /* links da reunião (anotações do Gemini, transcrição, gravação, evento) */
-const GP_LINKS=[['meet','🎦','Entrar no Meet'],['notas','📝','Anotações'],['transcricao','🗒','Transcrição'],['gravacao','🎥','Gravação'],['evento','📅','Evento']];
-function gpLinksHTML(r,compacto){const l=(r&&r.links)||{};return GP_LINKS.filter(([k])=>l[k]).map(([k,ic,rot])=>`<a href="${esc(l[k])}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${rot}" style="text-decoration:none;${compacto?'font-size:13px;margin-right:4px':'display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--navy);border:1px solid var(--line);border-radius:8px;padding:3px 8px;margin:0 6px 4px 0;background:var(--card)'}">${ic}${compacto?'':' '+rot}</a>`).join('');}
+const GP_LINKS=[['meet',icoGpVideo,'Entrar no Meet'],['notas',icoGpDoc,'Anotações'],['transcricao',icoGpMic,'Transcrição'],['gravacao',icoGpPlay,'Gravação'],['evento',icoGpCal,'Evento']];
+function gpLinksHTML(r,compacto){const l=(r&&r.links)||{};return GP_LINKS.filter(([k])=>l[k]).map(([k,ic,rot])=>`<a class="gp-lk ${compacto?'ic':''}" href="${esc(l[k])}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${rot}">${ic}${compacto?'':rot}</a>`).join('');}
 function gpGcalLink(o,r){const d=(r.data||'').replace(/-/g,'');if(!d)return '';const hm=(r.hora||'09:00').split(':');const h=+hm[0]||9,m=+hm[1]||0;const p=n=>String(n).padStart(2,'0');
   const fim=new Date(2000,0,1,h,m+60);const ini=d+'T'+p(h)+p(m)+'00',end=d+'T'+p(fim.getHours())+p(fim.getMinutes())+'00';
   const emails=((o.dados&&o.dados.equipe)||[]).map(x=>(x&&x.email||'').trim()).filter(Boolean).slice(0,6);
@@ -6877,10 +7056,10 @@ function gpFiltrar(infos){const q=lmNorm(GP.q);const h=hojeISO(),em7=diasSoma(h,
     if(GP.cons){if(GP.cons==='__lidera__'){if(orgDeConsultor(i.o))return false;}else if(i.o.consultor_id!==GP.cons)return false;}
     if(GP.grupo&&orgDonoId(i.o)!==GP.grupo)return false;
     if(GP.resp){const r=((i.prox&&i.prox.resp)||'').trim();if(GP.resp==='__sem__'){if(r)return false;}else if(r!==GP.resp)return false;}
-    if(GP.reun==='sem15'&&!(i.diasSem==null||i.diasSem>GP_DIAS_ATENCAO))return false;
-    if(GP.reun==='sem30'&&!(i.diasSem==null||i.diasSem>GP_DIAS_CRITICO))return false;
-    if(GP.reun==='nunca'&&i.diasSem!=null)return false;
-    if(GP.reun==='semprox'&&i.proxR)return false;
+    if(GP.reun==='sem15'&&!(gpVivo(i)&&(i.diasSem==null||i.diasSem>GP_DIAS_ATENCAO)))return false;
+    if(GP.reun==='sem30'&&!(gpVivo(i)&&(i.diasSem==null||i.diasSem>GP_DIAS_CRITICO)))return false;
+    if(GP.reun==='nunca'&&!(gpVivo(i)&&i.diasSem==null))return false;
+    if(GP.reun==='semprox'&&!(gpVivo(i)&&!i.proxR))return false;
     if(GP.reun==='semana'&&!(i.proxR&&i.proxR.data<=em7))return false;
     if(GP.reun==='confirmar'&&!i.pendConf.length)return false;
     if(GP.reun==='atrasadas'&&!i.atr.length)return false;
@@ -6893,198 +7072,214 @@ function gpFiltrar(infos){const q=lmNorm(GP.q);const h=hojeISO(),em7=diasSoma(h,
     progasc:(a,b)=>(a.pct-b.pct)||nome(a,b),progdesc:(a,b)=>(b.pct-a.pct)||nome(a,b),
     parado:(a,b)=>(a.ultAtiv||'0000').localeCompare(b.ultAtiv||'0000')||nome(a,b),nome};
   return out.sort(ord[GP.ord]||ord.critico);}
-function gpSet(k,v){GP[k]=v;gpPersist();if(k==='q')gpRenderResultados();else renderGestao();}
+function gpSet(k,v){GP[k]=v;gpPersist();if(k==='q'){const c=$('#gp_qclr');if(c)c.style.display=v?'':'none';gpRenderResultados();}else renderGestao();}
 function gpLimpar(){const v=GP.view,o=GP.ord;GP=Object.assign({},GP_DEF,{view:v,ord:o});gpPersist();renderGestao();}
 function gpAtalho(campo,valor){GP[campo]=(GP[campo]===valor)?'':valor;gpPersist();renderGestao();}
 function gpAbrir(id,tab){adminSel=id;adminProjTab=tab||'projeto';renderAdmin();const o=ADMIN_ORGS.find(x=>x.id===id);if(o){const antes=JSON.stringify((o.dados&&o.dados._projeto)||null);projEnsure(o);if(JSON.stringify(o.dados._projeto)!==antes)projSaveOrg(o);}window.scrollTo(0,0);const b=document.getElementById('adminScreen');if(b)b.scrollTop=0;}
 
-function renderGestao(){const el=$('#admin_main');if(!el)return;const infos=gpCarteira();
-  const uniq=a=>[...new Set(a.filter(Boolean))];
-  const ordFases=PROJETO_FASES.map(f=>f.nome);const etapas=uniq(infos.map(i=>i.etapa)).sort((a,b)=>{const x=ordFases.indexOf(a),y=ordFases.indexOf(b);return (x<0?50:x)-(y<0?50:y)||a.localeCompare(b);});
-  const segs=uniq(infos.map(i=>i.seg)).sort((a,b)=>a.localeCompare(b));
-  const resps=uniq(infos.map(i=>((i.prox&&i.prox.resp)||'').trim())).sort((a,b)=>a.localeCompare(b));
-  const sel=(k,opts,rot)=>`<select class="input" style="flex:1 1 150px;min-width:0;max-width:${ehMobile()?'100%':'230px'};padding:8px 10px;${GP[k]?'border-color:var(--navy);color:var(--navy);font-weight:600':''}" onchange="gpSet('${k}',this.value)"><option value="">${rot}</option>${opts.map(([v,l])=>`<option value="${esc(v)}" ${GP[k]===v?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
-  const ativo=['q','etapa','sit','reun','seg','cons','resp','grupo'].some(k=>GP[k]);
-  const nFiltros=['etapa','sit','reun','seg','cons','resp','grupo'].filter(k=>GP[k]).length;
-  const donosIds=uniq(infos.map(i=>orgDonoId(i.o)));
-  const semPlano=infos.filter(i=>!i.ts.length&&!orgDeConsultor(i.o));
-  el.innerHTML=`
-  ${ADMIN_PEND.length?`<div class="alert alert-amber" style="margin-bottom:12px">${icoWarn}<div><b>${ADMIN_PEND.length}</b> novo(s) cadastro(s) aguardando vínculo. <a onclick="adminSetModo('clientes')" style="color:var(--navy);font-weight:600;cursor:pointer">Ver em Clientes</a></div></div>`:''}
-  ${semPlano.length?`<div class="alert alert-amber" style="margin-bottom:12px">${icoWarn}<div><b>${semPlano.length}</b> unidade(s) da carteira Lidera estão sem plano de projeto (${esc(semPlano.slice(0,4).map(i=>i.o.nome).join(', '))}${semPlano.length>4?'…':''}). <a onclick="gpAplicarPlanoPadrao()" style="color:var(--navy);font-weight:700;cursor:pointer">Aplicar o plano padrão</a></div></div>`:''}
-  <div id="gp_kpis"></div>
-  <div class="card card-pad" style="margin-top:14px;padding:12px 14px">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <input class="input" id="gp_q" value="${esc(GP.q)}" placeholder="🔎 Cliente, sócio, segmento, tarefa…" oninput="gpSet('q',this.value)" style="flex:2 1 220px;min-width:0;padding:8px 10px">
-      ${ehMobile()?`<details style="flex:1 1 100%" ${nFiltros?'open':''}><summary style="font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;padding:6px 2px">Filtros${nFiltros?' ('+nFiltros+' ativo'+(nFiltros>1?'s':'')+')':''}</summary><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">`:''}
-      ${sel('etapa',etapas.map(e=>[e,e]),'Todas as etapas')}
-      ${sel('sit',[['critico','Crítico'],['atencao','Atenção'],['ok','Em dia'],['concluido','Concluído'],['suspenso','Suspenso']],'Todas as situações')}
-      ${sel('reun',[['sem15','Sem reunião há +'+GP_DIAS_ATENCAO+' dias'],['sem30','Sem reunião há +'+GP_DIAS_CRITICO+' dias'],['nunca','Nunca teve reunião'],['semprox','Sem próxima reunião agendada'],['semana','Reunião nos próximos 7 dias'],['confirmar','Reunião a confirmar'],['atrasadas','Com tarefa atrasada']],'Reuniões e prazos')}
-      ${segs.length?sel('seg',segs.map(x=>[x,x]),'Todos os segmentos'):''}
-      ${(IS_SUPER&&CONSULTORES.length)?sel('cons',[['__lidera__','Lidera']].concat(CONSULTORES.map(c=>[c.id,c.nome||c.email||'Consultor'])),'Todos os consultores'):''}
-      ${donosIds.length?sel('grupo',donosIds.map(id=>[id,'Grupo '+donoNome(id)+' ('+infos.filter(i=>orgDonoId(i.o)===id).length+' un.)']),'Todos os grupos'):''}
-      ${sel('resp',resps.map(x=>[x,x]).concat([['__sem__','(sem responsável)']]),'Próxima tarefa: todos')}
-      ${ehMobile()?'</div></details>':''}
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
-      <div class="pill-filter" style="margin:0">${[['tabela','☰ Lista'],['kanban','▥ Etapas'],['agenda','🗓 Agenda']].map(([v,l])=>`<button class="${GP.view===v?'on':''}" onclick="gpSet('view','${v}')">${l}</button>`).join('')}</div>
-      <select class="input" style="width:auto;padding:7px 10px;font-size:12.5px" onchange="gpSet('ord',this.value)" title="Ordenar">${[['critico','Ordenar: mais críticos primeiro'],['reuniao','Mais tempo sem reunião'],['proxreun','Próxima reunião mais perto'],['prazo','Prazo da próxima tarefa'],['parado','Parados há mais tempo'],['progasc','Menor progresso'],['progdesc','Maior progresso'],['nome','Nome (A a Z)']].map(([v,l])=>`<option value="${v}" ${GP.ord===v?'selected':''}>${l}</option>`).join('')}</select>
-      <span id="gp_cont" style="font-size:12.5px;color:var(--soft)"></span>
-      ${(function(){const s=Object.values(ADMIN_CRM).map(c=>c&&c.syncEm||'').sort().pop();return s?`<span title="Última vez em que a sincronização trouxe novidades do Google Agenda e das anotações do Gemini" style="font-size:11.5px;color:var(--soft)">🔄 agenda e anotações: ${fmtDataBR(s.slice(0,10)).slice(0,5)} ${s.slice(11,16)}</span>`:'';})()}
-      ${ativo?`<a onclick="gpLimpar()" style="font-size:12.5px;color:var(--gold);font-weight:600;cursor:pointer">Limpar filtros ✕</a>`:''}
-      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="gpExportCSV()">⬇ Exportar</button>
-    </div>
-  </div>
-  <div id="gp_res" style="margin-top:14px"></div>`;
-  gpRenderResultados();}
-function gpRenderResultados(){const infos=gpCarteira();const list=gpFiltrar(infos);const h=hojeISO(),em7=diasSoma(h,7);
-  const vivos=infos.filter(i=>i.sit!=='suspenso'&&i.sit!=='concluido');
-  const n=f=>infos.filter(f).length;
-  const k=(rot,val,sub,cor,campo,valor)=>{const on=campo&&GP[campo]===valor;return `<div class="kpi" ${campo?`onclick="gpAtalho('${campo}','${valor}')"`:''} style="${campo?'cursor:pointer;':''}${on?'outline:2px solid var(--navy);':''}padding:12px 14px"><div class="k-lbl">${rot}</div><div class="k-val" style="font-size:24px;color:${cor||'var(--ink)'}">${val}</div><div class="k-sub" style="color:var(--soft)">${sub}</div></div>`;};
-  const kp=$('#gp_kpis');if(kp)kp.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(${ehMobile()?'128px':'150px'},1fr));gap:10px">
-    ${k('Carteira',infos.length,vivos.length+' em andamento','', '', '')}
+function gpVivo(i){return i.sit!=='suspenso'&&i.sit!=='concluido';}
+let _gpFiltrosAberto=false;
+function gpToggleFiltros(){_gpFiltrosAberto=!_gpFiltrosAberto;const p=$('#gp_fpanel');if(p)p.style.display=_gpFiltrosAberto?'flex':'none';}
+function gpStatsHTML(infos){const h=hojeISO(),em7=diasSoma(h,7);const vivos=infos.filter(gpVivo);const n=f=>infos.filter(f).length;
+  const k=(rot,val,sub,cor,campo,valor)=>{const on=GP[campo]===valor;return `<button class="gp-stat ${on?'on':''}" onclick="gpAtalho('${campo}','${valor}')" title="${on?'Clique para tirar este filtro':'Clique para filtrar a lista'}"><span class="l">${rot}</span><span class="v" style="color:${cor}">${val}</span><span class="s">${sub}</span></button>`;};
+  return `<div class="gp-stats">
     ${k('Críticos',n(i=>i.sit==='critico'),'precisam de ação agora','var(--red)','sit','critico')}
     ${k('Atenção',n(i=>i.sit==='atencao'),'algum ponto pendente','var(--amber)','sit','atencao')}
     ${k('Em dia',n(i=>i.sit==='ok'),'sem pendências','var(--green)','sit','ok')}
     ${k('Reuniões em 7 dias',n(i=>i.proxR&&i.proxR.data<=em7),'já agendadas','var(--navy)','reun','semana')}
     ${k('Sem contato',vivos.filter(i=>i.diasSem==null||i.diasSem>GP_DIAS_ATENCAO).length,'+'+GP_DIAS_ATENCAO+' dias sem reunião','var(--amber)','reun','sem15')}
     ${k('Tarefas atrasadas',infos.reduce((s,i)=>s+i.atr.length,0),n(i=>i.atr.length)+' cliente(s)','var(--red)','reun','atrasadas')}
-  </div>`;
-  const c=$('#gp_cont');if(c)c.textContent=list.length+' de '+infos.length+' cliente(s)';
+  </div>`;}
+function renderGestao(){const el=$('#admin_main');if(!el)return;const infos=gpCarteira();const mob=ehMobile();
+  const uniq=a=>[...new Set(a.filter(Boolean))];
+  const ordFases=PROJETO_FASES.map(f=>f.nome);const etapas=uniq(infos.map(i=>i.etapa)).sort((a,b)=>{const x=ordFases.indexOf(a),y=ordFases.indexOf(b);return (x<0?50:x)-(y<0?50:y)||a.localeCompare(b);});
+  const segs=uniq(infos.map(i=>i.seg)).sort((a,b)=>a.localeCompare(b));
+  const resps=uniq(infos.map(i=>((i.prox&&i.prox.resp)||'').trim())).sort((a,b)=>a.localeCompare(b));
+  const sel=(k,rot,opts)=>{const os=opts.slice();if(GP[k]&&!os.some(([v])=>v===GP[k]))os.push([GP[k],GP[k]]);
+    return `<select class="gp-fsel ${GP[k]?'on':''}" onchange="gpSet('${k}',this.value)" title="${rot}"><option value="">${rot}</option>${os.map(([v,l])=>`<option value="${esc(v)}" ${GP[k]===v?'selected':''}>${esc(l)}</option>`).join('')}</select>`;};
+  const chaves=['etapa','sit','reun','seg','cons','resp','grupo'];const nFiltros=chaves.filter(k=>GP[k]).length;const ativo=nFiltros||GP.q;
+  const donosIds=uniq(infos.map(i=>orgDonoId(i.o)));
+  const semPlano=infos.filter(i=>!i.ts.length&&!orgDeConsultor(i.o));
+  const sync=(function(){const s=Object.values(ADMIN_CRM).map(c=>c&&c.syncEm||'').sort().pop();return s?`<span class="gp-mini" title="Última vez em que a sincronização trouxe novidades do Google Agenda e das anotações do Gemini" style="display:inline-flex;gap:4px;align-items:center;white-space:nowrap">${icoGpSync}${mob?'':'agenda e anotações: '}${fmtDataBR(s.slice(0,10)).slice(0,5)} ${s.slice(11,16)}</span>`:'';})();
+  const filtros=sel('sit','Situação',[['critico','Crítico'],['atencao','Atenção'],['ok','Em dia'],['concluido','Concluído'],['suspenso','Suspenso']])
+    +sel('etapa','Etapa',etapas.map(e=>[e,e]))
+    +sel('reun','Reuniões e prazos',[['sem15','Sem reunião há +'+GP_DIAS_ATENCAO+' dias'],['sem30','Sem reunião há +'+GP_DIAS_CRITICO+' dias'],['nunca','Nunca teve reunião'],['semprox','Sem próxima reunião agendada'],['semana','Reunião nos próximos 7 dias'],['confirmar','Reunião a confirmar'],['atrasadas','Com tarefa atrasada']])
+    +(segs.length?sel('seg','Segmento',segs.map(x=>[x,x])):'')
+    +((IS_SUPER&&CONSULTORES.length)?sel('cons','Consultor',[['__lidera__','Lidera']].concat(CONSULTORES.map(c=>[c.id,c.nome||c.email||'Consultor']))):'')
+    +(donosIds.length?sel('grupo','Grupo',donosIds.map(id=>[id,donoNome(id)+' ('+infos.filter(i=>orgDonoId(i.o)===id).length+' un.)'])):'')
+    +sel('resp','Responsável da tarefa',resps.map(x=>[x,x]).concat([['__sem__','(sem responsável)']]));
+  el.innerHTML=`
+  ${ADMIN_PEND.length?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${ADMIN_PEND.length}</b> novo(s) cadastro(s) aguardando vínculo. <a class="gp-link" onclick="adminSetModo('clientes')">Ver em Clientes</a></div></div>`:''}
+  ${semPlano.length?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${semPlano.length}</b> unidade(s) da carteira Lidera sem plano de projeto (${esc(semPlano.slice(0,4).map(i=>i.o.nome).join(', '))}${semPlano.length>4?'…':''}). <a class="gp-link" onclick="gpAplicarPlanoPadrao()">Aplicar o plano padrão</a></div></div>`:''}
+  <div id="gp_kpis">${gpStatsHTML(infos)}</div>
+  <div class="card" style="margin-top:12px;padding:${mob?'10px 12px':'12px 14px'}">
+    <div class="gp-bar">
+      <div class="gp-search">${icoGpSearch}<input class="input" id="gp_q" value="${esc(GP.q)}" placeholder="${mob?'Buscar cliente, sócio, tarefa…':'Buscar por cliente, sócio, segmento ou tarefa'}" oninput="gpSet('q',this.value)" style="padding-right:36px"><button class="clr" id="gp_qclr" style="display:${GP.q?'':'none'}" onclick="gpSet('q','');$('#gp_q').value='';$('#gp_q').focus()" title="Limpar busca">${icoX}</button></div>
+      ${mob?`<button class="btn btn-ghost btn-sm" onclick="gpToggleFiltros()">${icoGpFilter} Filtros${nFiltros?` <b style="color:var(--navy)">${nFiltros}</b>`:''}</button>`:filtros}
+    </div>
+    ${mob?`<div id="gp_fpanel" class="gp-bar" style="margin-top:8px;display:${(nFiltros||_gpFiltrosAberto)?'flex':'none'}">${filtros}</div>`:''}
+    <div class="gp-bar" style="margin-top:10px">
+      <div class="gp-seg">${[['tabela',icoGpList,'Lista'],['kanban',icoGpKanban,'Etapas'],['agenda',icoGpCal,'Agenda']].map(([v,ic,l])=>`<button class="${GP.view===v?'on':''}" onclick="gpSet('view','${v}')">${ic}${l}</button>`).join('')}</div>
+      <select class="gp-fsel" onchange="gpSet('ord',this.value)" title="Ordem da lista">${[['critico','Mais críticos primeiro'],['reuniao','Mais tempo sem reunião'],['proxreun','Próxima reunião mais perto'],['prazo','Prazo da próxima tarefa'],['parado','Parados há mais tempo'],['progasc','Menor progresso'],['progdesc','Maior progresso'],['nome','Nome (A a Z)']].map(([v,l])=>`<option value="${v}" ${GP.ord===v?'selected':''}>Ordem: ${l}</option>`).join('')}</select>
+      <span id="gp_cont" class="gp-mini" style="font-size:12.5px"></span>
+      ${ativo?`<a class="gp-link" onclick="gpLimpar()">Limpar filtros</a>`:''}
+      <span style="margin-left:auto;display:inline-flex;gap:10px;align-items:center">${sync}<button class="btn btn-ghost btn-sm" onclick="gpExportCSV()" title="Exportar a lista filtrada em planilha (CSV)">${icoGpDown}${mob?'':' Exportar'}</button></span>
+    </div>
+  </div>
+  <div id="gp_res" style="margin-top:12px"></div>`;
+  gpRenderResultados();}
+function gpRenderResultados(){const infos=gpCarteira();const list=gpFiltrar(infos);
+  const kp=$('#gp_kpis');if(kp)kp.innerHTML=gpStatsHTML(infos);
+  const c=$('#gp_cont');if(c)c.textContent=list.length+' de '+infos.length+' cliente'+(infos.length===1?'':'s')+' · '+infos.filter(gpVivo).length+' em andamento';
   const el=$('#gp_res');if(!el)return;
-  if(!infos.length){el.innerHTML=`<div class="card card-pad" style="color:var(--muted)">Nenhum cliente na carteira ainda.</div>`;return;}
-  if(!list.length){el.innerHTML=`<div class="card card-pad" style="color:var(--muted)">Nenhum cliente com esses filtros. <a onclick="gpLimpar()" style="color:var(--gold);font-weight:600;cursor:pointer">Limpar filtros</a></div>`;return;}
+  const vazio=(t,s)=>`<div class="card card-pad" style="text-align:center;color:var(--muted);padding:34px 20px"><div style="font-size:15px;font-weight:600;color:var(--ink)">${t}</div><div style="font-size:13px;margin-top:4px">${s}</div></div>`;
+  if(!infos.length){el.innerHTML=vazio('Nenhum cliente na carteira ainda','Cadastre o primeiro cliente em "Clientes" para o painel começar a acompanhar o projeto.');return;}
+  if(!list.length){el.innerHTML=vazio('Nenhum cliente com esses filtros',`<a class="gp-link" onclick="gpLimpar()">Limpar filtros</a> para ver a carteira inteira.`);return;}
   el.innerHTML=GP.view==='kanban'?gpKanbanHTML(list):GP.view==='agenda'?gpAgendaHTML(list):gpTabelaHTML(list);}
 
-/* blocos reutilizados pela lista, kanban e cabeçalho do cliente */
-function gpSitTag(i){const s=GP_SIT[i.sit]||GP_SIT.ok;return `<span class="tag ${s[1]}" style="white-space:nowrap"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${s[2]};margin-right:5px"></span>${s[0]}</span>`;}
-function gpMotivosHTML(i,max){const ms=i.motivos.slice().sort((a,b)=>b.n-a.n).slice(0,max||3);return ms.map(m=>`<div style="font-size:11.5px;color:${m.n===2?'var(--red)':m.n===1?'var(--amber)':'var(--soft)'};line-height:1.35">• ${esc(m.t)}</div>`).join('');}
+/* blocos reutilizados pela lista, kanban, agenda e cabeçalho do cliente */
+function gpSitTag(i){const s=GP_SIT[i.sit]||GP_SIT.ok;return `<span class="tag ${s[1]}" style="white-space:nowrap"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${s[2]}"></span>${s[0]}</span>`;}
+function gpMotivosHTML(i,max){const ms=i.motivos.slice().sort((a,b)=>b.n-a.n);const vis=ms.slice(0,max||3);const resto=ms.length-vis.length;
+  return vis.map(m=>`<div class="gp-motivo n${m.n}">${esc(m.t)}</div>`).join('')+(resto>0?`<div class="gp-motivo n0" title="${esc(ms.slice(vis.length).map(m=>m.t).join(' · '))}">+${resto} ponto${resto>1?'s':''}</div>`:'');}
 function gpEtapaHTML(i){const w=i.etapaTot?Math.round(i.etapaFeitas/i.etapaTot*100):(i.etapa==='Concluído'?100:0);
-  return `<div style="font-weight:600;font-size:13px">${esc(i.etapa||'—')}${i.etapaAuto?'':' <span title="Etapa definida manualmente" style="color:var(--soft);font-weight:400">✎</span>'}</div>
-    ${i.etapaTot?`<div style="display:flex;align-items:center;gap:6px;margin-top:4px"><div style="flex:1;height:5px;border-radius:3px;background:var(--line);min-width:50px"><div style="height:5px;border-radius:3px;width:${w}%;background:var(--gold)"></div></div><span style="font-size:11px;color:var(--soft);white-space:nowrap">${i.etapaFeitas}/${i.etapaTot}</span></div>`:''}
-    <div style="font-size:11px;color:var(--soft);margin-top:3px">projeto ${i.pct}%</div>`;}
-function gpTarefaHTML(i){const t=i.prox;if(!t)return `<span style="color:var(--soft);font-size:12.5px">${i.etapa==='Sem plano'?'sem tarefas cadastradas':'nada pendente'}</span>`;
+  return `<div style="font-weight:600;font-size:13px;line-height:1.3">${esc(i.etapa||'—')}${i.etapaAuto?'':' <span class="gp-mini" title="Etapa definida manualmente na aba Reuniões">· manual</span>'}</div>
+    ${i.etapaTot?`<div style="display:flex;align-items:center;gap:6px;margin-top:5px"><div class="gp-prog ${w>=100?'done':''}"><i style="width:${w}%"></i></div><span class="gp-mini" style="white-space:nowrap">${i.etapaFeitas}/${i.etapaTot}</span></div>`:''}
+    ${i.ts.length?`<div class="gp-mini" style="margin-top:3px">${i.pct}% do projeto</div>`:''}`;}
+function gpTarefaHTML(i){const t=i.prox;if(!t)return `<span class="gp-mini" style="font-size:12.5px">${i.etapa==='Sem plano'?'sem tarefas cadastradas':i.etapa==='Concluído'?'projeto concluído':'nada pendente'}</span>`;
   const h=hojeISO();const atras=t.prazo&&t.prazo<h;
   return `<div style="display:flex;gap:8px;align-items:flex-start">
-    <button class="icon-btn" title="Concluir esta tarefa" onclick="event.stopPropagation();gpConcluir('${i.id}','${t.id}')" style="flex:0 0 auto;width:26px;height:26px;border-radius:50%;font-size:12px">✓</button>
+    <button class="gp-check" title="Marcar esta tarefa como concluída" onclick="event.stopPropagation();gpConcluir('${i.id}','${t.id}')">${icoGpCheck}</button>
     <div style="min-width:0"><div style="font-size:12.5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden" title="${esc(t.titulo)}">${esc(t.titulo)}</div>
-      <div style="font-size:11px;margin-top:2px;color:${atras?'var(--red)':'var(--soft)'};${atras?'font-weight:600':''}">${t.resp?esc(t.resp)+' · ':''}${t.prazo?(atras?'atrasada '+gpHa(t.prazo):'até '+fmtDataBR(t.prazo).slice(0,5)+' ('+gpEm(t.prazo)+')'):'sem prazo'}${t.fase!==i.etapa?' · '+esc(t.fase):''}</div></div></div>`;}
+      <div class="gp-mini" style="margin-top:2px;${atras?'color:var(--red);font-weight:600':''}">${t.resp?esc(t.resp)+' · ':''}${t.prazo?(atras?'atrasada '+gpHa(t.prazo):'até '+fmtDataBR(t.prazo).slice(0,5)+' · '+gpEm(t.prazo)):'sem prazo'}${t.fase!==i.etapa?' · '+esc(t.fase):''}</div></div></div>`;}
 function gpUltReuniaoHTML(i){if(!i.ultR)return `<span style="color:var(--amber);font-size:12.5px;font-weight:600">nunca</span>`;
   const cor=i.diasSem>GP_DIAS_CRITICO?'var(--red)':i.diasSem>GP_DIAS_ATENCAO?'var(--amber)':'var(--ink)';
-  return `<div style="font-size:12.5px;font-weight:600;color:${cor}">${fmtDataBR(i.ultR.data).slice(0,5)} <span style="font-weight:400">· ${gpHa(i.ultR.data)}</span></div><div style="font-size:11px;color:var(--soft)">${esc(i.ultR.tipo||'')}${i.nReun>1?' · '+i.nReun+' reuniões':''}</div><div style="margin-top:2px">${gpLinksHTML(i.ultR,true)}</div>`;}
+  return `<div style="font-size:12.5px;font-weight:600;color:${cor}">${fmtDataBR(i.ultR.data).slice(0,5)} <span style="font-weight:400">· ${gpHa(i.ultR.data)}</span></div><div class="gp-mini">${esc(i.ultR.tipo||'')}${i.nReun>1?' · '+i.nReun+' reuniões':''}</div><div style="margin-top:2px">${gpLinksHTML(i.ultR,true)}</div>`;}
 function gpProxReuniaoHTML(i){const pc=i.pendConf.length?i.pendConf[i.pendConf.length-1]:null;
-  const conf=pc?`<div style="margin-bottom:4px"><a onclick="event.stopPropagation();gpConfirmarReuniao('${pc._org||i.id}','${pc.id}')" style="font-size:11.5px;color:var(--amber);font-weight:600;cursor:pointer" title="Essa reunião estava agendada e a data já passou">⚠ ${fmtDataBR(pc.data).slice(0,5)} aconteceu?</a></div>`:'';
-  if(i.proxR)return conf+`<div style="font-size:12.5px;font-weight:600;color:var(--navy)">${fmtDataBR(i.proxR.data).slice(0,5)}${i.proxR.hora?' '+esc(i.proxR.hora):''} <span style="font-weight:400;color:var(--muted)">· ${gpEm(i.proxR.data)}</span></div><div style="font-size:11px;color:var(--soft)">${esc(i.proxR.tipo||'')}</div>`;
-  return conf+`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gpReuniaoModal('${i.id}','','agendar')" style="padding:4px 9px;font-size:11.5px">+ Agendar</button>`;}
-function gpTabelaHTML(list){
-  if(ehMobile())return list.map(i=>`<div class="card" style="padding:12px;margin-bottom:10px" onclick="gpAbrir('${i.id}','projeto')">
-    <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700;font-size:15px">${esc(i.o.nome||'')}</div><div style="font-size:11.5px;color:var(--soft)">${esc([i.seg,IS_SUPER?consNome(i.o.consultor_id):''].filter(Boolean).join(' · '))}</div></div>${gpSitTag(i)}</div>
-    <div style="margin-top:6px">${gpMotivosHTML(i,2)}</div>
-    <div style="margin-top:10px">${gpEtapaHTML(i)}</div>
-    <div style="margin-top:10px">${gpTarefaHTML(i)}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;border-top:1px solid var(--line);padding-top:10px"><div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;margin-bottom:3px">Última reunião</div>${gpUltReuniaoHTML(i)}</div><div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;margin-bottom:3px">Próxima</div>${gpProxReuniaoHTML(i)}</div></div>
-    <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:10px;justify-content:center" onclick="event.stopPropagation();gpReuniaoModal('${i.id}')">📅 Registrar reunião</button></div>`).join('');
-  return `<div class="card"><div class="scroll-x"><table style="min-width:980px"><thead><tr><th>Cliente</th><th>Situação</th><th>Etapa atual</th><th style="min-width:230px">Próxima tarefa</th><th>Última reunião</th><th>Próxima reunião</th><th></th></tr></thead><tbody>
-    ${list.map(i=>`<tr style="cursor:pointer;vertical-align:top" onclick="gpAbrir('${i.id}','projeto')">
-      <td style="min-width:150px"><div style="font-weight:700">${esc(i.o.nome||'')}</div>${i.grupoN>1?`<a onclick="event.stopPropagation();gpAtalho('grupo','${i.donoId}')" title="Ver só as unidades deste grupo" style="display:inline-block;font-size:10.5px;font-weight:700;color:var(--navy);background:rgba(29,53,115,.08);border-radius:6px;padding:1px 6px;margin:2px 0;cursor:pointer">🏬 grupo ${esc(donoNome(i.donoId))} · ${i.grupoN} unidades</a>`:''}<div style="font-size:11.5px;color:var(--soft)">${esc([i.seg,IS_SUPER?consNome(i.o.consultor_id):(i.o.responsavel||'')].filter(Boolean).join(' · '))}</div>${i.ultAtiv?`<div style="font-size:10.5px;color:var(--soft);margin-top:2px">último movimento ${gpHa(i.ultAtiv)}</div>`:''}</td>
-      <td style="min-width:170px">${gpSitTag(i)}<div style="margin-top:5px">${gpMotivosHTML(i,3)}</div></td>
-      <td style="min-width:160px">${gpEtapaHTML(i)}</td>
+  const conf=pc?`<div style="margin-bottom:4px"><a class="gp-link" style="color:var(--amber);font-size:11.5px" onclick="event.stopPropagation();gpConfirmarReuniao('${pc._org||i.id}','${pc.id}')" title="Essa reunião estava agendada e a data já passou">${fmtDataBR(pc.data).slice(0,5)} aconteceu?</a></div>`:'';
+  if(i.proxR)return conf+`<div style="font-size:12.5px;font-weight:600;color:var(--navy)">${fmtDataBR(i.proxR.data).slice(0,5)}${i.proxR.hora?' '+esc(i.proxR.hora):''} <span style="font-weight:400;color:var(--muted)">· ${gpEm(i.proxR.data)}</span></div><div class="gp-mini">${esc(i.proxR.tipo||'')}</div>`;
+  return conf+`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gpReuniaoModal('${i.id}','','agendar')" style="padding:4px 9px;font-size:11.5px;min-height:0">${icoGpCal} Agendar</button>`;}
+function gpReunioesCelHTML(i){const pc=i.pendConf.length?i.pendConf[i.pendConf.length-1]:null;
+  const corU=!i.ultR?'var(--amber)':i.diasSem>GP_DIAS_CRITICO?'var(--red)':i.diasSem>GP_DIAS_ATENCAO?'var(--amber)':'var(--ink)';
+  const ult=`<div class="gp-rlin"><span class="k">Última</span><span style="color:${corU};font-weight:600">${i.ultR?fmtDataBR(i.ultR.data).slice(0,5)+' <span style="font-weight:400">· '+gpHa(i.ultR.data)+'</span>':'nunca'}</span>${i.ultR?`<span style="display:inline-flex">${gpLinksHTML(i.ultR,true)}</span>`:''}</div>`;
+  const prox=i.proxR?`<div class="gp-rlin"><span class="k">Próxima</span><span style="color:var(--navy);font-weight:600">${fmtDataBR(i.proxR.data).slice(0,5)}${i.proxR.hora?' '+esc(i.proxR.hora):''} <span style="font-weight:400;color:var(--muted)">· ${gpEm(i.proxR.data)}</span></span></div>`
+    :`<div class="gp-rlin"><span class="k">Próxima</span><a class="gp-link" onclick="event.stopPropagation();gpReuniaoModal('${i.id}','','agendar')">+ Agendar</a></div>`;
+  const conf=pc?`<div class="gp-rlin"><span class="k"></span><a class="gp-link" style="color:var(--amber)" onclick="event.stopPropagation();gpConfirmarReuniao('${pc._org||i.id}','${pc.id}')" title="Estava agendada e a data já passou. Confirme se aconteceu.">${fmtDataBR(pc.data).slice(0,5)} aconteceu?</a></div>`:'';
+  return `<div style="display:flex;flex-direction:column;gap:4px">${ult}${prox}${conf}</div>`;}
+function gpCardHTML(i,kb){const s=GP_SIT[i.sit]||GP_SIT.ok;
+  return `<div class="gp-card" style="border-left-color:${s[2]}" onclick="gpAbrir('${i.id}','projeto')">
+    <div class="h"><div style="min-width:0"><div class="nm">${esc(i.o.nome||'')}</div><div class="gp-mini">${esc([i.seg,IS_SUPER?consNome(i.o.consultor_id):''].filter(Boolean).join(' · '))}${i.grupoN>1?` · ${esc(donoNome(i.donoId))} (${i.grupoN} un.)`:''}</div></div>${kb?`<span class="gp-mini" style="white-space:nowrap">${i.etapaTot?i.etapaFeitas+'/'+i.etapaTot:''}</span>`:gpSitTag(i)}</div>
+    ${i.motivos.length?`<div style="margin-top:6px;display:flex;flex-direction:column;gap:2px">${gpMotivosHTML(i,2)}</div>`:''}
+    ${kb?'':`<div style="margin-top:9px">${gpEtapaHTML(i)}</div>`}
+    <div style="margin-top:9px">${gpTarefaHTML(i)}</div>
+    ${kb?`<div class="foot"><span title="Última reunião" style="display:inline-flex;gap:4px;align-items:center">${icoGpClock}${i.ultR?gpHa(i.ultR.data):'nunca'}</span><span title="Próxima reunião" style="display:inline-flex;gap:4px;align-items:center;color:${i.proxR?'var(--navy)':'var(--amber)'};font-weight:600">${icoGpCal}${i.proxR?fmtDataBR(i.proxR.data).slice(0,5):'agendar'}</span></div>`
+    :`<div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--line)">${gpReunioesCelHTML(i)}</div>
+      <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="event.stopPropagation();gpReuniaoModal('${i.id}')">${icoGpCal} Registrar reunião</button><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();gpAbrir('${i.id}','reunioes')" title="Histórico de reuniões">${icoGpClock}</button></div>`}
+  </div>`;}
+function gpTabelaHTML(list){const h=hojeISO();
+  if(ehMobile())return `<div style="display:flex;flex-direction:column;gap:10px">${list.map(i=>gpCardHTML(i,false)).join('')}</div>`;
+  return `<div class="card"><div class="scroll-x"><table class="gp-tbl" style="min-width:900px"><thead><tr><th style="min-width:170px">Cliente</th><th style="min-width:170px">Situação</th><th style="min-width:150px">Etapa atual</th><th style="min-width:230px">Próxima tarefa</th><th style="min-width:215px">Reuniões</th><th></th></tr></thead><tbody>
+    ${list.map(i=>`<tr onclick="gpAbrir('${i.id}','projeto')">
+      <td><div class="nm">${esc(i.o.nome||'')}</div>${i.grupoN>1?`<span class="gp-grupo" onclick="event.stopPropagation();gpAtalho('grupo','${i.donoId}')" title="Ver só as unidades deste grupo">${icoGpBuild}${esc(donoNome(i.donoId))} · ${i.grupoN} un.</span>`:''}<div class="gp-mini">${esc([i.seg,IS_SUPER?consNome(i.o.consultor_id):(i.o.responsavel||'')].filter(Boolean).join(' · '))}</div>${(i.ultAtiv&&gpDias(i.ultAtiv,h)>GP_DIAS_ATENCAO)?`<div class="gp-mini" style="color:var(--amber);margin-top:2px" title="Sem reunião nem tarefa concluída desde ${fmtDataBR(i.ultAtiv)}">parado ${gpHa(i.ultAtiv)}</div>`:''}</td>
+      <td>${gpSitTag(i)}<div style="margin-top:6px;display:flex;flex-direction:column;gap:2px">${gpMotivosHTML(i,3)}</div></td>
+      <td>${gpEtapaHTML(i)}</td>
       <td>${gpTarefaHTML(i)}</td>
-      <td style="white-space:nowrap">${gpUltReuniaoHTML(i)}</td>
-      <td style="white-space:nowrap">${gpProxReuniaoHTML(i)}</td>
-      <td><div class="row-actions" style="white-space:nowrap"><button class="icon-btn" title="Registrar reunião" onclick="event.stopPropagation();gpReuniaoModal('${i.id}')">📅</button><button class="icon-btn" title="Histórico de reuniões" onclick="event.stopPropagation();gpAbrir('${i.id}','reunioes')">🕘</button></div></td></tr>`).join('')}
+      <td>${gpReunioesCelHTML(i)}</td>
+      <td><div class="row-actions"><button class="icon-btn" title="Registrar reunião" onclick="event.stopPropagation();gpReuniaoModal('${i.id}')">${icoGpCal}</button><button class="icon-btn" title="Histórico de reuniões" onclick="event.stopPropagation();gpAbrir('${i.id}','reunioes')">${icoGpClock}</button></div></td></tr>`).join('')}
   </tbody></table></div></div>`;}
 function gpKanbanHTML(list){const padrao=PROJETO_FASES.map(f=>f.nome);const extras=[...new Set(list.map(i=>i.etapa))].filter(e=>e&&!padrao.includes(e)&&e!=='Concluído'&&e!=='Sem plano');
-  const cols=padrao.concat(extras,['Concluído']).concat(list.some(i=>i.etapa==='Sem plano')?['Sem plano']:[]);
-  return `<div style="overflow-x:auto;padding-bottom:8px"><div style="display:flex;gap:12px;align-items:flex-start;min-width:max-content">
-    ${cols.map(c=>{const arr=list.filter(i=>i.etapa===c);const crit=arr.filter(i=>i.sit==='critico').length;
-      return `<div style="flex:0 0 250px;width:250px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:8px;padding:0 2px"><div style="font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--gold)">${esc(c)}</div><div style="font-size:11.5px;color:var(--soft);white-space:nowrap">${arr.length}${crit?` · <span style="color:var(--red);font-weight:700">${crit} crít.</span>`:''}</div></div>
-        ${arr.length?arr.map(i=>{const s=GP_SIT[i.sit]||GP_SIT.ok;return `<div class="card" onclick="gpAbrir('${i.id}','projeto')" style="padding:10px 11px;margin-bottom:8px;cursor:pointer;border-left:4px solid ${s[2]}">
-          <div style="display:flex;justify-content:space-between;gap:6px;align-items:flex-start"><div style="font-weight:700;font-size:13.5px;min-width:0">${esc(i.o.nome||'')}</div><span style="font-size:11px;color:var(--soft);white-space:nowrap">${i.etapaTot?i.etapaFeitas+'/'+i.etapaTot:''}</span></div>
-          ${i.seg?`<div style="font-size:11px;color:var(--soft)">${esc(i.seg)}</div>`:''}
-          ${i.prox?`<div style="font-size:12px;margin-top:6px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">▸ ${esc(i.prox.titulo)}</div>`:''}
-          <div style="margin-top:5px">${gpMotivosHTML(i,2)}</div>
-          <div style="display:flex;justify-content:space-between;gap:6px;margin-top:7px;font-size:11px;color:var(--soft);border-top:1px solid var(--line);padding-top:6px"><span title="Última reunião">🕘 ${i.ultR?gpHa(i.ultR.data):'nunca'}</span><span title="Próxima reunião" style="color:${i.proxR?'var(--navy)':'var(--amber)'};font-weight:600">📅 ${i.proxR?fmtDataBR(i.proxR.data).slice(0,5):'agendar'}</span></div></div>`;}).join(''):`<div style="font-size:12px;color:var(--soft);padding:10px 4px">nenhum cliente</div>`}
-      </div>`;}).join('')}
-  </div></div>`;}
+  const cols=padrao.concat(extras,['Concluído','Sem plano']);const vis=cols.filter(c=>list.some(i=>i.etapa===c));const vazias=cols.filter(c=>!vis.includes(c)&&c!=='Sem plano'&&c!=='Onboarding');
+  return `<div style="overflow-x:auto"><div class="gp-kb">
+    ${vis.map(c=>{const arr=list.filter(i=>i.etapa===c);const crit=arr.filter(i=>i.sit==='critico').length;
+      return `<div class="gp-kb-col"><div class="hd"><div>${esc(c)}</div><span>${arr.length}${crit?` · <b style="color:var(--red)">${crit} crít.</b>`:''}</span></div>${arr.map(i=>gpCardHTML(i,true)).join('')}</div>`;}).join('')}
+  </div></div>${vazias.length?`<div class="gp-mini" style="margin-top:4px">Etapas sem clientes no momento: ${esc(vazias.join(', '))}.</div>`:''}`;}
 function gpAgendaHTML(list){const h=hojeISO(),em7=diasSoma(h,7),em30=diasSoma(h,30);
   const reun=[];list.forEach(i=>gpReunioes(i.o).forEach(r=>{if(!r.realizada&&r.data)reun.push({i,r});}));
   const aConf=reun.filter(x=>x.r.data<h).sort((a,b)=>a.r.data.localeCompare(b.r.data));
   const semana=reun.filter(x=>x.r.data>=h&&x.r.data<=em7).sort((a,b)=>(a.r.data+(a.r.hora||'')).localeCompare(b.r.data+(b.r.hora||'')));
-  const depois=reun.filter(x=>x.r.data>em7&&x.r.data<=em30).sort((a,b)=>a.r.data.localeCompare(b.r.data));
-  const tarefas=[];list.forEach(i=>i.ts.forEach(t=>{if(!t.feito&&t.prazo&&t.prazo<=em7)tarefas.push({i,t});}));
+  const depois=reun.filter(x=>x.r.data>em7&&x.r.data<=em30).sort((a,b)=>(a.r.data+(a.r.hora||'')).localeCompare(b.r.data+(b.r.hora||'')));
+  const tarefas=[];list.forEach(i=>{if(!gpVivo(i))return;i.ts.forEach(t=>{if(!t.feito&&t.prazo&&t.prazo<=em7)tarefas.push({i,t});});});
   tarefas.sort((a,b)=>a.t.prazo.localeCompare(b.t.prazo));
-  const semContato=list.filter(i=>i.sit!=='suspenso'&&i.sit!=='concluido'&&!i.proxR&&(i.diasSem==null||i.diasSem>GP_DIAS_ATENCAO)).sort((a,b)=>((b.diasSem==null?9999:b.diasSem)-(a.diasSem==null?9999:a.diasSem)));
+  const semContato=list.filter(i=>gpVivo(i)&&!i.proxR&&(i.diasSem==null||i.diasSem>GP_DIAS_ATENCAO)).sort((a,b)=>((b.diasSem==null?9999:b.diasSem)-(a.diasSem==null?9999:a.diasSem)));
   const diaSem=d=>['dom','seg','ter','qua','qui','sex','sáb'][new Date(d+'T12:00:00').getDay()];
-  const linhaR=(x,conf)=>`<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)">
-    <div style="flex:0 0 74px;font-size:12.5px;font-weight:700;color:${conf?'var(--amber)':'var(--navy)'}">${fmtDataBR(x.r.data).slice(0,5)} <span style="font-weight:400;color:var(--soft)">${diaSem(x.r.data)}</span>${x.r.hora?`<div style="font-weight:400;font-size:11.5px;color:var(--muted)">${esc(x.r.hora)}</div>`:''}</div>
-    <div style="flex:1;min-width:0;cursor:pointer" onclick="gpAbrir('${x.i.id}','reunioes')"><div style="font-weight:600;font-size:13px">${esc(x.i.o.nome||'')}</div><div style="font-size:11.5px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.r.tipo||'')}${x.r.resumo?' · '+esc(x.r.resumo):''}</div></div>
-    ${conf?`<button class="btn btn-primary btn-sm" style="padding:5px 10px;font-size:11.5px" onclick="gpConfirmarReuniao('${x.i.id}','${x.r.id}')">Aconteceu</button><button class="btn btn-ghost btn-sm" style="padding:5px 10px;font-size:11.5px" onclick="gpReuniaoModal('${x.i.id}','${x.r.id}')">Remarcar</button>`:`<button class="btn btn-ghost btn-sm" style="padding:5px 10px;font-size:11.5px" onclick="gpReuniaoModal('${x.i.id}','${x.r.id}')">Editar</button>`}</div>`;
-  const bloco=(tit,desc,corpo,vazio)=>`<div class="card card-pad" style="margin-bottom:14px"><div class="ttl">${tit}</div><div class="desc" style="margin-bottom:6px">${desc}</div>${corpo||`<div style="font-size:13px;color:var(--soft);padding:8px 0">${vazio}</div>`}</div>`;
-  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;align-items:start">
+  const rotDia=d=>d===h?'Hoje':d===diasSoma(h,1)?'Amanhã':diaSem(d)+' · '+fmtDataBR(d).slice(0,5);
+  const linhaR=(x,conf)=>`<div class="gp-ag-row ${conf?'conf':''}">
+    <div class="d">${fmtDataBR(x.r.data).slice(0,5)}<small>${diaSem(x.r.data)}${x.r.hora?' · '+esc(x.r.hora):''}</small></div>
+    <div class="b" onclick="gpAbrir('${x.i.id}','reunioes')"><div class="t">${esc(x.i.o.nome||'')}</div><div class="s">${esc(x.r.tipo||'')}${x.r.resumo?' · '+esc(x.r.resumo):''}</div></div>
+    ${conf?`<button class="btn btn-primary btn-sm" style="padding:5px 10px;font-size:11.5px;min-height:0" onclick="gpConfirmarReuniao('${x.i.id}','${x.r.id}')">Aconteceu</button><button class="btn btn-ghost btn-sm" style="padding:5px 10px;font-size:11.5px;min-height:0" onclick="gpReuniaoModal('${x.i.id}','${x.r.id}')">Remarcar</button>`:`<button class="icon-btn" title="Editar" onclick="gpReuniaoModal('${x.i.id}','${x.r.id}')">${icoEdit}</button>`}</div>`;
+  const porDia=arr=>{let out='',last='';arr.forEach(x=>{if(x.r.data!==last){last=x.r.data;out+=`<div class="gp-ag-day">${rotDia(x.r.data)}</div>`;}out+=linhaR(x,false);});return out;};
+  const bloco=(tit,desc,corpo,vazio)=>`<div class="card card-pad" style="margin-bottom:12px;padding:14px 16px"><div class="ttl" style="font-size:14.5px;font-weight:600">${tit}</div><div class="desc" style="font-size:12.5px;color:var(--muted);margin:2px 0 6px">${desc}</div>${corpo||`<div style="font-size:13px;color:var(--soft);padding:6px 0">${vazio}</div>`}</div>`;
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px;align-items:start">
    <div>
-    ${aConf.length?bloco('⚠ Reuniões a confirmar','Estavam agendadas e a data já passou. Confirme para contar como última reunião.',aConf.map(x=>linhaR(x,true)).join(''),''):''}
-    ${bloco('Reuniões dos próximos 7 dias',semana.length+' agendada(s)',semana.map(x=>linhaR(x,false)).join(''),'Nenhuma reunião agendada para esta semana.')}
-    ${depois.length?bloco('Mais adiante','até 30 dias',depois.map(x=>linhaR(x,false)).join(''),''):''}
+    ${aConf.length?bloco('Reuniões a confirmar','Estavam agendadas e a data já passou. Confirme para contar como última reunião.',aConf.map(x=>linhaR(x,true)).join(''),''):''}
+    ${bloco('Próximos 7 dias',semana.length+' reunião(ões) agendada(s)',porDia(semana),'Nenhuma reunião agendada para esta semana.')}
+    ${depois.length?bloco('Mais adiante','entre 8 e 30 dias',depois.map(x=>linhaR(x,false)).join(''),''):''}
    </div>
    <div>
-    ${bloco('Tarefas atrasadas e da semana',tarefas.filter(x=>x.t.prazo<h).length+' atrasada(s) · '+tarefas.filter(x=>x.t.prazo>=h).length+' vencendo em 7 dias',tarefas.map(x=>{const atras=x.t.prazo<h;return `<div style="display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)">
-      <button class="icon-btn" title="Concluir" onclick="gpConcluir('${x.i.id}','${x.t.id}')" style="flex:0 0 auto;width:26px;height:26px;border-radius:50%;font-size:12px">✓</button>
-      <div style="flex:1;min-width:0;cursor:pointer" onclick="gpAbrir('${x.i.id}','projeto')"><div style="font-size:12.5px;line-height:1.35">${esc(x.t.titulo)}</div><div style="font-size:11px;color:var(--soft)"><b style="color:var(--ink)">${esc(x.i.o.nome||'')}</b>${x.t.resp?' · '+esc(x.t.resp):''}</div></div>
+    ${bloco('Tarefas atrasadas e da semana',tarefas.filter(x=>x.t.prazo<h).length+' atrasada(s) · '+tarefas.filter(x=>x.t.prazo>=h).length+' vencendo em 7 dias',tarefas.map(x=>{const atras=x.t.prazo<h;return `<div class="gp-ag-row" style="align-items:flex-start">
+      <button class="gp-check" title="Marcar como concluída" onclick="gpConcluir('${x.i.id}','${x.t.id}')">${icoGpCheck}</button>
+      <div class="b" onclick="gpAbrir('${x.i.id}','projeto')"><div style="font-size:12.5px;line-height:1.35">${esc(x.t.titulo)}</div><div class="gp-mini"><b style="color:var(--ink)">${esc(x.i.o.nome||'')}</b>${x.t.resp?' · '+esc(x.t.resp):''}</div></div>
       <div style="flex:0 0 auto;font-size:11.5px;text-align:right;color:${atras?'var(--red)':'var(--muted)'};${atras?'font-weight:700':''}">${fmtDataBR(x.t.prazo).slice(0,5)}<div style="font-weight:400">${gpEm(x.t.prazo)}</div></div></div>`;}).join(''),'Nenhuma tarefa atrasada nem vencendo nesta semana.')}
-    ${bloco('Sem contato e sem reunião agendada','Clientes há mais de '+GP_DIAS_ATENCAO+' dias sem reunião (ou que nunca tiveram) e sem próxima data marcada.',semContato.map(i=>`<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)"><div style="flex:1;min-width:0;cursor:pointer" onclick="gpAbrir('${i.id}','reunioes')"><div style="font-weight:600;font-size:13px">${esc(i.o.nome||'')}</div><div style="font-size:11.5px;color:${i.diasSem==null||i.diasSem>GP_DIAS_CRITICO?'var(--red)':'var(--amber)'}">${i.diasSem==null?'nenhuma reunião registrada':i.diasSem+' dias sem reunião'} · ${esc(i.etapa)}</div></div><button class="btn btn-ghost btn-sm" style="padding:5px 10px;font-size:11.5px" onclick="gpReuniaoModal('${i.id}','','agendar')">+ Agendar</button></div>`).join(''),'Todos os clientes em andamento têm contato recente ou reunião marcada.')}
+    ${bloco('Sem contato e sem reunião marcada','Há mais de '+GP_DIAS_ATENCAO+' dias sem reunião (ou nunca tiveram) e sem próxima data.',semContato.map(i=>`<div class="gp-ag-row"><div class="b" onclick="gpAbrir('${i.id}','reunioes')"><div class="t">${esc(i.o.nome||'')}</div><div class="s" style="color:${i.diasSem==null||i.diasSem>GP_DIAS_CRITICO?'var(--red)':'var(--amber)'}">${i.diasSem==null?'nenhuma reunião registrada':i.diasSem+' dias sem reunião'} · ${esc(i.etapa)}</div></div><button class="btn btn-ghost btn-sm" style="padding:5px 10px;font-size:11.5px;min-height:0" onclick="gpReuniaoModal('${i.id}','','agendar')">${icoGpCal} Agendar</button></div>`).join(''),'Todos os clientes em andamento têm contato recente ou reunião marcada.')}
    </div></div>`;}
 
 /* ações rápidas */
 function gpRefresh(){renderAdminMain();renderAdminList();}
 async function gpConcluir(orgId,taskId){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===taskId);if(!t)return;
-  t.feito=true;t.feitoEm=hojeISO();gpRefresh();toast('Tarefa concluída: '+t.titulo.slice(0,60));await adminSaveKeys(o,['_projeto']);}
+  t.feito=true;t.feitoEm=hojeISO();gpRefresh();toast('Tarefa concluída: '+esc(t.titulo.slice(0,50))+`<a onclick="gpDesfazer('${orgId}','${taskId}')" style="color:var(--gold-soft);font-weight:700;margin-left:10px;cursor:pointer">Desfazer</a>`,5000);await adminSaveKeys(o,['_projeto']);}
+async function gpDesfazer(orgId,taskId){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const t=projEnsure(o).tarefas.find(x=>x.id===taskId);if(!t)return;t.feito=false;t.feitoEm='';gpRefresh();toast('Tarefa reaberta');await adminSaveKeys(o,['_projeto']);}
 async function gpConfirmarReuniao(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const r=gpCrm(o).reunioes.find(x=>x.id===rid);if(!r)return;
   r.realizada=true;r.editado=true;gpRefresh();toast('Reunião confirmada. Registre o resumo quando puder.');await adminSaveKeys(o,['_crm']);gpReuniaoModal(orgId,rid);}
 let _grModo='feita';
 function gpReuniaoModal(orgId,rid,modo){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const crm=gpCrm(o);const r=rid?crm.reunioes.find(x=>x.id===rid):null;const i=gpInfo(o);
   _grModo=r?(r.realizada?'feita':'agendar'):(modo||'feita');const h=hojeISO();
   const faseTarefa=(i.etapa&&i.etapa!=='Sem plano'&&i.etapa!=='Concluído')?i.etapa:'Outras';
+  const emails=((o.dados&&o.dados.equipe)||[]).map(x=>x&&x.email).filter(Boolean);
   modal(`<div class="modal-head"><h3>${r?'Reunião':'Nova reunião'} · ${esc(o.nome||'')}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div class="pill-filter" style="margin-bottom:14px"><button id="gr_m_feita" class="${_grModo==='feita'?'on':''}" onclick="gpReuniaoModo('feita')">Já aconteceu</button><button id="gr_m_agendar" class="${_grModo==='agendar'?'on':''}" onclick="gpReuniaoModo('agendar')">Agendar</button></div>
     <div class="grid-2">
-      <div class="field"><label>Data</label><input type="date" class="input" id="gr_data" value="${r?r.data:(_grModo==='agendar'?diasSoma(h,7):h)}"></div>
-      <div class="field"><label>Hora <span class="hint">opcional</span></label><input type="time" class="input" id="gr_hora" value="${r&&r.hora?esc(r.hora):''}"></div>
+      <div class="field"><label>Data <span class="hint" id="gr_dia"></span></label><input type="date" class="input" id="gr_data" value="${r?r.data:(_grModo==='agendar'?diasSoma(h,7):h)}" onchange="gpReuniaoDia()"></div>
+      <div class="field"><label>Hora <span class="hint" id="gr_hora_hint">${_grModo==='agendar'?'entra no convite':'opcional'}</span></label><input type="time" class="input" id="gr_hora" value="${r&&r.hora?esc(r.hora):''}"></div>
     </div>
     <div class="field"><label>Tipo</label><select class="input" id="gr_tipo">${GP_TIPOS_REUNIAO.map(t=>`<option ${(r?r.tipo:'Acompanhamento')===t?'selected':''}>${t}</option>`).join('')}</select></div>
-    <div class="field"><label id="gr_lbl_resumo">${_grModo==='feita'?'Resumo e decisões':'Pauta'}</label><textarea class="input" id="gr_resumo" rows="3" placeholder="O que foi tratado, decisões, pontos de atenção…">${esc(r?r.resumo||'':'')}</textarea></div>
-    <div id="gr_so_agendar" style="display:${_grModo==='agendar'?'block':'none'};border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:14px;background:var(--bg)">
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" id="gr_gcal" style="width:16px;height:16px" checked> ${r&&r.gcalId?'Atualizar o evento no Google Agenda':'Criar no Google Agenda, com link do Meet'}</label>
-      <div style="font-size:11.5px;color:var(--soft);margin:3px 0 8px 24px">Entra na agenda "PLL | Acelerados" como "PLL - ${esc(o.nome||'')}". As anotações do Gemini dessa reunião voltam sozinhas para cá.</div>
+    <div class="field"><label id="gr_lbl_resumo">${_grModo==='feita'?'Resumo e decisões':'Pauta'}</label><textarea class="input" id="gr_resumo" rows="3" placeholder="${_grModo==='feita'?'O que foi tratado, decisões, pontos de atenção…':'O que será tratado nessa reunião…'}">${esc(r?r.resumo||'':'')}</textarea></div>
+    <div id="gr_so_agendar" class="gp-note-box" style="display:${_grModo==='agendar'?'block':'none'}">
+      <label class="t"><input type="checkbox" id="gr_gcal" style="width:16px;height:16px" checked> ${r&&r.gcalId?'Atualizar o evento no Google Agenda':'Criar no Google Agenda, com link do Meet'}</label>
+      <div class="d">Entra na agenda "PLL | Acelerados" como "PLL - ${esc(o.nome||'')}". As anotações do Gemini dessa reunião voltam sozinhas para cá.</div>
       <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-left:24px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer" title="${esc(((o.dados&&o.dados.equipe)||[]).map(x=>x&&x.email).filter(Boolean).join(', ')||'Nenhum e-mail cadastrado na Equipe deste cliente')}"><input type="checkbox" id="gr_convidar" style="width:15px;height:15px" checked> Convidar o cliente por e-mail <span style="color:var(--soft)">(${((o.dados&&o.dados.equipe)||[]).filter(x=>x&&x.email).length} e-mail(s))</span></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer" title="${esc(emails.join(', ')||'Nenhum e-mail cadastrado na Equipe deste cliente')}"><input type="checkbox" id="gr_convidar" style="width:15px;height:15px" ${emails.length?'checked':'disabled'}> Convidar o cliente por e-mail <span class="gp-mini">(${emails.length?emails.length+' e-mail'+(emails.length>1?'s':''):'nenhum e-mail na Equipe'})</span></label>
         <label style="display:flex;align-items:center;gap:6px;font-size:12.5px">Duração <select class="input" id="gr_dur" style="width:auto;padding:4px 8px;font-size:12.5px">${[30,45,60,90,120].map(m=>`<option value="${m}" ${m===60?'selected':''}>${m} min</option>`).join('')}</select></label>
       </div>
     </div>
-    <details style="margin-bottom:14px" ${r&&(r.links||r.participantes)?'open':''}><summary style="font-size:12.5px;font-weight:600;color:var(--navy);cursor:pointer">Links e participantes <span style="font-weight:400;color:var(--soft)">anotações, transcrição, gravação</span></summary>
-      <div class="field" style="margin-top:10px"><label>Participantes</label><input class="input" id="gr_part" value="${esc(r?r.participantes||'':'')}" placeholder="Quem participou"></div>
-      ${GP_LINKS.map(([k,ic,rot])=>`<div class="field"><label>${ic} ${rot}</label><input class="input" id="gr_l_${k}" value="${esc(r&&r.links?r.links[k]||'':'')}" placeholder="https://…"></div>`).join('')}
-    </details>
     <div id="gr_so_feita" style="display:${_grModo==='feita'?'block':'none'}">
-      <div class="field"><label>Próximos passos <span class="hint">um por linha</span></label><textarea class="input" id="gr_passos" rows="3" placeholder="Ex.: Cliente envia as notas de agosto&#10;Lidera revisa as fichas técnicas">${esc(r?r.passos||'':'')}</textarea></div>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:14px;background:var(--bg)">
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" id="gr_criar" style="width:16px;height:16px" ${r?'':'checked'}> Transformar os próximos passos em tarefas do projeto</label>
-        <div style="font-size:11.5px;color:var(--soft);margin:4px 0 8px 24px">Entram na etapa <b>${esc(faseTarefa)}</b> e passam a aparecer como "próxima tarefa".</div>
+      <div class="field"><label>Próximos passos <span class="hint">um por linha</span></label><textarea class="input" id="gr_passos" rows="3" placeholder="Ex.: Cliente envia as notas de agosto&#10;Lidera revisa as fichas técnicas" oninput="gpReuniaoPassos()">${esc(r?r.passos||'':'')}</textarea></div>
+      <div class="gp-note-box" id="gr_criar_box" style="display:${(r&&r.passos)||!r?'block':'none'}">
+        <label class="t"><input type="checkbox" id="gr_criar" style="width:16px;height:16px" ${r?'':'checked'}> Transformar os próximos passos em tarefas do projeto</label>
+        <div class="d">Entram na etapa <b>${esc(faseTarefa)}</b> e passam a aparecer como "próxima tarefa". Linhas que já existem como tarefa aberta não são duplicadas.</div>
         <div class="grid-2" style="margin-left:24px"><div class="field" style="margin:0"><label>Responsável</label><input class="input" id="gr_resp" list="gr_resp_dl" placeholder="Lidera, Cliente…"><datalist id="gr_resp_dl"><option value="Lidera"></option><option value="Cliente"></option></datalist></div>
           <div class="field" style="margin:0"><label>Prazo</label><input type="date" class="input" id="gr_prazo" value="${diasSoma(h,7)}"></div></div>
       </div>
       ${r?'':`<div class="grid-2"><div class="field"><label>Próxima reunião <span class="hint">já deixa agendada</span></label><input type="date" class="input" id="gr_prox_data" value="${i.proxR?'':diasSoma(h,14)}"></div><div class="field"><label>Hora</label><input type="time" class="input" id="gr_prox_hora"></div></div>
-      ${i.proxR?`<div style="font-size:11.5px;color:var(--soft);margin-top:-8px">Já existe reunião agendada para ${fmtDataBR(i.proxR.data)}. Preencha só se quiser marcar outra.</div>`:''}`}
+      ${i.proxR?`<div class="gp-mini" style="margin-top:-8px">Já existe reunião agendada para ${fmtDataBR(i.proxR.data)}. Preencha só se quiser marcar outra.</div>`:''}`}
     </div>
+    <details style="margin-top:4px" ${r&&(r.links||r.participantes)?'open':''}><summary class="gp-link" style="font-size:12.5px">Links e participantes <span class="gp-mini">anotações, transcrição, gravação</span></summary>
+      <div class="field" style="margin-top:10px"><label>Participantes</label><input class="input" id="gr_part" value="${esc(r?r.participantes||'':'')}" placeholder="Quem participou"></div>
+      ${GP_LINKS.map(([k,ic,rot])=>`<div class="field"><label style="display:flex;gap:6px;align-items:center">${ic}${rot}</label><input class="input" id="gr_l_${k}" value="${esc(r&&r.links?r.links[k]||'':'')}" placeholder="https://…"></div>`).join('')}
+    </details>
   </div>
-  <div class="modal-foot">${r?`<button class="btn btn-ghost" style="color:var(--red);margin-right:auto" onclick="gpReuniaoDel('${orgId}','${rid}')">Excluir</button>`:''}<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="gpReuniaoSalvar('${orgId}','${rid||''}')">Salvar</button></div>`,true);}
+  <div class="modal-foot">${r?`<button class="btn btn-ghost" style="color:var(--red);margin-right:auto" onclick="gpReuniaoDel('${orgId}','${rid}')">Excluir</button>`:''}<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="gr_salvar" onclick="gpReuniaoSalvar('${orgId}','${rid||''}')">${_grModo==='feita'?'Registrar':'Agendar'}</button></div>`,true);
+  gpReuniaoDia();}
+function gpReuniaoDia(){const d=$('#gr_data'),s=$('#gr_dia');if(!d||!s)return;const v=d.value;if(!v){s.textContent='';return;}
+  const ds=['domingo','segunda','terça','quarta','quinta','sexta','sábado'][new Date(v+'T12:00:00').getDay()];const h=hojeISO();s.textContent=ds+(v===h?' · hoje':v>h?' · '+gpEm(v):' · '+gpHa(v));}
+function gpReuniaoPassos(){const t=$('#gr_passos'),b=$('#gr_criar_box');if(t&&b)b.style.display=t.value.trim()?'block':'none';}
 function gpReuniaoModo(m){_grModo=m;['feita','agendar'].forEach(x=>{const b=$('#gr_m_'+x);if(b)b.classList.toggle('on',x===m);});
   const s=$('#gr_so_feita');if(s)s.style.display=m==='feita'?'block':'none';const sa=$('#gr_so_agendar');if(sa)sa.style.display=m==='agendar'?'block':'none';const l=$('#gr_lbl_resumo');if(l)l.textContent=m==='feita'?'Resumo e decisões':'Pauta';
-  const d=$('#gr_data');const h=hojeISO();if(d){if(m==='agendar'&&d.value<=h)d.value=diasSoma(h,7);if(m==='feita'&&d.value>h)d.value=h;}}
+  const hh=$('#gr_hora_hint');if(hh)hh.textContent=m==='agendar'?'entra no convite':'opcional';const sv=$('#gr_salvar');if(sv)sv.textContent=m==='feita'?'Registrar':'Agendar';
+  const rs=$('#gr_resumo');if(rs)rs.placeholder=m==='feita'?'O que foi tratado, decisões, pontos de atenção…':'O que será tratado nessa reunião…';
+  const d=$('#gr_data');const h=hojeISO();if(d){if(m==='agendar'&&d.value<=h)d.value=diasSoma(h,7);if(m==='feita'&&d.value>h)d.value=h;}gpReuniaoDia();}
 async function gpReuniaoSalvar(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const crm=gpCrm(o);const h=hojeISO();
   const data=$('#gr_data').value;if(!data)return toast('Informe a data');
-  const feita=_grModo==='feita';if(feita&&data>h)return toast('Reunião que já aconteceu não pode ter data futura. Use "Agendar".');
+  const feita=_grModo==='feita';if(feita&&data>h)return toast('Reunião que já aconteceu não pode ter data futura. Use "Agendar".');if(!feita&&data<h)return toast('Para uma reunião que já passou, use "Já aconteceu".');
   let r=rid?crm.reunioes.find(x=>x.id===rid):null;if(!r){r={id:uid()};crm.reunioes.push(r);}
   Object.assign(r,{data,hora:$('#gr_hora').value||'',tipo:$('#gr_tipo').value,resumo:($('#gr_resumo').value||'').trim(),realizada:feita,participantes:(($('#gr_part')||{}).value||'').trim(),editado:true});
   {const lk={};GP_LINKS.forEach(([k])=>{const v=(($('#gr_l_'+k)||{}).value||'').trim();if(v)lk[k]=v;});if(Object.keys(lk).length)r.links=lk;else delete r.links;}
@@ -7117,42 +7312,40 @@ function gpContexto(orgId,v){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)retu
 function gpTimelineHTML(o){const h=hojeISO();const grupo=gpGrupo(o).length>1;const q=lmNorm(gpHistQ);
   let rs=gpReunioesGrupo(o).slice().sort((a,b)=>((b.data||'')+(b.hora||'')).localeCompare((a.data||'')+(a.hora||'')));
   if(q)rs=rs.filter(r=>lmNorm([r.titulo,r.tipo,r.resumo,r.passos,(r.acoes||[]).join(' '),r.participantes,r._un].join(' ')).includes(q));
-  if(!rs.length)return `<div style="font-size:13px;color:var(--soft);padding:10px 0">${q?'Nada encontrado no histórico com esse termo.':'Nenhuma reunião registrada ainda. Registre a primeira para o painel passar a medir o tempo sem contato.'}</div>`;
+  if(!rs.length)return `<div style="font-size:13px;color:var(--soft);padding:14px 0;text-align:center">${q?'Nada encontrado no histórico com esse termo.':'Nenhuma reunião registrada ainda. Registre a primeira para o painel passar a medir o tempo sem contato.'}</div>`;
+  const tituloPadrao=lmNorm('PLL - '+(o.nome||''));
   return rs.map(r=>{const fut=!r.realizada&&r.data>=h,pend=!r.realizada&&r.data<h;const dono=r._org||o.id;const orgDono=ADMIN_ORGS.find(x=>x.id===dono)||o;
-    const acoes=Array.isArray(r.acoes)?r.acoes:[];const virou=new Set(r.acoesTarefa||[]);
-    return `<div style="display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)">
-      <div style="flex:0 0 12px;display:flex;flex-direction:column;align-items:center;padding-top:4px"><span style="width:10px;height:10px;border-radius:50%;background:${fut?'var(--navy)':pend?'var(--amber)':'var(--green)'}"></span></div>
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:13.5px">${fmtDataBR(r.data)}${r.hora?' · '+esc(r.hora):''}</b><span class="tag ${fut?'tag-gray':pend?'tag-amber':'tag-green'}">${fut?'agendada · '+gpEm(r.data):pend?'a confirmar':'realizada · '+gpHa(r.data)}</span><span style="font-size:12px;color:var(--soft)">${esc(r.tipo||'')}</span>${grupo?`<span class="tag tag-gray" title="Unidade em que a reunião está registrada">🏬 ${esc(r._un||'')}</span>`:''}${r.origem==='gemini'?`<span title="Resumo gerado a partir das anotações e da transcrição do Gemini" style="font-size:10.5px;color:var(--soft)">✨ importada do Gemini</span>`:r.origem==='agenda'?`<span title="Veio do Google Agenda${r.semAnotacoes?'. Não há anotações do Gemini para esta data: confira se a reunião aconteceu e registre o resumo.':''}" style="font-size:10.5px;color:${r.semAnotacoes?'var(--amber)':'var(--soft)'}">📅 da agenda${r.semAnotacoes?' · sem anotações':''}</span>`:''}</div>
-        ${r.titulo?`<div style="font-size:12.5px;font-weight:600;margin-top:3px">${esc(r.titulo)}</div>`:''}
-        ${r.participantes?`<div style="font-size:11.5px;color:var(--soft);margin-top:2px">👥 ${esc(r.participantes)}</div>`:''}
-        ${r.resumo?`<div style="font-size:13px;color:var(--muted);margin-top:5px;white-space:pre-wrap;line-height:1.5">${esc(r.resumo)}</div>`:''}
-        ${acoes.length?`<div style="margin-top:8px"><div style="color:var(--soft);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Ações combinadas</div>${acoes.map((a,k)=>`<div style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;padding:3px 0"><span style="flex:1;min-width:0">• ${esc(a)}</span>${virou.has(k)?`<span style="flex:0 0 auto;font-size:11px;color:var(--green);white-space:nowrap">✓ virou tarefa</span>`:`<a onclick="gpAcaoTarefa('${dono}','${r.id}',${k})" style="flex:0 0 auto;font-size:11px;color:var(--gold);font-weight:600;cursor:pointer;white-space:nowrap" title="Cria esta ação como tarefa na etapa atual do projeto">+ virar tarefa</a>`}</div>`).join('')}</div>`:''}
-        ${r.passos?`<div style="font-size:12.5px;margin-top:6px"><span style="color:var(--soft);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Próximos passos</span><div style="white-space:pre-wrap;color:var(--ink)">${esc(r.passos)}</div></div>`:''}
-        <div style="margin-top:8px">${gpLinksHTML(r,false)}${(fut&&!(r.links&&r.links.evento))?`<a href="${esc(gpGcalLink(orgDono,r))}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--navy);border:1px dashed var(--navy);border-radius:8px;padding:3px 8px;text-decoration:none" title="Abre o Google Agenda com o evento preenchido e os e-mails do cliente como convidados">📅 Criar no Google Agenda</a>`:''}</div>
+    const acoes=Array.isArray(r.acoes)?r.acoes:[];const virou=new Set(r.acoesTarefa||[]);const cor=fut?'var(--navy)':pend?'var(--amber)':'var(--green)';
+    const tit=(r.titulo||'').trim();const mostraTit=tit&&lmNorm(tit)!==tituloPadrao&&lmNorm(tit)!==lmNorm(o.nome||'');
+    return `<div class="gp-tl">
+      <div class="dt"><b><span class="dot" style="background:${cor}"></span>${fmtDataBR(r.data).slice(0,5)}</b><small>${(r.data||'').slice(0,4)}${r.hora?' · '+esc(r.hora):''}</small><small>${fut?gpEm(r.data):gpHa(r.data)}</small></div>
+      <div class="bd">
+        <div class="meta"><span class="tag ${fut?'tag-navy':pend?'tag-amber':'tag-green'}">${fut?'agendada':pend?'a confirmar':'realizada'}</span><span>${esc(r.tipo||'')}</span>${grupo?`<span class="tag tag-gray" title="Unidade em que a reunião está registrada">${icoGpBuild}${esc(r._un||'')}</span>`:''}${r.origem==='gemini'?`<span title="Resumo gerado a partir das anotações e da transcrição do Gemini" style="display:inline-flex;gap:3px;align-items:center;font-size:11px">${icoGpSpark}Gemini</span>`:r.origem==='agenda'?`<span title="Veio do Google Agenda${r.semAnotacoes?'. Não há anotações do Gemini para esta data: confira se a reunião aconteceu e registre o resumo.':''}" style="display:inline-flex;gap:3px;align-items:center;font-size:11px;color:${r.semAnotacoes?'var(--amber)':'var(--soft)'}">${icoGpCal}da agenda${r.semAnotacoes?' · sem anotações':''}</span>`:''}</div>
+        ${mostraTit?`<div style="font-size:12.5px;font-weight:600;margin-top:3px">${esc(tit)}</div>`:''}
+        ${r.participantes?`<div class="gp-mini" style="margin-top:2px;display:flex;gap:4px;align-items:center">${icoGpUsers}${esc(r.participantes)}</div>`:''}
+        ${r.resumo?`<div class="res">${esc(r.resumo)}</div>`:''}
+        ${acoes.length?`<div class="sec">Ações combinadas</div>${acoes.map((a,k)=>`<div class="ac"><span>• ${esc(a)}</span>${virou.has(k)?`<span class="gp-mini" style="color:var(--green);white-space:nowrap">✓ virou tarefa</span>`:`<a class="gp-link" style="font-size:11px;white-space:nowrap" onclick="gpAcaoTarefa('${dono}','${r.id}',${k})" title="Cria esta ação como tarefa na etapa atual do projeto">+ virar tarefa</a>`}</div>`).join('')}`:''}
+        ${r.passos?`<div class="sec">Próximos passos</div><div style="font-size:12.5px;white-space:pre-wrap;color:var(--ink)">${esc(r.passos)}</div>`:''}
+        <div>${gpLinksHTML(r,false)}${(fut&&!(r.links&&r.links.evento))?`<a class="gp-lk dash" href="${esc(gpGcalLink(orgDono,r))}" target="_blank" rel="noopener" title="Abre o Google Agenda com o evento preenchido e os e-mails do cliente como convidados">${icoGpCal}Criar no Google Agenda</a>`:''}</div>
       </div>
-      <div style="flex:0 0 auto;display:flex;gap:6px;align-items:flex-start">${pend?`<button class="btn btn-primary btn-sm" style="padding:4px 9px;font-size:11.5px" onclick="gpConfirmarReuniao('${dono}','${r.id}')">Aconteceu</button>`:''}<button class="icon-btn" title="Editar" onclick="gpReuniaoModal('${dono}','${r.id}')">${icoEdit}</button></div></div>`;}).join('');}
-function reunioesHTML(o){const i=gpInfo(o);const crm=ADMIN_CRM[o.id]||{};const grupo=gpGrupo(o);const todas=gpReunioesGrupo(o);const feitas=todas.filter(r=>r.realizada);
-  const acoesAbertas=feitas.slice().sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,1).reduce((s,r)=>s+((r.acoes||[]).length-((r.acoesTarefa||[]).length)),0);
-  return `<div class="card card-pad">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px"><div><div class="ttl">Reuniões e acompanhamento</div><div class="desc">Histórico, próxima reunião e anotações internas. Fica em área separada: o cliente não tem acesso.${grupo.length>1?` Este dono tem <b>${grupo.length} unidades</b> (${esc(grupo.map(u=>u.nome).join(', '))}); o histórico abaixo junta todas.`:''}</div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="gpReuniaoModal('${o.id}','','agendar')">+ Agendar</button><button class="btn btn-primary btn-sm" onclick="gpReuniaoModal('${o.id}')">📅 Registrar reunião</button></div></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px">
-      <div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px"><div class="k-lbl">Última reunião</div><div style="margin-top:4px">${gpUltReuniaoHTML(i)}</div></div>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px"><div class="k-lbl">Próxima reunião</div><div style="margin-top:4px">${gpProxReuniaoHTML(i)}</div></div>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px"><div class="k-lbl">Reuniões realizadas</div><div style="font-size:20px;font-weight:700;font-family:'Fraunces',serif;margin-top:2px">${feitas.length}</div>${feitas.length?`<div style="font-size:11px;color:var(--soft)">desde ${fmtDataBR(feitas.map(r=>r.data).sort()[0])}</div>`:''}${acoesAbertas>0?`<div style="font-size:11px;color:var(--amber);margin-top:2px">${acoesAbertas} ação(ões) da última reunião fora do projeto</div>`:''}</div>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px"><div class="k-lbl">Etapa atual</div><select class="input" style="margin-top:5px;padding:6px 8px;font-size:12.5px" onchange="gpEtapaManual('${o.id}',this.value)"><option value="">Automática${i.etapaAuto?' · '+esc(i.etapa):''}</option>${i.fases.map(f=>`<option value="${esc(f)}" ${crm.etapaManual===f?'selected':''}>${esc(f)}</option>`).join('')}</select></div>
+      <div class="acts">${pend?`<button class="btn btn-primary btn-sm" style="padding:5px 10px;font-size:11.5px;min-height:0" onclick="gpConfirmarReuniao('${dono}','${r.id}')">Aconteceu</button>`:''}<button class="icon-btn" title="Editar" onclick="gpReuniaoModal('${dono}','${r.id}')">${icoEdit}</button></div></div>`;}).join('');}
+function reunioesHTML(o){const i=gpInfo(o);const crm=ADMIN_CRM[o.id]||{};const grupo=gpGrupo(o);const todas=gpReunioesGrupo(o);const feitas=todas.filter(r=>r.realizada);const mob=ehMobile();
+  const ultima=feitas.slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];
+  const acoesAbertas=ultima?((ultima.acoes||[]).length-((ultima.acoesTarefa||[]).length)):0;
+  const notas=`
+    <div class="field"><label>Retrato do cliente <span class="hint" id="gp_ctx_st"></span></label><div class="gp-mini" style="margin:-3px 0 6px">Quem é, onde está o projeto, números e pontos sensíveis.</div><textarea class="input" rows="${mob?4:6}" placeholder="Resumo de quem é o cliente, situação do projeto, números e pontos sensíveis…" oninput="gpContexto('${o.id}',this.value)">${esc(crm.contexto||'')}</textarea></div>
+    <div class="field"><label>Anotações livres <span class="hint" id="gp_nota_st"></span></label><textarea class="input" rows="3" placeholder="Combinados, lembretes, observações…" oninput="gpNotas('${o.id}',this.value)">${esc(crm.notas||'')}</textarea></div>
+    <div class="field" style="margin:0"><label>Etapa atual do projeto</label><select class="input" style="padding:8px 10px;font-size:13px" onchange="gpEtapaManual('${o.id}',this.value)"><option value="">Automática${i.etapaAuto&&i.etapa?' · '+esc(i.etapa):''}</option>${i.fases.map(f=>`<option value="${esc(f)}" ${crm.etapaManual===f?'selected':''}>${esc(f)}</option>`).join('')}</select><div class="gp-mini" style="margin-top:4px">Automática = calculada pelas tarefas concluídas. Só force quando o plano não refletir a realidade.</div></div>
+    <div class="gp-mini" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">${feitas.length} reunião(ões) realizada(s)${feitas.length?' desde '+fmtDataBR(feitas.map(r=>r.data).sort()[0]):''}.${acoesAbertas>0?` <span style="color:var(--amber)">${acoesAbertas} ação(ões) da última reunião ainda fora do projeto.</span>`:''} Área interna: o cliente não tem acesso.</div>`;
+  const tl=`<div class="card card-pad" style="padding:${mob?'12px 14px':'14px 18px'}">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <div><div style="font-size:15px;font-weight:600">Linha do tempo <span class="gp-mini">${todas.length} registro${todas.length===1?'':'s'}</span></div>${grupo.length>1?`<div class="gp-mini">Junta as ${grupo.length} unidades do dono: ${esc(grupo.map(u=>u.nome).join(', '))}.</div>`:''}</div>
+      <div class="gp-tl-btns"><button class="btn btn-ghost btn-sm" onclick="gpReuniaoModal('${o.id}','','agendar')">${icoGpCal} Agendar</button><button class="btn btn-primary btn-sm" onclick="gpReuniaoModal('${o.id}')">${icoPlus} Registrar reunião</button></div>
     </div>
-    <div class="field"><label>Retrato do cliente <span class="hint">quem é, onde está o projeto, pontos de atenção</span> <span class="hint" id="gp_ctx_st"></span></label><textarea class="input" rows="4" placeholder="Resumo de quem é o cliente, situação do projeto, números e pontos sensíveis…" oninput="gpContexto('${o.id}',this.value)">${esc(crm.contexto||'')}</textarea></div>
-    <div class="field"><label>Anotações livres <span class="hint" id="gp_nota_st"></span></label><textarea class="input" rows="2" placeholder="Combinados, lembretes, observações…" oninput="gpNotas('${o.id}',this.value)">${esc(crm.notas||'')}</textarea></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 4px"><div style="font-size:13px;font-weight:700">Linha do tempo <span style="font-weight:400;color:var(--soft)">${todas.length} registro(s)</span></div><input class="input" value="${esc(gpHistQ)}" placeholder="🔎 Buscar no histórico (CMV, ficha técnica, preço…)" oninput="gpHistBusca(this.value)" style="max-width:320px;padding:7px 10px;font-size:12.5px"></div>
-    <div id="gp_timeline">${gpTimelineHTML(o)}</div>
-  </div>`;}
-function gpResumoClienteHTML(o){const i=gpInfo(o);return `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--muted)">
-  <span>${gpSitTag(i)}</span><span>Etapa: <b style="color:var(--ink)">${esc(i.etapa||'—')}</b></span>
-  <span>Próxima tarefa: <b style="color:var(--ink)">${i.prox?esc(i.prox.titulo.slice(0,70))+(i.prox.titulo.length>70?'…':''):'—'}</b>${i.prox&&i.prox.prazo?' ('+fmtDataBR(i.prox.prazo).slice(0,5)+')':''}</span>
-  <span>Última reunião: <b style="color:var(--ink)">${i.ultR?fmtDataBR(i.ultR.data).slice(0,5)+' · '+gpHa(i.ultR.data):'nunca'}</b></span>
-  <span>Próxima: <b style="color:var(--ink)">${i.proxR?fmtDataBR(i.proxR.data).slice(0,5):'não agendada'}</b></span></div>`;}
+    <div class="gp-search" style="margin-bottom:4px">${icoGpSearch}<input class="input" value="${esc(gpHistQ)}" placeholder="Buscar no histórico (CMV, ficha técnica, preço…)" oninput="gpHistBusca(this.value)" style="padding:8px 10px 8px 34px;font-size:13px"></div>
+    <div id="gp_timeline">${gpTimelineHTML(o)}</div></div>`;
+  if(mob)return `<details class="card card-pad" style="padding:12px 14px;margin-bottom:12px"><summary style="cursor:pointer;font-weight:700;font-size:13.5px;list-style:none;display:flex;justify-content:space-between;align-items:center">Retrato, anotações e etapa <span class="gp-mini">toque para abrir</span></summary><div style="margin-top:12px">${notas}</div></details>${tl}`;
+  return `<div class="gp-reun-grid">${tl}<div class="gp-side"><div class="card card-pad" style="padding:14px 16px;position:sticky;top:0">${notas}</div></div></div>`;}
 function gpExportCSV(){const list=gpFiltrar(gpCarteira());const cab=['Cliente','Segmento','Consultor','Situação','Motivos','Etapa atual','Etapa (feitas/total)','Projeto %','Próxima tarefa','Responsável','Prazo','Tarefas atrasadas','Última reunião','Dias sem reunião','Próxima reunião','Último movimento'];
   const q=v=>'"'+(''+(v==null?'':v)).replace(/"/g,'""')+'"';
   const linhas=list.map(i=>[i.o.nome,i.seg,consNome(i.o.consultor_id),(GP_SIT[i.sit]||[''])[0],i.motivos.map(m=>m.t).join('; '),i.etapa,i.etapaTot?i.etapaFeitas+'/'+i.etapaTot:'',i.pct,i.prox?i.prox.titulo:'',i.prox?i.prox.resp||'':'',i.prox&&i.prox.prazo?fmtDataBR(i.prox.prazo):'',i.atr.length,i.ultR?fmtDataBR(i.ultR.data):'',i.diasSem==null?'':i.diasSem,i.proxR?fmtDataBR(i.proxR.data):'',i.ultAtiv?fmtDataBR(i.ultAtiv):''].map(q).join(';'));
