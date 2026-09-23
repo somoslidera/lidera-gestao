@@ -6695,7 +6695,7 @@ function projSeed(){const arr=[];PROJETO_FASES.forEach((f,fi)=>f.tarefas.forEach
 function projOnboardingSeed(){return PROJETO_FASES[0].tarefas.map((t,ti)=>({id:'f0t'+ti,titulo:t,fase:'Onboarding',feito:false,prazo:''}));}
 function projEnsure(o){if(!o)return{tarefas:[]};o.dados=o.dados||{};
   const deConsultor=orgDeConsultor(o); // cliente de consultor: projeto vazio (metodologia própria). Dono multi-unidade é cliente da Lidera e recebe o plano padrão.
-  if(!o.dados._projeto||!Array.isArray(o.dados._projeto.tarefas)){o.dados._projeto=deConsultor?{tarefas:[],criadoEm:hojeISO(),_obV2:true}:{tarefas:projSeed(),criadoEm:hojeISO()};}
+  if(!o.dados._projeto||!Array.isArray(o.dados._projeto.tarefas)){o.dados._projeto=deConsultor?{tarefas:[],criadoEm:hojeISO(),_obV2:true}:{tarefas:projOnboardingSeed(),criadoEm:hojeISO(),_obV2:true};}  // cliente novo começa só com o Onboarding; as etapas do Plano de Guerra entram pelo PDF depois da reunião
   const p=o.dados._projeto;
   if(!p._obV2){if(!deConsultor){const ob=p.tarefas.filter(t=>t.fase==='Onboarding');if(!ob.length||ob.every(t=>!t.feito&&!t.prazo)){const resto=p.tarefas.filter(t=>t.fase!=='Onboarding');p.tarefas=projOnboardingSeed().concat(resto);}}p._obV2=true;}
   return p;}
@@ -6761,10 +6761,11 @@ function renderAdminList(){const el=$('#admin_listc');if(!el)return;
       ${p?`<div style="height:4px;border-radius:3px;background:${sel?'rgba(255,255,255,.25)':'var(--line)'};margin-top:5px"><div style="height:4px;border-radius:3px;width:${pct}%;background:${pct>=100?'var(--green)':'var(--gold)'}"></div></div>`:''}
     </div>`;}).join(''):`<div style="color:var(--muted);padding:12px;font-size:13px">${q?'Nada encontrado.':'Nenhum cliente.'}</div>`;
 }
-async function adminSelOrg(id){adminSel=id;adminProjTab='dados';renderAdminList();renderAdminMain();
-  const o=ADMIN_ORGS.find(x=>x.id===id);if(!o)return;
-  const antes=JSON.stringify((o.dados&&o.dados._projeto)||null);projEnsure(o);
-  if(JSON.stringify(o.dados._projeto)!==antes){await projSaveOrg(o);renderAdminList();}}
+async function adminSelOrg(id){adminSel=id;adminProjTab='dados';
+  const o=ADMIN_ORGS.find(x=>x.id===id);let mudou=false;
+  if(o){const antes=JSON.stringify((o.dados&&o.dados._projeto)||null);projEnsure(o);mudou=JSON.stringify(o.dados._projeto)!==antes;}
+  renderAdminList();renderAdminMain();
+  if(o&&mudou)await projSaveOrg(o);}
 function renderAdminMain(){const el=$('#admin_main');if(!el)return;
   if(!adminSel){if(adminModo==='gestao'){renderGestao();return;}el.innerHTML=adminOverviewHTML();return;}
   const o=ADMIN_ORGS.find(x=>x.id===adminSel);
@@ -6856,6 +6857,7 @@ function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=pro
     </div>
     <div style="display:flex;align-items:center;gap:12px"><div class="gp-prog ${pct>=100?'done':''}" style="height:10px"><i style="width:${pct}%"></i></div><div style="font-weight:700;font-size:18px;font-family:'Fraunces',serif;color:${pct>=100?'var(--green)':'var(--navy)'}">${pct}%</div></div>
     ${p.tarefas.length?'':`<div class="alert alert-amber" style="margin:12px 0 0">${icoWarn}<div>Este cliente ainda não tem plano de projeto. Crie a primeira etapa abaixo ou importe um PDF do Plano de Guerra.</div></div>`}
+    ${info.soOnb?`<div class="alert alert-amber" style="margin:12px 0 0;align-items:center">${icoWarn}<div style="flex:1">${info.etapa===GP_AGUARDA?'Onboarding concluído. ':'Por enquanto só o Onboarding está no plano. '}Depois da reunião com o cliente, importe o PDF do Plano de Guerra para trazer as etapas.</div><label class="btn btn-primary btn-sm" style="cursor:pointer;flex:0 0 auto">${icoGpDoc} Importar PDF<input type="file" accept="application/pdf,.pdf" style="display:none" onchange="projImportarPdf(this)"></label></div>`:''}
   </div>`;
   fases.forEach(f=>{const done=f.itens.filter(x=>x.feito).length;const pend=f.itens.length-done;const fa=esc(f.nome);const faseArg=f.nome.replace(/['"\\]/g,'');const cur=f.nome===info.etapa;
     const late=f.itens.filter(t=>!t.feito&&t.prazo&&t.prazo<h).length;const key=o.id+'|'+f.nome;const aberta=(key in _ptOpen)?_ptOpen[key]:(pend>0);
@@ -6909,6 +6911,8 @@ function adminOverviewHTML(){const arqd=o=>!!(o.dados&&o.dados._arquivado);
    Tudo é derivado do que já existe (dados._projeto) + o registro de reuniões (dados._crm).
    Salva por merge de chave (adminSaveKeys), sem tocar nos dados que o cliente usa no app. */
 const GP_DIAS_ATENCAO=15, GP_DIAS_CRITICO=30;
+const GP_AGUARDA='Aguardando plano de guerra';   // Onboarding terminou e o PDF do Plano de Guerra ainda não foi importado
+function gpFaseParaTarefa(i){return (i.etapa&&i.etapa!=='Sem plano'&&i.etapa!=='Concluído'&&i.etapa!==GP_AGUARDA)?i.etapa:'Outras';}
 const GP_TIPOS_REUNIAO=['Acompanhamento','Onboarding','Diagnóstico','Apresentação do Plano de Guerra','Entrega de etapa','Treinamento','Extra'];
 let adminModo=(function(){try{return localStorage.getItem('flow_admin_modo')||'gestao';}catch(e){return 'gestao';}})();
 const GP_DEF={q:'',etapa:'',sit:'',reun:'',seg:'',cons:'',resp:'',grupo:'',ord:'critico',view:'tabela'};
@@ -7050,15 +7054,15 @@ async function gpAgendaGoogle(o,r,acao,opts){opts=opts||{};
   return gpN8n(Object.assign(base,{titulo:'PLL - '+(o.nome||''),descricao:(r.tipo||'Acompanhamento')+(r.resumo?'\n\n'+r.resumo:'')+'\n\nAgendado pelo Flow.',duracaoMin:60,convidar:!!opts.convidar,convidados:emails,meet:true},opts,{descricao:(r.tipo||'Acompanhamento')+(r.resumo?'\n\n'+r.resumo:'')+'\n\nAgendado pelo Flow.'}));}
 async function gpAcaoTarefa(orgId,rid,idx){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const r=gpCrm(o).reunioes.find(x=>x.id===rid);if(!r||!r.acoes||!r.acoes[idx])return;
   const bruto=r.acoes[idx];const m=bruto.match(/^([^:]{2,40}):\s*(.+)$/);const resp=m?m[1].trim():'';const tit=(m?m[2]:bruto).trim();
-  const i=gpInfo(o);const fase=(i.etapa&&i.etapa!=='Sem plano'&&i.etapa!=='Concluído')?i.etapa:'Outras';const p=projEnsure(o);
+  const i=gpInfo(o);const fase=gpFaseParaTarefa(i);const p=projEnsure(o);
   if(p.tarefas.some(t=>!t.feito&&lmNorm(t.titulo)===lmNorm(tit)))return toast('Essa tarefa já está no projeto');
   p.tarefas.push({id:'c'+Date.now(),titulo:tit,fase,feito:false,prazo:diasSoma(hojeISO(),7),resp,deReuniao:rid});
   r.acoesTarefa=(r.acoesTarefa||[]).concat([idx]);gpRefresh();toast('Virou tarefa em '+fase+' com prazo de 7 dias');await adminSaveKeys(o,['_crm','_projeto']);}
 async function gpAplicarPlanoPadrao(){const alvo=ADMIN_ORGS.filter(o=>!(o.dados&&(o.dados._arquivado||o.dados._demo))&&!orgDeConsultor(o)&&!(((o.dados||{})._projeto||{}).tarefas||[]).length);
   if(!alvo.length)return toast('Nenhuma unidade sem plano');
-  if(!confirm('Aplicar o plano padrão da Lidera (Onboarding + 6 etapas) em '+alvo.length+' unidade(s) que estão sem plano?\n\n'+alvo.map(o=>'• '+o.nome).join('\n')))return;
-  let n=0;for(const o of alvo){o.dados=o.dados||{};o.dados._projeto={tarefas:projSeed(),criadoEm:hojeISO(),_obV2:true};if(await adminSaveOrgKeys(o,['_projeto']))n++;}
-  gpRefresh();toast('Plano padrão aplicado em '+n+' unidade(s)');}
+  if(!confirm('Aplicar o Onboarding padrão da Lidera em '+alvo.length+' unidade(s) sem plano? As etapas do Plano de Guerra entram depois, pelo PDF, após a reunião.\n\n'+alvo.map(o=>'• '+o.nome).join('\n')))return;
+  let n=0;for(const o of alvo){o.dados=o.dados||{};o.dados._projeto={tarefas:projOnboardingSeed(),criadoEm:hojeISO(),_obV2:true};if(await adminSaveOrgKeys(o,['_projeto']))n++;}
+  gpRefresh();toast('Onboarding aplicado em '+n+' unidade(s)');}
 
 /* retrato de gestão de um cliente: etapa, próxima tarefa, reuniões, saúde */
 function gpInfo(o){const h=hojeISO();const d=o.dados||{};const p=(d._projeto&&Array.isArray(d._projeto.tarefas))?d._projeto:null;const ts=p?p.tarefas:[];
@@ -7066,7 +7070,9 @@ function gpInfo(o){const h=hojeISO();const d=o.dados||{};const p=(d._projeto&&Ar
   const pendDe=f=>ts.filter(t=>t.fase===f&&!t.feito), feitoDe=f=>ts.filter(t=>t.fase===f&&t.feito);
   const naoOnb=fases.filter(f=>f!=='Onboarding');
   const crm=ADMIN_CRM[o.id]||{};let etapa='',auto=true;
+  const soOnb=fases.length>0&&fases.every(f=>f==='Onboarding');
   if(!ts.length)etapa='Sem plano';
+  else if(soOnb&&!ts.some(t=>!t.feito))etapa=GP_AGUARDA;
   else if(!ts.some(t=>!t.feito))etapa='Concluído';
   else if(crm.etapaManual&&fases.includes(crm.etapaManual)&&pendDe(crm.etapaManual).length){etapa=crm.etapaManual;auto=false;}
   else{const comPend=naoOnb.filter(f=>pendDe(f).length);
@@ -7099,10 +7105,12 @@ function gpInfo(o){const h=hojeISO();const d=o.dados||{};const p=(d._projeto&&Ar
     if(pendConf.length)add(1,'reunião de '+fmtDataBR(pendConf[pendConf.length-1].data).slice(0,5)+' a confirmar');
     if(!proxR)add(1,'sem próxima reunião agendada');
     if(etapa==='Sem plano')add(1,'sem plano de projeto');
+    else if(etapa===GP_AGUARDA)add(1,'Onboarding concluído, Plano de Guerra ainda não importado');
+    else if(soOnb)add(0,'só o Onboarding no plano');
     else if(prox&&!prox.prazo)add(0,'próxima tarefa sem prazo');
     sit=nivel===2?'critico':nivel===1?'atencao':'ok';}
   return {o,id:o.id,p,ts,fases,etapa,etapaAuto:auto,etapaTot:naEtapa.length,etapaFeitas,pct:p?projPct(p):0,atr,maxAtraso,prox,ultR,proxR,pendConf,diasSem,ultAtiv,
-    seg:(cad.segmento||'').trim(),socios:cadSociosLinha(cad),sit,nivel,motivos,nReun:feitas.length,grupoN:gpGrupo(o).length,donoId:orgDonoId(o)};}
+    seg:(cad.segmento||'').trim(),socios:cadSociosLinha(cad),sit,nivel,motivos,soOnb,nReun:feitas.length,grupoN:gpGrupo(o).length,donoId:orgDonoId(o)};}
 const GP_SIT={critico:['Crítico','tag-red','var(--red)'],atencao:['Atenção','tag-amber','var(--amber)'],ok:['Em dia','tag-green','var(--green)'],concluido:['Concluído','tag-gray','var(--navy)'],suspenso:['Suspenso','tag-gray','var(--soft)']};
 function gpCarteira(){return ADMIN_ORGS.filter(o=>!(o.dados&&(o.dados._arquivado||o.dados._demo))).map(gpInfo);}
 function gpFiltrar(infos){const q=lmNorm(GP.q);const h=hojeISO(),em7=diasSoma(h,7);
@@ -7133,7 +7141,7 @@ function gpFiltrar(infos){const q=lmNorm(GP.q);const h=hojeISO(),em7=diasSoma(h,
 function gpSet(k,v){GP[k]=v;gpPersist();if(k==='q'){const c=$('#gp_qclr');if(c)c.style.display=v?'':'none';gpRenderResultados();}else renderGestao();}
 function gpLimpar(){const v=GP.view,o=GP.ord;GP=Object.assign({},GP_DEF,{view:v,ord:o});gpPersist();renderGestao();}
 function gpAtalho(campo,valor){GP[campo]=(GP[campo]===valor)?'':valor;gpPersist();renderGestao();}
-function gpAbrir(id,tab){adminSel=id;adminProjTab=tab||'projeto';renderAdmin();const o=ADMIN_ORGS.find(x=>x.id===id);if(o){const antes=JSON.stringify((o.dados&&o.dados._projeto)||null);projEnsure(o);if(JSON.stringify(o.dados._projeto)!==antes)projSaveOrg(o);}window.scrollTo(0,0);const b=document.getElementById('adminScreen');if(b)b.scrollTop=0;}
+function gpAbrir(id,tab){adminSel=id;adminProjTab=tab||'projeto';const o=ADMIN_ORGS.find(x=>x.id===id);if(o){const antes=JSON.stringify((o.dados&&o.dados._projeto)||null);projEnsure(o);if(JSON.stringify(o.dados._projeto)!==antes)projSaveOrg(o);}renderAdmin();window.scrollTo(0,0);const b=document.getElementById('adminScreen');if(b)b.scrollTop=0;}
 
 function gpVivo(i){return i.sit!=='suspenso'&&i.sit!=='concluido';}
 let _gpFiltrosAberto=false;
@@ -7168,7 +7176,7 @@ function renderGestao(){const el=$('#admin_main');if(!el)return;const infos=gpCa
     +sel('resp','Responsável da tarefa',resps.map(x=>[x,x]).concat([['__sem__','(sem responsável)']]));
   el.innerHTML=`
   ${ADMIN_PEND.length?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${ADMIN_PEND.length}</b> novo(s) cadastro(s) aguardando vínculo. <a class="gp-link" onclick="adminSetModo('clientes')">Ver em Clientes</a></div></div>`:''}
-  ${semPlano.length?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${semPlano.length}</b> unidade(s) da carteira Lidera sem plano de projeto (${esc(semPlano.slice(0,4).map(i=>i.o.nome).join(', '))}${semPlano.length>4?'…':''}). <a class="gp-link" onclick="gpAplicarPlanoPadrao()">Aplicar o plano padrão</a></div></div>`:''}
+  ${semPlano.length?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${semPlano.length}</b> unidade(s) da carteira Lidera sem plano de projeto (${esc(semPlano.slice(0,4).map(i=>i.o.nome).join(', '))}${semPlano.length>4?'…':''}). <a class="gp-link" onclick="gpAplicarPlanoPadrao()">Aplicar o Onboarding</a></div></div>`:''}
   <div id="gp_kpis">${gpStatsHTML(infos)}</div>
   <div class="card" style="margin-top:12px;padding:${mob?'10px 12px':'12px 14px'}">
     <div class="gp-bar">
@@ -7202,8 +7210,8 @@ function gpMotivosHTML(i,max){const ms=i.motivos.slice().sort((a,b)=>b.n-a.n);co
 function gpEtapaHTML(i){const w=i.etapaTot?Math.round(i.etapaFeitas/i.etapaTot*100):(i.etapa==='Concluído'?100:0);
   return `<div style="font-weight:600;font-size:13px;line-height:1.3">${esc(i.etapa||'—')}${i.etapaAuto?'':' <span class="gp-mini" title="Etapa definida manualmente na aba Reuniões">· manual</span>'}</div>
     ${i.etapaTot?`<div style="display:flex;align-items:center;gap:6px;margin-top:5px"><div class="gp-prog ${w>=100?'done':''}"><i style="width:${w}%"></i></div><span class="gp-mini" style="white-space:nowrap">${i.etapaFeitas}/${i.etapaTot}</span></div>`:''}
-    ${i.ts.length?`<div class="gp-mini" style="margin-top:3px">${i.pct}% do projeto</div>`:''}`;}
-function gpTarefaHTML(i){const t=i.prox;if(!t)return `<span class="gp-mini" style="font-size:12.5px">${i.etapa==='Sem plano'?'sem tarefas cadastradas':i.etapa==='Concluído'?'projeto concluído':'nada pendente'}</span>`;
+    ${i.soOnb?`<div class="gp-mini" style="margin-top:3px">só o Onboarding por enquanto</div>`:i.ts.length?`<div class="gp-mini" style="margin-top:3px">${i.pct}% do projeto</div>`:''}`;}
+function gpTarefaHTML(i){const t=i.prox;if(!t)return `<span class="gp-mini" style="font-size:12.5px">${i.etapa==='Sem plano'?'sem tarefas cadastradas':i.etapa==='Concluído'?'projeto concluído':i.etapa===GP_AGUARDA?'importe o PDF do Plano de Guerra':'nada pendente'}</span>`;
   const h=hojeISO();const atras=t.prazo&&t.prazo<h;
   return `<div style="display:flex;gap:8px;align-items:flex-start">
     <button class="gp-check" title="Marcar esta tarefa como concluída" onclick="event.stopPropagation();gpConcluir('${i.id}','${t.id}')">${icoGpCheck}</button>
@@ -7290,7 +7298,7 @@ async function gpConfirmarReuniao(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===o
 let _grModo='feita';
 function gpReuniaoModal(orgId,rid,modo){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const crm=gpCrm(o);const r=rid?crm.reunioes.find(x=>x.id===rid):null;const i=gpInfo(o);
   _grModo=r?(r.realizada?'feita':'agendar'):(modo||'feita');const h=hojeISO();
-  const faseTarefa=(i.etapa&&i.etapa!=='Sem plano'&&i.etapa!=='Concluído')?i.etapa:'Outras';
+  const faseTarefa=gpFaseParaTarefa(i);
   const emails=((o.dados&&o.dados.equipe)||[]).map(x=>x&&x.email).filter(Boolean);
   modal(`<div class="modal-head"><h3>${r?'Reunião':'Nova reunião'} · ${esc(o.nome||'')}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
@@ -7338,7 +7346,7 @@ async function gpReuniaoSalvar(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===orgI
   {const lk={};GP_LINKS.forEach(([k])=>{const v=(($('#gr_l_'+k)||{}).value||'').trim();if(v)lk[k]=v;});if(Object.keys(lk).length)r.links=lk;else delete r.links;}
   const keys=['_crm'];let criadas=0;
   if(feita){r.passos=($('#gr_passos').value||'').trim();
-    if($('#gr_criar')&&$('#gr_criar').checked&&r.passos){const i=gpInfo(o);const fase=(i.etapa&&i.etapa!=='Sem plano'&&i.etapa!=='Concluído')?i.etapa:'Outras';const p=projEnsure(o);
+    if($('#gr_criar')&&$('#gr_criar').checked&&r.passos){const i=gpInfo(o);const fase=gpFaseParaTarefa(i);const p=projEnsure(o);
       const resp=($('#gr_resp').value||'').trim(),prazo=$('#gr_prazo').value||'';
       r.passos.split('\n').map(x=>x.replace(/^[\s\-•▸*]+/,'').trim()).filter(x=>x.length>2).forEach((tit,k)=>{if(p.tarefas.some(t=>!t.feito&&lmNorm(t.titulo)===lmNorm(tit)))return;
         p.tarefas.push({id:'c'+Date.now()+k,titulo:tit,fase,feito:false,prazo,resp,deReuniao:r.id});criadas++;});
@@ -7504,7 +7512,7 @@ function projImportModal(){const fases=PROJ_IMP||[];
     </div>
     <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:11px;display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="proj_imp_modo" value="add" checked> Somar ao plano atual</label>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="proj_imp_modo" value="sub"> Substituir o plano atual <span style="color:var(--soft)">(apaga o que existe)</span></label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="proj_imp_modo" value="sub"> Substituir as etapas atuais <span style="color:var(--soft)">(apaga o que existe, menos o Onboarding)</span></label>
     </div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="projImportAplicar()">Importar</button></div>`,true,true);}
@@ -7519,7 +7527,7 @@ function projImportAplicar(){const o=projCur();if(!o||!PROJ_IMP)return closeModa
     f.tarefas.forEach((t,ti)=>{const tit=(t.titulo||'').trim();if(!tit)return;
       novas.push({id:'p'+Date.now().toString(36)+fi+'_'+ti,titulo:tit,fase,feito:!!t.feito,feitoEm:t.feito?hojeISO():'',prazo:t.prazo||'',resp:''});});});
   if(!novas.length){closeModal();return toast('Nada para importar');}
-  if(modo==='sub'){if(!confirm('Substituir o plano atual por '+novas.length+' tarefa(s) do PDF?\n\nO plano que está aí será apagado.'))return;p.tarefas=novas;}
+  if(modo==='sub'){if(!confirm('Substituir as etapas atuais por '+novas.length+' tarefa(s) do PDF?\n\nAs etapas que estão aí serão apagadas. O Onboarding fica.'))return;p.tarefas=p.tarefas.filter(t=>t.fase==='Onboarding').concat(novas);}
   else p.tarefas=p.tarefas.concat(novas);
   PROJ_IMP=null;closeModal();renderAdminMain();renderAdminList();projSaveOrg(o);
   toast(novas.length+' tarefa(s) importada(s)');}
