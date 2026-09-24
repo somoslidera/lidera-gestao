@@ -483,6 +483,8 @@ body.dark .wiz-foot{background:#0E1626}
   #printArea .ci{display:flex;align-items:center;gap:8px;border-bottom:1px solid #ccc;padding:4px 2px;break-inside:avoid;font-size:12px}
   #printArea .ci-n{flex:1}
   #printArea .ci-u{width:30px;text-align:right;color:#666;font-size:10.5px}
+  #printArea .ci-q{width:80px;text-align:right;font-weight:700;font-size:12px}
+  #printArea .ci small{color:#666;font-weight:400}
   #printArea .ci-b{width:58px;height:18px;border:1px solid #999;border-radius:3px;flex-shrink:0}
 }
 
@@ -6585,7 +6587,7 @@ function estReqEditorHTML(r){const fichas=fichasVendaveis().slice().sort((a,b)=>
   <div class="print-only" style="margin-bottom:14px"><div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700">Requisição para ${esc(estArmNome(r.para))}</div><div style="font-size:13px;color:#555">${(DB.conta&&DB.conta.restaurante)||'Restaurante'} · ${fmtDataBR(r.data)} · ${esc((REQ_TURNOS.find(t=>t[0]===r.turno)||['','Dia inteiro'])[1])}${r.obs?' · '+esc(r.obs):''}</div></div>
   <div class="card card-pad no-print" style="margin-bottom:12px">
     <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Requisição de ${fmtDataBR(r.data)} ${fechada?'<span class="tag tag-green">separada</span>':'<span class="tag tag-amber">aberta</span>'}</div><div class="desc">${fechada?'Já virou transferência para '+esc(estArmNome(r.para))+'.':'1) Preencha a previsão de pratos. 2) Gere a lista. 3) Ajuste e confirme a separação.'}</div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="estReqSel=null;viewEstoque()">← Voltar</button>${nSep?`<button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Imprimir</button>`:''}${fechada?'':`<button class="btn btn-primary btn-sm" ${nSep?'':'disabled'} onclick="estReqConfirmar('${r.id}')">✓ Confirmar separação (${nSep})</button>`}</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="estReqSel=null;viewEstoque()">← Voltar</button>${nSep?`<button class="btn btn-ghost btn-sm" onclick="estReqImprimir('${r.id}')">🖨️ Imprimir</button>`:''}${fechada?'':`<button class="btn btn-primary btn-sm" ${nSep?'':'disabled'} onclick="estReqConfirmar('${r.id}')">✓ Confirmar separação (${nSep})</button>`}</div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
       <div class="field" style="margin:0"><label>Data</label><input type="date" class="input" value="${r.data}" ${fechada?'disabled':''} onchange="estReqSet('${r.id}','data',this.value)"></div>
       <div class="field" style="margin:0"><label>Turno</label><select class="input" ${fechada?'disabled':''} onchange="estReqSet('${r.id}','turno',this.value)">${REQ_TURNOS.map(([v,l])=>`<option value="${v}" ${r.turno===v?'selected':''}>${l}</option>`).join('')}</select></div>
@@ -6611,6 +6613,20 @@ function estReqEditorHTML(r){const fichas=fichasVendaveis().slice().sort((a,b)=>
       ${fechada&&r.transfId?`<div class="gp-mini no-print" style="margin-top:8px">Transferência registrada em ${fmtDataBR(r.data)}. Para desfazer, use Movimentações → Transferências.</div>`:''}
     </div>
   </div>`;}
+function estReqImprimir(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)return;const itens=(r.itens||[]).filter(x=>+x.qtd>0);if(!itens.length)return toast('Nenhum item com quantidade para imprimir');
+  const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';const turno=(REQ_TURNOS.find(t=>t[0]===r.turno)||['','Dia inteiro'])[1];
+  const ord=itens.slice().sort((a,b)=>{const ia=DB.insumos[a.insumoId]||{},ib=DB.insumos[b.insumoId]||{};return (ia.cat||'').localeCompare(ib.cat||'')||(ia.nome||'').localeCompare(ib.nome||'');});
+  let body='',last=null;ord.forEach(x=>{const i=DB.insumos[x.insumoId];if(!i)return;if(i.cat!==last){last=i.cat;body+=`<div class="cg">${esc(i.cat||'Sem categoria')}</div>`;}
+    body+=`<div class="ci"><span class="ci-n">${esc(i.nome)}${i.tipo==='preparado'?' <small>(porcionado)</small>':''}</span><span class="ci-q">${estQ(x.qtd,uSym(i.uni))}</span><span class="ci-b"></span></div>`;});
+  const pratos=(r.pratos||[]).map(([fid,q])=>{const f=DB.fichas[fid];return f?esc(f.nome)+' <b>'+q+'</b>':'';}).filter(Boolean).join(' · ');
+  let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
+  pa.innerHTML=`<div class="ct-head"><div><div style="font-size:19px;font-weight:700">${esc(rest)}</div><div style="font-size:13px">Requisição para ${esc(estArmNome(r.para))} · ${fmtDataBR(r.data)} · ${esc(turno)}</div></div><div style="font-size:11.5px;text-align:right;line-height:1.9">Separado por: __________________<br>Conferido por: __________________</div></div>
+    <div class="ct-note">Sai de <b>${esc(estArmNome(r.de))}</b> para <b>${esc(estArmNome(r.para))}</b>. ${itens.length} item(ns). Marque a caixa ao separar cada item.${r.obs?' Obs.: '+esc(r.obs):''}</div>
+    <div class="count-cols">${body}</div>
+    ${pratos?`<div class="ct-note" style="margin-top:10px;border-top:1px solid #ccc;padding-top:6px">Previsão de pratos: ${pratos}</div>`:''}`;
+  document.body.classList.add('print-contagem');
+  const fim=()=>{document.body.classList.remove('print-contagem');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
+  window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);}
 function estReqSet(id,k,v){const r=estRequisicoes().find(x=>x.id===id);if(!r||r.status==='separada')return;r[k]=v;save();if(k==='de'||k==='para')viewEstoque();}
 function estReqPrato(id,fichaId,v){const r=estRequisicoes().find(x=>x.id===id);if(!r||r.status==='separada')return;const q=parseInt(v)||0;r.pratos=(r.pratos||[]).filter(p=>p[0]!==fichaId);if(q>0)r.pratos.push([fichaId,q]);save();}
 function estReqPreencherMedia(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)return;const m=estReqMediaVendas(r.data,4);if(!m)return toast('Sem vendas registradas no mesmo dia da semana nas últimas 4 semanas. Registre as vendas em "Baixa por vendas" para o Flow aprender.');
