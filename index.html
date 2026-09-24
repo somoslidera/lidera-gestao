@@ -794,6 +794,7 @@ body.dark .gp-kb-col,body.dark .gp-note-box{background:#121B30}
   .gp-tl .dt{flex:none;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding-right:44px}
   .gp-tl .dt small{display:inline}
   .gp-tl .acts{position:absolute;right:0;top:10px}
+  .gr-pl{grid-template-columns:minmax(0,1fr) 118px 28px!important}
   .gp-tl-btns{display:flex;gap:8px;width:100%;flex-wrap:nowrap}.gp-tl-btns .btn{flex:1;justify-content:center;padding-left:6px;padding-right:6px}
   .gp-tl .meta{padding-right:44px}
   .gp-fact .v{white-space:normal}
@@ -7394,10 +7395,11 @@ function gpReuniaoModal(orgId,rid,modo){const o=ADMIN_ORGS.find(x=>x.id===orgId)
     <div id="gr_so_feita" style="display:${_grModo==='feita'?'block':'none'}">
       <div class="gp-note-box" style="padding-top:10px">
         <div style="font-size:13px;font-weight:600">Próximos passos <span class="hint">um por linha</span></div>
-        <div class="gp-mini" style="margin:2px 0 8px">Cada linha vira uma demanda em "Tarefas", separada do Plano de Guerra. Linhas já em aberto não são duplicadas.</div>
-        <div class="grid-2">
-          <div class="field" style="margin:0"><label><span class="tag tag-navy">Nossos</span> <span class="hint">o que a Lidera faz</span></label><textarea class="input" id="gr_passos_l" rows="3" placeholder="Ex.: Revisar as fichas técnicas&#10;Enviar o modelo de contagem">${esc(r?(r.passosLidera!=null?r.passosLidera:(r.passos||'')):'')}</textarea><input type="date" class="input" id="gr_prazo_l" value="${diasSoma(h,7)}" style="margin-top:6px" title="Prazo das nossas demandas"></div>
-          <div class="field" style="margin:0"><label><span class="tag tag-gold">Do cliente</span> <span class="hint">o que cobramos dele</span></label><textarea class="input" id="gr_passos_c" rows="3" placeholder="Ex.: Enviar as notas de agosto&#10;Fazer a contagem de estoque">${esc(r?r.passosCliente||'':'')}</textarea><input type="date" class="input" id="gr_prazo_c" value="${diasSoma(h,7)}" style="margin-top:6px" title="Prazo das demandas do cliente"></div>
+        <div class="gp-mini" style="margin:2px 0 8px">Cada linha vira uma demanda em "Tarefas" com a sua data, separada do Plano de Guerra. Enter pula para a próxima linha; linhas já em aberto não são duplicadas.</div>
+        ${grPassosInicial(r)}
+        <div class="grid-2" style="align-items:start">
+          <div><div style="font-size:12.5px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px"><span class="tag tag-navy">Nossos</span><span class="hint">o que a Lidera faz</span></div><div id="gr_pl_lidera">${grPassosHTML('lidera')}</div></div>
+          <div><div style="font-size:12.5px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px"><span class="tag tag-gold">Do cliente</span><span class="hint">o que cobramos dele</span></div><div id="gr_pl_cliente">${grPassosHTML('cliente')}</div></div>
         </div>
       </div>
       ${r?'':`<div class="grid-2"><div class="field"><label>Próxima reunião <span class="hint">já deixa agendada</span></label><input type="date" class="input" id="gr_prox_data" value="${i.proxR?'':diasSoma(h,14)}"></div><div class="field"><label>Hora</label><input type="time" class="input" id="gr_prox_hora"></div></div>
@@ -7413,6 +7415,25 @@ function gpReuniaoModal(orgId,rid,modo){const o=ADMIN_ORGS.find(x=>x.id===orgId)
 function gpReuniaoDia(){const d=$('#gr_data'),s=$('#gr_dia');if(!d||!s)return;const v=d.value;if(!v){s.textContent='';return;}
   const ds=['domingo','segunda','terça','quarta','quinta','sexta','sábado'][new Date(v+'T12:00:00').getDay()];const h=hojeISO();s.textContent=ds+(v===h?' · hoje':v>h?' · '+gpEm(v):' · '+gpHa(v));}
 function gpReuniaoPassos(){const t=$('#gr_passos'),b=$('#gr_criar_box');if(t&&b)b.style.display=t.value.trim()?'block':'none';}
+/* próximos passos da reunião: linhas independentes, cada uma com a própria data */
+let _grPassos={lidera:[],cliente:[]};
+function grPassosInicial(r){const h=hojeISO();const d7=diasSoma(h,7);const deTexto=(txt,quem)=>gpOpLinhas(txt).map(t=>({t,p:d7}));
+  if(r&&Array.isArray(r.passosItens)&&r.passosItens.length){_grPassos={lidera:r.passosItens.filter(x=>x.quem!=='cliente').map(x=>({t:x.t||'',p:x.p||''})),cliente:r.passosItens.filter(x=>x.quem==='cliente').map(x=>({t:x.t||'',p:x.p||''}))};}
+  else _grPassos={lidera:deTexto(r?(r.passosLidera!=null?r.passosLidera:(r.passos||'')):'','lidera'),cliente:deTexto(r?r.passosCliente||'':'','cliente')};
+  ['lidera','cliente'].forEach(q=>{if(!_grPassos[q].length)_grPassos[q]=[{t:'',p:d7}];});return '';}
+function grPassosLer(q){const box=$('#gr_pl_'+q);if(!box)return;_grPassos[q]=[...box.querySelectorAll('.gr-pl')].map(row=>({t:(row.querySelector('.gr-pl-t').value||'').trim(),p:row.querySelector('.gr-pl-p').value||''}));}
+function grPassosHTML(q){const rows=_grPassos[q]||[];const ph=q==='cliente'?'Ex.: Enviar as notas de agosto':'Ex.: Revisar as fichas técnicas';
+  return rows.map((x,i)=>`<div class="gr-pl" style="display:grid;grid-template-columns:minmax(0,1fr) 126px 28px;gap:6px;align-items:center;margin-bottom:6px">
+    <input class="input gr-pl-t" value="${esc(x.t)}" placeholder="${ph}" style="padding:8px 10px;font-size:13px;min-width:0" onkeydown="if(event.key==='Enter'){event.preventDefault();grPassoAdd('${q}',${i});}">
+    <input type="date" class="input gr-pl-p" value="${esc(x.p)}" style="padding:8px 6px;font-size:12.5px" title="Prazo desta demanda">
+    <button class="icon-btn" title="Remover linha" style="width:28px;height:28px" onclick="grPassoDel('${q}',${i})">${icoX}</button></div>`).join('')
+    +`<a class="gp-link" style="font-size:12px" onclick="grPassoAdd('${q}')">+ outra linha</a>`;}
+function grPassosDesenhar(q,focoIdx){const box=$('#gr_pl_'+q);if(!box)return;box.innerHTML=grPassosHTML(q);if(focoIdx!=null){const t=box.querySelectorAll('.gr-pl-t')[focoIdx];if(t)t.focus();}}
+function grPassoAdd(q,depois){grPassosLer(q);const rows=_grPassos[q];const base=(depois!=null?rows[depois]:rows[rows.length-1])||{};const nova={t:'',p:base.p||diasSoma(hojeISO(),7)};
+  if(depois!=null&&depois<rows.length-1)rows.splice(depois+1,0,nova);else rows.push(nova);grPassosDesenhar(q,depois!=null?depois+1:rows.length-1);}
+function grPassoDel(q,i){grPassosLer(q);_grPassos[q].splice(i,1);if(!_grPassos[q].length)_grPassos[q]=[{t:'',p:diasSoma(hojeISO(),7)}];grPassosDesenhar(q);}
+function grPassosColher(){['lidera','cliente'].forEach(grPassosLer);const out=[];['lidera','cliente'].forEach(q=>(_grPassos[q]||[]).forEach(x=>{if(x.t&&x.t.length>1)out.push({quem:q,t:x.t,p:x.p||''});}));return out;}
+function gpOpCriarItens(o,itens,rid){let n=0;const ts=gpTarefasOp(o);itens.forEach(x=>{if(ts.some(t=>!t.feito&&lmNorm(t.titulo)===lmNorm(x.t)))return;gpOpNova(o,x.t,x.quem,x.p,{deReuniao:rid||''});n++;});return n;}
 function gpReuniaoModo(m){_grModo=m;['feita','agendar'].forEach(x=>{const b=$('#gr_m_'+x);if(b)b.classList.toggle('on',x===m);});
   const s=$('#gr_so_feita');if(s)s.style.display=m==='feita'?'block':'none';const sa=$('#gr_so_agendar');if(sa)sa.style.display=m==='agendar'?'block':'none';const l=$('#gr_lbl_resumo');if(l)l.textContent=m==='feita'?'Resumo e decisões':'Pauta';
   const hw=$('#gr_hora_wrap');if(hw)hw.style.display=m==='agendar'?'none':'block';{const a=$('#gr_hora'),f=$('#gr_hora_feita');if(a&&f){if(m==='agendar'&&!a.value&&f.value){a.value=f.value;gcalIniMudou();}if(m==='feita'&&!f.value&&a.value)f.value=a.value;}}const sv=$('#gr_salvar');if(sv)sv.textContent=m==='feita'?'Registrar':'Agendar';
@@ -7427,8 +7448,8 @@ async function gpReuniaoSalvar(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===orgI
   Object.assign(r,{data,hora:horaSel,tipo:$('#gr_tipo').value,resumo:($('#gr_resumo').value||'').trim(),realizada:feita,participantes:(($('#gr_part')||{}).value||'').trim(),editado:true});
   {const lk={};GP_LINKS.forEach(([k])=>{const v=(($('#gr_l_'+k)||{}).value||'').trim();if(v)lk[k]=v;});if(Object.keys(lk).length)r.links=lk;else delete r.links;}
   const keys=['_crm'];let criadas=0;
-  if(feita){r.passosLidera=(($('#gr_passos_l')||{}).value||'').trim();r.passosCliente=(($('#gr_passos_c')||{}).value||'').trim();delete r.passos;
-    criadas+=gpOpCriarDeTexto(o,r.passosLidera,'lidera',(($('#gr_prazo_l')||{}).value)||'',r.id);criadas+=gpOpCriarDeTexto(o,r.passosCliente,'cliente',(($('#gr_prazo_c')||{}).value)||'',r.id);
+  if(feita){const itens=grPassosColher();r.passosItens=itens;r.passosLidera=itens.filter(x=>x.quem==='lidera').map(x=>x.t).join('\n');r.passosCliente=itens.filter(x=>x.quem==='cliente').map(x=>x.t).join('\n');delete r.passos;
+    criadas+=gpOpCriarItens(o,itens,r.id);
     const pd=$('#gr_prox_data');if(pd&&pd.value&&pd.value>h&&!crm.reunioes.some(x=>!x.realizada&&x.data===pd.value))crm.reunioes.push({id:uid(),data:pd.value,hora:($('#gr_prox_hora')&&$('#gr_prox_hora').value)||'',tipo:'Acompanhamento',resumo:'',realizada:false});}
   const querGoogle=!feita&&$('#gr_gcal')&&$('#gr_gcal').checked&&data>=h;const gOpts=feita?{}:gcalLerForm();
   if(!feita){r.gcalCal=gOpts.calendarId;r.gcalTitulo=gOpts.titulo||('PLL - '+(o.nome||''));r.gcalConv=gOpts.convidados;r.gcalFim=gOpts.horaFim||'';if(!gOpts.titulo)delete gOpts.titulo;}
@@ -7467,7 +7488,7 @@ function gpTimelineHTML(o){const h=hojeISO();const grupo=gpGrupo(o).length>1;con
         ${r.participantes?`<div class="gp-mini" style="margin-top:2px;display:flex;gap:4px;align-items:center">${icoGpUsers}${esc(r.participantes)}</div>`:''}
         ${r.resumo?`<div class="res">${esc(r.resumo)}</div>`:''}
         ${acoes.length?`<div class="sec">Ações combinadas</div>${acoes.map((a,k)=>`<div class="ac"><span>• ${esc(a)}</span>${virou.has(k)?`<span class="gp-mini" style="color:var(--green);white-space:nowrap">✓ virou demanda</span>`:`<span style="flex:0 0 auto;white-space:nowrap;font-size:11px"><a class="gp-link" style="font-size:11px" onclick="gpAcaoTarefa('${dono}','${r.id}',${k},'lidera')" title="Vira uma demanda nossa, com prazo de 7 dias">+ nossa</a> · <a class="gp-link" style="font-size:11px;color:var(--gold)" onclick="gpAcaoTarefa('${dono}','${r.id}',${k},'cliente')" title="Vira uma demanda do cliente, com prazo de 7 dias">+ do cliente</a></span>`}</div>`).join('')}`:''}
-        ${(r.passosLidera||r.passosCliente||r.passos)?`<div class="sec">Próximos passos</div>${r.passosLidera?`<div style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;margin-bottom:4px"><span class="tag tag-navy" style="flex:0 0 auto">Nossos</span><div style="white-space:pre-wrap;color:var(--ink);min-width:0">${esc(r.passosLidera)}</div></div>`:''}${r.passosCliente?`<div style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;margin-bottom:4px"><span class="tag tag-gold" style="flex:0 0 auto">Do cliente</span><div style="white-space:pre-wrap;color:var(--ink);min-width:0">${esc(r.passosCliente)}</div></div>`:''}${(!r.passosLidera&&!r.passosCliente&&r.passos)?`<div style="font-size:12.5px;white-space:pre-wrap;color:var(--ink)">${esc(r.passos)}</div>`:''}`:''}
+        ${(r.passosLidera||r.passosCliente||r.passos)?`<div class="sec">Próximos passos</div>${(function(){const it=Array.isArray(r.passosItens)?r.passosItens:null;const col=(quem,tag,rot,txt)=>{const lin=it?it.filter(x=>x.quem===quem):null;if(it?!lin.length:!txt)return '';return `<div style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;margin-bottom:4px"><span class="tag ${tag}" style="flex:0 0 auto">${rot}</span><div style="min-width:0;color:var(--ink)">${it?lin.map(x=>`<div>${esc(x.t)}${x.p?` <span class="gp-mini">· ${fmtDataBR(x.p).slice(0,5)}</span>`:''}</div>`).join(''):`<div style="white-space:pre-wrap">${esc(txt)}</div>`}</div></div>`;};return col('lidera','tag-navy','Nossos',r.passosLidera)+col('cliente','tag-gold','Do cliente',r.passosCliente);})()}${(!r.passosLidera&&!r.passosCliente&&r.passos)?`<div style="font-size:12.5px;white-space:pre-wrap;color:var(--ink)">${esc(r.passos)}</div>`:''}`:''}
         <div>${gpLinksHTML(r,false)}${(fut&&!(r.links&&r.links.evento))?`<a class="gp-lk dash" href="${esc(gpGcalLink(orgDono,r))}" target="_blank" rel="noopener" title="Abre o Google Agenda com o evento preenchido e os e-mails do cliente como convidados">${icoGpCal}Criar no Google Agenda</a>`:''}</div>
       </div>
       <div class="acts">${pend?`<button class="btn btn-primary btn-sm" style="padding:5px 10px;font-size:11.5px;min-height:0" onclick="gpConfirmarReuniao('${dono}','${r.id}')">Aconteceu</button>`:''}<button class="icon-btn" title="Editar" onclick="gpReuniaoModal('${dono}','${r.id}')">${icoEdit}</button></div></div>`;}).join('');}
