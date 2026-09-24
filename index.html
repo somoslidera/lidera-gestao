@@ -2278,6 +2278,9 @@ function editInsumo(id){
         </div>
         <div style="font-size:11.5px;color:var(--soft);margin-top:5px">Ex.: alface em <b>pé</b> com <b>12</b> un (folhas); farinha em <b>pacote</b> com <b>400</b> gr. Na nota a quantidade vem em embalagens e o Flow converte para a unidade da ficha. A unidade do produto nunca muda por um lançamento.</div>
       </div>
+      <div class="field"><label>Requisição para a cozinha <span class="hint">opcional</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted)"><span>levar de</span><input class="input" id="i_reqlote" type="number" step="0.001" min="0" value="${i.reqLote||''}" placeholder="ex.: 1" style="width:90px;text-align:right"><span class="u-sym">${uSym(i.uni)}</span><span>em</span><span class="u-sym">${uSym(i.uni)}</span><span style="margin-left:8px">· manter pelo menos</span><input class="input" id="i_reqmin" type="number" step="0.001" min="0" value="${i.reqMin||''}" placeholder="0" style="width:90px;text-align:right"><span class="u-sym">${uSym(i.uni)}</span><span>na cozinha</span></div>
+        <div style="font-size:11.5px;color:var(--soft);margin-top:5px">Para temperos e itens de bancada: ex.: sal, levar de 1 em 1 kg e manter 0,2 kg. Assim o sal só entra na requisição quando a cozinha está acabando, em vez de "2 g" por dia. Sem preencher, o Flow arredonda para embalagem inteira ou para 10 g, 50 g, 100 g.</div></div>
       <div style="border:1px solid var(--gold-soft);background:var(--amber-bg);border-radius:11px;padding:14px;margin-bottom:6px">
         <div style="font-size:12.5px;font-weight:700;color:var(--gold);margin-bottom:10px">Informações da compra <span style="font-weight:400;color:var(--muted)">· calcula o preço automaticamente</span></div>
         <div class="grid-2" id="i_emb_n_box" style="display:${insEmb(i)?'grid':'none'};margin-bottom:10px">
@@ -2345,7 +2348,7 @@ function saveInsumo(id){const nome=$('#i_nome').value.trim();if(!nome)return toa
   }else{obj={id:id||uid(),nome,cat,grupo,sub,tipo:'pronto',uni,preco:moneyVal('i_preco'),qtd:parseFloat($('#i_qtd').value)||1,fornecedor:forn};
     const embOn=$('#i_emb_on')&&$('#i_emb_on').value==='1';const embNome=embOn?($('#i_emb_nome').value||'').trim():'';const embQtd=embOn?parseFloat($('#i_emb_qtd').value)||0:0;
     if(embOn&&(!embNome||!(embQtd>0)))return toast('Informe o nome da embalagem e quanto ela contém');
-    obj.embNome=embNome;obj.embQtd=embQtd;}
+    obj.embNome=embNome;obj.embQtd=embQtd;obj.reqLote=parseFloat(($('#i_reqlote')||{}).value)||0;obj.reqMin=parseFloat(($('#i_reqmin')||{}).value)||0;}
   // merge: preserva estoque, mínimo, apelidos e outros campos que o modal não edita
   DB.insumos[obj.id]=Object.assign({},DB.insumos[obj.id]||{},obj);save();closeModal();viewInsumos();toast(id?'Insumo atualizado':'Insumo adicionado');}
 function delInsumo(id){
@@ -6575,6 +6578,21 @@ function estReqNova(){const para=estReqDestinoPadrao();if(!para)return toast('Cr
 function estReqAbrir(id){estReqSel=id;estoqueTab='requisicoes';viewEstoque();}
 function estReqDel(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)return;if(r.status==='separada'&&!confirm('Esta requisição já virou transferência. Excluir a requisição mantém a transferência no estoque. Continuar?'))return;
   if(r.status!=='separada'&&!confirm('Excluir esta requisição?'))return;DB.requisicoes=estRequisicoes().filter(x=>x.id!==id);if(estReqSel===id)estReqSel=null;save();viewEstoque();}
+/* quantidade prática para separar: embalagem inteira quando o produto é comprado em embalagem, lote da cozinha quando
+   cadastrado, senão arredonda para cima em passos que dá para pesar (10 g, 50 g, 0,1 kg…). Nunca manda "0,002 kg". */
+function estReqArredonda(q,ins){q=+q||0;if(!(q>0)||!ins)return 0;
+  if(+ins.reqLote>0)return estR(Math.ceil(q/ins.reqLote-1e-9)*ins.reqLote,3);
+  const emb=insEmb(ins);if(emb&&emb.qtd>0)return estR(Math.ceil(q/emb.qtd-1e-9)*emb.qtd,3);
+  const b=BASE[ins.uni];const tb=TO_BASE[ins.uni]||1;const qb=q*tb;   // em g / ml / un
+  if(b==='un')return Math.ceil(q-1e-9);
+  let passo=qb<100?10:qb<1000?50:qb<5000?100:500;   // g ou ml
+  return estR(Math.ceil(qb/passo-1e-9)*passo/tb,3);}
+/* texto amigável: 69 g em vez de 0,069 kg; 1 maço (12 un); 2 pacotes (800 g) */
+function estQReq(q,ins){q=+q||0;if(!ins)return estQ(q);const u=ins.uni;const emb=insEmb(ins);
+  if(emb&&emb.qtd>0&&q>0){const n=q/emb.qtd;if(Math.abs(n-Math.round(n))<1e-6){const k=Math.round(n);return k+' '+esc(emb.nome)+(k>1&&!/s$/.test(emb.nome)?'s':'')+' ('+estQ(q,uSym(u))+')';}}
+  if(u==='kg'&&q>0&&q<1)return estQ(estR(q*1000,1),'g');
+  if(u==='L'&&q>0&&q<1)return estQ(estR(q*1000,0),'ml');
+  return estQ(q,uSym(u));}
 function estReqDiaSemana(d){return new Date(d+'T12:00:00').getDay();}
 /* média de vendas por prato no mesmo dia da semana nas últimas N semanas, a partir das baixas registradas */
 function estReqMediaVendas(data,semanas){semanas=semanas||4;const dow=estReqDiaSemana(data);const de=diasSoma(data,-7*semanas);const acc={};const dias=new Set();
@@ -6608,7 +6626,7 @@ function estReqEditorHTML(r){const fichas=fichasVendaveis().slice().sort((a,b)=>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><div style="font-weight:700">${fechada?'Itens separados':'3. Itens a separar'} <span class="gp-mini">${nSep} item(ns) · ${fmtBRL(custo)}</span></div>${fechada?'':`<a class="gp-link" style="font-size:12px" onclick="estReqAddItem('${r.id}')">+ item avulso</a>`}</div>
       ${itens.length?`<div class="scroll-x"><table><thead><tr><th>Produto</th><th class="num no-print" title="Necessário pela ficha técnica para os pratos previstos">Necessário</th><th class="num no-print" title="Saldo que já está no destino">Já tem</th><th class="num">Separar</th><th class="print-only">Conferido</th><th class="no-print"></th></tr></thead><tbody>
         ${(function(){let last=null;return itens.slice().sort((a,b)=>{const ia=DB.insumos[a.insumoId]||{},ib=DB.insumos[b.insumoId]||{};return (ia.cat||'').localeCompare(ib.cat||'')||(ia.nome||'').localeCompare(ib.nome||'');}).map(x=>{const i=DB.insumos[x.insumoId];if(!i)return '';const u=uSym(i.uni);const cab=i.cat!==last?`<tr><td colspan="6" style="padding:8px 13px 2px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--gold);font-weight:700;border:0">${esc(i.cat||'Sem categoria')}</td></tr>`:'';last=i.cat;const sDe=estSaldoArm(i,r.de);
-          return cab+`<tr><td><b>${esc(i.nome)}</b>${i.tipo==='preparado'?' <span class="tag tag-gold" style="font-size:10px;padding:0 6px">subproduto</span>':''}<div class="gp-mini no-print">em ${esc(estArmNome(r.de))}: <span style="color:${sDe<(+x.qtd||0)?'var(--red)':'inherit'}">${estQ(sDe,u)}</span></div></td><td class="num no-print">${estQ(x.nec,u)}</td><td class="num no-print">${estQ(x.tem,u)}</td><td class="num">${fechada?`<b>${estQ(x.qtd,u)}</b>`:`<input class="input no-print" type="number" step="0.001" min="0" inputmode="decimal" value="${x.qtd}" style="width:96px;text-align:right;padding:5px 8px" onchange="estReqQtd('${r.id}','${x.insumoId}',this.value)"><span class="print-only"><b>${estQ(x.qtd,u)}</b></span>`}</td><td class="print-only" style="width:70px;border-bottom:1px solid #999"></td><td class="no-print">${fechada?'':`<button class="icon-btn del" onclick="estReqRemItem('${r.id}','${x.insumoId}')">${icoX}</button>`}</td></tr>`;}).join('');})()}
+          return cab+`<tr><td><b>${esc(i.nome)}</b>${i.tipo==='preparado'?' <span class="tag tag-gold" style="font-size:10px;padding:0 6px">subproduto</span>':''}<div class="gp-mini no-print">em ${esc(estArmNome(r.de))}: <span style="color:${sDe<(+x.qtd||0)?'var(--red)':'inherit'}">${estQReq(sDe,i)}</span>${insEmb(i)?' · embalagem de '+estQ(insEmb(i).qtd,u):''}</div></td><td class="num no-print">${estQReq(x.nec,i)}</td><td class="num no-print">${estQReq(x.tem,i)}</td><td class="num">${fechada?`<b>${estQReq(x.qtd,i)}</b>`:`<input class="input no-print" type="number" step="0.001" min="0" inputmode="decimal" value="${x.qtd}" style="width:96px;text-align:right;padding:5px 8px" title="Na unidade do produto (${u})" onchange="estReqQtd('${r.id}','${x.insumoId}',this.value)"><div class="gp-mini no-print" style="text-align:right">${estQReq(x.qtd,i)}</div><span class="print-only"><b>${estQReq(x.qtd,i)}</b></span>`}</td><td class="print-only" style="width:70px;border-bottom:1px solid #999"></td><td class="no-print">${fechada?'':`<button class="icon-btn del" onclick="estReqRemItem('${r.id}','${x.insumoId}')">${icoX}</button>`}</td></tr>`;}).join('');})()}
       </tbody></table></div>`:`<div style="font-size:13px;color:var(--soft);padding:10px 0">${fechada?'Sem itens.':'Preencha a previsão e clique em "Gerar lista de itens". O Flow explode as fichas até os itens com estoque (subprodutos ou brutos), desconta o que já está em '+esc(estArmNome(r.para))+' e sugere o que separar.'}</div>`}
       ${fechada&&r.transfId?`<div class="gp-mini no-print" style="margin-top:8px">Transferência registrada em ${fmtDataBR(r.data)}. Para desfazer, use Movimentações → Transferências.</div>`:''}
     </div>
@@ -6617,7 +6635,7 @@ function estReqImprimir(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)re
   const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';const turno=(REQ_TURNOS.find(t=>t[0]===r.turno)||['','Dia inteiro'])[1];
   const ord=itens.slice().sort((a,b)=>{const ia=DB.insumos[a.insumoId]||{},ib=DB.insumos[b.insumoId]||{};return (ia.cat||'').localeCompare(ib.cat||'')||(ia.nome||'').localeCompare(ib.nome||'');});
   let body='',last=null;ord.forEach(x=>{const i=DB.insumos[x.insumoId];if(!i)return;if(i.cat!==last){last=i.cat;body+=`<div class="cg">${esc(i.cat||'Sem categoria')}</div>`;}
-    body+=`<div class="ci"><span class="ci-n">${esc(i.nome)}${i.tipo==='preparado'?' <small>(porcionado)</small>':''}</span><span class="ci-q">${estQ(x.qtd,uSym(i.uni))}</span><span class="ci-b"></span></div>`;});
+    body+=`<div class="ci"><span class="ci-n">${esc(i.nome)}${i.tipo==='preparado'?' <small>(porcionado)</small>':''}</span><span class="ci-q">${estQReq(x.qtd,i)}</span><span class="ci-b"></span></div>`;});
   const pratos=(r.pratos||[]).map(([fid,q])=>{const f=DB.fichas[fid];return f?esc(f.nome)+' <b>'+q+'</b>':'';}).filter(Boolean).join(' · ');
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
   pa.innerHTML=`<div class="ct-head"><div><div style="font-size:19px;font-weight:700">${esc(rest)}</div><div style="font-size:13px">Requisição para ${esc(estArmNome(r.para))} · ${fmtDataBR(r.data)} · ${esc(turno)}</div></div><div style="font-size:11.5px;text-align:right;line-height:1.9">Separado por: __________________<br>Conferido por: __________________</div></div>
@@ -6636,7 +6654,9 @@ function estReqCopiarUltima(id){const r=estRequisicoes().find(x=>x.id===id);if(!
 function estReqGerar(id){const r=estRequisicoes().find(x=>x.id===id);if(!r||r.status==='separada')return;if(!(r.pratos||[]).length)return toast('Informe a previsão de ao menos um prato');
   const acc={};r.pratos.forEach(([fid,q])=>{const f=DB.fichas[fid];if(f&&q>0)estExplodir(f,q,acc);});
   const antigos={};(r.itens||[]).forEach(x=>{antigos[x.insumoId]=x;});const itens=[];
-  Object.entries(acc).forEach(([insumoId,nec])=>{const ins=DB.insumos[insumoId];if(!ins)return;const tem=Math.max(0,estSaldoArm(ins,r.para));const sug=Math.max(0,estR(nec-tem,3));const a=antigos[insumoId];
+  Object.entries(acc).forEach(([insumoId,nec])=>{const ins=DB.insumos[insumoId];if(!ins)return;const tem=Math.max(0,estSaldoArm(ins,r.para));
+    // ponto de reposição: só pede quando o que fica na cozinha depois do uso cai abaixo do mínimo cadastrado
+    const falta=Math.max(0,estR(nec+(+ins.reqMin||0)-tem,3));const sug=estReqArredonda(falta,ins);const a=antigos[insumoId];
     itens.push({insumoId,nec:estR(nec,3),tem:estR(tem,3),qtd:(a&&a.manual)?a.qtd:sug,manual:!!(a&&a.manual)});});
   (r.itens||[]).forEach(x=>{if(x.avulso&&!acc[x.insumoId])itens.push(x);});
   r.itens=itens;save();viewEstoque();toast(itens.filter(x=>x.qtd>0).length+' item(ns) para separar');}
