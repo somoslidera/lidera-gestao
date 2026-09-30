@@ -855,14 +855,15 @@ body.dark .prm-chip{background:var(--card)}body.dark .prm-nav a:hover{background
 .dsh-chart{flex:1;min-height:0}
 .dsh-foot{flex-shrink:0;font-size:11.5px;color:var(--soft);line-height:1.45;border-top:1px solid var(--line);padding-top:10px;margin-top:10px}.dsh-foot b{color:var(--muted)}.dsh-foot a,.dsh-vazio a{color:var(--navy);font-weight:600;cursor:pointer}
 .dsh-pe-body{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
-.dsh-arc{width:min(100%,230px);height:auto;flex-shrink:1;min-height:0}
-.dsh-pe-n{font-family:'Fraunces',serif;font-size:30px;font-weight:700;letter-spacing:-.6px;line-height:1;color:var(--ink)}
+.dsh-arc{width:min(100%,300px);height:auto;flex-shrink:1;min-height:0}
+.dsh-pe-base{text-align:center}
+.dsh-pe-n{font-family:'Fraunces',serif;font-size:34px;font-weight:700;letter-spacing:-.6px;line-height:1;color:var(--ink)}
 .dsh-pe-sub{font-size:12px;color:var(--soft)}.dsh-pe-sub b{color:var(--muted)}
 .dsh-pe-chip{font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:99px;margin-top:4px}
 .dsh-pe-txt{font-size:12.5px;color:var(--muted);line-height:1.45;max-width:320px}
 .dsh-pe-comp{display:flex;flex-direction:column;gap:7px}.dsh-pe-comp>div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;column-gap:8px;min-width:0}.dsh-pe-comp span{font-size:11.5px;font-weight:600;color:var(--muted)}.dsh-pe-comp b{font-family:'Fraunces',serif;font-size:15px;color:var(--ink)}.dsh-pe-comp small{flex-basis:100%;font-size:11px;color:var(--soft);line-height:1.35}
 .dsh-vazio{font-size:13px;color:var(--soft);padding:12px 0;line-height:1.5}
-@media(max-height:780px){.dsh-pe-comp{gap:4px}.dsh-pe-comp small{font-size:10.5px}.dsh-fit,.dsh-kpis,.dsh-3{gap:12px}.dsh-kpi{padding:12px 14px 10px}.dsh-kpi-val{font-size:clamp(19px,1.7vw,23px)}.dsh-card{padding:14px 16px 12px}.dsh-pe-n{font-size:25px}.dsh-arc{width:min(100%,190px)}.dsh-pe-txt{font-size:12px}.dsh-foot{margin-top:6px;padding-top:6px}}
+@media(max-height:780px){.dsh-fit,.dsh-kpis,.dsh-3{gap:12px}.dsh-kpi{padding:12px 14px 10px}.dsh-kpi-val{font-size:clamp(19px,1.7vw,23px)}.dsh-card{padding:14px 16px 12px}.dsh-pe-n{font-size:25px}.dsh-arc{width:min(100%,240px)}.dsh-pe-txt{font-size:12px}.dsh-foot{margin-top:6px;padding-top:6px}}
 @media(max-width:1180px){.dsh-3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.dsh-3>.card:nth-child(2){grid-column:1/-1;min-height:220px}.dsh-fit{height:auto;grid-template-rows:auto auto}}
 @media(max-width:900px){.dsh-fit{height:auto}.dsh-3{grid-template-columns:1fr}.dsh-3>.card{overflow:visible}.dsh-chart{min-height:190px}.dsh-chart-cmv{min-height:170px}.dsh-kpis{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.dsh-fit,.dsh-kpis,.dsh-3{gap:10px}.dsh-kpis{grid-template-columns:1fr}.dsh-kpi{padding:12px 14px 10px}.dsh-kpi-val{font-size:24px}.dsh-kpi-top{flex-wrap:wrap}.dsh-kpi-foot{white-space:normal}.dsh-kpi-vis{margin-top:6px}.dsh-kpi-vis svg{height:24px!important}.dsh-pe-n{font-size:26px}}
@@ -1293,8 +1294,7 @@ function totaisGerais(R){
   const lancPer=(DB.lancamentos||[]).filter(l=>l.data>=R.de&&l.data<=R.ate);
   const peCen={cmv:0,cmo:0,fixas:0,impostos:0,taxas:0,mkt:0,manut:0};
   lancPer.forEach(l=>{if(grupoTipo(l.grupo)!=='receita')peCen[dreCentroDe(l.grupo,l.sub)]+=(l.valor||0);});
-  const comLanc=new Set(lancPer.map(l=>l.fromConta).filter(Boolean));
-  const cpAbertas=(DB.fin.contasPagar||[]).filter(x=>!x.pago&&x.vencimento&&x.vencimento>=R.de&&x.vencimento<=R.ate&&!comLanc.has(x.id));
+  const cpAbertas=contasAbertas(R.de,R.ate);
   const cpCen={cmv:0,cmo:0,fixas:0,impostos:0,taxas:0,mkt:0,manut:0};let contasAbertasRS=0;
   cpAbertas.forEach(x=>{const v=+x.valor||0;cpCen[dreCentroDe(x.grupo,x.sub)]+=v;contasAbertasRS+=v;});
   const taxasCalcRS=(taxasRecebimento(lancPer).total)||0;
@@ -2179,13 +2179,14 @@ function diasDecorridos(R){const h=hojeISO();if(h<R.de)return 0;if(h>R.ate)retur
 function dashCentros(R){const ls=(DB.lancamentos||[]).filter(l=>l.data>=R.de&&l.data<=R.ate);const rec=ls.filter(l=>grupoTipo(l.grupo)==='receita').reduce((s,l)=>s+(l.valor||0),0);
   const alvo=DB.cmvAlvo||30;const cs=DRE_CENTROS.map(c=>Object.assign({},c,{total:0}));const m={};cs.forEach(c=>m[c.id]=c);m.cmv.max=alvo;
   ls.forEach(l=>{if(grupoTipo(l.grupo)==='receita')return;m[dreCentroDe(l.grupo,l.sub)].total+=(l.valor||0);});
+  contasAbertas(R.de,R.ate).forEach(x=>{m[dreCentroDe(x.grupo,x.sub)].total+=(+x.valor||0);});
   const tx=taxasRecebimento(ls);if(tx.total>0)m.taxas.total+=tx.total;
   const desp=cs.reduce((s,c)=>s+c.total,0);const lucro=rec-desp;
   cs.forEach(c=>{c.pct=rec>0?c.total/rec*100:0;c.estouro=rec>0&&c.max!=null&&c.pct>c.max;c.abaixo=rec>0&&c.min!=null&&c.total>0&&c.pct<c.min;});
   return {rec,desp,lucro,lucroPct:rec>0?lucro/rec*100:0,cs};}
 function dashMeses(R,n){const out=[];const a=new Date(R.ate+'T12:00:00');
   for(let i=n-1;i>=0;i--){const d=new Date(a.getFullYear(),a.getMonth()-i,1);const ym=d.toISOString().slice(0,7);const ls=lancMes(ym);let rec=0,desp=0;ls.forEach(l=>{if(grupoTipo(l.grupo)==='receita')rec+=(l.valor||0);else desp+=(l.valor||0);});
-    const tx=taxasRecebimento(ls);desp+=tx.total||0;out.push({ym,label:['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][d.getMonth()]+(d.getMonth()===0||i===n-1?'/'+String(d.getFullYear()).slice(2):''),rec,desp,res:rec-desp});}
+    const tx=taxasRecebimento(ls);desp+=tx.total||0;contasAbertasMes(ym).forEach(x=>{desp+=(+x.valor||0);});out.push({ym,label:['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][d.getMonth()]+(d.getMonth()===0||i===n-1?'/'+String(d.getFullYear()).slice(2):''),rec,desp,res:rec-desp});}
   return out;}
 function dashCaixa(){const h=hojeISO(),em7=diasSoma(h,7);const cp=(DB.fin.contasPagar||[]).filter(x=>!x.pago),cr=(DB.fin.contasReceber||[]).filter(x=>!x.recebido);
   const soma=a=>a.reduce((s,x)=>s+(+x.valor||0),0);
@@ -2273,10 +2274,8 @@ function viewDashboard(){
         <div class="dsh-pe-chip" style="color:${peCor};background:${gpct>=100?'var(--green-bg)':gpct>=80?'var(--amber-bg)':'var(--red-bg)'}">${gpct>=100?`Folga de ${fmtBRL(t.faturamento-pe)}`:`Faltam ${fmtBRL(falta)}`}</div>
         <div class="dsh-pe-txt">${peTxt}</div>
       </div>
-      <div class="dsh-foot dsh-pe-comp">
-        <div><span>Custos fixos do período</span><b>${fmtBRL(t.fixosPE)}</b><small>pessoal ${fmtBRL(t.pessoalPE)}${t.pessoalFonte!=='registrado'?' ('+t.pessoalFonte+')':''} · estrutura ${fmtBRL(t.estruturaPE)}${t.estruturaFonte!=='registrado'?' ('+t.estruturaFonte+')':''}${t.contasAbertasRS>0?' · inclui '+fmtBRL(t.contasAbertasRS)+' de contas a pagar em aberto':''}${t.provisoesRS>0?' · provisões '+fmtBRL(t.provisoesRS):''}${t.impostoFixoPE>0?' · DAS '+fmtBRL(t.impostoFixoPE):''}</small></div>
-        <div><span>Custos variáveis, por venda</span><b>${fmtPct(t.varPctEq)}</b><small>CMV ${t.cmvEqFonteUsada==='teorico'?'teórico':t.cmvEqFonteUsada==='lanc'?'lançado':t.cmvEqFonteUsada==='manual'?'digitado':'real'} ${fmtPct(t.cmvEqPct)} · impostos ${fmtPct(t.impostosPct)} · taxas ${fmtPct(t.taxasPct)}${t.comissaoPct>0?' · comissões '+fmtPct(t.comissaoPct):''}</small></div>
-        <div><span>Margem de contribuição</span><b>${fmtPct(t.mcPctEq)}</b><small>meta = fixos ÷ margem · <a class="gp-link" onclick="prmIr('metas')">ajustar</a></small></div></div>`
+      <div class="dsh-foot dsh-pe-base">Considera lançamentos, contas a pagar em aberto, folha e custos fixos cadastrados. <a class="gp-link" onclick="prmIr('metas')">ajustar</a></div>
+`
       :`<div class="dsh-pe-body"><div class="dsh-vazio">${peTxt}</div></div>`}
     </div>
     <div class="card dsh-card">
@@ -3769,9 +3768,15 @@ function liqParcelas(dataBase,total,n,primeiroVenc,intervaloDias){n=Math.max(1,p
   for(let i=0;i<n;i++){const v=(i===n-1)?+(tot-acc).toFixed(2):cada;acc=+(acc+v).toFixed(2);
     out.push({data:intervaloDias?diasSoma(base,intervaloDias*i):mesesSoma(base,i),valor:v,pago:false});}
   return out;}
+/* contas a pagar EM ABERTO com vencimento no período e que ainda não viraram lançamento (no Flow a conta só vira
+   lançamento ao ser paga). Entram no DRE, nos KPIs e no ponto de equilíbrio como despesa do período. */
+function contasAbertas(de,ate){const comLanc=new Set((DB.lancamentos||[]).map(l=>l.fromConta).filter(Boolean));
+  return (((DB.fin||{}).contasPagar)||[]).filter(x=>!x.pago&&x.vencimento&&x.vencimento>=de&&x.vencimento<=ate&&!comLanc.has(x.id)&&grupoTipo(x.grupo)!=='receita');}
+function contasAbertasMes(ym){return contasAbertas(ym+'-01',ym+'-31');}
 function dreLanc(ym){
   const receita={},despesa={};let recTot=0,despTot=0;
   const ls=lancMes(ym);
+  contasAbertasMes(ym).forEach(x=>{const g=x.grupo||'Despesas Gerais',sub=(x.sub||'(sem subcategoria)')+' · em aberto';despesa[g]=despesa[g]||{};despesa[g][sub]=(despesa[g][sub]||0)+(+x.valor||0);despTot+=(+x.valor||0);});
   ls.forEach(l=>{const tipo=grupoTipo(l.grupo),bag=tipo==='receita'?receita:despesa,sub=l.sub||'(sem subcategoria)';
     bag[l.grupo]=bag[l.grupo]||{};bag[l.grupo][sub]=(bag[l.grupo][sub]||0)+(l.valor||0);
     if(tipo==='receita')recTot+=l.valor||0;else despTot+=l.valor||0;});
