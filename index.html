@@ -1284,32 +1284,41 @@ function totaisGerais(R){
   else {const cr=cmvRealPeriodo(R);if(cr!=null){cmvEqPct=cr;}
     else{const cl=cmvLancPeriodo(R);   // sem contagem no período: usa o CMV lançado (compras ÷ receita) antes de cair no teórico das fichas
       if(cl&&cl.pct!=null){cmvEqPct=cl.pct;cmvEqFonteUsada='lanc';}else{cmvEqPct=cmv;cmvEqFonteUsada='teorico';}}}
-  // ===== PONTO DE EQUILÍBRIO: 100% pelos LANÇAMENTOS do período (nada de projeção) =====
-  // Fixos = tudo que foi lançado fora de CMV, impostos e taxas (pessoal, estrutura, marketing, manutenção).
-  // Variáveis (% da receita lançada) = CMV + impostos + taxas de cartão (lançadas ou calculadas pelas bandeiras das receitas).
-  // Alíquota, comissão de canal, folha e custos fixos cadastrados NÃO entram: só o que está nos lançamentos.
+  // ===== PONTO DE EQUILÍBRIO: TODAS as despesas que o restaurante tem no período, sem duplicar =====
+  // 1) lançamentos de despesa do período (competência);
+  // 2) contas a pagar EM ABERTO com vencimento no período (ainda não viraram lançamento; as pagas já são lançamento);
+  // 3) cadastro como piso por bloco: folha (com encargos) e custos fixos, quando o registrado ficou abaixo;
+  // 4) provisões cadastradas (13º, férias) e, no MEI, o DAS fixo;
+  // 5) variáveis: CMV (fonte escolhida) + impostos + taxas de cartão + comissões de canal, cada um pelo maior entre parâmetro e registrado.
   const lancPer=(DB.lancamentos||[]).filter(l=>l.data>=R.de&&l.data<=R.ate);
   const peCen={cmv:0,cmo:0,fixas:0,impostos:0,taxas:0,mkt:0,manut:0};
   lancPer.forEach(l=>{if(grupoTipo(l.grupo)!=='receita')peCen[dreCentroDe(l.grupo,l.sub)]+=(l.valor||0);});
+  const comLanc=new Set(lancPer.map(l=>l.fromConta).filter(Boolean));
+  const cpAbertas=(DB.fin.contasPagar||[]).filter(x=>!x.pago&&x.vencimento&&x.vencimento>=R.de&&x.vencimento<=R.ate&&!comLanc.has(x.id));
+  const cpCen={cmv:0,cmo:0,fixas:0,impostos:0,taxas:0,mkt:0,manut:0};let contasAbertasRS=0;
+  cpAbertas.forEach(x=>{const v=+x.valor||0;cpCen[dreCentroDe(x.grupo,x.sub)]+=v;contasAbertasRS+=v;});
   const taxasCalcRS=(taxasRecebimento(lancPer).total)||0;
-  const pessoalPE=peCen.cmo, estruturaPE=peCen.fixas+peCen.mkt+peCen.manut, impostoFixoPE=0;
-  const fixosPE=pessoalPE+estruturaPE;
-  const fixosLanc=fixosPE, fixosFonte='lanc', peFechado=R.ate<hojeISO(), peSemFixos=!(fixosPE>0);
+  const pessoalReg=peCen.cmo+cpCen.cmo, estruturaReg=peCen.fixas+peCen.mkt+peCen.manut+cpCen.fixas+cpCen.mkt+cpCen.manut;
+  const pessoalPE=Math.max(folha,pessoalReg), estruturaPE=Math.max(fixosBase,estruturaReg);
+  const pessoalFonte=pessoalReg>=folha?'registrado':'folha cadastrada', estruturaFonte=estruturaReg>=fixosBase?'registrado':'custos fixos cadastrados';
+  const impostoFixoPE=DB.fin.mei?impostoRS:0;
+  const fixosPE=pessoalPE+estruturaPE+provisoesRS+impostoFixoPE;
+  const fixosLanc=pessoalReg+estruturaReg, fixosFonte=fixosLanc>=fixosPE?'lanc':'cadastro', peFechado=R.ate<hojeISO(), peSemFixos=!(fixosPE>0);
   const pct=v=>faturamento>0?v/faturamento*100:0;
-  // CMV: pela fonte escolhida em Parâmetros (padrão: lançamentos); impostos e taxas sempre pelo lançado/calculado
-  const impostosPct=pct(peCen.impostos);
-  const taxasPct=pct(peCen.taxas+taxasCalcRS);
-  const comissaoPct=0;
-  const varPctEq=faturamento>0?cmvEqPct+impostosPct+taxasPct:0;
-  const mcPctEq=faturamento>0?100-varPctEq:0;
+  if(cmvEqFonteUsada==='lanc'&&cpCen.cmv>0)cmvEqPct+=pct(cpCen.cmv);          // compras de CMV ainda em aberto também são custo do período
+  const impostosPct=DB.fin.mei?0:(faturamento>0?Math.max(pct(impostoRS),pct(peCen.impostos+cpCen.impostos)):(DB.fin.aliquota||0));
+  const taxasPct=faturamento>0?Math.max(receitaEhBruta()?pct(taxaCartaoRS):0,pct(peCen.taxas+cpCen.taxas+taxasCalcRS)):(receitaEhBruta()?taxaMediaRec()*(1-mix):0);
+  const comissaoPct=pct(comissaoRS);
+  const varPctEq=cmvEqPct+impostosPct+taxasPct+comissaoPct;
+  const mcPctEq=100-varPctEq;
   const custosVarEq=faturamento*(varPctEq/100);
-  const faturamentoEq=(faturamento>0&&mcPctEq>0&&fixosPE>0)?fixosPE/(mcPctEq/100):Infinity;
+  const faturamentoEq=(mcPctEq>0&&fixosPE>0)?fixosPE/(mcPctEq/100):Infinity;
   const diaEq=faturamento>0&&isFinite(faturamentoEq)?faturamentoEq/faturamento*30:Infinity;
   return {receita:receitaEst,faturamento,custoTot:cmvRS,cmv,vendas,ticket,
     recIfood,recDireto,comissaoRS,impostoRS,taxaCartaoRS,custosVar,custosVarPct:faturamento?custosVar/faturamento*100:0,
     fixosBase,provisoesRS,folha,prol,fixos,fixosPct:faturamento?fixos/faturamento*100:0,
     mcRS,mcPctMed,mcTot:mcRS,lucro,margemLiq:faturamento?lucro/faturamento*100:0,
-    dinheiroMesa,dinheiroMesaPct:faturamento?dinheiroMesa/faturamento*100:0,faturamentoEq,diaEq,cmvEqPct,cmvEqFonte:peFonte,cmvEqFonteUsada,mcPctEq,fixosPE,fixosLanc,fixosFonte,peSemFixos,pessoalPE,estruturaPE,impostoFixoPE,impostosPct,taxasPct,comissaoPct,varPctEq,peCen,peFechado,
+    dinheiroMesa,dinheiroMesaPct:faturamento?dinheiroMesa/faturamento*100:0,faturamentoEq,diaEq,cmvEqPct,cmvEqFonte:peFonte,cmvEqFonteUsada,mcPctEq,fixosPE,fixosLanc,fixosFonte,peSemFixos,pessoalPE,estruturaPE,impostoFixoPE,impostosPct,taxasPct,comissaoPct,varPctEq,peCen,cpCen,contasAbertasRS,pessoalFonte,estruturaFonte,peFechado,
     despLancGrupos,despLancTot,cmvLancRS,pessoalLancRS,outrasLancRS,lucroReal,margemReal};
 }
 
@@ -2218,7 +2227,7 @@ function viewDashboard(){
   // ponto de equilíbrio
   const pe=t.faturamentoEq,peOk=isFinite(pe)&&pe>0;const gpct=peOk?t.faturamento/pe*100:0;const falta=peOk?pe-t.faturamento:0;
   const peDia=peOk?pe/dias:0;const ritmoDias=peOk&&porDia>0?pe/porDia:Infinity;const peCor=gpct>=100?'var(--green)':gpct>=80?'var(--amber)':'var(--red)';
-  const peTxt=!peOk?(t.faturamento<=0?'Sem receita lançada no período. A meta é calculada só com os lançamentos: lance as vendas e as despesas do período.':t.peSemFixos?'Nenhuma despesa fixa lançada no período (pessoal, estrutura, marketing, manutenção). Lance as despesas para o Flow calcular quanto você precisa vender.':'A margem de contribuição está zerada ou negativa: CMV, impostos e taxas lançados consomem toda a receita.')
+  const peTxt=!peOk?(t.peSemFixos?'Nenhuma despesa fixa encontrada no período (lançamentos, contas a pagar, folha ou custos fixos). Registre as despesas para o Flow calcular quanto você precisa vender.':t.faturamento<=0?'Sem receita no período: lance as vendas para o Flow medir o CMV, os impostos e as taxas e calcular quanto precisa vender.':'A margem de contribuição está zerada ou negativa: CMV, impostos, taxas e comissões consomem toda a receita.')
     :gpct>=100?`Cada real vendido daqui em diante deixa cerca de <b>${fmtPct(t.mcPctEq)}</b> de margem.`
     :decorr<dias&&porDia>0?`No ritmo atual (${fmtBRL(porDia)}/dia) o empate chega no <b>dia ${Math.ceil(ritmoDias)}</b>${ritmoDias>dias?', depois do fim do período':''}.`
     :`Faltou vender <b>${fmtBRL(falta)}</b> para pagar todas as contas do período.`;
@@ -2265,9 +2274,9 @@ function viewDashboard(){
         <div class="dsh-pe-txt">${peTxt}</div>
       </div>
       <div class="dsh-foot dsh-pe-comp">
-        <div><span>Custos fixos lançados</span><b>${fmtBRL(t.fixosPE)}</b><small>pessoal ${fmtBRL(t.pessoalPE)} · estrutura, marketing e manutenção ${fmtBRL(t.estruturaPE)}</small></div>
-        <div><span>Custos variáveis, por venda</span><b>${fmtPct(t.varPctEq)}</b><small>CMV ${t.cmvEqFonteUsada==='teorico'?'teórico':t.cmvEqFonteUsada==='lanc'?'lançado':t.cmvEqFonteUsada==='manual'?'digitado':'real'} ${fmtPct(t.cmvEqPct)} · impostos ${fmtPct(t.impostosPct)} · taxas ${fmtPct(t.taxasPct)}</small></div>
-        <div><span>Margem de contribuição</span><b>${fmtPct(t.mcPctEq)}</b><small>meta = fixos ÷ margem · só lançamentos do período${t.peFechado?'':' (em andamento)'} · <a class="gp-link" onclick="prmIr('metas')">ajustar</a></small></div></div>`
+        <div><span>Custos fixos do período</span><b>${fmtBRL(t.fixosPE)}</b><small>pessoal ${fmtBRL(t.pessoalPE)}${t.pessoalFonte!=='registrado'?' ('+t.pessoalFonte+')':''} · estrutura ${fmtBRL(t.estruturaPE)}${t.estruturaFonte!=='registrado'?' ('+t.estruturaFonte+')':''}${t.contasAbertasRS>0?' · inclui '+fmtBRL(t.contasAbertasRS)+' de contas a pagar em aberto':''}${t.provisoesRS>0?' · provisões '+fmtBRL(t.provisoesRS):''}${t.impostoFixoPE>0?' · DAS '+fmtBRL(t.impostoFixoPE):''}</small></div>
+        <div><span>Custos variáveis, por venda</span><b>${fmtPct(t.varPctEq)}</b><small>CMV ${t.cmvEqFonteUsada==='teorico'?'teórico':t.cmvEqFonteUsada==='lanc'?'lançado':t.cmvEqFonteUsada==='manual'?'digitado':'real'} ${fmtPct(t.cmvEqPct)} · impostos ${fmtPct(t.impostosPct)} · taxas ${fmtPct(t.taxasPct)}${t.comissaoPct>0?' · comissões '+fmtPct(t.comissaoPct):''}</small></div>
+        <div><span>Margem de contribuição</span><b>${fmtPct(t.mcPctEq)}</b><small>meta = fixos ÷ margem · <a class="gp-link" onclick="prmIr('metas')">ajustar</a></small></div></div>`
       :`<div class="dsh-pe-body"><div class="dsh-vazio">${peTxt}</div></div>`}
     </div>
     <div class="card dsh-card">
@@ -5470,7 +5479,7 @@ function prmMetasHTML(){const fin=DB.fin;const ref=[['CMV',30],['CMO (pessoal)',
           ${[['real','CMV real (contagem); sem contagem, usa os lançamentos'],['lanc','CMV dos lançamentos · padrão'],['teorico','CMV teórico (cardápio)'],['manual','Valor digitado']].map(([v,l])=>`<option value="${v}" ${(fin.peCmvFonte||'lanc')===v?'selected':''}>${l}</option>`).join('')}
         </select></div>
       ${(fin.peCmvFonte||'lanc')==='manual'?`<div class="field"><label>CMV digitado <span class="hint">% sobre o faturamento</span></label><input class="input" type="number" step="0.5" value="${fin.peCmvManual||''}" placeholder="0" onchange="DB.fin.peCmvManual=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`:''}
-      <div class="prm-exemplo">O CMV alvo pinta de verde ou vermelho o Controle de CMV, a engenharia de menu e o DRE. O ponto de equilíbrio é calculado só com os lançamentos do período: custos fixos lançados ÷ (1 − CMV − impostos − taxas). O CMV usa a fonte escolhida aqui (padrão: lançamentos). Alíquota, comissões de canal, folha e custos fixos cadastrados não entram; o que não for lançado fica fora da meta.</div>
+      <div class="prm-exemplo">O CMV alvo pinta de verde ou vermelho o Controle de CMV, a engenharia de menu e o DRE. O ponto de equilíbrio junta todas as despesas do período sem duplicar: lançamentos, contas a pagar em aberto, folha e custos fixos cadastrados (como piso), provisões e, nas variáveis, CMV (fonte escolhida aqui, padrão lançamentos), impostos, taxas de cartão e comissões de canal, cada um pelo maior entre o parâmetro e o registrado. Meta = custos fixos ÷ margem de contribuição.</div>
       ${prmOnde(['Dashboard','Controle de CMV','Engenharia de menu','DRE','Ponto de equilíbrio'])}
     </div>
     <div class="card card-pad">
