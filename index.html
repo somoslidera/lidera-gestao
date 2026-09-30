@@ -813,6 +813,8 @@ body.dark .gp-kb-col,body.dark .gp-note-box{background:#121B30}
     </div>
   </div>
   <nav class="nav" id="nav">
+    <div class="lbl">FINANCEIRO</div>
+    <a data-route="financeiro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18v13H3z"/><path d="M3 10h18M7 15h4"/></svg>Financeiro</a>
     <div class="lbl">GESTÃO</div>
     <a data-route="dashboard" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
     <a data-route="insumos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Produtos</a>
@@ -825,9 +827,6 @@ body.dark .gp-kb-col,body.dark .gp-note-box{background:#121B30}
     <a data-route="cmv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h18v4H3zM3 10h18v10H3z"/><path d="M7 14h4M7 17h7"/></svg>Controle de CMV</a>
     <a data-route="desperdicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>Desperdícios</a>
     <a data-route="buffet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h18M5 11a7 7 0 0 1 14 0M4 13v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1M8 19h8"/></svg>Mapa do Buffet</a>
-    <a data-route="dre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>DRE</a>
-    <div class="lbl">FINANCEIRO</div>
-    <a data-route="financeiro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18v13H3z"/><path d="M3 10h18M7 15h4"/></svg>Financeiro</a>
     <div class="lbl">RH</div>
     <a data-route="folha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M21 20a6 6 0 0 0-3-5"/></svg>Folha de Pagamento</a>
     <a data-route="cargos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M8 11h8M8 15h6"/></svg>Descrições de Cargos</a>
@@ -1968,7 +1967,8 @@ const ROUTES={
   conta:{title:'Configurações',render:viewConta},
 };
 let current='dashboard';
-function go(route){if(MEMBRO_PERMS&&!MEMBRO_PERMS.includes(route))route=MEMBRO_PERMS[0]||route; // membro só acessa áreas liberadas
+function go(route){if(route==='dre'){finTab='dre';route=(MEMBRO_PERMS&&!MEMBRO_PERMS.includes('financeiro'))?'dre':'financeiro';}   // DRE mora dentro do Financeiro
+  if(MEMBRO_PERMS&&!MEMBRO_PERMS.includes(route))route=MEMBRO_PERMS[0]||route; // membro só acessa áreas liberadas
   current=route;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.route===route));
   $('#pageTitle').textContent=ROUTES[route].title;$('#topActions').innerHTML='';ROUTES[route].render();window.scrollTo(0,0);toggleSidebar(false);}
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.route);}));
@@ -4716,21 +4716,20 @@ function finList(key,cols){
 }
 function viewFinanceiro(){
   const t=totaisGerais(finTab==='visao'?periodoRange():undefined);
-  const tabs=[['visao','Visão Geral'],['fluxo','Fluxo de Caixa'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['categorias','Categorias'],['custosfixos','Custos Fixos'],['formas','Formas de Pagamento'],['meios','Meios de Pagamento'],['param','Parâmetros']];
+  const tabs=[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
+  const legado={categorias:'cat',formas:'formas',meios:'meios'};let foco='';if(legado[finTab]){foco=legado[finTab];finTab='param';}   // abas antigas viraram seções de Parâmetros
+  const tabsHTML=`<div class="pill-filter" style="margin-bottom:18px">${tabs.map(([k,l])=>`<button class="${finTab===k?'on':''}" onclick="finTab='${k}';viewFinanceiro()">${l}</button>`).join('')}</div>`;
+  if(finTab==='dre'){viewDRE();$('#view').insertAdjacentHTML('afterbegin',tabsHTML);return;}
   let body='';
   if(finTab==='lanc')body=finLancamentos();
   else if(finTab==='fluxo')body=finFluxo();
-  else if(finTab==='categorias')body=finCategorias();
   else if(finTab==='custosfixos')body=finCustosFixos();
   else if(finTab==='visao')body=finVisao(t);
   else if(finTab==='pagar')body=finContas('contasPagar');
   else if(finTab==='receber')body=finContas('contasReceber');
-  else if(finTab==='formas')body=finCard('Formas de Pagamento','As opções que aparecem no menu Forma dos lançamentos. Renomear atualiza os registros que já usavam o nome antigo.',finFormasInner());
-  else if(finTab==='meios')body=finCard('Meios de Pagamento','Taxas por meio de recebimento',
-    finList('meiosPagamento',[{f:'nome',ph:'Nome',w:'1.4fr'},{f:'tipo',type:'select',opts:['Crédito','Débito','Marketplace','PIX','Dinheiro','Voucher'],w:'1fr'},{f:'taxa',type:'num',ph:'%',w:'100px'}]),
-    `<span style="color:var(--muted)">A comissão de marketplace usada no cálculo é definida em <b>Parâmetros</b>.</span>`);
-  else if(finTab==='param')body=finParam();
-  $('#view').innerHTML=`<div class="pill-filter" style="margin-bottom:18px">${tabs.map(([k,l])=>`<button class="${finTab===k?'on':''}" onclick="finTab='${k}';viewFinanceiro()">${l}</button>`).join('')}</div>${body}`;
+  else if(finTab==='param')body=finParamCompleto();
+  $('#view').innerHTML=tabsHTML+body;
+  if(foco){const el=$('#fp_sec_'+foco);if(el)setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),50);}
 }
 function finCard(ttl,desc,inner,foot){
   return `<div class="card card-pad" style="max-width:880px">
@@ -5287,6 +5286,15 @@ function canalRestaurar(id){const arq=canaisArquivados();const c=arq.find(x=>x.i
   const cs=canaisVenda();if(cs.length>=CANAIS_MAX)return toast('Remova um canal antes de restaurar (máx. '+CANAIS_MAX+')');
   cs.push(c);DB.fin.canais=cs;DB.fin.canaisArq=arq.filter(x=>x.id!==id);
   save();viewFinanceiro();toast('Canal "'+c.nome+'" restaurado com os preços das fichas');}
+/* Parâmetros = regime e taxas + categorias + formas de pagamento + meios de pagamento, numa página só com atalhos */
+function finParamCompleto(){const sec=(id,l)=>`<a class="gp-link" onclick="document.getElementById('fp_sec_${id}').scrollIntoView({behavior:'smooth',block:'start'})">${l}</a>`;
+  return `<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:14px;font-size:12.5px"><span style="color:var(--soft)">Ir para:</span>${sec('regime','Regime e taxas')}${sec('cat','Categorias')}${sec('formas','Formas de pagamento')}${sec('meios','Meios de pagamento')}</div>
+    <div id="fp_sec_regime">${finParam()}</div>
+    <div id="fp_sec_cat" style="max-width:980px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line)">${finCategorias()}</div>
+    <div id="fp_sec_formas" style="max-width:980px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line)">${finCard('Formas de Pagamento','As opções que aparecem no menu Forma dos lançamentos. Renomear atualiza os registros que já usavam o nome antigo.',finFormasInner())}</div>
+    <div id="fp_sec_meios" style="max-width:980px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line)">${finCard('Meios de Pagamento','Taxas por meio de recebimento',
+      finList('meiosPagamento',[{f:'nome',ph:'Nome',w:'1.4fr'},{f:'tipo',type:'select',opts:['Crédito','Débito','Marketplace','PIX','Dinheiro','Voucher'],w:'1fr'},{f:'taxa',type:'num',ph:'%',w:'100px'}]),
+      `<span style="color:var(--muted)">A comissão de marketplace usada no cálculo é definida em <b>Regime e taxas</b>, acima.</span>`)}</div>`;}
 function finParam(){
   const fin=DB.fin;
   return `<div style="max-width:980px">
@@ -5334,7 +5342,7 @@ function finParam(){
 }
 
 /* ===================== EQUIPE ===================== */
-const ACESSOS=[['dashboard','Dashboard'],['insumos','Produtos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['checklists','Checklists'],['pops','POPs · Procedimentos'],['cargos','Descrições de Cargos'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['formacao','Formação em Gestão'],['mapa','Plano de Guerra'],['equipe','Equipe'],['conta','Configurações']];
+const ACESSOS=[['dashboard','Dashboard'],['insumos','Produtos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['checklists','Checklists'],['pops','POPs · Procedimentos'],['cargos','Descrições de Cargos'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE (no Financeiro)'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['formacao','Formação em Gestão'],['mapa','Plano de Guerra'],['equipe','Equipe'],['conta','Configurações']];
 const NIVEIS={
   admin:{label:'Administrador',desc:'Acesso total a tudo',perms:ACESSOS.map(a=>a[0])},
   gerente:{label:'Gerente',desc:'Operação + indicadores (sem equipe/config)',perms:['dashboard','insumos','fichas','estoque','checklists','engenharia','cmv','desperdicio','buffet','faturamento','dre','mapa']},
