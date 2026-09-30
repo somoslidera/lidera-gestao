@@ -860,8 +860,9 @@ body.dark .prm-chip{background:var(--card)}body.dark .prm-nav a:hover{background
 .dsh-pe-sub{font-size:12px;color:var(--soft)}.dsh-pe-sub b{color:var(--muted)}
 .dsh-pe-chip{font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:99px;margin-top:4px}
 .dsh-pe-txt{font-size:12.5px;color:var(--muted);line-height:1.45;max-width:320px}
+.dsh-pe-comp{display:flex;flex-direction:column;gap:7px}.dsh-pe-comp>div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;column-gap:8px;min-width:0}.dsh-pe-comp span{font-size:11.5px;font-weight:600;color:var(--muted)}.dsh-pe-comp b{font-family:'Fraunces',serif;font-size:15px;color:var(--ink)}.dsh-pe-comp small{flex-basis:100%;font-size:11px;color:var(--soft);line-height:1.35}
 .dsh-vazio{font-size:13px;color:var(--soft);padding:12px 0;line-height:1.5}
-@media(max-height:780px){.dsh-fit,.dsh-kpis,.dsh-3{gap:12px}.dsh-kpi{padding:12px 14px 10px}.dsh-kpi-val{font-size:clamp(19px,1.7vw,23px)}.dsh-card{padding:14px 16px 12px}.dsh-pe-n{font-size:25px}.dsh-arc{width:min(100%,190px)}.dsh-pe-txt{font-size:12px}.dsh-foot{margin-top:6px;padding-top:6px}}
+@media(max-height:780px){.dsh-pe-comp{gap:4px}.dsh-pe-comp small{font-size:10.5px}.dsh-fit,.dsh-kpis,.dsh-3{gap:12px}.dsh-kpi{padding:12px 14px 10px}.dsh-kpi-val{font-size:clamp(19px,1.7vw,23px)}.dsh-card{padding:14px 16px 12px}.dsh-pe-n{font-size:25px}.dsh-arc{width:min(100%,190px)}.dsh-pe-txt{font-size:12px}.dsh-foot{margin-top:6px;padding-top:6px}}
 @media(max-width:1180px){.dsh-3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.dsh-3>.card:nth-child(2){grid-column:1/-1;min-height:220px}.dsh-fit{height:auto;grid-template-rows:auto auto}}
 @media(max-width:900px){.dsh-fit{height:auto}.dsh-3{grid-template-columns:1fr}.dsh-3>.card{overflow:visible}.dsh-chart{min-height:190px}.dsh-chart-cmv{min-height:170px}.dsh-kpis{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.dsh-fit,.dsh-kpis,.dsh-3{gap:10px}.dsh-kpis{grid-template-columns:1fr}.dsh-kpi{padding:12px 14px 10px}.dsh-kpi-val{font-size:24px}.dsh-kpi-top{flex-wrap:wrap}.dsh-kpi-foot{white-space:normal}.dsh-kpi-vis{margin-top:6px}.dsh-kpi-vis svg{height:24px!important}.dsh-pe-n{font-size:26px}}
@@ -1283,19 +1284,36 @@ function totaisGerais(R){
   else {const cr=cmvRealPeriodo(R);if(cr!=null){cmvEqPct=cr;}
     else{const cl=cmvLancPeriodo(R);   // sem contagem no período: usa o CMV lançado (compras ÷ receita) antes de cair no teórico das fichas
       if(cl&&cl.pct!=null){cmvEqPct=cl.pct;cmvEqFonteUsada='lanc';}else{cmvEqPct=cmv;cmvEqFonteUsada='teorico';}}}
-  const custosVarEq=faturamento*(cmvEqPct/100)+comissaoRS+impostoRS+taxaCartaoRS;
-  const mcPctEq=faturamento?(faturamento-custosVarEq)/faturamento*100:mcPctMed;
-  // custos fixos do ponto de equilíbrio: quem não cadastrou custos fixos e folha (mas lança tudo) não pode ver 400%.
-  // Usa o maior entre o cadastro e o que foi lançado nos centros fixos (pessoal, fixas, marketing, manutenção) no período.
-  let fixosLanc=0;(DB.lancamentos||[]).forEach(l=>{if(l.data>=R.de&&l.data<=R.ate&&grupoTipo(l.grupo)!=='receita'){const c=dreCentroDe(l.grupo,l.sub);if(c==='cmo'||c==='fixas'||c==='mkt'||c==='manut')fixosLanc+=(l.valor||0);}});
-  const fixosPE=Math.max(fixos,fixosLanc);const fixosFonte=fixosLanc>fixos?'lanc':'cadastro';const peSemFixos=!(fixosPE>0);
+  // ===== PONTO DE EQUILÍBRIO: considera TODAS as despesas do restaurante =====
+  // Lançado no período, por centro da régua PLL (mesma leitura do DRE), mais a taxa das bandeiras calculada sobre as receitas.
+  const lancPer=(DB.lancamentos||[]).filter(l=>l.data>=R.de&&l.data<=R.ate);
+  const peCen={cmv:0,cmo:0,fixas:0,impostos:0,taxas:0,mkt:0,manut:0};
+  lancPer.forEach(l=>{if(grupoTipo(l.grupo)!=='receita')peCen[dreCentroDe(l.grupo,l.sub)]+=(l.valor||0);});
+  const taxasCalcRS=(taxasRecebimento(lancPer).total)||0;
+  // FIXOS: por bloco, o maior entre o cadastro e o que foi lançado (quem lança tudo sem cadastrar não fica com base zero;
+  // quem cadastrou mas ainda não lançou o mês inteiro não fica com base pela metade).
+  const pessoalPE=Math.max(folha,peCen.cmo);
+  const estruturaPE=Math.max(fixosBase,peCen.fixas+peCen.mkt+peCen.manut);
+  const impostoFixoPE=DB.fin.mei?impostoRS:0;                       // MEI paga valor fixo: entra nos fixos
+  const fixosPE=pessoalPE+estruturaPE+provisoesRS+impostoFixoPE;
+  const fixosLanc=peCen.cmo+peCen.fixas+peCen.mkt+peCen.manut;
+  const fixosFonte=fixosLanc>fixos?'lanc':'cadastro';const peSemFixos=!(fixosPE>0);
+  // VARIÁVEIS (% de cada real vendido): CMV da fonte escolhida + impostos + taxas de cartão + comissões de delivery.
+  // Impostos e taxas: o maior entre o parâmetro e o que foi lançado/calculado no período.
+  const pct=v=>faturamento>0?v/faturamento*100:0;
+  const impostosPct=DB.fin.mei?0:Math.max(pct(impostoRS),pct(peCen.impostos),faturamento>0?0:(DB.fin.aliquota||0));
+  const taxasPct=Math.max(pct(taxaCartaoRS),pct(peCen.taxas+taxasCalcRS),faturamento>0?0:taxaMediaRec()*(1-mix));
+  const comissaoPct=pct(comissaoRS);
+  const varPctEq=cmvEqPct+impostosPct+taxasPct+comissaoPct;
+  const mcPctEq=100-varPctEq;
+  const custosVarEq=faturamento*(varPctEq/100);
   const faturamentoEq=(mcPctEq>0&&fixosPE>0)?fixosPE/(mcPctEq/100):Infinity;
   const diaEq=faturamento>0&&isFinite(faturamentoEq)?faturamentoEq/faturamento*30:Infinity;
   return {receita:receitaEst,faturamento,custoTot:cmvRS,cmv,vendas,ticket,
     recIfood,recDireto,comissaoRS,impostoRS,taxaCartaoRS,custosVar,custosVarPct:faturamento?custosVar/faturamento*100:0,
     fixosBase,provisoesRS,folha,prol,fixos,fixosPct:faturamento?fixos/faturamento*100:0,
     mcRS,mcPctMed,mcTot:mcRS,lucro,margemLiq:faturamento?lucro/faturamento*100:0,
-    dinheiroMesa,dinheiroMesaPct:faturamento?dinheiroMesa/faturamento*100:0,faturamentoEq,diaEq,cmvEqPct,cmvEqFonte:peFonte,cmvEqFonteUsada,mcPctEq,fixosPE,fixosLanc,fixosFonte,peSemFixos,
+    dinheiroMesa,dinheiroMesaPct:faturamento?dinheiroMesa/faturamento*100:0,faturamentoEq,diaEq,cmvEqPct,cmvEqFonte:peFonte,cmvEqFonteUsada,mcPctEq,fixosPE,fixosLanc,fixosFonte,peSemFixos,pessoalPE,estruturaPE,impostoFixoPE,impostosPct,taxasPct,comissaoPct,varPctEq,peCen,
     despLancGrupos,despLancTot,cmvLancRS,pessoalLancRS,outrasLancRS,lucroReal,margemReal};
 }
 
@@ -2250,7 +2268,10 @@ function viewDashboard(){
         <div class="dsh-pe-chip" style="color:${peCor};background:${gpct>=100?'var(--green-bg)':gpct>=80?'var(--amber-bg)':'var(--red-bg)'}">${gpct>=100?`Folga de ${fmtBRL(t.faturamento-pe)}`:`Faltam ${fmtBRL(falta)}`}</div>
         <div class="dsh-pe-txt">${peTxt}</div>
       </div>
-      <div class="dsh-foot">Base: <b>${fmtBRL(t.fixosPE)}</b> de custos fixos (${t.fixosFonte==='lanc'?'lançados no período':'cadastro'}) · margem de contribuição <b>${fmtPct(t.mcPctEq)}</b> · CMV ${t.cmvEqFonteUsada==='teorico'?'teórico':t.cmvEqFonteUsada==='lanc'?'lançado':t.cmvEqFonteUsada==='manual'?'digitado':'real'} ${fmtPct(t.cmvEqPct)} <a class="gp-link" onclick="prmIr('metas')">ajustar</a></div>`
+      <div class="dsh-foot dsh-pe-comp">
+        <div><span>Custos fixos do período</span><b>${fmtBRL(t.fixosPE)}</b><small>pessoal ${fmtBRL(t.pessoalPE)} · estrutura ${fmtBRL(t.estruturaPE)}${t.provisoesRS>0?' · provisões '+fmtBRL(t.provisoesRS):''}${t.impostoFixoPE>0?' · DAS '+fmtBRL(t.impostoFixoPE):''}</small></div>
+        <div><span>Custos variáveis, por venda</span><b>${fmtPct(t.varPctEq)}</b><small>CMV ${t.cmvEqFonteUsada==='teorico'?'teórico':t.cmvEqFonteUsada==='lanc'?'lançado':t.cmvEqFonteUsada==='manual'?'digitado':'real'} ${fmtPct(t.cmvEqPct)} · impostos ${fmtPct(t.impostosPct)} · taxas ${fmtPct(t.taxasPct)}${t.comissaoPct>0?' · comissões '+fmtPct(t.comissaoPct):''}</small></div>
+        <div><span>Margem de contribuição</span><b>${fmtPct(t.mcPctEq)}</b><small>meta = fixos ÷ margem · <a class="gp-link" onclick="prmIr('metas')">ajustar</a></small></div></div>`
       :`<div class="dsh-pe-body"><div class="dsh-vazio">${peTxt}</div></div>`}
     </div>
     <div class="card dsh-card">
