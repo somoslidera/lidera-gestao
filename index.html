@@ -831,30 +831,26 @@ body.dark .gp-kb-col,body.dark .gp-note-box{background:#121B30}
 .prm-kv span{color:var(--muted)}.prm-kv b{text-align:right}
 body.dark .prm-chip{background:var(--card)}body.dark .prm-nav a:hover{background:#1A2540}body.dark .prm-exemplo{background:#121B30}
 @media(max-width:900px){.prm-wrap{grid-template-columns:1fr}.prm-nav{flex-direction:row;overflow-x:auto;position:static;gap:6px;padding-bottom:4px;scrollbar-width:none;margin:0 -14px;padding-left:14px;padding-right:14px}.prm-nav::-webkit-scrollbar{display:none}.prm-nav a{flex:0 0 auto;padding:8px 12px;border:1px solid var(--line);border-radius:20px;align-items:center;background:var(--card)}.prm-nav a.on{border-color:var(--navy)}.prm-nav a b{font-size:12.5px;white-space:nowrap}.prm-nav a svg{width:15px;height:15px;margin:0}.prm-chips{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;margin:0 -14px 14px;padding:0 14px}.prm-chips::-webkit-scrollbar{display:none}.prm-chip{flex:0 0 auto}}
-/* ===== Dashboard do dono ===== */
-.dsh-hero{margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px}
-.dsh-hero-t{font-size:22px;font-weight:700;font-family:'Fraunces',serif;margin-top:2px}
-.dsh-hero-pills{display:flex;gap:10px;flex-wrap:wrap}
-.dsh-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+/* ===== Dashboard do dono (cabe na tela, sem rolagem no desktop) ===== */
+.dsh-fit{display:flex;flex-direction:column;gap:16px;height:100%;min-height:0}
+.dsh-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;flex-shrink:0}
 .dsh-kpis .k-sub{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .dsh-delta{font-weight:700;font-size:11.5px}.dsh-delta.up{color:var(--green)}.dsh-delta.down{color:var(--red)}
-.dsh-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.dsh-2.w{grid-template-columns:1.4fr 1fr;margin-top:0}
-.dsh-stack{display:flex;height:22px;border-radius:8px;overflow:hidden;background:var(--bg);margin:6px 0 12px}.dsh-stack i{display:block;height:100%;min-width:2px}
-.dsh-cen-row{display:grid;grid-template-columns:10px minmax(0,1fr) 110px 120px;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
-.dsh-cen-row .sw{width:10px;height:10px;border-radius:3px}.dsh-cen-row .v{text-align:right;font-variant-numeric:tabular-nums}.dsh-cen-row .p{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}.dsh-cen-row .p small{font-weight:500;color:var(--soft);font-size:10.5px}
-.dsh-cen-row.tot{border-top:2px solid var(--navy);font-weight:700}
+.dsh-3{display:grid;grid-template-columns:1.1fr 1.35fr 1fr;gap:16px;flex:1;min-height:0}
+.dsh-3>.card{display:flex;flex-direction:column;min-height:0;overflow:hidden;margin:0}
+.dsh-3 .section-head{flex-shrink:0}
+.dsh-chart{flex:1;min-height:0;display:flex;align-items:flex-end}.dsh-chart svg{width:100%;height:100%;max-height:100%}
 .dsh-pe{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.dsh-pe-n{font-family:'Fraunces',serif;font-size:32px;font-weight:700;line-height:1}
 .dsh-gauge{height:14px;background:var(--bg);border:1px solid var(--line);border-radius:99px;overflow:hidden;margin-top:12px}.dsh-gauge i{display:block;height:100%;border-radius:99px;transition:width .25s}
 .dsh-nota{font-size:12.5px;color:var(--muted);background:var(--bg);border-radius:10px;padding:9px 12px;margin-top:12px;line-height:1.5}.dsh-nota a,.dsh-vazio a{color:var(--navy);font-weight:600;cursor:pointer}
+.dsh-rodape{margin-top:auto;padding-top:10px}
 .dsh-vazio{font-size:13px;color:var(--soft);padding:12px 0}
 .sw-inline{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px}
-.dsh-caixa{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.dsh-caixa div{border:1px solid var(--line);border-radius:11px;padding:9px 11px;display:flex;flex-direction:column;gap:1px}.dsh-caixa span{font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--soft);font-weight:700}.dsh-caixa b{font-size:16px;font-family:'Fraunces',serif}.dsh-caixa small{font-size:11px;color:var(--soft)}
-.dsh-venc div{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:13px}.dsh-venc .d{flex:0 0 46px;font-weight:700}.dsh-venc .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dsh-venc .n small{display:block;font-size:11px;color:var(--soft)}
 .dsh-cmv{display:flex;gap:8px;text-align:center}.dsh-cmv div{flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 6px}.dsh-cmv b{display:block;font-size:22px;font-family:'Fraunces',serif}.dsh-cmv span{font-size:11px;color:var(--muted)}
-.dsh-top div{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 92px;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:13px}.dsh-top .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.dsh-top .n small{display:block;font-weight:400;font-size:11px;color:var(--soft)}.dsh-top .bar{margin:0;height:8px}.dsh-top .bar i{display:block;height:100%;background:var(--navy);border-radius:5px}.dsh-top b{text-align:right;font-variant-numeric:tabular-nums}
-.alert a{color:inherit;font-weight:700;cursor:pointer;text-decoration:underline}
-@media(max-width:900px){.dsh-kpis{grid-template-columns:1fr 1fr}.dsh-2,.dsh-2.w{grid-template-columns:1fr}}
-@media(max-width:640px){.dsh-kpis{grid-template-columns:1fr 1fr;gap:10px}.dsh-kpis .k-val{font-size:21px}.dsh-kpis .kpi{padding:12px 12px;min-width:0}.dsh-pe-n{font-size:26px}.dsh-cen-row{grid-template-columns:10px minmax(0,1fr) 90px 92px;gap:6px;font-size:12.5px}.dsh-caixa{grid-template-columns:1fr 1fr}.dsh-top div{grid-template-columns:minmax(0,1fr) 84px}.dsh-top .bar{display:none}}
+@media(max-height:820px){.dsh-kpis .k-val{font-size:21px}.dsh-pe-n{font-size:26px}.dsh-cmv b{font-size:19px}.dsh-nota{font-size:12px;padding:7px 10px;margin-top:8px}.dsh-fit,.dsh-3,.dsh-kpis{gap:12px}}
+@media(max-width:1100px){.dsh-3{grid-template-columns:1fr 1fr}.dsh-3>.card:nth-child(2){grid-column:1/-1;min-height:200px}}
+@media(max-width:900px){.dsh-fit{height:auto}.dsh-3{grid-template-columns:1fr;flex:none}.dsh-3>.card{overflow:visible}.dsh-chart{min-height:170px}.dsh-kpis{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.dsh-kpis{gap:10px}.dsh-kpis .k-val{font-size:21px}.dsh-kpis .kpi{padding:12px 12px;min-width:0}.dsh-pe-n{font-size:26px}}
 </style>
 </head>
 <body>
@@ -2157,20 +2153,15 @@ function dashCaixa(){const h=hojeISO(),em7=diasSoma(h,7);const cp=(DB.fin.contas
   return {saldo:saldoContas(),vencidas:cp.filter(x=>x.vencimento&&x.vencimento<h),pagar7:cp.filter(x=>x.vencimento&&x.vencimento>=h&&x.vencimento<=em7),receber7:cr.filter(x=>x.vencimento&&x.vencimento>=h&&x.vencimento<=em7),pagarTot:soma(cp),receberTot:soma(cr),soma,
     proximos:cp.slice().sort((a,b)=>(a.vencimento||'').localeCompare(b.vencimento||'')).slice(0,6)};}
 function dashDelta(atual,ant){if(!(ant>0))return '';const d=(atual-ant)/ant*100;const up=d>=0;return `<span class="dsh-delta ${up?'up':'down'}" title="Comparado ao período anterior">${up?'▲':'▼'} ${fmtN(Math.abs(d),1)}%</span>`;}
-function dashSvgMeses(ms){const W=520,H=150,pad=26,bw=Math.min(34,(W-pad*2)/ms.length/2.6);const max=Math.max(1,...ms.map(x=>Math.max(x.rec,x.desp)));const y=v=>H-18-(v/max)*(H-40);const x=i=>pad+i*((W-pad*2)/ms.length)+((W-pad*2)/ms.length)/2;
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${ms.map((m,i)=>`<g><rect x="${x(i)-bw-2}" y="${y(m.rec)}" width="${bw}" height="${H-18-y(m.rec)}" rx="4" fill="var(--navy)" opacity=".9"><title>${m.label}: receita ${fmtBRL(m.rec)}</title></rect><rect x="${x(i)+2}" y="${y(m.desp)}" width="${bw}" height="${H-18-y(m.desp)}" rx="4" fill="var(--gold)" opacity=".85"><title>${m.label}: despesas ${fmtBRL(m.desp)}</title></rect><text x="${x(i)}" y="${H-4}" text-anchor="middle" font-size="10.5" fill="var(--soft)">${m.label}</text>${m.rec||m.desp?`<text x="${x(i)}" y="${Math.min(y(m.rec),y(m.desp))-5}" text-anchor="middle" font-size="10" font-weight="700" fill="${m.res>=0?'var(--green)':'var(--red)'}">${m.res>=0?'+':'−'}${fmtBRL(Math.abs(m.res)).replace('R$','').trim()}</text>`:''}</g>`).join('')}</svg>`;}
+function dashSvgMeses(ms,W,H){W=W||520;H=H||150;const pad=Math.round(W*0.04),slot=(W-pad*2)/ms.length,bw=Math.min(slot*0.36,64),fs=clamp(Math.round(H/16),10,13);const max=Math.max(1,...ms.map(x=>Math.max(x.rec,x.desp)));const base=H-fs-8,top=fs+10;const y=v=>base-(v/max)*(base-top);const x=i=>pad+i*slot+slot/2;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block">${ms.map((m,i)=>`<g><rect x="${x(i)-bw-2}" y="${y(m.rec)}" width="${bw}" height="${base-y(m.rec)}" rx="4" fill="var(--navy)" opacity=".9"><title>${m.label}: receita ${fmtBRL(m.rec)}</title></rect><rect x="${x(i)+2}" y="${y(m.desp)}" width="${bw}" height="${base-y(m.desp)}" rx="4" fill="var(--gold)" opacity=".85"><title>${m.label}: despesas ${fmtBRL(m.desp)}</title></rect><text x="${x(i)}" y="${H-2}" text-anchor="middle" font-size="${fs}" fill="var(--soft)">${m.label}</text>${m.rec||m.desp?`<text x="${x(i)}" y="${Math.min(y(m.rec),y(m.desp))-5}" text-anchor="middle" font-size="${fs-1}" font-weight="700" fill="${m.res>=0?'var(--green)':'var(--red)'}">${m.res>=0?'+':'−'}${fmtBRL(Math.abs(m.res)).replace('R$','').trim()}</text>`:''}</g>`).join('')}</svg>`;}
 function viewDashboard(){
   $('#topActions').innerHTML=periodoSeletor();
   const R=periodoRange();const t=totaisGerais(R);const Rant=periodoAnterior(R);const tAnt=totaisGerais(Rant);
-  const fichas=fichasVendaveis().map(f=>({f,m:metricasFicha(f)}));
-  const criticas=fichas.filter(x=>x.m.health==='critico'),atencao=fichas.filter(x=>x.m.health==='atencao'),saudaveis=fichas.filter(x=>x.m.health==='saudavel');
-  const prejuizoIfood=fichas.filter(x=>(x.m.canais||[]).some(y=>y.m.mc<0));const semPreco=fichas.filter(x=>x.f.precoVenda<=0);
   const despMes=(DB.desperdicios||[]).filter(d=>d.data>=R.de&&d.data<=R.ate).reduce((s,d)=>s+(d.custoTotal||0),0);
   const cmvTeorico=t.cmv,cmvRealP=cmvRealPeriodo(R),cmvLancO=cmvLancPeriodo(R),cmvLanc=cmvLancO&&cmvLancO.pct!=null?cmvLancO.pct:null;
   const cmvRef=cmvRealP!=null?cmvRealP:cmvLanc;const cmvHead=cmvRef!=null?cmvRef:cmvTeorico;const cmvGap=cmvRef!=null?cmvRef-cmvTeorico:null;
-  const cen=dashCentros(R),cenAnt=dashCentros(Rant);const caixa=dashCaixa();const meses=dashMeses(R,6);
-  const semLanc=(t.faturamento<=0&&cen.desp<=0);
-  const status=semLanc?['Sem lançamentos no período','tag-amber']:cen.lucro<0?['No vermelho','tag-red']:cen.lucroPct>=DRE_LUCRO_REF?['Lucro na meta','tag-green']:cen.lucroPct>=5?['Lucrando pouco','tag-amber']:['Empatando','tag-amber'];
+  const cen=dashCentros(R),cenAnt=dashCentros(Rant);const meses=dashMeses(R,6);
   const dias=diasPeriodo(R),decorr=diasDecorridos(R)||dias;const porDia=t.faturamento/decorr;
   const pratosVend=estBaixas().filter(b=>b.data>=R.de&&b.data<=R.ate).reduce((s,b)=>s+(b.pratos||0),0);
   // ponto de equilíbrio
@@ -2179,73 +2170,28 @@ function viewDashboard(){
   const peTxt=!peOk?(t.peSemFixos?'Cadastre os custos fixos e a folha (ou lance as despesas) para o Flow calcular quanto você precisa vender.':t.faturamento<=0?'Sem receita no período: lance as vendas, ou preencha a média de vendas nas fichas, para o Flow estimar a margem e calcular quanto precisa vender.':'A margem de contribuição está zerada ou negativa: o CMV, as taxas e os impostos consomem toda a receita.')
     :gpct>=100?`Meta batida com folga de <b>${fmtBRL(t.faturamento-pe)}</b>. A partir daqui, cada real vendido deixa cerca de <b>${fmtPct(t.mcPctEq)}</b> de margem.`
     :`Faltam <b>${fmtBRL(falta)}</b>${decorr<dias?` · no ritmo atual (${fmtBRL(porDia)}/dia) o empate chega no dia <b>${Math.ceil(ritmoDias)}</b>${ritmoDias>dias?', depois do fim do período':''}`:''}.`;
-  const cores={cmv:'var(--red)',cmo:'var(--navy)',fixas:'var(--gold)',impostos:'#6B7A99',taxas:'#B07A3C',mkt:'#8E5BC0',manut:'#3C8C6B'};
-  const topMargem=fichas.filter(x=>x.m.vendas>0&&x.m.mcTotal>0).sort((a,b)=>b.m.mcTotal-a.m.mcTotal).slice(0,5);const maxMc=Math.max(1,...topMargem.map(x=>x.m.mcTotal));
-  // ações
-  const acoes=[];
-  if(semLanc)acoes.push(['amber',`Nenhum lançamento em ${R.label.toLowerCase()}. <a onclick="finTab='lanc';go('financeiro')">Lance as receitas e as notas</a> para o painel ganhar vida.`]);
-  if(caixa.vencidas.length)acoes.push(['red',`<b>${caixa.vencidas.length} conta(s) vencida(s)</b> somando ${fmtBRL(caixa.soma(caixa.vencidas))}. <a onclick="finTab='pagar';go('financeiro')">Ver contas a pagar</a>`]);
-  if(cmvGap!=null&&cmvGap>4)acoes.push([cmvGap>8?'red':'amber',`CMV real ${fmtN(cmvGap,1)} p.p. acima do teórico (${fmtPct(cmvRef)} × ${fmtPct(cmvTeorico)}): desperdício, porção ou compra sem nota. <a onclick="go('cmv')">Ver controle de CMV</a>`]);
-  cen.cs.filter(c=>c.estouro&&c.id!=='cmv').slice(0,2).forEach(c=>acoes.push(['amber',`<b>${c.nome}</b> em ${fmtPct(c.pct)} da receita, acima da referência (${c.ref}). <a onclick="go('dre')">Abrir o DRE</a>`]));
-  criticas.slice(0,2).forEach(x=>acoes.push(['red',`<b>${esc(x.f.nome)}</b> com CMV de ${fmtPct(x.m.balcao.cmv)}: revise a ficha ou o preço. <a onclick="go('fichas')">Fichas técnicas</a>`]));
-  prejuizoIfood.slice(0,1).forEach(x=>acoes.push(['red',`<b>${esc(x.f.nome)}</b> dá prejuízo no delivery (${fmtBRL(x.m.ifood.mc)} por unidade).`]));
-  if(semPreco.length)acoes.push(['amber',`${semPreco.length} ficha(s) sem preço de venda. <a onclick="go('fichas')">Completar</a>`]);
-  if(estMultiArm()&&estNegativos().length)acoes.push(['amber',`${estNegativos().length} produto(s) com saldo negativo em armazém. <a onclick="estoqueTab='contagem';go('estoque')">Ver estoque</a>`]);
-  if(despMes>0&&t.faturamento>0&&despMes/t.faturamento>0.02)acoes.push(['amber',`Desperdício de ${fmtBRL(despMes)} no período (${fmtPct(despMes/t.faturamento*100)} da receita). <a onclick="go('desperdicio')">Ver desperdícios</a>`]);
-  if(!acoes.length)acoes.push(['green','Nenhum ponto de atenção. Caixa em dia, CMV na linha e cardápio saudável.']);
   const fmtK=v=>fmtBRL(v);
   $('#view').innerHTML=`
-  <div class="card card-pad hero-card dsh-hero">
-    <div><div class="hero-sub">${R.label} · ${decorr<dias?decorr+' de '+dias+' dias':dias+' dias'}</div>
-      <div class="dsh-hero-t">Como está o restaurante</div>
-      <span class="tag ${status[1]}" style="font-size:12.5px;padding:5px 12px;margin-top:6px">● ${status[0]}</span></div>
-    <div class="dsh-hero-pills">
-      <div class="dash-pill"><span>Vendido</span><b>${fmtK(t.faturamento)}</b></div>
-      <div class="dash-pill"><span>Sobrou</span><b style="color:${cen.lucro>=0?'#7fe0b0':'#ff9e94'}">${fmtK(cen.lucro)}</b></div>
-      <div class="dash-pill"><span>Margem</span><b>${t.faturamento>0?fmtPct(cen.lucroPct):'—'}</b></div>
-      <div class="dash-pill"><span>Caixa hoje</span><b>${fmtK(caixa.saldo)}</b></div>
-    </div>
-  </div>
+  <div class="dsh-fit">
   <div class="dsh-kpis">
     <div class="kpi"><div class="k-lbl">Faturamento</div><div class="k-val">${fmtK(t.faturamento)}</div><div class="k-sub">${dashDelta(t.faturamento,tAnt.faturamento)||'<span style="color:var(--soft)">sem período anterior</span>'}<span style="color:var(--soft);font-weight:500">· ${fmtBRL(porDia)}/dia</span></div></div>
     <div class="kpi"><div class="k-lbl">Resultado</div><div class="k-val" style="color:${cen.lucro>=0?'var(--green)':'var(--red)'}">${fmtK(cen.lucro)}</div><div class="k-sub">${dashDelta(cen.lucro,cenAnt.lucro)}<span style="color:var(--soft);font-weight:500">${t.faturamento>0?'· margem '+fmtPct(cen.lucroPct)+' · meta '+DRE_LUCRO_REF+'%':''}</span></div></div>
     <div class="kpi"><div class="k-lbl">${cmvRealP!=null?'CMV real':cmvLanc!=null?'CMV (lançamentos)':'CMV teórico'}</div><div class="k-val" style="color:${cmvCorRef(cmvHead)}">${fmtPct(cmvHead)}</div><div class="k-sub"><span style="color:var(--soft);font-weight:500">meta ${fmtPct(cmvAlvoRef())}${cmvRef!=null?' · teórico '+fmtPct(cmvTeorico):''}</span></div></div>
     <div class="kpi"><div class="k-lbl">${pratosVend>0?'Ticket médio':'Despesas'}</div><div class="k-val">${pratosVend>0?fmtBRL(t.faturamento/pratosVend):fmtK(cen.desp)}</div><div class="k-sub"><span style="color:var(--soft);font-weight:500">${pratosVend>0?fmtN(pratosVend)+' pratos vendidos':(t.faturamento>0?fmtPct(cen.desp/t.faturamento*100)+' da receita':'lançadas no período')}</span></div></div>
   </div>
-  <div class="dsh-2 w">
-    <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Para onde foi o dinheiro</div><div class="desc">De cada R$ 100 vendidos, quanto foi para cada centro de custo (régua PLL)</div></div><a class="gp-link" onclick="go('dre')">DRE completo</a></div>
-      ${cen.rec>0?`<div class="dsh-stack">${cen.cs.filter(c=>c.total>0).map(c=>`<i style="width:${clamp(c.pct,0,100)}%;background:${cores[c.id]}" title="${c.nome}: ${fmtPct(c.pct)}"></i>`).join('')}${cen.lucro>0?`<i style="width:${clamp(cen.lucroPct,0,100)}%;background:var(--green)" title="Lucro: ${fmtPct(cen.lucroPct)}"></i>`:''}</div>
-      <div class="dsh-cen">${cen.cs.map(c=>`<div class="dsh-cen-row"><span class="sw" style="background:${cores[c.id]}"></span><span class="n">${c.nome}</span><span class="v">${fmtBRL(c.total)}</span><span class="p" style="color:${c.estouro?'var(--red)':c.abaixo?'var(--amber)':c.total>0?'var(--green)':'var(--soft)'}">${fmtPct(c.pct)} <small>${c.ref}</small></span></div>`).join('')}
-      <div class="dsh-cen-row tot"><span class="sw" style="background:${cen.lucro>=0?'var(--green)':'var(--red)'}"></span><span class="n">Lucro</span><span class="v" style="color:${cen.lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(cen.lucro)}</span><span class="p" style="color:${cen.lucroPct>=DRE_LUCRO_REF?'var(--green)':cen.lucro>=0?'var(--amber)':'var(--red)'}">${fmtPct(cen.lucroPct)} <small>≥ ${DRE_LUCRO_REF}%</small></span></div></div>`
-      :`<div class="dsh-vazio">Sem receita lançada no período. <a onclick="finTab='lanc';go('financeiro')">Lançar receitas</a></div>`}
-    </div>
+  <div class="dsh-3">
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">Ponto de equilíbrio</div><div class="desc">Quanto precisa vender para pagar tudo</div></div></div>
       ${peOk?`<div class="dsh-pe"><div class="dsh-pe-n" style="color:${gpct>=100?'var(--green)':'var(--navy)'}">${fmtBRL(pe)}</div><div class="gp-mini">no período · ${fmtBRL(peDia)} por dia</div></div>
       <div class="dsh-gauge"><i style="width:${clamp(gpct,0,100)}%;background:${gpct>=100?'var(--green)':'var(--gold)'}"></i></div>
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--soft);margin-top:6px"><span>vendido <b style="color:var(--ink)">${fmtBRL(t.faturamento)}</b></span><b style="color:${gpct>=100?'var(--green)':'var(--amber)'}">${fmtPct(Math.min(gpct,999))}</b></div>`:''}
       <div class="dsh-nota">${peTxt}</div>
-      ${peOk?`<div class="gp-mini" style="margin-top:8px">Custos fixos considerados: <b>${fmtBRL(t.fixosPE)}</b> (${t.fixosFonte==='lanc'?'despesas lançadas no período':'custos fixos + folha cadastrados'}) · margem de contribuição ${fmtPct(t.mcPctEq)} com CMV ${t.cmvEqFonteUsada==='teorico'?'teórico':t.cmvEqFonteUsada==='lanc'?'dos lançamentos':t.cmvEqFonteUsada==='manual'?'digitado':'real'} de ${fmtPct(t.cmvEqPct)}. <a class="gp-link" onclick="prmIr('metas')">ajustar</a></div>`:''}
+      ${peOk?`<div class="gp-mini dsh-rodape">Custos fixos considerados: <b>${fmtBRL(t.fixosPE)}</b> (${t.fixosFonte==='lanc'?'despesas lançadas no período':'custos fixos + folha cadastrados'}) · margem de contribuição ${fmtPct(t.mcPctEq)} com CMV ${t.cmvEqFonteUsada==='teorico'?'teórico':t.cmvEqFonteUsada==='lanc'?'dos lançamentos':t.cmvEqFonteUsada==='manual'?'digitado':'real'} de ${fmtPct(t.cmvEqPct)}. <a class="gp-link" onclick="prmIr('metas')">ajustar</a></div>`:''}
     </div>
-  </div>
-  <div class="dsh-2">
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">Últimos 6 meses</div><div class="desc">Receita <span class="sw-inline" style="background:var(--navy)"></span> e despesas <span class="sw-inline" style="background:var(--gold)"></span> lançadas; em cima, o resultado</div></div></div>
-      ${meses.some(m=>m.rec||m.desp)?dashSvgMeses(meses):`<div class="dsh-vazio">Ainda não há histórico de lançamentos.</div>`}
+      <div class="dsh-chart">${meses.some(m=>m.rec||m.desp)?dashSvgMeses(meses):`<div class="dsh-vazio">Ainda não há histórico de lançamentos.</div>`}</div>
     </div>
-    <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Caixa e vencimentos</div><div class="desc">Saldo em conta e o que vence nos próximos 7 dias</div></div><a class="gp-link" onclick="finTab='pagar';go('financeiro')">Contas a pagar</a></div>
-      <div class="dsh-caixa">
-        <div><span>Saldo em conta</span><b>${fmtBRL(caixa.saldo)}</b></div>
-        <div><span>A pagar em 7 dias</span><b style="color:var(--red)">${fmtBRL(caixa.soma(caixa.pagar7))}</b><small>${caixa.pagar7.length} conta(s)</small></div>
-        <div><span>A receber em 7 dias</span><b style="color:var(--green)">${fmtBRL(caixa.soma(caixa.receber7))}</b><small>${caixa.receber7.length} título(s)</small></div>
-        <div><span>Vencidas</span><b style="color:${caixa.vencidas.length?'var(--red)':'var(--ink)'}">${fmtBRL(caixa.soma(caixa.vencidas))}</b><small>${caixa.vencidas.length} conta(s)</small></div>
-      </div>
-      ${caixa.proximos.length?`<div class="dsh-venc">${caixa.proximos.map(x=>{const atras=x.vencimento&&x.vencimento<hojeISO();return `<div><span class="d" style="color:${atras?'var(--red)':'var(--navy)'}">${x.vencimento?fmtDataBR(x.vencimento).slice(0,5):'—'}</span><span class="n">${esc(x.descricao||'—')}<small>${esc(x.sub||x.categoria||x.grupo||'')}</small></span><b style="color:${atras?'var(--red)':'var(--ink)'}">${fmtBRL(x.valor)}</b></div>`;}).join('')}</div>`:`<div class="dsh-vazio">Nenhuma conta em aberto.</div>`}
-    </div>
-  </div>
-  <div class="dsh-2">
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">CMV: teórico × real</div><div class="desc">O que o cardápio promete e o que o estoque mostra</div></div><a class="gp-link" onclick="go('cmv')">Controle de CMV</a></div>
       <div class="dsh-cmv">
@@ -2255,16 +2201,12 @@ function viewDashboard(){
       </div>
       <div class="dsh-nota">${cmvGap!=null?`Diferença real × teórico: <b style="color:${cmvGap<=2?'var(--green)':cmvGap<=5?'var(--amber)':'var(--red)'}">${(cmvGap>=0?'+':'')+fmtN(cmvGap,1)} p.p.</b> ${cmvGap>4?'Cada ponto acima do teórico é dinheiro que saiu do estoque sem virar venda.':'Estoque e cardápio estão alinhados.'}`:`Registre uma <a onclick="go('cmv')">contagem de estoque</a> para comparar o CMV real com o teórico.`} ${despMes>0?`Desperdício registrado: <b>${fmtBRL(despMes)}</b>.`:''}</div>
     </div>
-    <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Cardápio</div><div class="desc">${fichas.length} fichas · ${saudaveis.length} saudáveis · ${atencao.length} em atenção · ${criticas.length} críticas</div></div><a class="gp-link" onclick="go('engenharia')">Engenharia de menu</a></div>
-      ${topMargem.length?`<div class="gp-mini" style="margin-bottom:6px">Pratos que mais deixam dinheiro no mês (margem × vendas)</div><div class="dsh-top">${topMargem.map(x=>`<div><span class="n">${esc(x.f.nome)}<small>${fmtN(x.m.vendas)} vendas · CMV ${fmtPct(x.m.balcao.cmv)}</small></span><span class="bar"><i style="width:${x.m.mcTotal/maxMc*100}%"></i></span><b>${fmtBRL(x.m.mcTotal)}</b></div>`).join('')}</div>`
-      :`<div class="dsh-vazio">Preencha a média de vendas nas fichas (ou registre as vendas no Estoque) para ver os pratos que mais deixam dinheiro.</div>`}
-    </div>
   </div>
-  <div class="card card-pad" style="margin-top:16px">
-    <div class="section-head"><div><div class="ttl">O que fazer agora</div><div class="desc">Pontos de atenção do período, em ordem de urgência</div></div></div>
-    ${acoes.map(([c,h])=>alertRow(c,c==='green'?icoOk:icoWarn,h)).join('')}
   </div>`;
+  const temHist=meses.some(m=>m.rec||m.desp);
+  const ajustaGrafico=()=>{const el=$('.dsh-chart');if(!el||!temHist)return;const w=el.clientWidth,h=el.clientHeight;if(w>40&&h>40)el.innerHTML=dashSvgMeses(meses,w,h);};
+  requestAnimationFrame(ajustaGrafico);setTimeout(ajustaGrafico,80);
+  if(!window._dshResize){window._dshResize=true;window.addEventListener('resize',()=>{if(current==='dashboard')requestAnimationFrame(ajustaGrafico);});}
 }
 function alertRow(t,ic,html){return `<div class="alert alert-${t}">${ic}<div>${html}</div></div>`;}
 function miniEngenharia(){
