@@ -801,6 +801,36 @@ body.dark .gp-kb-col,body.dark .gp-note-box{background:#121B30}
   .gp-tl .meta{padding-right:44px}
   .gp-fact .v{white-space:normal}
 }
+/* ===== Parâmetros (painel de configurações) ===== */
+.prm-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.prm-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.prm-chip{display:inline-flex;flex-direction:column;gap:1px;padding:7px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);cursor:pointer;min-width:0;transition:.15s}
+.prm-chip:hover{border-color:var(--navy)}
+.prm-chip span{font-size:10.5px;color:var(--soft);font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+.prm-chip b{font-size:13px;color:var(--ink);white-space:nowrap}
+.prm-wrap{display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px;align-items:start}
+.prm-nav{display:flex;flex-direction:column;gap:2px;position:sticky;top:0}
+.prm-nav a{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:11px;cursor:pointer;color:var(--muted);transition:.12s}
+.prm-nav a svg{width:18px;height:18px;flex:0 0 auto;margin-top:1px}
+.prm-nav a b{display:block;font-size:13px;font-weight:600;color:var(--ink)}
+.prm-nav a small{display:block;font-size:11px;color:var(--soft);margin-top:1px;line-height:1.3}
+.prm-nav a:hover{background:var(--bg)}
+.prm-nav a.on{background:var(--navy);color:#fff}
+.prm-nav a.on b,.prm-nav a.on small{color:#fff}.prm-nav a.on small{opacity:.8}
+.prm-panel{min-width:0}
+.prm-head{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.prm-head .prm-ico{width:38px;height:38px;border-radius:11px;background:var(--blue-bg);color:var(--navy);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.prm-head .prm-ico svg{width:20px;height:20px}
+.prm-head .ttl{font-family:'Fraunces',serif;font-size:19px;font-weight:700}
+.prm-head .desc{font-size:12.5px;color:var(--muted)}
+.prm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;align-items:start}
+.prm-exemplo{font-size:12.5px;color:var(--muted);background:var(--bg);border-radius:10px;padding:9px 12px;margin-top:8px;line-height:1.5}
+.prm-onde{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:11.5px;color:var(--soft)}
+.prm-onde .tag{font-size:10.5px;padding:2px 8px}
+.prm-kv{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.prm-kv span{color:var(--muted)}.prm-kv b{text-align:right}
+body.dark .prm-chip{background:var(--card)}body.dark .prm-nav a:hover{background:#1A2540}body.dark .prm-exemplo{background:#121B30}
+@media(max-width:900px){.prm-wrap{grid-template-columns:1fr}.prm-nav{flex-direction:row;overflow-x:auto;position:static;gap:6px;padding-bottom:4px;scrollbar-width:none;margin:0 -14px;padding-left:14px;padding-right:14px}.prm-nav::-webkit-scrollbar{display:none}.prm-nav a{flex:0 0 auto;padding:8px 12px;border:1px solid var(--line);border-radius:20px;align-items:center;background:var(--card)}.prm-nav a.on{border-color:var(--navy)}.prm-nav a b{font-size:12.5px;white-space:nowrap}.prm-nav a svg{width:15px;height:15px;margin:0}.prm-chips{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;margin:0 -14px 14px;padding:0 14px}.prm-chips::-webkit-scrollbar{display:none}.prm-chip{flex:0 0 auto}}
 </style>
 </head>
 <body>
@@ -4717,7 +4747,7 @@ function finList(key,cols){
 function viewFinanceiro(){
   const t=totaisGerais(finTab==='visao'?periodoRange():undefined);
   const tabs=[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
-  const legado={categorias:'cat',formas:'formas',meios:'meios'};let foco='';if(legado[finTab]){foco=legado[finTab];finTab='param';}   // abas antigas viraram seções de Parâmetros
+  const legado={categorias:'categorias',formas:'formas',meios:'recebimento'};if(legado[finTab]){paramSec=legado[finTab];finTab='param';}   // abas antigas viraram seções de Parâmetros
   const tabsHTML=`<div class="pill-filter" style="margin-bottom:18px">${tabs.map(([k,l])=>`<button class="${finTab===k?'on':''}" onclick="finTab='${k}';viewFinanceiro()">${l}</button>`).join('')}</div>`;
   if(finTab==='dre'){viewDRE();$('#view').insertAdjacentHTML('afterbegin',tabsHTML);return;}
   let body='';
@@ -4729,7 +4759,6 @@ function viewFinanceiro(){
   else if(finTab==='receber')body=finContas('contasReceber');
   else if(finTab==='param')body=finParamCompleto();
   $('#view').innerHTML=tabsHTML+body;
-  if(foco){const el=$('#fp_sec_'+foco);if(el)setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),50);}
 }
 function finCard(ttl,desc,inner,foot){
   return `<div class="card card-pad" style="max-width:880px">
@@ -5286,21 +5315,51 @@ function canalRestaurar(id){const arq=canaisArquivados();const c=arq.find(x=>x.i
   const cs=canaisVenda();if(cs.length>=CANAIS_MAX)return toast('Remova um canal antes de restaurar (máx. '+CANAIS_MAX+')');
   cs.push(c);DB.fin.canais=cs;DB.fin.canaisArq=arq.filter(x=>x.id!==id);
   save();viewFinanceiro();toast('Canal "'+c.nome+'" restaurado com os preços das fichas');}
-/* Parâmetros = regime e taxas + categorias + formas de pagamento + meios de pagamento, numa página só com atalhos */
-function finParamCompleto(){const sec=(id,l)=>`<a class="gp-link" onclick="document.getElementById('fp_sec_${id}').scrollIntoView({behavior:'smooth',block:'start'})">${l}</a>`;
-  return `<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:14px;font-size:12.5px"><span style="color:var(--soft)">Ir para:</span>${sec('regime','Regime e taxas')}${sec('cat','Categorias')}${sec('formas','Formas de pagamento')}${sec('meios','Meios de pagamento')}</div>
-    <div id="fp_sec_regime">${finParam()}</div>
-    <div id="fp_sec_cat" style="max-width:980px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line)">${finCategorias()}</div>
-    <div id="fp_sec_formas" style="max-width:980px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line)">${finCard('Formas de Pagamento','As opções que aparecem no menu Forma dos lançamentos. Renomear atualiza os registros que já usavam o nome antigo.',finFormasInner())}</div>
-    <div id="fp_sec_meios" style="max-width:980px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line)">${finCard('Meios de Pagamento','Taxas por meio de recebimento',
-      finList('meiosPagamento',[{f:'nome',ph:'Nome',w:'1.4fr'},{f:'tipo',type:'select',opts:['Crédito','Débito','Marketplace','PIX','Dinheiro','Voucher'],w:'1fr'},{f:'taxa',type:'num',ph:'%',w:'100px'}]),
-      `<span style="color:var(--muted)">A comissão de marketplace usada no cálculo é definida em <b>Regime e taxas</b>, acima.</span>`)}</div>`;}
-function finParam(){
-  const fin=DB.fin;
-  return `<div style="max-width:980px">
-   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="dash-grid">
+/* ===================== PARÂMETROS · painel de configurações =====================
+   Navegação por assunto (lateral no desktop, pílulas no celular), busca por palavra, resumo do que está
+   configurado e, em cada seção, onde aquele ajuste é usado no Flow. Os editores em si (regime, canais,
+   bandeiras, formas, categorias) são os mesmos de antes: só mudou a casa deles. */
+const PRM_ICO={
+ impostos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 5L5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>',
+ canais:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>',
+ recebimento:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg>',
+ formas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M3 7l2-3h12l2 3M16 14h2"/></svg>',
+ categorias:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12l-8 8-9-9V3h8l9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>',
+ metas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
+ contas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 10l9-6 9 6M5 10v9M9 10v9M15 10v9M19 10v9M3 19h18"/></svg>',
+ estoque:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>'};
+const PRM_SECOES=[
+ {id:'impostos',nome:'Impostos e encargos',desc:'Regime, alíquota e encargos da folha',chaves:'imposto regime simples presumido lucro real mei das aliquota fgts inss encargo clt pro-labore prolabore socio ferias 13'},
+ {id:'canais',nome:'Canais de venda',desc:'iFood, delivery próprio, balcão e o mix',chaves:'canal delivery ifood rappi 99 comissao mix balcao app proprio venda taxa'},
+ {id:'recebimento',nome:'Meios de recebimento',desc:'Bandeiras, taxas e prazo do dinheiro',chaves:'bandeira cartao credito debito pix dinheiro voucher taxa prazo recebimento maquininha receita bruta liquida'},
+ {id:'formas',nome:'Formas de pagamento',desc:'Opções do menu Forma nos lançamentos',chaves:'forma pagamento lancamento pix boleto transferencia dinheiro'},
+ {id:'categorias',nome:'Categorias',desc:'Grupos e subcategorias do DRE',chaves:'categoria grupo subcategoria dre receita despesa cmv utilidades pessoal'},
+ {id:'metas',nome:'Metas e referências',desc:'CMV alvo, ponto de equilíbrio e a régua PLL',chaves:'meta cmv alvo ponto de equilibrio margem referencia pll lucro'},
+ {id:'contas',nome:'Contas bancárias',desc:'Saldos que alimentam a Visão Geral',chaves:'conta banco saldo caixa bancaria'},
+ {id:'estoque',nome:'Estoque e PDV',desc:'Armazéns, automações e sistema de vendas',chaves:'estoque armazem cozinha pdv vuca automatico compras vendas desperdicio contagem'}];
+let paramSec=(function(){try{return localStorage.getItem('flow_param_sec')||'impostos';}catch(e){return 'impostos';}})(),paramBusca='';
+function prmIr(sec){paramSec=sec;try{localStorage.setItem('flow_param_sec',sec);}catch(e){}finTab='param';viewFinanceiro();}
+function prmBuscar(v){paramBusca=v;const q=lmNorm(v);const hits=PRM_SECOES.filter(s=>q&&lmNorm(s.nome+' '+s.desc+' '+s.chaves).includes(q)).map(s=>s.id);
+  document.querySelectorAll('#prm_nav a').forEach(a=>{const on=!q||hits.includes(a.dataset.sec);a.style.display=on?'':'none';});
+  const c=$('#prm_busca_info');if(c)c.textContent=q?(hits.length?hits.length+' seção(ões) com "'+v+'" · Enter abre a primeira':'nada encontrado com "'+v+'"'):'';
+  if(q&&hits.length===1&&hits[0]!==paramSec){prmIr(hits[0]);setTimeout(()=>{const i=$('#prm_busca');if(i){i.value=v;i.focus();}},30);}}
+function prmBuscaEnter(){const q=lmNorm(paramBusca);const hit=PRM_SECOES.find(s=>q&&lmNorm(s.nome+' '+s.desc+' '+s.chaves).includes(q));if(hit)prmIr(hit.id);}
+function prmResumo(){const f=DB.fin||{};const regime=f.mei?'MEI':({simples:'Simples',presumido:'Presumido',lucroReal:'Lucro Real'}[f.regime]||'Simples');
+  const chip=(sec,l,v)=>`<a class="prm-chip" onclick="prmIr('${sec}')"><span>${l}</span><b>${v}</b></a>`;
+  return `<div class="prm-chips">${chip('impostos','Regime',regime+(f.mei?' · '+fmtBRL(f.impostoFixo||0)+'/mês':' · '+fmtPct(+f.aliquota||0)))}${chip('metas','CMV alvo',fmtPct(DB.cmvAlvo||30))}${chip('canais','Canais',canaisVenda().length+' de delivery · balcão '+fmtPct(mixBalcao()))}${chip('recebimento','Bandeiras',meiosRec().length)}${chip('formas','Formas de pagamento',(DB.formasPagamento||[]).length)}${chip('categorias','Categorias',Object.keys(DB.categorias||{}).length+' grupos')}${chip('contas','Contas',(f.contasBancarias||[]).length)}${chip('estoque','Armazéns',estArmazens().length)}</div>`;}
+function prmOnde(itens){return `<div class="prm-onde"><span>Usado em:</span>${itens.map(x=>`<span class="tag tag-gray">${x}</span>`).join('')}</div>`;}
+function finParamCompleto(){const sec=PRM_SECOES.find(s=>s.id===paramSec)||PRM_SECOES[0];paramSec=sec.id;const mob=ehMobile();
+  const q=lmNorm(paramBusca);const hits=PRM_SECOES.filter(x=>!q||lmNorm(x.nome+' '+x.desc+' '+x.chaves).includes(q)).map(x=>x.id);   // busca continua valendo depois de trocar de seção
+  const nav=`<div class="prm-nav" id="prm_nav">${PRM_SECOES.map(s=>`<a data-sec="${s.id}" class="${s.id===sec.id?'on':''}" style="${hits.includes(s.id)?'':'display:none'}" onclick="prmIr('${s.id}')">${PRM_ICO[s.id]}<span><b>${s.nome}</b>${mob?'':`<small>${s.desc}</small>`}</span></a>`).join('')}</div>`;
+  const corpo={impostos:prmImpostosHTML,canais:prmCanaisHTML,recebimento:prmRecebimentoHTML,formas:prmFormasHTML,categorias:prmCategoriasHTML,metas:prmMetasHTML,contas:prmContasHTML,estoque:prmEstoqueHTML}[sec.id]();
+  return `<div class="prm-top"><div class="gp-search" style="max-width:380px">${icoGpSearch}<input class="input" id="prm_busca" value="${esc(paramBusca)}" placeholder="Buscar configuração (ex.: iFood, FGTS, pix, CMV)" oninput="prmBuscar(this.value)" onkeydown="if(event.key==='Enter')prmBuscaEnter()"></div><span id="prm_busca_info" class="gp-mini">${q?(hits.length?hits.length+' seção(ões) com "'+esc(paramBusca)+'"':'nada encontrado'):''}</span>${q?`<a class="gp-link" style="font-size:12px" onclick="paramBusca='';viewFinanceiro()">limpar</a>`:''}</div>
+  ${prmResumo()}
+  <div class="prm-wrap">${nav}<div class="prm-panel"><div class="prm-head"><div class="prm-ico">${PRM_ICO[sec.id]}</div><div><div class="ttl">${sec.nome}</div><div class="desc">${sec.desc}</div></div></div>${corpo}</div></div>`;}
+/* ---- seções ---- */
+function prmImpostosHTML(){const fin=DB.fin;const ex=38;const imp=fin.mei?0:ex*((+fin.aliquota||0)/100);const enc=(fin.encFGTS!=null?+fin.encFGTS:8)+(fin.encINSS!=null?+fin.encINSS:0)+(fin.encProv!=null?+fin.encProv:PROV_PADRAO);
+  return `<div class="prm-grid">
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Regime tributário</div><div class="desc">Imposto no preço e encargos da folha</div></div><button class="btn btn-ghost btn-sm" onclick="abrirWizard(1)">✎ Anamnese</button></div>
+      <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Regime tributário</div><div class="desc">Como o imposto entra no preço e no DRE</div></div><button class="btn btn-ghost btn-sm" onclick="abrirWizard(1)">✎ Anamnese</button></div>
       <div class="chan-tabs" style="margin-top:0">
         <button class="${!fin.mei&&fin.regime==='simples'?'on':''}" onclick="if(DB.fin.mei||DB.fin.regime!=='simples')DB.fin.aliquota=6;DB.fin.mei=false;DB.fin.regime='simples';save();viewFinanceiro()">Simples</button>
         <button class="${!fin.mei&&fin.regime==='presumido'?'on':''}" onclick="if(DB.fin.mei||DB.fin.regime!=='presumido')DB.fin.aliquota=13.33;DB.fin.mei=false;DB.fin.regime='presumido';save();viewFinanceiro()">Presumido</button>
@@ -5309,37 +5368,69 @@ function finParam(){
       </div>
       ${fin.mei
         ?`<div class="field"><label>Imposto fixo mensal (DAS)</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(fin.impostoFixo||0)}" oninput="DB.fin.impostoFixo=moneyMask(this)" onchange="save()"></div></div>`
-        :`<div class="field"><label>Alíquota efetiva de impostos <span class="hint">%, confirme com seu contador</span></label><input class="input" type="number" step="0.1" value="${fin.aliquota}" onchange="DB.fin.aliquota=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`}
-      <div style="font-size:12.5px;font-weight:600;color:var(--muted);margin:8px 0 6px">Encargos CLT <span class="hint" style="font-weight:400">% sobre salário, total ${fmtPct((fin.encFGTS||0)+(fin.encINSS||0)+(fin.encProv||0))}</span></div>
+        :`<div class="field"><label>Alíquota efetiva de impostos <span class="hint">%, confirme com seu contador</span></label><input class="input" type="number" step="0.1" value="${fin.aliquota}" onchange="DB.fin.aliquota=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+         <div class="prm-exemplo">Num prato de <b>${fmtBRL(ex)}</b>, o imposto fica em <b>${fmtBRL(imp)}</b>. É o que as fichas técnicas descontam para calcular a margem.</div>`}
+      ${prmOnde(['Fichas técnicas (preço e margem)','DRE (Impostos)','Engenharia de menu'])}
+    </div>
+    <div class="card card-pad">
+      <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Encargos sobre a folha</div><div class="desc">Total de <b>${fmtPct(enc)}</b> sobre o salário CLT</div></div></div>
       <div class="grid-3">
         <div class="field"><label>FGTS <span class="hint">%</span></label><input class="input" type="number" step="0.01" value="${fin.encFGTS!=null?fin.encFGTS:8}" onchange="DB.fin.encFGTS=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
         <div class="field"><label>INSS patronal <span class="hint">%</span></label><input class="input" type="number" step="0.01" value="${fin.encINSS!=null?fin.encINSS:0}" onchange="DB.fin.encINSS=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
         <div class="field"><label>Prov. 13º/férias <span class="hint">%</span></label><input class="input" type="number" step="0.01" value="${fin.encProv!=null?fin.encProv:PROV_PADRAO}" onchange="DB.fin.encProv=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
       </div>
-      <div class="field"><label>INSS sócio (pró-labore) <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.inssSocio!=null?fin.inssSocio:11}" onchange="DB.fin.inssSocio=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
-    </div>
-
+      <div class="field"><label>INSS do sócio (pró-labore) <span class="hint">%</span></label><input class="input" type="number" step="0.5" value="${fin.inssSocio!=null?fin.inssSocio:11}" onchange="DB.fin.inssSocio=parseFloat(this.value)||0;save();viewFinanceiro()"></div>
+      <div class="prm-exemplo">Um salário de <b>R$ 2.000</b> custa <b>${fmtBRL(2000*(1+enc/100))}</b> por mês com esses encargos. No Simples o INSS patronal costuma ser 0.</div>
+      ${prmOnde(['Folha de pagamento (custo real)','DRE (CMO)','Ponto de equilíbrio'])}
+    </div></div>`;}
+function prmCanaisHTML(){return `<div class="card card-pad" style="max-width:820px">${canaisEditorHTML()}
+    <div class="prm-exemplo" style="margin-top:10px">A comissão de cada canal entra no custo do prato vendido por ele (preço no canal nas fichas) e no DRE em Taxas. O mix diz que fatia das vendas passa por cada canal; o que sobra é balcão e app próprio.</div>
+    ${prmOnde(['Fichas técnicas (preço por canal)','Engenharia de menu','DRE (Taxas)','Ponto de equilíbrio'])}</div>`;}
+function prmRecebimentoHTML(){return `<div class="card card-pad" style="max-width:820px">${meiosEditorHTML()}
+    ${prmOnde(['Lançamentos (forma de pagamento)','DRE (subcategorias de Receita e Taxas de cartão)','Fluxo de caixa (prazo do dinheiro)','Contas a receber'])}</div>`;}
+function prmFormasHTML(){return `<div class="card card-pad" style="max-width:820px">
+    <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Formas de pagamento</div><div class="desc">São as opções do menu "Forma" ao lançar uma receita ou despesa. Cada bandeira cadastrada em Meios de recebimento já entra aqui sozinha; use esta lista para o que não é bandeira (boleto, transferência, permuta…).</div></div></div>
+    ${finFormasInner()}
+    ${prmOnde(['Lançamentos','Contas a pagar e a receber','Custos fixos'])}</div>`;}
+function prmCategoriasHTML(){return `${finCategorias()}<div style="max-width:880px">${prmOnde(['Lançamentos (Grupo → Subcategoria)','DRE (linhas e centros PLL)','Custos fixos','Leitura de nota por IA'])}</div>`;}
+function prmMetasHTML(){const fin=DB.fin;const ref=[['CMV',30],['CMO (pessoal)',25],['Despesas fixas',15],['Impostos',8],['Taxas de cartão',3],['Marketing','2 a 5'],['Manutenção','1 a 2'],['Lucro','15 ou mais']];
+  return `<div class="prm-grid">
     <div class="card card-pad">
-      <div class="section-head"><div><div class="ttl">Taxas e CMV</div><div class="desc">Comissão de delivery, cartão e metas de CMV</div></div></div>
-      ${canaisEditorHTML()}
-      <div style="border-top:1px solid var(--line);margin:10px 0 12px"></div>
-      ${meiosEditorHTML()}
-      <div class="field"><label>CMV alvo <span class="hint">% meta</span></label><input class="input" type="number" step="0.5" value="${DB.cmvAlvo}" onchange="DB.cmvAlvo=parseFloat(this.value)||30;save();viewFinanceiro()"></div>
+      <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Metas</div><div class="desc">O que o Flow usa para dizer se está bom ou ruim</div></div></div>
+      <div class="field"><label>CMV alvo <span class="hint">% do faturamento</span></label><input class="input" type="number" step="0.5" value="${DB.cmvAlvo||30}" onchange="DB.cmvAlvo=parseFloat(this.value)||30;save();viewFinanceiro()"></div>
       <div class="field"><label>CMV do ponto de equilíbrio <span class="hint">qual CMV usar no cálculo</span></label>
         <select class="input" onchange="DB.fin.peCmvFonte=this.value;save();viewFinanceiro()">
-          ${[['real','CMV real (contagem) · padrão'],['lanc','CMV dos lançamentos'],['teorico','CMV teórico (cardápio)'],['manual','Valor digitado']].map(([v,l])=>`<option value="${v}" ${ (fin.peCmvFonte||'real')===v?'selected':''}>${l}</option>`).join('')}
+          ${[['real','CMV real (contagem) · padrão'],['lanc','CMV dos lançamentos'],['teorico','CMV teórico (cardápio)'],['manual','Valor digitado']].map(([v,l])=>`<option value="${v}" ${(fin.peCmvFonte||'real')===v?'selected':''}>${l}</option>`).join('')}
         </select></div>
       ${(fin.peCmvFonte||'real')==='manual'?`<div class="field"><label>CMV digitado <span class="hint">% sobre o faturamento</span></label><input class="input" type="number" step="0.5" value="${fin.peCmvManual||''}" placeholder="0" onchange="DB.fin.peCmvManual=parseFloat(this.value)||0;save();viewFinanceiro()"></div>`:''}
-      <div style="font-size:11.5px;color:var(--soft);margin-top:-2px">Define a margem de contribuição usada no ponto de equilíbrio. Sem dados da fonte no período, usamos o CMV teórico.</div>
+      <div class="prm-exemplo">O CMV alvo pinta de verde ou vermelho o Controle de CMV, a engenharia de menu e o DRE. O ponto de equilíbrio usa o CMV escolhido para achar a margem de contribuição; sem dados da fonte no período, cai no CMV teórico.</div>
+      ${prmOnde(['Dashboard','Controle de CMV','Engenharia de menu','DRE','Ponto de equilíbrio'])}
     </div>
-   </div>
-
-   <div class="card card-pad" style="margin-top:20px;max-width:560px">
-     <div class="ttl" style="font-size:14px;margin-bottom:10px">Contas bancárias</div>
-     ${finList('contasBancarias',[{f:'nome',ph:'Conta',w:'1.4fr'},{f:'saldo',type:'money',w:'130px'}])}
-   </div>
-  </div>`;
-}
+    <div class="card card-pad">
+      <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Régua de referência PLL</div><div class="desc">Como o DRE compara cada centro de custo (só leitura)</div></div></div>
+      <table style="width:100%"><tbody>${ref.map(([n,v])=>`<tr><td style="padding:7px 0;border-top:1px solid var(--line)">${n}</td><td class="num" style="padding:7px 0;border-top:1px solid var(--line);font-weight:700">${typeof v==='number'?'≤ '+v+'%':v+'%'}</td></tr>`).join('')}</tbody></table>
+      <div class="gp-mini" style="margin-top:8px">Percentuais sobre o faturamento. O DRE mostra verde quando o centro está dentro da régua e vermelho quando passa.</div>
+    </div></div>`;}
+function prmContasHTML(){return `<div class="card card-pad" style="max-width:620px">
+    <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Contas bancárias</div><div class="desc">Saldo atual de cada conta ou caixa</div></div></div>
+    ${finList('contasBancarias',[{f:'nome',ph:'Conta',w:'1.4fr'},{f:'saldo',type:'money',w:'130px'}])}
+    ${prmOnde(['Visão Geral (saldo em conta e saldo projetado)'])}</div>`;}
+function prmEstoqueHTML(){const c=estCfg();const arms=estArmazens();const auto=[c.entradas?'compras':'',c.vendas?'vendas':'',c.perdas?'desperdícios':''].filter(Boolean);
+  return `<div class="prm-grid">
+    <div class="card card-pad">
+      <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Estoque</div><div class="desc">Armazéns e o que entra sozinho no livro</div></div><button class="btn btn-primary btn-sm" onclick="estCfgModal()">Configurar</button></div>
+      <div class="prm-kv"><span>Armazéns</span><b>${arms.map(a=>esc(a.nome)).join(' · ')}</b></div>
+      <div class="prm-kv"><span>Vendas baixam de</span><b>${esc(estArmNome(c.armVendas))}</b></div>
+      <div class="prm-kv"><span>Compras entram em</span><b>${esc(estArmNome(c.armEntrada))}</b></div>
+      <div class="prm-kv"><span>Automático</span><b>${auto.length?auto.join(', '):'nada'}</b></div>
+      ${prmOnde(['Estoque & Compras','Lançamentos (entrada de nota)','Desperdícios','Baixa por vendas'])}
+    </div>
+    <div class="card card-pad">
+      <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Sistema de vendas (PDV)</div><div class="desc">De onde vêm as vendas por prato</div></div></div>
+      <div class="field"><label>Nome do PDV <span class="hint">opcional</span></label><input class="input" value="${esc((DB.fin&&DB.fin.pdvNome)||'')}" placeholder="Ex.: Vuca, Consumer, Saipos…" onchange="DB.fin.pdvNome=this.value.trim();save()"></div>
+      <div class="prm-exemplo">As vendas chegam por planilha (Estoque → Baixa por vendas) ou pela API do Flow. O Flow casa cada item com a ficha técnica pelo <b>código no PDV</b>; o que não casar você vincula uma vez.</div>
+      ${prmOnde(['Estoque (baixa por vendas)','Fichas técnicas (código no PDV)','API do Flow'])}
+    </div></div>`;}
 
 /* ===================== EQUIPE ===================== */
 const ACESSOS=[['dashboard','Dashboard'],['insumos','Produtos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['checklists','Checklists'],['pops','POPs · Procedimentos'],['cargos','Descrições de Cargos'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE (no Financeiro)'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['formacao','Formação em Gestão'],['mapa','Plano de Guerra'],['equipe','Equipe'],['conta','Configurações']];
