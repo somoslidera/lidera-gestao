@@ -6357,10 +6357,13 @@ const EST_ARM_PRINCIPAL='principal';
 function estCfg(){DB.fin=DB.fin||{};if(!DB.fin.estoqueCfg)DB.fin.estoqueCfg={entradas:true,perdas:true,vendas:true};const c=DB.fin.estoqueCfg;if(!c.armVendas)c.armVendas=EST_ARM_PRINCIPAL;if(!c.armEntrada)c.armEntrada=EST_ARM_PRINCIPAL;return c;}
 function estArmazens(){DB.fin=DB.fin||{};if(!Array.isArray(DB.fin.armazens)||!DB.fin.armazens.length)DB.fin.armazens=[{id:EST_ARM_PRINCIPAL,nome:'Estoque principal'}];if(!DB.fin.armazens.some(a=>a.id===EST_ARM_PRINCIPAL))DB.fin.armazens.unshift({id:EST_ARM_PRINCIPAL,nome:'Estoque principal'});return DB.fin.armazens;}
 function estArm(id){return estArmazens().find(a=>a.id===id)||null;}
-function estArmNome(id){if(id&&/^org:/.test(id)){const u=(DONO_UNIDADES||[]).find(x=>'org:'+x.id===id);if(u)return orgNomeExib(u);const t=estTransfs().find(x=>x.para===id||x.de===id);return (t&&(t.para===id?t.paraNome:t.deNome))||'outra unidade';}
+function estArmNome(id){if(id&&/^org:/.test(id)){const u=(DONO_UNIDADES||[]).find(x=>'org:'+x.id===id)||(typeof ADMIN_ORGS!=='undefined'?ADMIN_ORGS.find(x=>'org:'+x.id===id):null);if(u)return orgNomeExib(u);const t=estTransfs().find(x=>x.para===id||x.de===id);return (t&&(t.para===id?t.paraNome:t.deNome))||'outra unidade';}
   const a=estArm(id);return a?a.nome:(id===EST_ARM_PRINCIPAL?'Estoque principal':(id||'?'));}
-function estTransfEntreUnidades(){return !!(DONO_MODE&&(DONO_UNIDADES||[]).length>=2&&ORG);}
-function estUnidadesDestino(){return (DONO_UNIDADES||[]).filter(u=>u.id!==(ORG&&ORG.id)&&u.status!=='suspenso');}
+function estUnidadesDestino(){if(!ORG)return [];
+  if(DONO_MODE)return (DONO_UNIDADES||[]).filter(u=>u.id!==ORG.id&&u.status!=='suspenso');
+  if(ADMIN_MODE&&typeof ADMIN_ORGS!=='undefined'){const me=ADMIN_ORGS.find(x=>x.id===ORG.id);const g=me&&grupoDe(me);return g?grupoUnidades(g).filter(u=>u.id!==ORG.id&&u.status!=='suspenso'):[];}
+  return [];}
+function estTransfEntreUnidades(){return !!(ORG&&estUnidadesDestino().length>=1);}
 function estTransfParaSelect(sel){const arms=estArmazens();const us=estTransfEntreUnidades()?estUnidadesDestino():[];
   return `<select class="input" id="tr_para" onchange="estTransfDraft.para=this.value;estTransfLinhas()">${arms.length>1||!us.length?`<optgroup label="Armazéns desta unidade">${arms.map(a=>`<option value="${esc(a.id)}" ${a.id===sel?'selected':''}>${esc(a.nome)}</option>`).join('')}</optgroup>`:''}${us.length?`<optgroup label="Outra unidade do grupo">${us.map(u=>`<option value="org:${u.id}" ${'org:'+u.id===sel?'selected':''}>${esc(orgNomeExib(u))}</option>`).join('')}</optgroup>`:''}</select>`;}
 function estEnsureSubTransf(){const c=DB.categorias&&DB.categorias['CMV'];if(c){c.subs=c.subs||[];if(!c.subs.includes('Transferência entre unidades'))c.subs.push('Transferência entre unidades');}}
@@ -6605,7 +6608,8 @@ function estTransfModal(insId,preset){const cfg=estCfg();const arms=estArmazens(
     <div class="grid-2"><div class="field"><label>Data</label><input type="date" class="input" id="tr_data" value="${estTransfDraft.data}" onchange="estTransfDraft.data=this.value"></div><div class="field"><label>Observação <span class="hint">opcional</span></label><input class="input" id="tr_obs" value="${esc(estTransfDraft.obs)}" placeholder="Ex.: reposição da tarde" oninput="estTransfDraft.obs=this.value"></div></div>
     <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;display:grid;grid-template-columns:minmax(0,1fr) 96px 30px;gap:6px;padding:0 0 4px"><span>Produto</span><span style="text-align:right">Qtd</span><span></span></div>
     <div id="tr_linhas"></div>
-    <a class="gp-link" style="font-size:12.5px" onclick="estTransfDraft.itens.push({insumoId:'',q:''});estTransfLinhas(true)">+ outro produto</a>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:4px"><a class="gp-link" style="font-size:12.5px" onclick="estTransfDraft.itens.push({insumoId:'',q:''});estTransfLinhas(true)">+ outro produto</a><a class="gp-link" style="font-size:12.5px" onclick="estTransfBulkToggle()">☰ Adicionar vários de uma vez</a><a class="gp-link" style="font-size:12.5px" title="Traz os produtos que entraram no estoque nos últimos 7 dias, com a quantidade recebida, para você distribuir" onclick="estTransfAddRecebidos(7)">⇣ Itens recebidos nos últimos 7 dias</a></div>
+    <div id="tr_bulk" style="display:none;margin-top:10px;border:1px solid var(--line);border-radius:12px;padding:10px"></div>
   </div><div class="modal-foot"><button class="btn btn-ghost" onclick="estTransfDraft=null;closeModal()">Cancelar</button><button class="btn btn-primary" onclick="estTransfSalvar()">Transferir</button></div>`,true);
   estTransfLinhas();}
 function estTransfLer(){const box=$('#tr_linhas');if(!box)return;estTransfDraft.itens=[...box.querySelectorAll('.tr-row')].map(r=>({insumoId:r.dataset.id||'',nome:r.querySelector('.tr-n').value,q:r.querySelector('.tr-q').value}));}
@@ -6617,6 +6621,24 @@ function estTransfLinhas(foco){const box=$('#tr_linhas');if(!box)return;const d=
       <input class="input tr-q" type="number" step="0.001" min="0" inputmode="decimal" value="${x.q||''}" placeholder="${u||'qtd'}" style="text-align:right;padding:7px 8px" onkeydown="if(event.key==='Enter'){estTransfLer();estTransfDraft.itens.push({insumoId:'',q:''});estTransfLinhas(true);}" oninput="estTransfDraft.itens[${i}].q=this.value">
       <button class="icon-btn" style="width:28px;height:28px" onclick="estTransfLer();estTransfDraft.itens.splice(${i},1);if(!estTransfDraft.itens.length)estTransfDraft.itens.push({insumoId:'',q:''});estTransfLinhas()">${icoX}</button></div>`;}).join('');
   if(foco){const els=box.querySelectorAll('.tr-n');const el=els[els.length-1];if(el&&!ehMobile())el.focus();}}
+/* lista com busca e quantidade por linha: digitar a quantidade já coloca o produto na transferência */
+let estTransfBulkQ='';
+function estTransfBulkToggle(){const b=$('#tr_bulk');if(!b)return;const aberto=b.style.display!=='none';b.style.display=aberto?'none':'';if(!aberto){estTransfBulkRender();const i=$('#tr_bulk_busca');if(i&&!ehMobile())i.focus();}}
+function estTransfBulkRender(){const b=$('#tr_bulk');if(!b)return;const d=estTransfDraft;const q=lmNorm(estTransfBulkQ);
+  const L=Object.values(DB.insumos).filter(estEstocavel).filter(i=>!q||lmNorm(i.nome+' '+(i.cat||'')+' '+(i.sub||'')).includes(q)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt',{sensitivity:'base'})).slice(0,300);
+  const qDe=id=>{const it=d.itens.find(x=>x.insumoId===id);return it?it.q:'';};
+  b.innerHTML=`<input class="input" id="tr_bulk_busca" value="${esc(estTransfBulkQ)}" placeholder="🔎 Filtrar por produto ou categoria…" style="margin-bottom:8px" oninput="estTransfBulkQ=this.value;estTransfBulkRender();$('#tr_bulk_busca').focus()">
+    <div style="max-height:260px;overflow:auto">${L.map(i=>{const u=uSym(i.uni);const s=estSaldoArm(i,d.de);const v=qDe(i.id);return `<div style="display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)"><div style="min-width:0"><div style="font-size:13px;font-weight:${v?700:500};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.nome)}</div><div style="font-size:11px;color:${s<-0.0005?'var(--red)':'var(--soft)'}">em ${esc(estArmNome(d.de))}: ${estQ(s,u)}${i.sub||i.cat?' · '+esc(i.sub||i.cat):''}</div></div><input class="input" type="number" step="0.001" min="0" inputmode="decimal" value="${v||''}" placeholder="${u||'qtd'}" style="text-align:right;padding:6px 8px" oninput="estTransfBulkSet('${i.id}',this.value)"></div>`;}).join('')||'<div class="gp-mini">Nenhum produto com esse filtro.</div>'}</div>
+    <div class="gp-mini" style="margin-top:6px">${d.itens.filter(x=>x.insumoId&&parseFloat(x.q)>0).length} produto(s) na transferência.</div>`;}
+function estTransfBulkSet(id,v){estTransfLer();const d=estTransfDraft;const n=parseFloat(v)||0;const i=d.itens.findIndex(x=>x.insumoId===id);
+  if(n>0){if(i>=0)d.itens[i].q=v;else{const vazio=d.itens.findIndex(x=>!x.insumoId);const it={insumoId:id,q:v};if(vazio>=0)d.itens[vazio]=it;else d.itens.push(it);}}
+  else if(i>=0){d.itens.splice(i,1);if(!d.itens.length)d.itens.push({insumoId:'',q:''});}
+  estTransfLinhas();const c=$('#tr_bulk .gp-mini:last-child');if(c)c.textContent=d.itens.filter(x=>x.insumoId&&parseFloat(x.q)>0).length+' produto(s) na transferência.';}
+function estTransfAddRecebidos(dias){estTransfLer();const d=estTransfDraft;const desde=diasSoma(hojeISO(),-(dias||7));const acc={};
+  estMovs().forEach(m=>{if(m.tipo==='entrada'&&m.data>=desde&&m.q>0&&DB.insumos[m.insumoId])acc[m.insumoId]=(acc[m.insumoId]||0)+m.q;});
+  const ids=Object.keys(acc);if(!ids.length)return toast('Nenhuma entrada de estoque nos últimos '+dias+' dias');
+  ids.forEach(id=>{if(!d.itens.some(x=>x.insumoId===id)){const vazio=d.itens.findIndex(x=>!x.insumoId);const it={insumoId:id,q:String(estR(acc[id],3))};if(vazio>=0)d.itens[vazio]=it;else d.itens.push(it);}});
+  estTransfLinhas();toast(ids.length+' produto(s) recebido(s) adicionados: ajuste a quantidade que vai para cada unidade');}
 function estTransfProd(i,v){estTransfLer();const ins=estProdPorNome(v);estTransfDraft.itens[i].insumoId=ins?ins.id:'';estTransfDraft.itens[i].nome=v;if(ins){estTransfLinhas();const q=$('#tr_linhas').querySelectorAll('.tr-q')[i];if(q)q.focus();}}
 function estTransfSalvar(){estTransfLer();const d=estTransfDraft;if(d.de===d.para)return toast('Origem e destino são o mesmo armazém');
   const itens=d.itens.map(x=>({insumoId:x.insumoId,q:parseFloat(x.q)||0})).filter(x=>x.insumoId&&x.q>0);if(!itens.length)return toast('Informe ao menos um produto com quantidade');
@@ -6627,7 +6649,7 @@ function estTransfSalvar(){estTransfLer();const d=estTransfDraft;if(d.de===d.par
    1) grava a entrada na unidade de destino (lê, aplica, regrava com trava otimista); 2) só então dá a saída aqui e salva.
    Produto é casado pelo nome; se não existir lá, o cadastro é copiado. Com "fin", lança o custo no CMV das duas unidades
    (negativo aqui, positivo lá), para o DRE e o CMV por contagem de cada uma ficarem certos. */
-async function estTransfUnidade(d,itens){const destId=(d.para||'').slice(4);const u=(DONO_UNIDADES||[]).find(x=>x.id===destId);if(!u||!sb)return toast('Unidade de destino não encontrada');
+async function estTransfUnidade(d,itens){const destId=(d.para||'').slice(4);const u=estUnidadesDestino().find(x=>x.id===destId);if(!u||!sb)return toast('Unidade de destino não encontrada');
   const btn=document.querySelector('.modal-foot .btn-primary');const solta=()=>{if(btn){btn.disabled=false;btn.textContent='Transferir';}};if(btn){btn.disabled=true;btn.textContent='Transferindo…';}
   const deNome=(DB.conta&&DB.conta.restaurante)||(ORG&&ORG.nome)||'esta unidade';const paraNome=orgNomeExib(u);
   const t={id:uid(),data:d.data||hojeISO(),de:estArmValido(d.de),para:'org:'+destId,paraOrg:destId,paraNome,itens:[],obs:(d.obs||'').trim(),origem:'manual',fin:d.fin!==false};
@@ -6654,7 +6676,10 @@ async function estTransfUnidade(d,itens){const destId=(d.para||'').slice(4);cons
   lin.forEach(x=>{estMov('transf',x.ins.id,0,{delta:-x.q,arm:t.de,armPara:'org:'+destId,custo:x.custo,origem:'transf',refId:t.id,data:t.data,obs:'para '+paraNome+(t.obs?' · '+t.obs:'')});});
   t.itens=lin.map(x=>({insumoId:x.ins.id,q:x.q,custo:x.custo}));estTransfs().push(t);
   if(t.fin&&total>0){estEnsureSubTransf();DB.lancamentos=DB.lancamentos||[];DB.lancamentos.push({id:uid(),data:t.data,grupo:'CMV',sub:SUB,descricao:'Transferência para '+paraNome+' · '+lin.length+' item(ns)',valor:-total,forma:'',transfId:t.id});}
-  estTransfDraft=null;save();closeModal();viewEstoque();toast(lin.length+' item(ns) transferido(s) para '+paraNome+(t.fin?' · custo lançado nas duas unidades':''));}
+  const outras=estUnidadesDestino().filter(x=>x.id!==destId);estTransfUltima={de:t.de,itens:lin.map(x=>({insumoId:x.ins.id,q:x.q})),fin:t.fin};
+  estTransfDraft=null;save();closeModal();viewEstoque();toast(lin.length+' item(ns) transferido(s) para '+paraNome+(t.fin?' · custo lançado nas duas unidades':'')+(outras.length?` <a onclick="estTransfRepetir()" style="color:var(--gold-soft);font-weight:700;margin-left:8px;cursor:pointer">Repetir para outra unidade</a>`:''),outras.length?9000:4000);}
+let estTransfUltima=null;
+function estTransfRepetir(){if(!estTransfUltima)return;const outras=estUnidadesDestino();estTransfModal('',{de:estTransfUltima.de,para:outras.length?'org:'+outras[0].id:EST_ARM_PRINCIPAL,itens:estTransfUltima.itens.map(x=>({insumoId:x.insumoId,q:x.q})),obs:'',fin:estTransfUltima.fin!==false});}
 
 /* ----- aba Movimentações ----- */
 let estMovF={tipo:'',q:'',ym:'',arm:''};
@@ -7083,6 +7108,7 @@ async function entrarClienteRouter(uid,orgId,email){
   let unidades=[];
   try{unidades=(uid?(await sb.from('organizacoes').select('id,nome,status,dados,consultor_id,atualizado_em').eq('consultor_id',uid)).data:null)||[];}catch(e){unidades=[];}
   if(orgId&&!unidades.some(u=>u.id===orgId)){try{const p=(await sb.from('organizacoes').select('id,nome,status,dados,consultor_id,atualizado_em').eq('id',orgId).single()).data;if(p)unidades.unshift(p);}catch(e){}}
+  for(const g of unidades.filter(u=>u&&u.dados&&u.dados._grupo)){try{const extra=(await sb.from('organizacoes').select('id,nome,status,dados,consultor_id,atualizado_em').eq('dados->>_grupoId',g.id)).data||[];extra.forEach(e=>{if(!unidades.some(u=>u.id===e.id))unidades.push(e);});}catch(e){}}
   unidades=unidades.filter(u=>u&&!(u.dados&&(u.dados._arquivado||u.dados._grupo)));   // o cliente-grupo (admin) não é uma unidade
   unidades.sort((a,b)=>((a.dados&&a.dados.conta&&a.dados.conta.restaurante)||a.nome||'').localeCompare((b.dados&&b.dados.conta&&b.dados.conta.restaurante)||b.nome||'','pt',{sensitivity:'base'}));
   DONO_UNIDADES=unidades;
@@ -7381,11 +7407,22 @@ const CAD_CAMPOS=[
  ['perfil','Perfil Comportamental','Ex.: João: Dominância (D) · Maria: Influência (I) · link do relatório','textarea']];
 function cadDe(o){return (o&&o.dados&&o.dados._cadastro)||{};}
 function grupoUnidadesHTML(g){const us=grupoUnidades(g);const dono=DONOS[g.consultor_id];
-  return `<div class="card card-pad"><div class="section-head"><div><div class="ttl">Unidades do cliente</div><div class="desc">${dono?'Dono: '+esc(dono.nome||dono.email||'')+'. ':''}Reuniões, plano de guerra e demandas ficam aqui no cliente; os números abaixo são de cada unidade.</div></div><button class="btn btn-ghost btn-sm" onclick="grupoNovaUnidade('${g.id}')">${icoPlus} Nova unidade</button></div>
+  return `<div class="card card-pad"><div class="section-head"><div><div class="ttl">Unidades do cliente</div><div class="desc">${dono?'Dono: '+esc(dono.nome||dono.email||'')+'. ':''}Reuniões, plano de guerra e demandas ficam aqui no cliente; os números abaixo são de cada unidade.</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="grupoVincularModal('${g.id}')">🔗 Vincular unidade existente</button><button class="btn btn-ghost btn-sm" onclick="grupoNovaUnidade('${g.id}')">${icoPlus} Nova unidade</button></div></div>
   ${us.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px">${us.map(u=>{const k=kpisDe(u.dados);const susp=u.status==='suspenso';return `<div class="gp-card" style="cursor:default"><div class="h"><div style="min-width:0"><div class="nm">${esc(u.nome||'')}</div><div class="gp-mini">${esc(orgNomeExib(u))}${susp?' · <span style="color:var(--red)">suspenso</span>':''}</div></div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0"><div><div class="k-lbl">Faturamento</div><div style="font-weight:700;font-size:14px">${fmtBRL(k.fat)}</div></div><div><div class="k-lbl">CMV</div><div style="font-weight:700;font-size:14px">${k.real!=null?fmtPct(k.real):fmtPct(k.cmv)}</div></div><div><div class="k-lbl">Lucro</div><div style="font-weight:700;font-size:14px;color:${k.lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(k.lucro)}</div></div></div>
-    <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="adminSelOrg('${u.id}')">Dados da unidade</button><button class="btn btn-primary btn-sm" style="flex:1;justify-content:center" onclick="abrirCliente('${u.id}')">Abrir app</button></div></div>`;}).join('')}</div>`
-  :`<div class="gp-mini">Nenhuma unidade vinculada. Em cada unidade, use "Vincular dono" com o e-mail ${dono?esc(dono.email||''):'do dono'}.</div>`}</div>`;}
+    <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="adminSelOrg('${u.id}')">Dados da unidade</button><button class="btn btn-primary btn-sm" style="flex:1;justify-content:center" onclick="abrirCliente('${u.id}')">Abrir app</button>${unidadeVinculadaPorId(u)?`<button class="icon-btn" title="Tirar esta unidade do grupo" onclick="grupoDesvincular('${u.id}')">${icoX}</button>`:''}</div></div>`;}).join('')}</div>`
+  :`<div class="gp-mini">Nenhuma unidade ainda. Use "Vincular unidade existente" ou "Nova unidade"${dono?'; unidades com o dono '+esc(dono.email||'')+' entram sozinhas':''}.</div>`}</div>`;}
+function grupoVincularModal(gid){const g=ADMIN_ORGS.find(x=>x.id===gid);if(!g)return;const livres=ADMIN_ORGS.filter(o=>!ehGrupo(o)&&!grupoDe(o)&&!(o.dados&&(o.dados._demo||o.dados._arquivado))).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
+  modal(`<div class="modal-head"><h3>Vincular unidade a ${esc(g.nome||'')}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body"><div class="field"><label>Unidade</label><select class="input" id="gv_org">${livres.map(o=>`<option value="${o.id}">${esc(o.nome||'')}</option>`).join('')}</select></div>
+  <div style="font-size:12.5px;color:var(--muted);line-height:1.5">A unidade passa a aparecer dentro do cliente e some da lista solta. O financeiro, o estoque e as fichas continuam só dela; reuniões, plano e demandas passam a ser do cliente. Não mexe no login de ninguém.</div></div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="grupoVincular('${gid}')">Vincular</button></div>`);}
+async function grupoVincular(gid){const oid=($('#gv_org')||{}).value;const o=ADMIN_ORGS.find(x=>x.id===oid);if(!o)return toast('Escolha a unidade');
+  try{const cur=(await sb.from('organizacoes').select('dados').eq('id',oid).single()).data;const dados=(cur&&cur.dados)||{};dados._grupoId=gid;const r=await sb.from('organizacoes').update({dados}).eq('id',oid);if(r&&r.error)throw r.error;}catch(e){return toast('Não foi possível vincular: '+((e&&e.message)||e));}
+  closeModal();toast('Unidade vinculada ✓');await showAdmin();adminSelOrg(gid);}
+async function grupoDesvincular(oid){const o=ADMIN_ORGS.find(x=>x.id===oid);if(!o)return;const g=grupoDe(o);if(!confirm('Tirar '+(o.nome||'esta unidade')+' do grupo? Ela volta a aparecer como cliente solto.'))return;
+  try{const cur=(await sb.from('organizacoes').select('dados').eq('id',oid).single()).data;const dados=(cur&&cur.dados)||{};delete dados._grupoId;const r=await sb.from('organizacoes').update({dados}).eq('id',oid);if(r&&r.error)throw r.error;}catch(e){return toast('Erro ao desvincular');}
+  toast('Unidade desvinculada');await showAdmin();if(g)adminSelOrg(g.id);}
 function grupoNovaUnidade(gid){const g=ADMIN_ORGS.find(x=>x.id===gid);if(!g)return;
   modal(`<div class="modal-head"><h3>Nova unidade de ${esc(g.nome||'')}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body"><div class="field"><label>Nome da unidade</label><input class="input" id="gu_nome" placeholder="Ex.: ${esc(g.nome||'Restaurante')} · Centro" onkeydown="if(event.key==='Enter')grupoNovaUnidadeSalvar('${gid}')"></div>
@@ -7393,7 +7430,7 @@ function grupoNovaUnidade(gid){const g=ADMIN_ORGS.find(x=>x.id===gid);if(!g)retu
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="grupoNovaUnidadeSalvar('${gid}')">Criar unidade</button></div>`);
   setTimeout(()=>{const e=$('#gu_nome');if(e)e.focus();},40);}
 async function grupoNovaUnidadeSalvar(gid){const g=ADMIN_ORGS.find(x=>x.id===gid);const nome=(($('#gu_nome')&&$('#gu_nome').value)||'').trim();if(!g||!nome)return toast('Informe o nome da unidade');
-  let res;try{res=await sb.from('organizacoes').insert({nome,responsavel:g.responsavel||'',status:'ativo',dados:{},consultor_id:g.consultor_id}).select('id').single();}catch(e){res={error:e};}
+  let res;try{res=await sb.from('organizacoes').insert({nome,responsavel:g.responsavel||'',status:'ativo',dados:{_grupoId:gid},consultor_id:g.consultor_id||null}).select('id').single();}catch(e){res={error:e};}
   if(res.error)return toast('Não foi possível criar: '+(res.error.message||res.error));
   closeModal();toast('Unidade criada ✓');await showAdmin();adminSelOrg(gid);}
 function grupoCriarModal(donoId){const us=ADMIN_ORGS.filter(x=>!ehGrupo(x)&&orgDonoId(x)===donoId&&!(x.dados&&x.dados._demo));const dono=DONOS[donoId];
@@ -7547,10 +7584,13 @@ function orgDonoId(o){return (o&&o.consultor_id&&!orgDeConsultor(o))?o.consultor
 /* Cliente-grupo: uma linha de organizacoes com dados._grupo=true e consultor_id = uid do dono. As unidades são as organizações
    do mesmo dono (consultor_id igual, sem _grupo). Reuniões, plano de guerra, demandas e cadastro ficam no grupo; os números em cada unidade. */
 function ehGrupo(o){return !!(o&&o.dados&&o.dados._grupo);}
-function grupoDe(o){if(!o||ehGrupo(o))return null;const d=orgDonoId(o);if(!d)return null;return ADMIN_ORGS.find(g=>ehGrupo(g)&&g.consultor_id===d&&!(g.dados&&g.dados._demo))||null;}
-function grupoUnidades(g){if(!g||!g.consultor_id)return [];return ADMIN_ORGS.filter(x=>!ehGrupo(x)&&x.consultor_id===g.consultor_id&&!(x.dados&&(x.dados._arquivado||x.dados._demo))).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));}
+function grupoDe(o){if(!o||ehGrupo(o))return null;
+  const gid=o.dados&&o.dados._grupoId;if(gid){const g=ADMIN_ORGS.find(x=>x.id===gid&&ehGrupo(x));if(g)return g;}   // vínculo explícito (não depende de login)
+  const d=orgDonoId(o);if(!d)return null;return ADMIN_ORGS.find(g=>ehGrupo(g)&&g.consultor_id===d&&!(g.dados&&g.dados._demo))||null;}
+function grupoUnidades(g){if(!g)return [];return ADMIN_ORGS.filter(x=>!ehGrupo(x)&&((g.consultor_id&&x.consultor_id===g.consultor_id)||(x.dados&&x.dados._grupoId===g.id))&&!(x.dados&&(x.dados._arquivado||x.dados._demo))).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));}
+function unidadeVinculadaPorId(u){return !!(u&&u.dados&&u.dados._grupoId);}
 function orgNomeExib(o){return (o&&o.dados&&o.dados.conta&&o.dados.conta.restaurante)||(o&&o.nome)||'';}
-function gpGrupo(o){const d=orgDonoId(o);if(!d)return [o];const g=ADMIN_ORGS.find(x=>ehGrupo(x)&&x.consultor_id===d&&!(x.dados&&x.dados._demo));const us=ADMIN_ORGS.filter(x=>!ehGrupo(x)&&orgDonoId(x)===d&&!(x.dados&&(x.dados._arquivado||x.dados._demo)));return g?[g].concat(us):us;}
+function gpGrupo(o){const g=ehGrupo(o)?o:grupoDe(o);if(g)return [g].concat(grupoUnidades(g));const d=orgDonoId(o);if(!d)return [o];return ADMIN_ORGS.filter(x=>!ehGrupo(x)&&orgDonoId(x)===d&&!(x.dados&&(x.dados._arquivado||x.dados._demo)));}
 function donoNome(id){const p=DONOS[id];return p?(p.nome||p.email||'dono'):'dono';}
 async function crmCarregar(){ADMIN_CRM={};CRM_TABELA=true;
   try{const r=await sb.from('crm_clientes').select('org_id,dados');if(r.error)throw r.error;(r.data||[]).forEach(x=>{ADMIN_CRM[x.org_id]=x.dados||{};});}catch(e){CRM_TABELA=false;}
@@ -8379,6 +8419,7 @@ function novoCliente(){
     <div class="field"><label>Nome do restaurante</label><input class="input" id="nc_nome" placeholder="Ex.: Restaurante Lidera"></div>
     <div class="field"><label>Responsável</label><input class="input" id="nc_resp" placeholder="Nome do responsável"></div>
     ${consSel}
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;cursor:pointer;margin:4px 0 10px"><input type="checkbox" id="nc_grupo" style="width:16px;height:16px;margin-top:2px"><span><b>É um cliente com várias unidades</b><br><span style="color:var(--muted);font-size:12px">Cria o cliente-grupo: reuniões, plano de guerra e demandas ficam nele; depois você cria ou vincula as unidades dentro dele.</span></span></label>
     <div style="font-size:12px;color:var(--soft)">O acesso (login) você cria depois, em <b>Abrir app › Equipe › Adicionar membro</b>.</div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="doNovoCliente()">Criar cliente</button></div>`);
@@ -8392,7 +8433,8 @@ async function doNovoCliente(){
   if(consId){const c=CONSULTORES.find(x=>x.id===consId);const lim=consId===MY_UID&&!IS_SUPER?MY_LIMITE:(c?(c.limite_clientes!=null?c.limite_clientes:5):null);
     if(lim&&clientesDe(consId)>=lim)return showErr('Limite de '+lim+' clientes atingido para '+(IS_SUPER?'esse consultor':'você')+'.');}
   const btn=document.querySelector('.modal-foot .btn-primary');if(btn){btn.disabled=true;btn.textContent='Criando…';}
-  let res;try{res=await sb.from('organizacoes').insert({nome,responsavel:resp,status:'ativo',dados:{},consultor_id:consId||null}).select('id').single();}catch(e){res={error:e};}
+  const ehGrp=!!($('#nc_grupo')&&$('#nc_grupo').checked);
+  let res;try{res=await sb.from('organizacoes').insert({nome,responsavel:resp,status:'ativo',dados:ehGrp?{_grupo:true}:{},consultor_id:consId||null}).select('id').single();}catch(e){res={error:e};}
   if(btn){btn.disabled=false;btn.textContent='Criar cliente';}
   if(res.error)return showErr('Não foi possível criar: '+(res.error.message||res.error));
   const novoId=res.data&&res.data.id;
