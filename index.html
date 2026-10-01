@@ -3863,6 +3863,7 @@ function viewDRE(){
       </div>
     </div>
   </div>`}`;
+  if(current==='financeiro'&&finTab==='dre')$('#view').insertAdjacentHTML('afterbegin',finTabsHTML());
 }
 /* ----- Lançamentos ----- */
 function lancSubRefresh(){const g=$('#lc_grupo');const s=$('#lc_sub');if(!g||!s)return;const c=DB.categorias[g.value];s.innerHTML=ordPt(c?c.subs:[]).map(x=>`<option>${esc(x)}</option>`).join('');}
@@ -4825,12 +4826,14 @@ function finList(key,cols){
     <button class="mini-del" onclick="DB.fin['${key}'].splice(${i},1);save();viewFinanceiro()">${icoX}</button></div>`).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhum registro.</div>`}
   <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:6px">${icoPlus} Adicionar</button>`;
 }
+function finTabsHTML(tabs){tabs=tabs||[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
+  return `<div class="pill-filter" style="margin-bottom:18px">${tabs.map(([k,l])=>`<button class="${finTab===k?'on':''}" onclick="finTab='${k}';viewFinanceiro()">${l}</button>`).join('')}</div>`;}
 function viewFinanceiro(){
   const t=totaisGerais(finTab==='visao'?periodoRange():undefined);
   const tabs=[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
   const legado={categorias:'categorias',formas:'formas',meios:'recebimento'};if(legado[finTab]){paramSec=legado[finTab];finTab='param';}   // abas antigas viraram seções de Parâmetros
-  const tabsHTML=`<div class="pill-filter" style="margin-bottom:18px">${tabs.map(([k,l])=>`<button class="${finTab===k?'on':''}" onclick="finTab='${k}';viewFinanceiro()">${l}</button>`).join('')}</div>`;
-  if(finTab==='dre'){viewDRE();$('#view').insertAdjacentHTML('afterbegin',tabsHTML);return;}
+  const tabsHTML=finTabsHTML(tabs);
+  if(finTab==='dre'){viewDRE();return;}   // o DRE mesmo recoloca as abas (ver viewDRE), inclusive ao trocar o mês ou abrir/fechar grupos
   let body='';
   if(finTab==='lanc')body=finLancamentos();
   else if(finTab==='fluxo')body=finFluxo();
