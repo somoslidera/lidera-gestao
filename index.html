@@ -737,6 +737,7 @@ thead th{letter-spacing:.7px}
 .pt-row .inp:hover{border-color:var(--line);background:var(--bg)}
 .pt-row .inp:focus{border-color:var(--navy);background:var(--card);outline:none}
 .pt-row.done .inp.t{text-decoration:line-through;color:var(--soft)}
+.pt-done{display:flex;align-items:center;gap:4px;min-width:0;font-size:11px;font-weight:700;color:var(--green);white-space:nowrap}.pt-done .inp{flex:1;min-width:0;padding:6px 4px;color:var(--green);font-weight:600}
 .pt-row .inp.late{border-color:var(--red-bg);background:var(--red-bg);color:var(--red);font-weight:600}
 .pt-row .del{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--soft)}
 .pt-row .del:hover{background:var(--red-bg);color:var(--red)}
@@ -7494,7 +7495,8 @@ function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=pro
         <input class="inp t" value="${esc(t.titulo)}" onchange="projRename('${t.id}',this.value)" title="Clique para editar a descrição">
         ${mob?`<button class="del" title="Excluir tarefa" onclick="projDel('${t.id}')">${icoTrash}</button><div class="r2">`:''}
         <input class="inp" list="proj_resp_opts" value="${esc(t.resp||'')}" placeholder="Responsável" title="Quem é responsável por esta tarefa" onchange="projResp('${t.id}',this.value)">
-        <input type="date" class="inp ${over?'late':''}" value="${t.prazo||''}" onchange="projPrazo('${t.id}',this.value)" title="${over?'Atrasada '+gpHa(t.prazo):'Prazo'}">
+        ${t.feito?`<span class="pt-done" title="Dia em que a atividade foi encerrada${t.prazo?' · prazo era '+fmtDataBR(t.prazo):''}">✓ em<input type="date" class="inp" value="${t.feitoEm||''}" onchange="projFeitoEm('${t.id}',this.value)"></span>`
+        :`<input type="date" class="inp ${over?'late':''}" value="${t.prazo||''}" onchange="projPrazo('${t.id}',this.value)" title="${over?'Atrasada '+gpHa(t.prazo):'Prazo'}">`}
         ${mob?`${over?`<span class="pt-late">atrasada</span>`:''}</div>`:`<button class="del" title="Excluir tarefa" onclick="projDel('${t.id}')">${icoTrash}</button>`}
       </div>`;});
     html+=`<div style="display:flex;gap:8px;flex-wrap:nowrap;margin-top:8px;align-items:center"><button class="btn btn-ghost btn-sm" onclick="projAdd('${faseArg}')">${icoPlus} Nova tarefa</button>${mob?`<button class="btn btn-ghost btn-sm" onclick="projRespFase('${fa}')">${icoGpUsers} Responsável</button><button class="icon-btn" title="Excluir a etapa inteira" style="color:var(--red);margin-left:auto" onclick="projDelFase('${fa}')">${icoTrash}</button>`:''}</div></div></details>`;});
@@ -8251,6 +8253,7 @@ function projRespFase(fase){const o=projCur();if(!o)return;const p=projEnsure(o)
   renderAdminMain();projSaveOrg(o);}
 function projResp(id,v){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;t.resp=(v||'').trim();projSaveOrg(o);}
 function projPrazo(id,v){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;t.prazo=v||'';renderAdminMain();renderAdminList();projSaveOrg(o);}
+function projFeitoEm(id,v){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t||!t.feito)return;t.feitoEm=v||hojeISO();renderAdminMain();renderAdminList();projSaveOrg(o);}
 function projRename(id,val){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;const v=(val||'').trim();if(!v){renderAdminMain();return;}if(v===t.titulo)return;t.titulo=v;projSaveOrg(o);}
 function projRenameFase(oldName,val){const o=projCur();if(!o)return;const p=projEnsure(o);let v=(val||'').trim().replace(/['"\\]/g,'');if(!v||v===oldName){renderAdminMain();return;}p.tarefas.forEach(t=>{if(t.fase===oldName)t.fase=v;});renderAdminMain();renderAdminList();projSaveOrg(o);}
 let dragKind=null, dragVal=null;
