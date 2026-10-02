@@ -4376,7 +4376,16 @@ function lmRemoveRow(i){lancDraft.splice(i,1);if(!lancDraft.length)lancDraft.pus
 /* ----- Ler nota via IA (Gemini, através da Edge Function) ----- */
 function lmIaStatus(msg,tipo){const el=$('#lm_ia_status');if(!el)return;if(!msg){el.style.display='none';return;}el.style.display='';el.textContent=msg;el.style.background=tipo==='erro'?'var(--red-bg)':tipo==='ok'?'var(--green-bg)':'var(--blue-bg)';el.style.color=tipo==='erro'?'var(--red)':tipo==='ok'?'var(--green)':'var(--navy)';}
 function lmFileToB64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res((''+r.result).split(',')[1]||'');r.onerror=()=>rej(new Error('falha ao ler arquivo'));r.readAsDataURL(file);});}
-function lmComprimeImg(file){return new Promise((res)=>{const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{const max=1600;const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;const sc=Math.min(1,max/Math.max(w,h));const cw=Math.max(1,Math.round(w*sc)),ch=Math.max(1,Math.round(h*sc));const c=document.createElement('canvas');c.width=cw;c.height=ch;c.getContext('2d').drawImage(img,0,0,cw,ch);URL.revokeObjectURL(url);try{res({mime:'image/jpeg',b64:c.toDataURL('image/jpeg',.85).split(',')[1]});}catch(e){res(null);}};img.onerror=()=>{URL.revokeObjectURL(url);res(null);};img.src=url;});}
+/* prepara a foto para a IA: reduz até `max` px no lado maior e gira `rot` graus no sentido horário (0/90/180/270).
+   Antes era 1600 px: numa nota A4 inteira os algarismos ficavam com poucos pixels e a IA adivinhava. */
+function lmComprimeImg(file,max,rot,q){max=max||2560;rot=((+rot||0)%360+360)%360;q=q||.9;
+  return new Promise((res)=>{const img=new Image();const url=URL.createObjectURL(file);
+    img.onload=()=>{const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;const sc=Math.min(1,max/Math.max(w,h));
+      const dw=Math.max(1,Math.round(w*sc)),dh=Math.max(1,Math.round(h*sc));const vira=rot===90||rot===270;
+      const c=document.createElement('canvas');c.width=vira?dh:dw;c.height=vira?dw:dh;const ctx=c.getContext('2d');
+      ctx.translate(c.width/2,c.height/2);ctx.rotate(rot*Math.PI/180);ctx.drawImage(img,-dw/2,-dh/2,dw,dh);
+      URL.revokeObjectURL(url);try{res({mime:'image/jpeg',b64:c.toDataURL('image/jpeg',q).split(',')[1]});}catch(e){res(null);}};
+    img.onerror=()=>{URL.revokeObjectURL(url);res(null);};img.src=url;});}
 function lmNorm(s){return (''+(s==null?'':s)).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim();}
 function lmFuzzyFind(list,nome){const alvo=lmNorm(nome);if(!alvo)return '';let hit=list.find(x=>lmNorm(x)===alvo);if(hit)return hit;hit=list.find(x=>{const n=lmNorm(x);return n&&(n.includes(alvo)||alvo.includes(n));});return hit||'';}
 function lmMatchCat(nome){return lmFuzzyFind(Object.keys(DB.categorias||{}),nome);}
@@ -4395,7 +4404,12 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
   lmIaStatus('Lendo a nota com a IA… pode levar alguns segundos.','info');
   try{
     let mime=file.type||'application/octet-stream',b64;
-    if(mime.indexOf('image/')===0){const c=await lmComprimeImg(file);if(c){mime=c.mime;b64=c.b64;}else{b64=await lmFileToB64(file);}}
+    if(mime.indexOf('image/')===0){
+      // foto de lado derruba a precisão: uma consulta rápida numa miniatura diz para que lado girar
+      let rot=0;const th=await lmComprimeImg(file,768,0,.8);
+      if(th){lmLoading(true,'Ajustando a foto…');try{const o=await chamarFn('ler-nota',{mime:th.mime,dataB64:th.b64,modo:'orientacao'});if(o.status===200&&o.data&&[90,180,270].includes(+o.data.rotacao))rot=+o.data.rotacao;}catch(e){}}
+      lmLoading(true,'Lendo a nota com a IA… notas grandes podem levar até 1 minuto.');
+      const c=await lmComprimeImg(file,2560,rot,.9);if(c){mime=c.mime;b64=c.b64;}else{b64=await lmFileToB64(file);}}
     else{b64=await lmFileToB64(file);}
     if(!b64)return lmIaStatus('Não consegui ler o arquivo. Tente outra foto.','erro');
     if(typeof normData==='function')normData();
@@ -4411,9 +4425,20 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
     const dataNota=(data.data&&/^\d{4}-\d{2}-\d{2}$/.test(data.data))?data.data:hojeISO();
     const forn=(data.fornecedor||'').trim();
     const nfNota=(''+(data.nf||data.numero||data.numeroNota||data.nNF||'')).trim();
-    const lidas=itens.map(it=>{const grupo=lmInferGrupo(it.categoria,it.subcategoria);const sub=lmMatchSub(grupo,it.subcategoria)||lmMatchSub(grupo,it.categoria);
+    // ICMS-ST, IPI, frete, seguro e outras despesas são pagos por fora do preço do item: entram no custo (mesma regra do XML).
+    // ICMS-ST/IPI/despesas por item quando a nota mostra; o que faltar até o total da nota é rateado pelo valor do item.
+    const T=data.totais||{},conf=data.conferencia||{};
+    const dx={total:+T.valor_total_nota||0,itens:itens.map(it=>({vTotal:Math.abs(+it.valor)||0,vExtraNota:(+it.icms_st||0)+(+it.ipi||0)+(+it.outras_despesas||0)-(+it.desconto||0)}))};
+    if(!(dx.total>0)&&(+T.valor_produtos||0)>0)dx.total=+((+T.valor_produtos||0)+(+T.frete||0)+(+T.seguro||0)+(+T.outras_despesas||0)+(+T.ipi||0)+(+T.icms_st||0)+(+T.fcp_st||0)-(+T.desconto||0)).toFixed(2);
+    if(dx.total>0)nfeCalcExtras(dx);else dx.itens.forEach(i=>{i.vExtra=0;});
+    const aplicaExtras=dx.total>0&&!dx.extrasSuspeito&&conf.bate_produtos!==false&&Math.abs(dx.totalExtras||0)>0.004;
+    let nCx=0;
+    const lidas=itens.map((it,ix)=>{const grupo=lmInferGrupo(it.categoria,it.subcategoria);const sub=lmMatchSub(grupo,it.subcategoria)||lmMatchSub(grupo,it.categoria);
       const raw=(it.descricao||'').trim();const m=lmAcharInsumo(raw,forn);const ins=(m&&m.mesmoForn)?DB.insumos[m.id]:null;
-      const qtd=Math.abs(+it.quantidade)||1,tot=Math.abs(+it.valor)||0,vun=qtd>0?tot/qtd:tot;
+      let qtd=Math.abs(+it.quantidade)||1;const tot=+((Math.abs(+it.valor)||0)+(aplicaExtras?(dx.itens[ix].vExtra||0):0)).toFixed(2);
+      const emb=Math.round(+it.itens_por_embalagem||1);
+      if(emb>1&&ins&&!insEmb(ins)&&ins.uni==='un'){qtd=+(qtd*emb).toFixed(3);nCx++;}   // caixa com 6 → 6 unidades, custo por unidade certo
+      const vun=qtd>0?tot/qtd:tot;
       return {data:dataNota,grupo,sub,desc:ins?ins.nome:raw,descOrig:raw,nf:nfNota,fromIA:true,fornecedor:forn,vun,vunStr:fmtMoneyInput(vun),qtd,forma:'',insumoId:ins?ins.id:'',insSugerido:(m&&!m.mesmoForn)?m.id:'',uni:normUni(it.unidade||'')};});
     const novas=lmAgrupar(lidas);
     const vazio=lancDraft.length===1&&!lancDraft[0].grupo&&!lancDraft[0].desc&&!lancDraft[0].vunStr;
@@ -4422,10 +4447,16 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
     const bn=$('#lm_bulk_nf');if(bn&&nfNota)bn.value=nfNota;
     const semCat=novas.filter(r=>!r.grupo).length,semProd=novas.filter(r=>!r.insumoId&&!r.insSugerido).length,outroF=novas.filter(r=>!r.insumoId&&r.insSugerido).length;
     const avisos=[];if(semCat)avisos.push(semCat+' sem categoria');if(semProd)avisos.push(semProd+' produto(s) não cadastrado(s)');if(outroF)avisos.push(outroF+' já existe(m) com outro fornecedor — clique pra vincular ou cadastrar');
+    if(aplicaExtras){const p=[];if(+T.icms_st)p.push('ICMS-ST '+fmtBRL(+T.icms_st));if(+T.fcp_st)p.push('FCP-ST '+fmtBRL(+T.fcp_st));if(+T.ipi)p.push('IPI '+fmtBRL(+T.ipi));if(+T.frete)p.push('frete '+fmtBRL(+T.frete));if(+T.seguro)p.push('seguro '+fmtBRL(+T.seguro));if(+T.outras_despesas)p.push('outras despesas '+fmtBRL(+T.outras_despesas));if(+T.desconto)p.push('desconto −'+fmtBRL(+T.desconto));
+      avisos.push((p.length?p.join(' + '):'impostos e despesas')+' já no custo dos itens · total '+fmtBRL(dx.total));}
+    else if(dx.extrasSuspeito)avisos.push('⚠ a diferença até o total da nota ('+fmtBRL(dx.totalExtras)+') é grande demais para ser imposto: algum item pode não ter sido lido');
+    if(conf.bate_produtos===false)avisos.push('⚠ a soma dos itens lidos ('+fmtBRL(+conf.soma_itens||0)+') não bate com o total dos produtos da nota ('+fmtBRL(+conf.valor_produtos||0)+'): confira as linhas e, depois, digite o total da nota para ratear os impostos');
+    else if(conf.bate_produtos===true)avisos.push('✓ itens conferidos com o total da nota');
+    if(nCx)avisos.push(nCx+' item(ns) convertido(s) de caixa para unidade');
     if(!nfNota)avisos.push('não achei o nº da NF — preencha na coluna "NF nº"');
     else if(nfJaLancada(nfNota,forn))avisos.push('⚠ a NF '+nfNota+' já foi lançada antes');
     const agr=(novas.length<lidas.length)?(' agrupados em '+novas.length+' linha'+(novas.length===1?'':'s')):'';
-    lmIaStatus(lidas.length+(lidas.length===1?' item lido':' itens lidos')+agr+(nfNota?' · NF '+nfNota:'')+'. '+(avisos.length?avisos.join(' · ')+'. ':'')+'Revise categoria e valores antes de lançar.',avisos.length?'info':'ok');
+    lmIaStatus(lidas.length+(lidas.length===1?' item lido':' itens lidos')+agr+(nfNota?' · NF '+nfNota:'')+'. '+(avisos.length?avisos.join(' · ')+'. ':'')+'Revise categoria e valores antes de lançar.',conf.bate_produtos===false||dx.extrasSuspeito?'erro':avisos.some(a=>/não cadastrad|outro fornecedor|sem categoria|já foi lançada|não achei/.test(a))?'info':'ok');
   }catch(e){lmIaStatus('Erro ao processar a nota: '+((e&&e.message)||e)+'.','erro');}
   finally{lmLoading(false);btns.forEach(b=>{b.disabled=false;b.style.opacity='';});}
 }
