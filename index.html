@@ -2910,6 +2910,7 @@ function preparadoCard(p){
     <div class="fcard-acts"><span>${(p.comps||[]).length} ingredientes</span>
       <button onclick="delInsumo('${p.id}')">${icoTrash} Excluir</button>
       <button onclick="duplicarPreparado('${p.id}')">${icoCopy} Duplicar</button>
+      <button onclick="imprimirPreparado('${p.id}')" title="Ficha do preparado para deixar na cozinha">🖨️ Imprimir</button>
       <a class="edit" onclick="editPreparado('${p.id}')">Editar ↗</a></div>
     <div class="frow"><span class="l">Custo da receita</span><b>${fmtBRL(custoTotal)}</b></div>
     <div class="frow div"><span class="l">Rendimento</span><b>${fmtN(p.rendimento)} ${uSym(p.uni)}</b></div>
@@ -2968,6 +2969,7 @@ function editPreparado(id){
       <div class="fx-foot">
         <button class="btn btn-ghost" onclick="closeModal()" style="color:var(--gold);border:0;background:transparent;padding-left:0">Cancelar</button>
         <div style="flex:1"></div>
+        <button class="btn btn-ghost" onclick="imprimirPreparado('${id||''}')">🖨️ Imprimir</button>
         ${id?`<button class="btn btn-ghost" style="color:var(--red);border-color:var(--red)" onclick="delInsumo('${id}');closeModal();viewFichas()">Excluir</button>`:''}
         <button class="btn btn-gold" onclick="savePreparado('${id||''}')">${id?'Atualizar Preparado':'Criar Preparado'}</button>
       </div>
@@ -3400,6 +3402,37 @@ function imprimirFicha(){
     <div class="fp-steps">${passos.length?passos.map((s,i)=>`<div><b>${i+1}.</b> ${esc(s)}</div>`).join(''):'<div style="color:#777">Sem etapas cadastradas.</div>'}</div>
     <div class="fp-sec">Padrão de Finalização e Saída</div>
     <div class="fp-final ${f.padraoFinalizacao?'':'empty'}">${f.padraoFinalizacao?esc(f.padraoFinalizacao):'Sem instruções de finalização.'}</div>
+  </div></td></tr></tbody></table>`;
+  document.body.classList.add('print-ficha');
+  const fim=()=>{document.body.classList.remove('print-ficha');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
+  window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);
+}
+
+/* Ficha do preparado/porcionado para a cozinha: mesma folha da ficha técnica. Se o editor estiver aberto, imprime o que está na tela. */
+function imprimirPreparado(id){
+  const aberto=!!$('#pp_nome');const base=(id&&DB.insumos[id])||null;
+  const f=aberto?{nome:($('#pp_nome').value||'').trim(),cat:($('#pp_cat').value||'').trim()||'Preparado',uni:($('#i_uni')||{}).value||(base&&base.uni)||'g',rendimento:parseFloat(($('#i_rend')||{}).value)||(base&&base.rendimento)||0,comps:(draftComps||[]).filter(c=>c[0]&&c[1]>0),tempoPreparo:($('#pp_tempo')||{}).value||'',utensilios:(($('#pp_utens')||{}).value||'').trim(),modoPreparo:(draftModo||[]).filter(x=>(x||'').trim()),foto:draftFoto||'',estocavel:!!($('#pp_estocavel')&&$('#pp_estocavel').checked)}
+    :base;
+  if(!f||!f.nome)return toast('Informe o nome do preparado antes de imprimir');
+  const ings=(f.comps||[]).map(([cid,q])=>{const ins=DB.insumos[cid];if(!ins)return '';const fc=ins.fc||ins.fatorCorrecao||1;const u=bSym(ins.uni);
+    return `<tr><td>${esc(ins.nome)}${ins.tipo==='preparado'?' <span style="color:#777;font-size:11px">(preparado)</span>':''}</td><td>${nNum(q||0)} ${u}</td><td>${fc.toFixed(2)}</td><td>${nNum(Math.round((q||0)*fc*1000)/1000)} ${u}</td></tr>`;}).join('');
+  const passos=(f.modoPreparo||[]).filter(x=>(x||'').trim());
+  let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
+  pa.innerHTML=`<table class="fp-page"><thead><tr><td></td></tr></thead><tfoot><tr><td></td></tr></tfoot><tbody><tr><td><div class="fp">
+    <div class="fp-title">${f.estocavel?'SUBPRODUTO':'PREPARADO'} – ${esc((f.nome||'').toUpperCase())}</div>
+    <div class="fp-meta"><span><b>Categoria:</b> ${esc(f.cat||'—')}</span><span><b>Preparo:</b> ${f.tempoPreparo?f.tempoPreparo+' min':'—'}</span><span><b>Rendimento:</b> ${f.rendimento?nNum(f.rendimento)+' '+uSym(f.uni||'g'):'—'}</span><span><b>Utensílios:</b> ${esc(f.utensilios||'—')}</span></div>
+    <div class="fp-row">
+      <div class="fp-foto">${f.foto?`<img src="${f.foto}">`:'FOTO DO PREPARADO'}</div>
+      <div class="fp-ing">
+        <div class="fp-sec" style="border-top:0">Ingredientes e Porcionamento</div>
+        <table class="fp-tb"><thead><tr><th>Ingrediente</th><th>Qtd (PL)</th><th>FC</th><th>Qtd (PB)</th></tr></thead>
+        <tbody>${ings||'<tr><td colspan="4" style="color:#777">Nenhum ingrediente cadastrado.</td></tr>'}</tbody></table>
+      </div>
+    </div>
+    <div class="fp-sec">Modo de Preparo</div>
+    <div class="fp-steps">${passos.length?passos.map((x,i)=>`<div><b>${i+1}.</b> ${esc(x)}</div>`).join(''):'<div style="color:#777">Sem etapas cadastradas.</div>'}</div>
+    <div class="fp-sec">Armazenamento e Validade</div>
+    <div class="fp-final empty">Identifique com nome, data de produção e validade. Resfrie e armazene conforme o POP de preparo.</div>
   </div></td></tr></tbody></table>`;
   document.body.classList.add('print-ficha');
   const fim=()=>{document.body.classList.remove('print-ficha');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
