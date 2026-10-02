@@ -936,6 +936,10 @@ const fmtN=(v,d=0)=>(isFinite(v)?v:0).toLocaleString('pt-BR',{minimumFractionDig
 const fmtPct=v=>fmtN(isFinite(v)?v:0,1)+'%';
 /* máscara de moeda nos inputs: R$ na frente + milhar/decimal */
 const fmtMoneyInput=n=>(isFinite(n)?n:0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+/* valor UNITÁRIO aceita até 4 casas (nota com "106,1604"): não usa a máscara de centavos, que empurrava os dígitos (106,1604 virava 10.616,04) */
+const fmtUnitInput=n=>(isFinite(n)?n:0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4});
+function lmVunInput(i,el){const r=lancDraft[i];if(!r)return;el.value=el.value.replace(/[^\d.,]/g,'');r.vun=parseNumBR(el.value);r.vunStr=el.value;lmRecalc(i);}
+function lmVunBlur(i,el){const r=lancDraft[i];if(!r)return;el.value=r.vunStr=fmtUnitInput(+r.vun||0);}
 function moneyMask(el){let d=(el.value||'').replace(/\D/g,'');if(d==='')d='0';const v=parseInt(d,10)/100;el.value=fmtMoneyInput(v);return v;}
 function moneyVal(id){const el=document.getElementById(id);if(!el)return 0;return parseFloat((el.value||'0').replace(/\./g,'').replace(',','.'))||0;}
 const uid=()=>Math.random().toString(36).slice(2,9);
@@ -3975,7 +3979,7 @@ function lmAgrupar(rows){const map=new Map();
     if(g){g.qtd=(+g.qtd||0)+(+r.qtd||0);g._tot+=lmTotalLinha(r);}
     else{const c=Object.assign({},r);c._tot=lmTotalLinha(r);map.set(key,c);}});
   return Array.from(map.values()).map(g=>{const q=+g.qtd||0;
-    g.vun=q>0?(g._tot/q):g._tot;g.vunStr=fmtMoneyInput(g.vun);delete g._tot;return g;});}
+    g.vun=q>0?(g._tot/q):g._tot;g.vunStr=fmtUnitInput(g.vun);delete g._tot;return g;});}
 function subOptions(grupo,sel){const subs=ordPt((DB.categorias[grupo]||{subs:[]}).subs);return `<option value="">—</option>`+subs.map(s=>`<option ${s===sel?'selected':''}>${esc(s)}</option>`).join('');}
 function lancarModal(manterRascunho){if(!manterRascunho)lmEdit=null;if(!manterRascunho||!lancDraft.length)lancDraft=[lmBlank()];
   const fornList=((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('');
@@ -4060,7 +4064,7 @@ function renderLmRowsMobile(el){const grupos=ordPt(Object.keys(DB.categorias));c
      ${L('Produto',lmProdutoCel(r,i))}
      ${L('Fornecedor',`<input class="input" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value" onchange="lmNotaAutoCond()">`)}
      <div style="display:grid;grid-template-columns:1fr 84px;gap:8px">
-       ${L('Valor',`<div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${r.vunStr||''}" placeholder="0,00" oninput="lancDraft[${i}].vun=moneyMask(this);lancDraft[${i}].vunStr=this.value;lmRecalc(${i})"></div>`)}
+       ${L('Valor',`<div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="decimal" value="${r.vunStr||''}" placeholder="0,00" title="Valor unitário (aceita até 4 casas, ex.: 106,1604)" oninput="lmVunInput(${i},this)" onblur="lmVunBlur(${i},this)"></div>`)}
        <div><span style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700">Qtd</span><input class="input" type="number" step="0.001" min="0" value="${r.qtd||1}" style="text-align:center;margin-top:4px" oninput="lancDraft[${i}].qtd=parseFloat(this.value)||0;lmRecalc(${i})"></div>
      </div>
      ${L('Total',`<div id="lm_tot_${i}" style="font-weight:700;font-size:16px;color:var(--navy)">${fmtBRL(lmTotalLinha(r))}</div>`)}
@@ -4078,7 +4082,7 @@ function renderLmRows(){const el=$('#lm_rows');if(!el)return;
      <input class="input" style="min-width:0" value="${esc(r.nf||'')}" placeholder="nº" title="Número da nota fiscal" oninput="lancDraft[${i}].nf=this.value">
      ${lmProdutoCel(r,i)}
      <input class="input" style="min-width:0" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value" onchange="lmNotaAutoCond()">
-     <div class="money-wrap" style="min-width:0"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${r.vunStr||''}" placeholder="0,00" title="Valor unitário" oninput="lancDraft[${i}].vun=moneyMask(this);lancDraft[${i}].vunStr=this.value;lmRecalc(${i})"></div>
+     <div class="money-wrap" style="min-width:0"><span class="money-pre">R$</span><input class="input money-inp" inputmode="decimal" value="${r.vunStr||''}" placeholder="0,00" title="Valor unitário (aceita até 4 casas, ex.: 106,1604)" oninput="lmVunInput(${i},this)" onblur="lmVunBlur(${i},this)"></div>
      <input class="input" style="min-width:0;text-align:center" type="number" step="0.001" min="0" value="${r.qtd||1}" title="Quantidade${r.uni?' ('+esc(r.uni)+')':''}" oninput="lancDraft[${i}].qtd=parseFloat(this.value)||0;lmRecalc(${i})">
      <div id="lm_tot_${i}" title="Total = quantidade × valor unitário" style="min-width:0;text-align:right;font-weight:600;font-size:13px;color:var(--ink);padding:9px 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${fmtBRL(lmTotalLinha(r))}</div>
      <select class="input" style="min-width:0" onchange="lancDraft[${i}].forma=this.value"><option value="" ${!r.forma?'selected':''}>—</option>${formas.map(x=>`<option ${x===r.forma?'selected':''}>${esc(x)}</option>`).join('')}</select>
@@ -4095,7 +4099,7 @@ function lmAtualizaTotal(){const el=$('#lm_total');if(!el)return;const t=lancDra
 function lmSetTotal(){const alvo=moneyVal('lm_total');const rows=lancDraft.filter(r=>lmTotalLinha(r)>0);const atual=+rows.reduce((s,r)=>s+lmTotalLinha(r),0).toFixed(2);
   if(!(alvo>0)||!rows.length||Math.abs(alvo-atual)<0.005){lmAtualizaTotal();return;}
   let acc=0;rows.forEach((r,k)=>{const novo=(k===rows.length-1)?+(alvo-acc).toFixed(2):+(lmTotalLinha(r)*alvo/atual).toFixed(2);acc=+(acc+novo).toFixed(2);
-    const q=+r.qtd||1;r.vun=novo/q;r.vunStr=fmtMoneyInput(r.vun);lmReescalaParcelas(r,novo);});
+    const q=+r.qtd||1;r.vun=novo/q;r.vunStr=fmtUnitInput(r.vun);lmReescalaParcelas(r,novo);});
   renderLmRows();toast((alvo>atual?'Acréscimo':'Desconto')+' de '+fmtBRL(Math.abs(alvo-atual))+' rateado entre '+rows.length+' item(ns)');}
 function lmReescalaParcelas(r,novoTotal){const L=r.parcelasLista||[];if(!L.length)return;const soma=L.reduce((s,x)=>s+(+x.valor||0),0);let acc=0;
   L.forEach((p,k)=>{const v=(k===L.length-1)?+(novoTotal-acc).toFixed(2):+(soma>0?(+p.valor||0)*novoTotal/soma:novoTotal/L.length).toFixed(2);acc=+(acc+v).toFixed(2);p.valor=v;});}
@@ -4439,7 +4443,7 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
       const emb=Math.round(+it.itens_por_embalagem||1);
       if(emb>1&&ins&&!insEmb(ins)&&ins.uni==='un'){qtd=+(qtd*emb).toFixed(3);nCx++;}   // caixa com 6 → 6 unidades, custo por unidade certo
       const vun=qtd>0?tot/qtd:tot;
-      return {data:dataNota,grupo,sub,desc:ins?ins.nome:raw,descOrig:raw,nf:nfNota,fromIA:true,fornecedor:forn,vun,vunStr:fmtMoneyInput(vun),qtd,forma:'',insumoId:ins?ins.id:'',insSugerido:(m&&!m.mesmoForn)?m.id:'',uni:normUni(it.unidade||'')};});
+      return {data:dataNota,grupo,sub,desc:ins?ins.nome:raw,descOrig:raw,nf:nfNota,fromIA:true,fornecedor:forn,vun,vunStr:fmtUnitInput(vun),qtd,forma:'',insumoId:ins?ins.id:'',insSugerido:(m&&!m.mesmoForn)?m.id:'',uni:normUni(it.unidade||'')};});
     const novas=lmAgrupar(lidas);
     const vazio=lancDraft.length===1&&!lancDraft[0].grupo&&!lancDraft[0].desc&&!lancDraft[0].vunStr;
     lancDraft=vazio?novas:lancDraft.concat(novas);
@@ -4466,7 +4470,7 @@ function notaItens(nfe,fornecedor){const k=nfKey(nfe);if(!k)return [];const f=(f
 function editNota(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)return;
   const itens=notaItens(l.nfe,l.fornecedor);if(!itens.length)return editLancamento(id);
   lancDraft=itens.map(x=>{const q=(x.qtd!=null&&+x.qtd>0)?+x.qtd:1;const vun=q?(x.valor||0)/q:(x.valor||0);
-    return Object.assign(lmBlank(),{_id:x.id,data:x.data,grupo:x.grupo,sub:x.sub||'',desc:x.descricao||'',descOrig:x.descricao||'',nf:x.nfe||'',fornecedor:x.fornecedor||'',vun,vunStr:fmtMoneyInput(vun),qtd:q,uni:x.uni||'',forma:x.forma||'',insumoId:x.insumoId||'',fromIA:!!x.insumoId,
+    return Object.assign(lmBlank(),{_id:x.id,data:x.data,grupo:x.grupo,sub:x.sub||'',desc:x.descricao||'',descOrig:x.descricao||'',nf:x.nfe||'',fornecedor:x.fornecedor||'',vun,vunStr:fmtUnitInput(vun),qtd:q,uni:x.uni||'',forma:x.forma||'',insumoId:x.insumoId||'',fromIA:!!x.insumoId,
       parcelasLista:(x.liquidacoes||[]).map(p=>({data:p.data,valor:+p.valor||0,pago:!!p.pago}))});});
   lmEdit={nf:l.nfe||'',forn:l.fornecedor||'',ids:itens.map(x=>x.id)};
   lancarModal(true);}
