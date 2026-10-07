@@ -4981,9 +4981,26 @@ function funcDel(i){
   const f=DB.fin.funcionarios[i];if(!f)return;
   const ym=curFolhaYM();
   window._delFunc={i,id:f.id,nome:f.nome||'funcionário',ym};
+  const formas=(DB.formasPagamento&&DB.formasPagamento.length?DB.formasPagamento:FORMAS_DEFAULT);const h=hojeISO();
   modal(`<div class="modal-head"><h3>Remover funcionário</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div style="font-size:13.5px;margin-bottom:6px"><b>${esc(f.nome||'—')}</b>${f.cargo?` · ${esc(f.cargo)}`:''}</div>
+    <div style="font-size:13.5px;margin-bottom:12px"><b>${esc(f.nome||'—')}</b>${f.cargo?` · ${esc(f.cargo)}`:''}</div>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px">
+      <label style="display:flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600;cursor:pointer"><input type="checkbox" id="rs_tem" checked onchange="$('#rs_campos').style.display=this.checked?'':'none'" style="width:16px;height:16px">Tem rescisão a pagar</label>
+      <div id="rs_campos" style="margin-top:10px">
+        <div class="grid-2">
+          <div class="field"><label>Valor total da rescisão</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="rs_valor" inputmode="numeric" value="0,00" oninput="moneyMask(this);rsPrevia()"></div></div>
+          <div class="field"><label>Data do desligamento <span class="hint">entra no DRE neste mês</span></label><input type="date" class="input" id="rs_deslig" value="${h}"></div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Forma de pagamento</label><select class="input" id="rs_forma">${formas.map(x=>`<option ${/pix/i.test(x)?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+          <div class="field"><label>Pagamento</label><select class="input" id="rs_parc" onchange="rsPrevia()">${[1,2,3,4,5,6,8,10,12].map(n=>`<option value="${n}">${n===1?'À vista':n+' parcelas mensais'}</option>`).join('')}</select></div>
+        </div>
+        <div class="field"><label>Data do pagamento <span class="hint">primeira parcela, se parcelado</span></label><input type="date" class="input" id="rs_data" value="${diasSoma(h,10)}" onchange="rsPrevia()"></div>
+        <div id="rs_prev" style="font-size:12px;color:var(--muted)"></div>
+        <div style="font-size:11.5px;color:var(--soft);margin-top:6px">Vira um lançamento em Encargos Sociais › Rescisões, com o pagamento no Fluxo de Caixa e no Contas a Pagar.</div>
+      </div>
+    </div>
     <div style="font-size:13px;color:var(--muted)">Como deseja remover?</div>
   </div>
   <div class="modal-foot" style="flex-wrap:wrap;gap:8px">
@@ -4991,21 +5008,38 @@ function funcDel(i){
     <button class="btn btn-ghost" onclick="funcDelAplicar('posteriores')">A partir de ${ymLabel(ym)}</button>
     <button class="btn btn-primary" onclick="funcDelAplicar('completo')" style="background:var(--red);border-color:var(--red)">Remover completamente</button>
   </div>`);
+  rsPrevia();
 }
+/* parcelas da rescisão: 1ª na data escolhida, as demais de mês em mês */
+function rsParcelas(total,data1,n){n=Math.max(1,+n||1);const out=[];const cada=+(total/n).toFixed(2);let acc=0;
+  for(let k=0;k<n;k++){const v=(k===n-1)?+(total-acc).toFixed(2):cada;acc=+(acc+v).toFixed(2);out.push({data:k?mesesSoma(data1,k):data1,valor:v,pago:false});}return out;}
+function rsPrevia(){const el=$('#rs_prev');if(!el)return;const v=moneyVal('rs_valor');const n=+(($('#rs_parc')||{}).value||1);const d=($('#rs_data')||{}).value||hojeISO();
+  if(!(v>0)){el.innerHTML='Informe o valor para ver as parcelas.';return;}
+  el.innerHTML=rsParcelas(v,d,n).map((p,k)=>`${n>1?(k+1)+'ª ':''}${fmtDataBR(p.data)}: <b>${fmtBRL(p.valor)}</b>`).join(' · ');}
+/* lança a rescisão (fica mesmo se o funcionário for removido por completo: é despesa real) */
+function rsLancar(d){const tem=$('#rs_tem')&&$('#rs_tem').checked;if(!tem)return true;const v=moneyVal('rs_valor');
+  if(!(v>0)){toast('Informe o valor da rescisão ou desmarque "Tem rescisão a pagar"');return false;}
+  const deslig=($('#rs_deslig')||{}).value||hojeISO(),data1=($('#rs_data')||{}).value||deslig,n=+(($('#rs_parc')||{}).value||1),forma=($('#rs_forma')||{}).value||'';
+  const grupo=(DB.categorias&&DB.categorias['Encargos Sociais'])?'Encargos Sociais':((DB.categorias&&DB.categorias['Mão-de-Obra'])?'Mão-de-Obra':'Encargos Sociais');
+  const cat=DB.categorias&&DB.categorias[grupo];if(cat){cat.subs=cat.subs||[];if(!cat.subs.includes('Rescisões'))cat.subs.push('Rescisões');}
+  DB.lancamentos=DB.lancamentos||[];
+  DB.lancamentos.push({id:uid(),data:deslig,grupo,sub:'Rescisões',descricao:'Rescisão · '+d.nome,valor:+v.toFixed(2),forma,fromRescisao:d.id,liquidacoes:rsParcelas(v,data1,n)});
+  window._rsMsg=' · rescisão de '+fmtBRL(v)+(n>1?' em '+n+' parcelas':' em '+fmtDataBR(data1))+' lançada';return true;}
 function funcDelAplicar(escopo){
   const d=window._delFunc;if(!d)return closeModal();
   const f=DB.fin.funcionarios[d.i];if(!f)return closeModal();
+  window._rsMsg='';if(!rsLancar(d))return;
   if(escopo==='posteriores'){
     f.ate=ymMinus1(d.ym);
     // limpa pagosMes e lançamentos de d.ym em diante
     if(f.pagosMes)Object.keys(f.pagosMes).forEach(k=>{if(k>=d.ym)delete f.pagosMes[k];});
     if(f.pagtos)Object.keys(f.pagtos).forEach(k=>{if(k>=d.ym)delete f.pagtos[k];});
     DB.lancamentos=(DB.lancamentos||[]).filter(l=>{if(!(l.fromFunc||'').startsWith('fn_'+d.id+'|'))return true;const lym=l.fromFunc.split('|')[1];return lym<d.ym;});
-    save();closeModal();viewFolha();toast('Encerrado a partir de '+ymLabel(d.ym));
+    save();closeModal();viewFolha();toast('Encerrado a partir de '+ymLabel(d.ym)+(window._rsMsg||''),5000);
   } else {
     funcRmAllLancs('fn_'+d.id);
     DB.fin.funcionarios.splice(d.i,1);
-    save();closeModal();viewFolha();toast('Funcionário removido');
+    save();closeModal();viewFolha();toast('Funcionário removido'+(window._rsMsg||''),5000);
   }
   window._delFunc=null;
 }
@@ -5170,7 +5204,7 @@ function finFolha(){
   return `<div class="card card-pad" style="max-width:1320px">
     <div class="section-head"><div><div class="ttl">Folha de pagamento</div><div class="desc">Controle mensal. Marque <b>Pago</b> para registrar o pagamento, com opção de lançar no DRE.</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="folhaYM=this.value;viewFinanceiro()">
+        <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="folhaYM=this.value;if(current==='folha')viewFolha();else viewFinanceiro()">
         <button class="btn btn-ghost btn-sm" onclick="funcCatsModal()">${icoEdit} Categorias</button>
         <button class="btn btn-ghost btn-sm" onclick="folhaCamposModal()" title="Horas extras, DSR, adicionais, descontos…">＋/− Campos extras</button>
         <button class="btn btn-primary btn-sm" onclick="funcEdit(null)">${icoPlus} Novo funcionário</button>
