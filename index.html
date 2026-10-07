@@ -2372,7 +2372,7 @@ function editInsumo(id){
     <div style="font-size:11.5px;color:var(--muted);margin:-6px 0 12px">Só produtos na categoria <b>CMV</b> entram na apuração do CMV. Limpeza, escritório e afins ficam em <b>Materiais</b>: continuam no controle de estoque, mas fora da conta.</div>
     <div class="grid-2">
       <div class="field"><label>Unidade</label><select class="input" id="i_uni" onchange="updUniLabels();updInsPreview()">${UNIDADES.map(u=>`<option value="${u}" ${u===i.uni?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
-      <div class="field"><label>Fornecedor <span class="hint">opcional · digite para cadastrar um novo</span></label><input class="input" id="i_forn" list="forn_dl" value="${esc(i.fornecedor||'')}" placeholder="Nome do fornecedor">${fornDatalist()}</div>
+      <div class="field"><label>Fornecedor <span class="hint">opcional · digite para cadastrar um novo</span>${i.id&&DB.insumos[i.id]?` <a onclick="estHistAbrir('${i.id}')" style="float:right;font-size:11px;color:var(--navy);cursor:pointer;font-weight:600" title="Todas as compras deste produto, de todos os fornecedores">histórico de compras ›</a>`:''}</label><input class="input" id="i_forn" list="forn_dl" value="${esc(i.fornecedor||'')}" placeholder="Nome do fornecedor">${fornDatalist()}</div>
     </div>
     <div id="pronto_block">
       ${embDatalist()}
@@ -3448,12 +3448,13 @@ function imprimirPreparado(id){
    CMV  = régua absoluta (dentro da meta de CMV dos Parâmetros) — enxerga custo;
    MC   = régua relativa (margem de contribuição acima da média ponderada do cardápio),
           que é o método clássico da engenharia de cardápio — enxerga quanto sobra em R$. */
-let engModo='cmv';
+let engModo='cmv', engCat='Todas';
+function engSetCat(c){engCat=c||'Todas';viewEngenharia();}
 function engSetModo(m){engModo=(m==='mc')?'mc':'cmv';viewEngenharia();}
-function classificar(modo){
+function classificar(modo,cat){
   modo=(modo||engModo)==='mc'?'mc':'cmv';
-  // só entra na Engenharia quem tem preço E vendas/mês preenchidas
-  const arr=fichasVendaveis().filter(f=>(f.precoVenda||0)>0&&(f.vendasMes||0)>0).map(f=>{const m=metricasFicha(f);return{f,m,pop:f.vendasMes||0,marg:m.mcBlend,cmv:m.cmvBlend};});
+  // só entra na Engenharia quem tem preço E vendas/mês preenchidas; com categoria, a comparação (média de vendas, MC média) é só entre os itens dela
+  const arr=fichasVendaveis().filter(f=>(!cat||cat==='Todas'||(f.cat||'Pratos')===cat)&&(f.precoVenda||0)>0&&(f.vendasMes||0)>0).map(f=>{const m=metricasFicha(f);return{f,m,pop:f.vendasMes||0,marg:m.mcBlend,cmv:m.cmvBlend};});
   if(!arr.length)return [];
   const avgPop=arr.reduce((s,x)=>s+x.pop,0)/arr.length;
   const alvoCmv=cmvAlvoRef();
@@ -3475,8 +3476,12 @@ const ENG_QUAD_CMV={Potenciais:'baixa saída · CMV baixo',Estrelas:'alta saída
 const ENG_QUAD_MC={Potenciais:'baixa saída · margem alta',Estrelas:'alta saída · margem alta','Críticos':'baixa saída · margem baixa',Populares:'alta saída · margem baixa'};
 function engTag(c){return c==='Estrelas'?'tag-green':c==='Populares'?'tag-navy':c==='Potenciais'?'tag-amber':'tag-red';}
 function viewEngenharia(){
-  const arr=classificar();
-  if(!arr.length){$('#view').innerHTML=`<div class="pill-filter" style="margin-bottom:18px">${[['cmv','CMV'],['mc','Margem de contribuição']].map(([k,l])=>`<button class="${engModo===k?'on':''}" onclick="engSetModo('${k}')">${l}</button>`).join('')}</div><div class="card">${emptyState('Sem dados','Cadastre o preço e a média de vendas/mês nas fichas técnicas para entrar na análise.','go(&#39;fichas&#39;)')}</div>`;return;}
+  const engCats=['Todas',...ordPt([...new Set(fichasVendaveis().filter(f=>(f.precoVenda||0)>0&&(f.vendasMes||0)>0).map(f=>f.cat||'Pratos'))])];
+  if(!engCats.includes(engCat))engCat='Todas';
+  const engCatsHTML=engCats.length>2?`<span style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700">Categoria</span>
+    <div class="pill-filter" style="margin:0">${engCats.map(c=>`<button class="${engCat===c?'on':''}" title="${c==='Todas'?'Todos os itens do cardápio':'Compara só os itens de '+esc(c)+' entre si'}" onclick="engSetCat('${esc(c).replace(/'/g,'&#39;')}')">${esc(c)}</button>`).join('')}</div>`:'';
+  const arr=classificar(engModo,engCat);
+  if(!arr.length){$('#view').innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px"><div class="pill-filter" style="margin:0">${[['cmv','CMV'],['mc','Margem de contribuição']].map(([k,l])=>`<button class="${engModo===k?'on':''}" onclick="engSetModo('${k}')">${l}</button>`).join('')}</div>${engCatsHTML}</div><div class="card">${emptyState('Sem dados','Cadastre o preço e a média de vendas/mês nas fichas técnicas para entrar na análise.','go(&#39;fichas&#39;)')}</div>`;return;}
   const porMC=engModo==='mc';
   const avgPop=arr[0].avgPop,alvo=cmvAlvoRef(),mcMed=arr[0].mcMedio;
   const val=x=>porMC?x.marg:x.cmv;                 // métrica do eixo vertical
@@ -3504,7 +3509,7 @@ function viewEngenharia(){
       <div style="font-family:'Fraunces',serif;font-size:24px;font-weight:600;line-height:1.1">Engenharia de Cardápio</div>
       <div style="font-size:13px;color:var(--muted);margin-top:4px;max-width:600px">Cada item posicionado por <b>popularidade</b> × <b>${porMC?'margem de contribuição':'CMV'}</b>. A linha do meio do gráfico é ${porMC?`a <b>MC média do cardápio (${fmtBRL(corte)})</b>`:`a sua <b>meta de CMV (${fmtPct(corte)})</b>`}; acima dela = eficiente.</div>
     </div>
-    <div style="font-size:11.5px;color:var(--soft);font-weight:600;letter-spacing:.3px">${arr.length} ${arr.length===1?'item analisado':'itens analisados'}</div>
+    <div style="font-size:11.5px;color:var(--soft);font-weight:600;letter-spacing:.3px">${arr.length} ${arr.length===1?'item analisado':'itens analisados'}${engCat!=='Todas'?' · só <span style="color:var(--navy)">'+esc(engCat)+'</span>':''}</div>
   </div>
 
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px">
@@ -3512,6 +3517,7 @@ function viewEngenharia(){
     <div class="pill-filter" style="margin:0">${[['cmv','CMV','% do preço que vira custo'],['mc','Margem de contribuição','R$ que sobram por prato']].map(([k,l,t])=>`<button class="${engModo===k?'on':''}" title="${t}" onclick="engSetModo('${k}')">${l}</button>`).join('')}</div>
     <span style="font-size:11.5px;color:var(--soft)">${porMC?'Corte: MC média ponderada pelas vendas':'Corte: meta de CMV dos Parâmetros'}</span>
   </div>
+  ${engCatsHTML?`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-8px 0 18px">${engCatsHTML}<span style="font-size:11.5px;color:var(--soft)">${engCat==='Todas'?'Escolha uma categoria para comparar só os itens dela (ex.: drinks com drinks)':'Popularidade média e corte calculados só entre os itens de '+esc(engCat)}</span></div>`:''}
 
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:14px;margin-bottom:18px">
     ${ORDEM.map(c=>`<div class="eng-stat" style="--c:${colorOf(c)}">
@@ -4321,7 +4327,8 @@ function lmParcGerar(i,n,intervalo){const r=lmRow(i);if(!r)return; // 'M' = mesm
   r.parcelasLista=lmGerarLista(lmTotalLinha(r),r.data||hojeISO(),n,intervalo);lmParcRender(i);}
 function lmParcGerarSel(i){const n=parseInt(($('#pc_n')||{}).value)||0;
   const iv=(($('#pc_iv')||{}).value)||'M';
-  if(!n)return toast('Escolha em quantas vezes');
+  if(!n||n<1)return toast('Informe em quantas vezes (ex.: 48 para um empréstimo)');
+  if(n>240)return toast('No máximo 240 parcelas');
   lmParcGerar(i,n,iv==='M'?'M':parseInt(iv)||30);}
 function lmParcAdd(i){const r=lmRow(i);const ult=r.parcelasLista[r.parcelasLista.length-1];
   r.parcelasLista.push({data:diasSoma((ult&&ult.data)||r.data||hojeISO(),30),valor:0});lmParcRender(i);}
@@ -4340,14 +4347,14 @@ function lmParcRender(i){const r=lmRow(i);const total=lmTotalLinha(r);
     </div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:7px">Gerar as parcelas a partir de ${fmtDataBR(r.data||hojeISO())}:</div>
     <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-      <select class="input" id="pc_n" style="width:118px;padding:6px 8px"><option value="">Parcelas…</option>${Array.from({length:12},(_,k)=>k+1).map(n=>`<option value="${n}" ${lista.length===n?'selected':''}>${n}x</option>`).join('')}</select>
-      <span style="font-size:12px;color:var(--soft)">a cada</span>
+      <input class="input" id="pc_n" type="number" min="1" max="240" step="1" inputmode="numeric" placeholder="Qtd" value="${lista.length||''}" style="width:84px;padding:6px 8px;text-align:center" title="Quantas parcelas (qualquer quantidade, ex.: 48)" onkeydown="if(event.key==='Enter')lmParcGerarSel(${i})">
+      <span style="font-size:12px;color:var(--soft)">x a cada</span>
       <select class="input" id="pc_iv" style="width:104px;padding:6px 8px">${[['M','1 mês'],[30,'30 dias'],[15,'15 dias'],[7,'7 dias'],[14,'14 dias'],[45,'45 dias'],[60,'60 dias']].map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select>
       <button class="btn btn-primary btn-sm" onclick="lmParcGerarSel(${i})" style="padding:5px 11px;font-size:11.5px">Gerar</button>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
       <span style="font-size:11.5px;color:var(--soft)">Atalhos:</span>
-      ${[[2,'30','2x 30/60'],[3,'30','3x 30/60/90'],[3,'15','3x 15/30/45'],[4,'M','4x mensal'],[6,'M','6x mensal']].map(([n,iv,l])=>`<button class="btn btn-ghost btn-sm" onclick="lmParcGerar(${i},${n},'${iv}')" style="padding:4px 9px;font-size:11.5px">${l}</button>`).join('')}
+      ${[[2,'30','2x 30/60'],[3,'30','3x 30/60/90'],[3,'15','3x 15/30/45'],[4,'M','4x mensal'],[6,'M','6x mensal'],[12,'M','12x mensal']].map(([n,iv,l])=>`<button class="btn btn-ghost btn-sm" onclick="lmParcGerar(${i},${n},'${iv}')" style="padding:4px 9px;font-size:11.5px">${l}</button>`).join('')}
       <button class="btn btn-ghost btn-sm" onclick="lmParcLimpar(${i})" style="padding:4px 9px;font-size:11.5px;color:var(--red)">à vista</button>
     </div>
     ${lista.length?`<div style="display:grid;grid-template-columns:34px 1fr 130px 34px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 5px"><span>#</span><span>Vencimento</span><span>Valor</span><span></span></div>`:`<div style="font-size:13px;color:var(--muted);padding:8px 0">Sem parcelas: a linha entra no fluxo de caixa na data do lançamento (à vista).</div>`}
@@ -5290,8 +5297,8 @@ function finContas(key){
       </div>`;}).join('')}
     </div>`;
   return `<div class="card card-pad" style="max-width:1220px">
-    <div class="section-head"><div><div class="ttl">${isPagar?'Contas a Pagar':'Contas a Receber'}</div><div class="desc">Previsão do que ainda ${isPagar?'sai':'entra'}. Dar baixa registra o dinheiro no Fluxo de Caixa, sem lançar de novo no DRE.</div></div>
-      <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()"></div>
+    <div class="section-head" style="flex-wrap:wrap;gap:10px"><div><div class="ttl">${isPagar?'Contas a Pagar':'Contas a Receber'}</div><div class="desc">Previsão do que ainda ${isPagar?'sai':'entra'}. Dar baixa registra o dinheiro no Fluxo de Caixa, sem lançar de novo no DRE.</div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${isPagar?`<button class="btn btn-ghost btn-sm" onclick="cpImprimirModal()" title="Lista das contas de um dia ou período para imprimir ou salvar em PDF">🖨️ Imprimir pagamentos</button>`:''}<input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()"></div></div>
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <div class="dash-pill"><span>Total do mês</span><b>${fmtBRL(total+pAberto+pFeito)}</b></div>
       <div class="dash-pill"><span>${isPagar?'A pagar (em aberto)':'A receber (em aberto)'}</span><b style="color:${isPagar?'var(--red)':'var(--amber)'}">${fmtBRL(aberto+pAberto)}</b></div>
@@ -5307,6 +5314,58 @@ function finContas(key){
   </div>`;
 }
 function pad2(n){return String(n).padStart(2,'0');}
+/* ===== Impressão dos pagamentos de um dia ou período (parcelas de lançamentos + contas avulsas) ===== */
+let cpImp={de:'',ate:'',modo:'todas'};
+function cpLinhasPeriodo(de,ate,modo){const out=[];
+  const parc=[];(DB.lancamentos||[]).forEach(l=>{if(!Array.isArray(l.liquidacoes)||!l.liquidacoes.length||grupoTipo(l.grupo)==='receita')return;
+    l.liquidacoes.forEach((x,idx)=>{if(x&&x.data&&x.data>=de&&x.data<=ate)parc.push({lanc:l,idx,liq:x});});});
+  liqAgrupar(parc).forEach(g=>{const ls=g.itens.map(x=>x.lanc);const l0=ls[0];
+    const descs=[...new Set(ls.map(l=>(l.descricao||'').trim()).filter(Boolean))];
+    out.push({data:g.data,forn:(l0.fornecedor||'').trim(),desc:ls.length>1?(ls.length+' itens da nota: '+descs.slice(0,3).join(', ')+(descs.length>3?'…':'')):(l0.descricao||''),nf:(l0.nfe||'').trim(),parcela:g.n>1?((g.idx+1)+'/'+g.n):'única',forma:(ls.map(l=>l.forma).find(Boolean)||''),valor:g.valor,pago:g.pago,cat:g.cat,origem:'parcela'});});
+  (DB.fin.contasPagar||[]).forEach(c=>{if(!c.vencimento||c.vencimento<de||c.vencimento>ate||grupoTipo(c.grupo)==='receita')return;
+    out.push({data:c.vencimento,forn:'',desc:c.descricao||'',nf:'',parcela:'',forma:c.forma||'',valor:+c.valor||0,pago:!!c.pago,cat:(c.grupo||'')+(c.sub?' · '+c.sub:''),origem:'avulsa'});});
+  return out.filter(x=>modo==='abertas'?!x.pago:modo==='pagas'?x.pago:true).sort((a,b)=>a.data.localeCompare(b.data)||(a.forn||a.desc).localeCompare(b.forn||b.desc,'pt'));}
+function cpImprimirModal(){const h=hojeISO();cpImp.de=cpImp.de||h;cpImp.ate=cpImp.ate||h;
+  modal(`<div class="modal-head"><h3>Imprimir pagamentos</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Lista das contas com vencimento no dia ou período: fornecedor, descrição, nota, parcela, forma de pagamento e total. Para salvar em PDF, escolha "Salvar como PDF" na tela de impressão.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${[['Hoje',0,0],['Amanhã',1,1],['Próximos 7 dias',0,6],['Este mês','M','M']].map(([l,a,b])=>`<button class="btn btn-ghost btn-sm" onclick="cpImpAtalho('${a}','${b}')">${l}</button>`).join('')}</div>
+    <div class="grid-2">
+      <div class="field"><label>De</label><input type="date" class="input" id="cp_de" value="${cpImp.de}"></div>
+      <div class="field"><label>Até</label><input type="date" class="input" id="cp_ate" value="${cpImp.ate}"></div>
+    </div>
+    <div class="field"><label>Mostrar</label><select class="input" id="cp_modo">${[['todas','Todas as contas do período'],['abertas','Só em aberto (ainda não pagas)'],['pagas','Só as já pagas']].map(([k,l])=>`<option value="${k}" ${cpImp.modo===k?'selected':''}>${l}</option>`).join('')}</select></div>
+    <div id="cp_prev" style="font-size:12.5px;color:var(--muted)"></div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="cpImprimir()">🖨️ Imprimir / PDF</button></div>`);
+  ['cp_de','cp_ate','cp_modo'].forEach(id=>{const el=$('#'+id);if(el)el.addEventListener('change',cpImpPrevia);});cpImpPrevia();}
+function cpImpAtalho(a,b){const h=hojeISO();let de,ate;if(a==='M'){de=h.slice(0,7)+'-01';const d=new Date(h.slice(0,4),+h.slice(5,7),0);ate=h.slice(0,7)+'-'+pad2(d.getDate());}else{de=diasSoma(h,+a);ate=diasSoma(h,+b);}
+  $('#cp_de').value=de;$('#cp_ate').value=ate;cpImpPrevia();}
+function cpImpLer(){cpImp.de=$('#cp_de').value||hojeISO();cpImp.ate=$('#cp_ate').value||cpImp.de;if(cpImp.ate<cpImp.de)cpImp.ate=cpImp.de;cpImp.modo=$('#cp_modo').value||'todas';return cpImp;}
+function cpImpPrevia(){const c=cpImpLer();const ls=cpLinhasPeriodo(c.de,c.ate,c.modo);const el=$('#cp_prev');if(!el)return;
+  const tot=ls.reduce((s,x)=>s+x.valor,0),ab=ls.filter(x=>!x.pago).reduce((s,x)=>s+x.valor,0);
+  el.innerHTML=ls.length?`<b>${ls.length}</b> conta${ls.length>1?'s':''} · total <b>${fmtBRL(tot)}</b>${c.modo==='todas'?' · em aberto <b style="color:var(--red)">'+fmtBRL(ab)+'</b>':''}`:'Nenhuma conta nesse período com esse filtro.';}
+function cpImprimir(){const c=cpImpLer();const ls=cpLinhasPeriodo(c.de,c.ate,c.modo);if(!ls.length)return toast('Nenhuma conta nesse período');
+  const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';const umDia=c.de===c.ate;
+  const titulo=umDia?'Pagamentos do dia '+fmtDataBR(c.de):'Pagamentos de '+fmtDataBR(c.de)+' a '+fmtDataBR(c.ate);
+  const tot=ls.reduce((s,x)=>s+x.valor,0),ab=ls.filter(x=>!x.pago).reduce((s,x)=>s+x.valor,0),pg=tot-ab;
+  const td=(t,st)=>`<td style="${st||''}">${t}</td>`;let rows='',dia=null,sub=0;
+  const fechaDia=()=>{if(!umDia&&dia!=null)rows+=`<tr><td colspan="6" style="text-align:right;font-weight:700;background:#eef1f7">Subtotal ${fmtDataBR(dia)}</td><td style="text-align:right;font-weight:700;background:#eef1f7">${fmtBRL(sub)}</td><td style="background:#eef1f7"></td></tr>`;sub=0;};
+  ls.forEach(x=>{if(x.data!==dia){fechaDia();dia=x.data;}sub+=x.valor;
+    rows+=`<tr>${td(fmtDataBR(x.data),'white-space:nowrap')}${td(esc(x.forn)||'<span style="color:#888">—</span>')}${td(esc(x.desc)+(x.cat?'<div style="font-size:8.5px;color:#777">'+esc(x.cat)+'</div>':''))}${td(esc(x.nf)||'—','white-space:nowrap')}${td(x.parcela||'—','text-align:center;white-space:nowrap')}${td(esc(x.forma)||'—')}${td(fmtBRL(x.valor),'text-align:right;font-weight:700;white-space:nowrap')}${td(x.pago?'✓ pago':'<span style="display:inline-block;width:11px;height:11px;border:1px solid #777;border-radius:2px;vertical-align:middle"></span>','text-align:center;white-space:nowrap;font-size:9.5px')}</tr>`;});
+  fechaDia();
+  let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
+  pa.innerHTML=`<div class="dp">
+    <div class="dp-bar"><div><div class="dp-t">${titulo}</div><div class="dp-sub">CONTAS A PAGAR${c.modo==='abertas'?' · SÓ EM ABERTO':c.modo==='pagas'?' · SÓ PAGAS':''}</div></div><div class="dp-rest">${esc(rest)}</div></div>
+    <div class="dp-gold"></div>
+    <div class="dp-meta"><span><b>${ls.length}</b> conta${ls.length>1?'s':''}</span><span><b>Total:</b> ${fmtBRL(tot)}</span>${c.modo==='todas'?`<span><b>Em aberto:</b> ${fmtBRL(ab)}</span><span><b>Já pago:</b> ${fmtBRL(pg)}</span>`:''}<span style="margin-left:auto">Gerado em ${fmtDataBR(hojeISO())} ${new Date().toTimeString().slice(0,5)}</span></div>
+    <table class="dp-tb"><thead><tr><th style="width:62px">Vencimento</th><th style="width:18%">Fornecedor</th><th>Descrição</th><th style="width:58px">NF nº</th><th style="width:48px;text-align:center">Parcela</th><th style="width:13%">Forma</th><th style="width:78px;text-align:right">Valor</th><th style="width:40px;text-align:center">Pago</th></tr></thead>
+    <tbody>${rows}<tr><td colspan="6" style="text-align:right;font-weight:800;background:#1D3573;color:#fff;border-color:#1D3573">TOTAL</td><td style="text-align:right;font-weight:800;background:#1D3573;color:#fff;border-color:#1D3573">${fmtBRL(tot)}</td><td style="background:#1D3573;border-color:#1D3573"></td></tr></tbody></table>
+    <div class="dp-note">Parcelas vêm das compras lançadas (já no DRE); contas avulsas são compromissos ainda não lançados. Marque a caixa ao pagar e dê baixa no Flow.</div>
+  </div>`;
+  closeModal();document.body.classList.add('print-desp');
+  const fim=()=>{document.body.classList.remove('print-desp');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
+  window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);}
 function gerarRecorrentesMes(ym){
   if(!ym)return false;DB.fin.contasPagar=DB.fin.contasPagar||[];DB.fin.recGerados=DB.fin.recGerados||{};
   const last=new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate();
@@ -6362,12 +6421,14 @@ function viewEstoque(){
   const totalCompras=comprarList.reduce((s,x)=>s+x.totalPrevisto,0);
   $('#topActions').innerHTML = estoqueTab==='compras'
     ? `<button class="btn btn-gold no-print" onclick="window.print()">🖨️ Imprimir lista</button>`
+    : estoqueTab==='historico' ? `<button class="btn btn-gold no-print" onclick="window.print()">🖨️ Imprimir / PDF</button>`
     : estoqueTab==='contar' ? `<button class="btn btn-primary no-print" onclick="estContagemNova()">${icoPlus} Nova contagem</button>`
     : estoqueTab==='mov' ? `<button class="btn btn-primary no-print" onclick="estMovModal('saida')">${icoPlus} Nova movimentação</button>`
     : estoqueTab==='vendas' ? ''
     : estoqueTab==='producao' ? (estSubprodutos().length?`<button class="btn btn-primary no-print" onclick="estProducaoModal()">${icoPlus} Registrar produção</button>`:'')
     : estoqueTab==='requisicoes' ? (estMultiArm()&&!estReqSel?`<button class="btn btn-primary no-print" onclick="estReqNova()">${icoPlus} Nova requisição</button>`:'')
     : `<button class="btn btn-primary no-print" onclick="estMovModal('saida')">${icoPlus} Movimentação</button>${(estMultiArm()||estTransfEntreUnidades())?`<button class="btn btn-ghost no-print" onclick="estTransfModal('',{})">⇄ Transferir</button>`:''}<button class="btn btn-ghost no-print" onclick="estContagemNova()">📋 Contar</button><button class="btn btn-ghost no-print" onclick="lancarCmvDoEstoque()">↗ Registrar no CMV</button>`;
+  if(estoqueTab==='historico'){$('#view').innerHTML=estHistHTML();return;}
   if(estoqueTab==='producao'){$('#view').innerHTML=estProducaoHTML();return;}
   if(estoqueTab==='requisicoes'){$('#view').innerHTML=estRequisicoesHTML();return;}
   if(estoqueTab==='mov'){$('#view').innerHTML=estMovHTML();return;}
@@ -6602,7 +6663,68 @@ function pdvProcessarPendentes(silencioso){const pend=pdvPendentes();if(!pend.le
   return baixas;}
 
 /* ----- UI: abas ----- */
-const EST_ABAS=[['contagem','Posição'],['mov','Movimentações'],['contar','Contagem física'],['producao','Produção'],['requisicoes','Requisições'],['vendas','Baixa por vendas'],['compras','Lista de Compras']];
+const EST_ABAS=[['contagem','Posição'],['mov','Movimentações'],['contar','Contagem física'],['producao','Produção'],['requisicoes','Requisições'],['vendas','Baixa por vendas'],['compras','Lista de Compras'],['historico','Histórico de compras']];
+/* ===== Histórico de compras por produto e fornecedor (vem dos lançamentos vinculados a produto) ===== */
+let estHist={de:'',ate:'',prod:'',forn:'',por:'produto'};
+function estHistPeriodo(){const ate=estHist.ate||hojeISO();const de=estHist.de||diasSoma(hojeISO(),-90);return {de,ate};}
+function estHistLinhas(){const {de,ate}=estHistPeriodo();const pq=lmNorm(estHist.prod||'');const fq=(estHist.forn||'').trim().toLowerCase();
+  const out=[];(DB.lancamentos||[]).forEach(l=>{if(!l.insumoId||!l.data||l.data<de||l.data>ate||grupoTipo(l.grupo)==='receita'||l.autoTaxa)return;
+    const ins=DB.insumos[l.insumoId];if(!ins)return;
+    if(pq&&lmNorm(ins.nome).indexOf(pq)<0)return;
+    const forn=(l.fornecedor||'').trim();if(fq&&forn.toLowerCase()!==fq)return;
+    const qtd=+l.qtd>0?+l.qtd:1;const valor=+l.valor||0;
+    out.push({l,ins,data:l.data,forn:forn||'(sem fornecedor)',nf:l.nfe||'',qtd,uni:l.uni||ins.uni||'un',vun:qtd?valor/qtd:valor,valor});});
+  return out.sort((a,b)=>b.data.localeCompare(a.data)||(b.l.id||'').localeCompare(a.l.id||''));}
+function estHistPreco(v){return 'R$ '+fmtN(+v||0,(v>0&&v<1)?4:2);}
+function estHistAbrir(insId){const ins=DB.insumos[insId];estHist.prod=ins?ins.nome:'';estHist.forn='';estHist.de='';estHist.ate='';estHist.por='produto';closeModal();estoqueTab='historico';go('estoque');}
+function estHistHTML(){const {de,ate}=estHistPeriodo();const rows=estHistLinhas();const porForn=estHist.por==='fornecedor';
+  const fornsTodos=ordPt([...new Set((DB.lancamentos||[]).filter(l=>l.insumoId&&(l.fornecedor||'').trim()).map(l=>l.fornecedor.trim()))]);
+  const total=rows.reduce((s,x)=>s+x.valor,0);const nProd=new Set(rows.map(x=>x.ins.id)).size,nForn=new Set(rows.map(x=>x.forn)).size;
+  const semVinc=(DB.lancamentos||[]).filter(l=>!l.insumoId&&l.grupo==='CMV'&&l.data>=de&&l.data<=ate&&!l.autoTaxa).length;
+  // agrupa
+  const grupos=new Map();rows.forEach(x=>{const k=porForn?x.forn:x.ins.id;let g=grupos.get(k);if(!g){g={k,nome:porForn?x.forn:x.ins.nome,ins:x.ins,itens:[],total:0};grupos.set(k,g);}g.itens.push(x);g.total+=x.valor;});
+  const lista=[...grupos.values()].sort((a,b)=>a.nome.localeCompare(b.nome,'pt',{sensitivity:'base'}));
+  const trend=(x,arr)=>{ // compara com a compra anterior do MESMO produto (arr em ordem decrescente de data)
+    const prev=arr.find(y=>y!==x&&y.ins.id===x.ins.id&&(y.data<x.data||(y.data===x.data&&arr.indexOf(y)>arr.indexOf(x))));
+    if(!prev||!(prev.vun>0))return '';const d=(x.vun-prev.vun)/prev.vun*100;if(Math.abs(d)<0.5)return `<span style="color:var(--soft);font-size:10.5px" title="igual à compra anterior">=</span>`;
+    return `<span style="color:${d>0?'var(--red)':'var(--green)'};font-size:10.5px;font-weight:700" title="${d>0?'subiu':'caiu'} ${fmtN(Math.abs(d),1)}% em relação à compra anterior (${esc(prev.forn)}, ${fmtDataBR(prev.data)})">${d>0?'▲':'▼'} ${fmtN(Math.abs(d),1)}%</span>`;};
+  const resumoProd=g=>{const its=g.itens;const ult=its[0];const menor=its.slice().sort((a,b)=>a.vun-b.vun)[0];const q=its.reduce((s,x)=>s+x.qtd,0);const med=q?its.reduce((s,x)=>s+x.valor,0)/q:0;
+    const forns=[...new Set(its.map(x=>x.forn))];
+    return `<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:3px">
+      <span><b>${its.length}</b> compra${its.length>1?'s':''} · <b>${fmtBRL(g.total)}</b></span>
+      <span>${forns.length} fornecedor${forns.length>1?'es':''}${forns.length>1?' <span style="color:var(--gold);font-weight:600" title="'+esc(forns.join(', '))+'">(vários)</span>':''}</span>
+      <span>último <b>${estHistPreco(ult.vun)}/${esc(ult.uni)}</b> · ${esc(ult.forn)}</span>
+      ${its.length>1?`<span>menor <b style="color:var(--green)">${estHistPreco(menor.vun)}/${esc(menor.uni)}</b> · ${esc(menor.forn)} em ${fmtDataBR(menor.data)}</span><span>médio <b>${estHistPreco(med)}/${esc(ult.uni)}</b></span>`:''}
+    </div>`;};
+  const resumoForn=g=>{const nP=new Set(g.itens.map(x=>x.ins.id)).size;return `<div style="font-size:11.5px;color:var(--muted);margin-top:3px"><b>${g.itens.length}</b> compra${g.itens.length>1?'s':''} · <b>${nP}</b> produto${nP>1?'s':''} · <b>${fmtBRL(g.total)}</b></div>`;};
+  const tabela=g=>`<div class="scroll-x"><table style="margin-top:8px"><thead><tr><th>Data</th><th>${porForn?'Produto':'Fornecedor'}</th><th>NF nº</th><th class="num">Qtd</th><th class="num">Preço unit.</th><th class="num">Total</th><th class="no-print"></th></tr></thead><tbody>
+    ${g.itens.map(x=>`<tr><td style="white-space:nowrap">${fmtDataBR(x.data)}</td><td>${porForn?`<b>${esc(x.ins.nome)}</b>`:esc(x.forn)}${!porForn&&x.forn!==(x.ins.fornecedor||'').trim()&&(x.ins.fornecedor||'').trim()?'':''}</td><td style="color:var(--muted)">${esc(x.nf)||'—'}</td><td class="num">${estQ(x.qtd,x.uni)}</td><td class="num"><b>${estHistPreco(x.vun)}</b><span style="color:var(--soft);font-size:11px">/${esc(x.uni)}</span> ${trend(x,rows)}</td><td class="num">${fmtBRL(x.valor)}</td><td class="no-print"><button class="icon-btn" title="Abrir lançamento" onclick="editLancamento('${x.l.id}')">${icoEdit}</button></td></tr>`).join('')}
+  </tbody></table></div>`;
+  return `${estTabsHTML()}
+  <div class="card card-pad no-print" style="margin-bottom:14px">
+    <div class="section-head" style="margin-bottom:10px"><div><div class="ttl">Histórico de compras</div><div class="desc">Todas as compras lançadas com produto vinculado, por produto ou por fornecedor. Preço unitário na unidade em que foi comprado.</div></div></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div class="field" style="margin:0"><label>De</label><input type="date" class="input" value="${de}" onchange="estHist.de=this.value;viewEstoque()"></div>
+      <div class="field" style="margin:0"><label>Até</label><input type="date" class="input" value="${ate}" onchange="estHist.ate=this.value;viewEstoque()"></div>
+      <div class="field" style="margin:0;flex:1 1 200px"><label>Produto</label><input class="input" list="estHistProdDL" value="${esc(estHist.prod)}" placeholder="Todos" onchange="estHist.prod=this.value;viewEstoque()">${estProdDatalist('estHistProdDL')}</div>
+      <div class="field" style="margin:0;flex:1 1 180px"><label>Fornecedor</label><select class="input" onchange="estHist.forn=this.value;viewEstoque()"><option value="">Todos</option>${fornsTodos.map(f=>`<option ${f===estHist.forn?'selected':''}>${esc(f)}</option>`).join('')}</select></div>
+      <div class="field" style="margin:0"><label>Agrupar por</label><div class="pill-filter" style="margin:0">${[['produto','Produto'],['fornecedor','Fornecedor']].map(([k,l])=>`<button class="${estHist.por===k?'on':''}" onclick="estHist.por='${k}';viewEstoque()">${l}</button>`).join('')}</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${[['Hoje',0],['30 dias',30],['90 dias',90],['12 meses',365]].map(([l,d])=>`<button class="btn btn-ghost btn-sm" onclick="estHist.de='${diasSoma(hojeISO(),-d)}';estHist.ate='';viewEstoque()">${l}</button>`).join('')}<button class="btn btn-ghost btn-sm" onclick="estHist={de:'',ate:'',prod:'',forn:'',por:'produto'};viewEstoque()">Limpar</button></div>
+    </div>
+  </div>
+  <div class="kpi-grid kpi4">
+    <div class="kpi"><div class="ic ic-navy">${ico('cash')}</div><div class="k-lbl">Compras no período</div><div class="k-val">${rows.length}</div><div class="k-sub" style="color:var(--soft)">${fmtDataBR(de)} a ${fmtDataBR(ate)}</div></div>
+    <div class="kpi"><div class="ic ic-gold">${ico('cash')}</div><div class="k-lbl">Total comprado</div><div class="k-val">${fmtBRL(total)}</div><div class="k-sub" style="color:var(--soft)">só lançamentos com produto vinculado</div></div>
+    <div class="kpi"><div class="ic ic-green">${ico('cmv')}</div><div class="k-lbl">Produtos</div><div class="k-val">${nProd}</div><div class="k-sub" style="color:var(--soft)">com compra no período</div></div>
+    <div class="kpi"><div class="ic ic-navy">${ico('mc')}</div><div class="k-lbl">Fornecedores</div><div class="k-val">${nForn}</div><div class="k-sub" style="color:var(--soft)">${semVinc?'<span style="color:var(--amber)">'+semVinc+' lançamento(s) de CMV sem produto vinculado ficam de fora</span>':'todos os lançamentos de CMV têm produto'}</div></div>
+  </div>
+  ${lista.length?lista.map(g=>`<div class="card card-pad" style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">
+      <div><div style="font-weight:700;font-size:14px">${esc(g.nome)}${!porForn&&g.ins?` <span class="tag ${ehInsumoCMV(g.ins)?'tag-navy':'tag-gray'}" style="font-size:10px;padding:0 7px">${esc(g.ins.grupo||'')}${g.ins.sub?' · '+esc(g.ins.sub):''}</span>`:''}</div>${porForn?resumoForn(g):resumoProd(g)}</div>
+      ${!porForn&&g.ins?`<button class="btn btn-ghost btn-sm no-print" onclick="editInsumo('${g.ins.id}')">Abrir produto</button>`:''}
+    </div>
+    ${tabela(g)}
+  </div>`).join(''):`<div class="card">${emptyState('Nenhuma compra no período','As compras aparecem aqui quando o lançamento tem um produto vinculado (leitor de notas ou lançamento manual com produto).','lancarModal()')}</div>`}`;}
 function estTabsHTML(){return `<div class="pill-filter no-print" style="margin-bottom:16px">${EST_ABAS.map(([k,l])=>`<button class="${estoqueTab===k?'on':''}" onclick="estoqueTab='${k}';viewEstoque()">${l}</button>`).join('')}</div>`;}
 function estTipoTag(t){const T=EST_TIPOS[t]||['?','tag-gray'];return `<span class="tag ${T[1]}">${T[0]}</span>`;}
 function estProdDatalist(id){return `<datalist id="${id}">${Object.values(DB.insumos).filter(estEstocavel).sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>`<option value="${esc(i.nome)}"></option>`).join('')}</datalist>`;}
