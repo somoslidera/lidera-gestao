@@ -6363,11 +6363,11 @@ function viewEstoque(){
   $('#topActions').innerHTML = estoqueTab==='compras'
     ? `<button class="btn btn-gold no-print" onclick="window.print()">🖨️ Imprimir lista</button>`
     : estoqueTab==='contar' ? `<button class="btn btn-primary no-print" onclick="estContagemNova()">${icoPlus} Nova contagem</button>`
-    : estoqueTab==='mov' ? `<button class="btn btn-primary no-print" onclick="estMovModal('entrada')">${icoPlus} Nova movimentação</button>`
+    : estoqueTab==='mov' ? `<button class="btn btn-primary no-print" onclick="estMovModal('saida')">${icoPlus} Nova movimentação</button>`
     : estoqueTab==='vendas' ? ''
     : estoqueTab==='producao' ? (estSubprodutos().length?`<button class="btn btn-primary no-print" onclick="estProducaoModal()">${icoPlus} Registrar produção</button>`:'')
     : estoqueTab==='requisicoes' ? (estMultiArm()&&!estReqSel?`<button class="btn btn-primary no-print" onclick="estReqNova()">${icoPlus} Nova requisição</button>`:'')
-    : `<button class="btn btn-primary no-print" onclick="estMovModal('entrada')">${icoPlus} Movimentação</button>${(estMultiArm()||estTransfEntreUnidades())?`<button class="btn btn-ghost no-print" onclick="estTransfModal('',{})">⇄ Transferir</button>`:''}<button class="btn btn-ghost no-print" onclick="estContagemNova()">📋 Contar</button><button class="btn btn-ghost no-print" onclick="lancarCmvDoEstoque()">↗ Registrar no CMV</button>`;
+    : `<button class="btn btn-primary no-print" onclick="estMovModal('saida')">${icoPlus} Movimentação</button>${(estMultiArm()||estTransfEntreUnidades())?`<button class="btn btn-ghost no-print" onclick="estTransfModal('',{})">⇄ Transferir</button>`:''}<button class="btn btn-ghost no-print" onclick="estContagemNova()">📋 Contar</button><button class="btn btn-ghost no-print" onclick="lancarCmvDoEstoque()">↗ Registrar no CMV</button>`;
   if(estoqueTab==='producao'){$('#view').innerHTML=estProducaoHTML();return;}
   if(estoqueTab==='requisicoes'){$('#view').innerHTML=estRequisicoesHTML();return;}
   if(estoqueTab==='mov'){$('#view').innerHTML=estMovHTML();return;}
@@ -6656,7 +6656,7 @@ function estKardex(id){const ins=DB.insumos[id];if(!ins)return;const info=estInf
       ${[['Saldo',estQ(sal,u),sal<(+ins.estoqueMin||0)?'var(--red)':'var(--ink)'],['Mínimo',fmtN(+ins.estoqueMin||0,(+ins.estoqueMin||0)%1?2:0)+' '+u,''],['Custo médio',fmtBRL(cmp)+'/'+u,''],['Em estoque',fmtBRL(sal*cmp),'var(--navy)'],['Consumo/dia',info.cons.diario>0?fmtN(info.cons.diario,2)+' '+u:'—',''],['Cobertura',info.cob!=null?Math.round(info.cob)+' dias':'—',info.ruptura?'var(--red)':'']].map(([l,v,c])=>`<div style="border:1px solid var(--line);border-radius:10px;padding:8px 10px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700">${l}</div><div style="font-size:15px;font-weight:700;color:${c||'var(--ink)'};margin-top:2px">${v}</div></div>`).join('')}
     </div>
     ${multi?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">${estArmazens().map(a=>{const v=+por[a.id]||0;return `<div class="dash-pill" style="${v<-0.0005?'border-color:var(--red)':''}"><span>${esc(a.nome)}</span><b style="color:${v<-0.0005?'var(--red)':'var(--ink)'}">${estQ(v,u)}</b></div>`;}).join('')}</div>`:''}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn btn-ghost btn-sm" onclick="estMovModal('entrada','${id}')">+ Entrada</button><button class="btn btn-ghost btn-sm" onclick="estMovModal('saida','${id}')">− Saída</button><button class="btn btn-ghost btn-sm" onclick="estMovModal('ajuste','${id}')">± Ajuste</button>${multi?`<button class="btn btn-ghost btn-sm" onclick="estTransfModal('${id}')">⇄ Transferir</button>`:''}${ins.tipo==='preparado'?`<button class="btn btn-ghost btn-sm" onclick="estProducaoModal('${id}')">⚙ Produzir</button>`:''}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn btn-ghost btn-sm" onclick="estMovModal('saida','${id}')">− Saída</button><button class="btn btn-ghost btn-sm" onclick="estMovModal('entrada','${id}')">+ Entrada</button><button class="btn btn-ghost btn-sm" onclick="estMovModal('ajuste','${id}')">± Ajuste</button>${multi?`<button class="btn btn-ghost btn-sm" onclick="estTransfModal('${id}')">⇄ Transferir</button>`:''}${ins.tipo==='preparado'?`<button class="btn btn-ghost btn-sm" onclick="estProducaoModal('${id}')">⚙ Produzir</button>`:''}</div>
     ${movs.length?`<div class="scroll-x"><table><thead><tr><th>Data</th><th>Tipo</th>${multi?'<th>Armazém</th>':''}<th class="num">Qtd</th><th class="num">Custo un.</th><th class="num">Saldo</th><th>Origem</th><th></th></tr></thead><tbody>
       ${movs.slice(0,200).map(m=>`<tr><td style="white-space:nowrap">${fmtDataBR(m.data)} <span style="color:var(--soft);font-size:11px">${esc(m.hora||'')}</span></td><td>${estTipoTag(m.tipo)}</td>${multi?`<td style="font-size:12px">${esc(estArmNome(m.arm||EST_ARM_PRINCIPAL))}</td>`:''}<td class="num" style="font-weight:600;color:${m.q>0?'var(--green)':m.q<0?'var(--red)':'var(--muted)'}">${m.q>0?'+':''}${estQ(m.q,u)}</td><td class="num">${fmtBRL(m.custo)}</td><td class="num" title="${multi?'saldo total · neste armazém '+estQ(m.saldoArm!=null?m.saldoArm:m.saldo):''}">${estQ(m.saldo)}</td><td style="font-size:12px;color:var(--muted)">${esc(estOrigemTxt(m))}</td><td>${m.origem==='manual'?`<button class="icon-btn del" title="Desfazer" onclick="estMovDel('${m.id}');estKardex('${id}')">${icoX}</button>`:''}</td></tr>`).join('')}
     </tbody></table></div>${movs.length>200?`<div style="font-size:11.5px;color:var(--soft);margin-top:6px">Mostrando as 200 mais recentes de ${movs.length}.</div>`:''}`
@@ -6667,35 +6667,82 @@ function estMovDel(id){const arr=estMovs();const i=arr.findIndex(m=>m.id===id);i
   if(!confirm('Desfazer esta movimentação?'))return;const ins=DB.insumos[m.insumoId];if(ins)estAplicaSaldo(ins,m.arm||EST_ARM_PRINCIPAL,-m.q);arr.splice(i,1);save();toast('Movimentação desfeita');}
 
 /* ----- Nova movimentação manual ----- */
-function estMovModal(tipo,insId){tipo=tipo||'entrada';const ins=insId?DB.insumos[insId]:null;const multi=estMultiArm();const cfg=estCfg();
-  const armDef=tipo==='entrada'?((ins&&ins.armPadrao)||cfg.armEntrada):tipo==='ajuste'?EST_ARM_PRINCIPAL:cfg.armVendas;
-  modal(`<div class="modal-head"><h3>Nova movimentação</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+/* ----- Movimentação manual: vários produtos de uma vez (saída, entrada, perda, ajuste) ----- */
+let estMovDraft=null, estMovBulkQ='';
+const EST_MOV_TIPOS=[['saida','− Saída'],['entrada','+ Entrada'],['perda','Perda'],['ajuste','± Ajuste']];
+function estMovArmDef(tipo,ins){const cfg=estCfg();return tipo==='entrada'?((ins&&ins.armPadrao)||cfg.armEntrada):tipo==='ajuste'?EST_ARM_PRINCIPAL:cfg.armVendas;}
+function estMovModal(tipo,insId,manter){tipo=tipo||'saida';const multi=estMultiArm();
+  if(manter&&estMovDraft){estMovLer();estMovDraft.tipo=tipo;if(!estMovDraft.armManual)estMovDraft.arm='';estMovDraft.motivo='';}
+  else{estMovDraft={tipo,data:hojeISO(),arm:'',armManual:false,obs:'',motivo:'',itens:[]};estMovBulkQ='';}
+  const d=estMovDraft;
+  if(insId&&!d.itens.some(x=>x.insumoId===insId)&&DB.insumos[insId]){const it={insumoId:insId,q:'',custo:estCustoAtual(DB.insumos[insId])};const vazio=d.itens.findIndex(x=>!x.insumoId);if(vazio>=0)d.itens[vazio]=it;else d.itens.push(it);}
+  if(!d.itens.length)d.itens.push({insumoId:'',q:'',custo:0});
+  if(!d.arm)d.arm=estMovArmDef(tipo,DB.insumos[(d.itens.find(x=>x.insumoId)||{}).insumoId]);
+  const motivos=tipo==='saida'?EST_MOTIVOS_SAIDA:tipo==='perda'?DESP_MOTIVOS:null;
+  modal(`<div class="modal-head"><h3>Nova movimentação</h3><button class="x" onclick="estMovDraft=null;closeModal()">${icoX}</button></div>
   <div class="modal-body">
     ${estProdDatalist('est_prod_dl')}
-    <div class="pill-filter" style="margin-bottom:14px">${[['entrada','+ Entrada'],['saida','− Saída'],['perda','Perda'],['ajuste','± Ajuste']].map(([k,l])=>`<button class="${tipo===k?'on':''}" onclick="estMovModal('${k}',document.getElementById('em_prod_id').value)">${l}</button>`).join('')}${multi?`<button onclick="estTransfModal(document.getElementById('em_prod_id').value)">⇄ Transferir</button>`:''}</div>
-    <input type="hidden" id="em_prod_id" value="${insId||''}">
-    <div class="field"><label>Produto</label><input class="input" id="em_prod" list="est_prod_dl" value="${ins?esc(ins.nome):''}" placeholder="Digite o nome…" oninput="estMovProd(this.value)"><div id="em_prod_info" style="font-size:11.5px;color:var(--soft);margin-top:4px">${ins?estMovProdInfo(ins):''}</div></div>
+    <div class="pill-filter" style="margin-bottom:14px">${EST_MOV_TIPOS.map(([k,l])=>`<button class="${tipo===k?'on':''}" onclick="estMovModal('${k}','',true)">${l}</button>`).join('')}${(multi||estTransfEntreUnidades())?`<button onclick="estMovLer();estTransfModal((estMovDraft.itens.find(x=>x.insumoId)||{}).insumoId||'')">⇄ Transferir</button>`:''}</div>
     <div class="grid-2">
-      <div class="field"><label>Data</label><input type="date" class="input" id="em_data" value="${hojeISO()}"></div>
-      <div class="field"><label>${tipo==='ajuste'?'Novo saldo':'Quantidade'} <span class="hint" id="em_uni">${ins?uSym(ins.uni):''}</span></label><input class="input" id="em_qtd" type="number" step="0.001" min="0" placeholder="0"></div>
+      <div class="field"><label>Data</label><input type="date" class="input" id="em_data" value="${d.data}" onchange="estMovDraft.data=this.value"></div>
+      ${multi?`<div class="field"><label>Armazém${tipo==='ajuste'?' <span class="hint">o novo saldo vale para este armazém</span>':''}</label>${estArmSelect('em_arm',d.arm,`onchange="estMovDraft.arm=this.value;estMovDraft.armManual=true;estMovLer();estMovLinhas()"`)}</div>`
+        :motivos?`<div class="field"><label>Motivo</label><select class="input" id="em_motivo" onchange="estMovDraft.motivo=this.value">${motivos.map(m=>`<option ${m===d.motivo?'selected':''}>${m}</option>`).join('')}</select></div>`:'<div></div>'}
     </div>
-    ${multi?`<div class="field"><label>Armazém${tipo==='ajuste'?' <span class="hint">o novo saldo vale para este armazém</span>':''}</label>${estArmSelect('em_arm',armDef,`onchange="estMovProd(document.getElementById('em_prod').value)"`)}</div>`:''}
-    ${tipo==='entrada'?`<div class="field"><label>Custo unitário <span class="hint">R$ por unidade de compra · opcional, recalcula o custo médio</span></label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="em_custo" inputmode="numeric" value="${ins?fmtMoneyInput(estCustoAtual(ins)):''}" oninput="moneyMask(this)"></div></div>`:''}
-    ${tipo==='saida'?`<div class="field"><label>Motivo</label><select class="input" id="em_motivo">${EST_MOTIVOS_SAIDA.map(m=>`<option>${m}</option>`).join('')}</select></div>`:''}
-    ${tipo==='perda'?`<div class="field"><label>Motivo</label><select class="input" id="em_motivo">${DESP_MOTIVOS.map(m=>`<option>${m}</option>`).join('')}</select><div style="font-size:11.5px;color:var(--soft);margin-top:4px">Perda registrada aqui não aparece no módulo Desperdícios. Para relatório de perdas, prefira lançar lá.</div></div>`:''}
-    ${tipo==='ajuste'?`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Ajuste acerta o saldo para o valor informado e registra a diferença. Para conferir vários itens de uma vez, use a <b>Contagem física</b>.</div>`:''}
-    <div class="field"><label>Observação <span class="hint">opcional</span></label><input class="input" id="em_obs" placeholder="Ex.: transferido para a unidade 2"></div>
-  </div><div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="estMovSalvar('${tipo}')">Registrar</button></div>`);
-  setTimeout(()=>{const el=$(ins?'#em_qtd':'#em_prod');if(el&&!ehMobile())el.focus();},50);}
-function estMovProdInfo(ins){const arm=($('#em_arm')||{}).value;const u=uSym(ins.uni);const por=estMultiArm()?' · '+estArmazens().map(a=>esc(a.nome)+' '+estQ(estSaldoArm(ins,a.id))).join(' · '):'';
-  return `Saldo <b>${estQ(+ins.estoqueAtual||0,u)}</b>${por} · custo médio ${fmtBRL(estCustoAtual(ins))}/${u}${insEmb(ins)?' · comprado em '+esc(insEmb(ins).nome)+' de '+insEmb(ins).qtd+' '+u:''}`;}
-function estMovProd(v){const ins=estProdPorNome(v);$('#em_prod_id').value=ins?ins.id:'';$('#em_uni').textContent=ins?uSym(ins.uni):'';$('#em_prod_info').innerHTML=ins?estMovProdInfo(ins):'';const c=$('#em_custo');if(c&&ins)c.value=fmtMoneyInput(estCustoAtual(ins));}
-function estMovSalvar(tipo){const ins=DB.insumos[$('#em_prod_id').value];if(!ins)return toast('Escolha um produto da lista');
-  const q=parseFloat($('#em_qtd').value);if(!(q>=0)||(tipo!=='ajuste'&&!(q>0)))return toast('Informe a quantidade');
-  const data=$('#em_data').value||hojeISO();const obs=($('#em_obs').value||'').trim();const motivo=$('#em_motivo')?$('#em_motivo').value:'';const arm=($('#em_arm')||{}).value||'';
-  let m;if(tipo==='ajuste'){const atual=estMultiArm()?estSaldoArm(ins,arm||EST_ARM_PRINCIPAL):(+ins.estoqueAtual||0);const delta=estR(q-atual,3);if(!delta)return toast('O saldo já é esse');m=estMov('ajuste',ins.id,0,{delta,arm,origem:'manual',data,motivo:'Ajuste manual',obs});}
-  else m=estMov(tipo,ins.id,q,{custo:tipo==='entrada'?moneyVal('em_custo'):0,arm,origem:'manual',data,motivo,obs});
-  if(!m)return toast('Não foi possível registrar');save();closeModal();viewEstoque();toast((EST_TIPOS[tipo][0])+' registrada · saldo '+estQ(ins.estoqueAtual,uSym(ins.uni)));}
+    ${multi&&motivos?`<div class="field"><label>Motivo</label><select class="input" id="em_motivo" onchange="estMovDraft.motivo=this.value">${motivos.map(m=>`<option ${m===d.motivo?'selected':''}>${m}</option>`).join('')}</select></div>`:''}
+    ${tipo==='perda'?`<div style="font-size:11.5px;color:var(--soft);margin:-4px 0 10px">Perda registrada aqui não aparece no módulo Desperdícios. Para relatório de perdas, prefira lançar lá.</div>`:''}
+    ${tipo==='ajuste'?`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Ajuste acerta o saldo para o valor informado e registra a diferença. Para conferir o estoque inteiro, use a <b>Contagem física</b>.</div>`:''}
+    <div id="em_head" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;display:grid;grid-template-columns:${estMovCols(tipo)};gap:6px;padding:0 0 4px"><span>Produto</span><span style="text-align:right">${tipo==='ajuste'?'Novo saldo':'Qtd'}</span>${tipo==='entrada'?'<span style="text-align:right">Custo un.</span>':''}<span></span></div>
+    <div id="em_linhas"></div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:4px"><a class="gp-link" style="font-size:12.5px" onclick="estMovLer();estMovDraft.itens.push({insumoId:'',q:'',custo:0});estMovLinhas(true)">+ outro produto</a><a class="gp-link" style="font-size:12.5px" onclick="estMovBulkToggle()">☰ Adicionar vários de uma vez</a></div>
+    <div id="em_bulk" style="display:none;margin-top:10px;border:1px solid var(--line);border-radius:12px;padding:10px"></div>
+    <div class="field" style="margin-top:12px"><label>Observação <span class="hint">opcional</span></label><input class="input" id="em_obs" value="${esc(d.obs||'')}" placeholder="Ex.: uso no evento de sábado" oninput="estMovDraft.obs=this.value"></div>
+  </div><div class="modal-foot"><span id="em_resumo" style="font-size:12.5px;color:var(--muted);margin-right:auto"></span><button class="btn btn-ghost" onclick="estMovDraft=null;closeModal()">Cancelar</button><button class="btn btn-primary" onclick="estMovSalvar()">Registrar</button></div>`,true);
+  if(!d.motivo&&motivos)d.motivo=motivos[0];
+  estMovLinhas(!insId);
+  if(insId){const qs=$('#em_linhas').querySelectorAll('.em-q');const i=d.itens.findIndex(x=>x.insumoId===insId);if(qs[i]&&!ehMobile())qs[i].focus();}}
+function estMovCols(tipo){const m=ehMobile();return tipo==='entrada'?(m?'minmax(0,1fr) 62px 78px 26px':'minmax(0,1fr) 92px 104px 30px'):(m?'minmax(0,1fr) 78px 26px':'minmax(0,1fr) 96px 30px');}
+function estMovLer(){const d=estMovDraft;if(!d)return;const box=$('#em_linhas');
+  if(box)d.itens=[...box.querySelectorAll('.em-row')].map(r=>{const c=r.querySelector('.em-c');return {insumoId:r.dataset.id||'',nome:r.querySelector('.em-n').value,q:r.querySelector('.em-q').value,custo:c?parseNumBR(c.value):(+r.dataset.custo||0)};});
+  const dt=$('#em_data');if(dt)d.data=dt.value||hojeISO();const ob=$('#em_obs');if(ob)d.obs=ob.value;const mo=$('#em_motivo');if(mo)d.motivo=mo.value;const ar=$('#em_arm');if(ar)d.arm=ar.value;}
+function estMovLinhas(foco){const box=$('#em_linhas');if(!box)return;const d=estMovDraft;const ent=d.tipo==='entrada';
+  box.innerHTML=d.itens.map((x,i)=>{const ins=DB.insumos[x.insumoId];const u=ins?uSym(ins.uni):'';const s=ins?(estMultiArm()?estSaldoArm(ins,d.arm):(+ins.estoqueAtual||0)):null;
+    return `<div class="em-row" data-id="${x.insumoId||''}" data-custo="${+x.custo||0}" style="display:grid;grid-template-columns:${estMovCols(d.tipo)};gap:6px;align-items:center;margin-bottom:6px">
+      <div style="min-width:0"><input class="input em-n" list="est_prod_dl" value="${ins?esc(ins.nome):esc(x.nome||'')}" placeholder="Produto…" style="padding:7px 10px;font-size:13px" oninput="estMovProd(${i},this.value)">${ins?`<div style="font-size:11px;color:${s<-0.0005?'var(--red)':'var(--soft)'}">saldo ${estQ(s,u)} · custo médio ${fmtBRL(estCustoAtual(ins))}/${u}</div>`:''}</div>
+      <input class="input em-q" type="number" step="0.001" min="0" inputmode="decimal" value="${x.q||''}" placeholder="${u||'qtd'}" style="text-align:right;padding:7px 8px" oninput="estMovDraft.itens[${i}].q=this.value;estMovResumo()" onkeydown="if(event.key==='Enter'){estMovLer();estMovDraft.itens.push({insumoId:'',q:'',custo:0});estMovLinhas(true);}">
+      ${ent?`<input class="input em-c" inputmode="decimal" value="${ins?fmtUnitInput(+x.custo||0):''}" placeholder="R$" title="Custo por ${u||'unidade'} (recalcula o custo médio)" style="text-align:right;padding:7px 8px" oninput="estMovDraft.itens[${i}].custo=parseNumBR(this.value);estMovResumo()">`:''}
+      <button class="icon-btn" style="width:28px;height:28px" onclick="estMovLer();estMovDraft.itens.splice(${i},1);if(!estMovDraft.itens.length)estMovDraft.itens.push({insumoId:'',q:'',custo:0});estMovLinhas()">${icoX}</button></div>`;}).join('');
+  estMovResumo();
+  if(foco){const els=box.querySelectorAll('.em-n');const el=els[els.length-1];if(el&&!el.value&&!ehMobile())el.focus();}}
+function estMovProd(i,v){estMovLer();const ins=estProdPorNome(v);const it=estMovDraft.itens[i];it.insumoId=ins?ins.id:'';it.nome=v;
+  if(ins){it.custo=estCustoAtual(ins);if(!estMovDraft.armManual&&i===0&&estMovDraft.tipo==='entrada'){estMovDraft.arm=estMovArmDef('entrada',ins);const a=$('#em_arm');if(a)a.value=estMovDraft.arm;}
+    estMovLinhas();const q=$('#em_linhas').querySelectorAll('.em-q')[i];if(q)q.focus();}}
+function estMovValidos(){return (estMovDraft?estMovDraft.itens:[]).filter(x=>x.insumoId&&DB.insumos[x.insumoId]&&x.q!==''&&(parseFloat(x.q)>0||(estMovDraft.tipo==='ajuste'&&parseFloat(x.q)>=0)));}
+function estMovResumo(){const el=$('#em_resumo');if(!el||!estMovDraft)return;const v=estMovValidos();const ent=estMovDraft.tipo==='entrada';
+  const tot=ent?v.reduce((s,x)=>s+(parseFloat(x.q)||0)*(+x.custo||0),0):0;
+  el.textContent=v.length?v.length+' produto'+(v.length===1?'':'s')+(ent&&tot>0?' · '+fmtBRL(tot):''):'';
+  const c=$('#em_bulk_n');if(c)c.textContent=v.length+' produto(s) na movimentação.';}
+/* lista com busca e quantidade por linha: digitar a quantidade já coloca o produto na movimentação */
+function estMovBulkToggle(){const b=$('#em_bulk');if(!b)return;const aberto=b.style.display!=='none';b.style.display=aberto?'none':'';if(!aberto){estMovLer();estMovBulkRender();const i=$('#em_bulk_busca');if(i&&!ehMobile())i.focus();}}
+function estMovBulkRender(){const b=$('#em_bulk');if(!b)return;const d=estMovDraft;const q=lmNorm(estMovBulkQ);
+  const L=Object.values(DB.insumos).filter(estEstocavel).filter(i=>!q||lmNorm(i.nome+' '+(i.cat||'')+' '+(i.sub||'')).includes(q)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt',{sensitivity:'base'})).slice(0,300);
+  const qDe=id=>{const it=d.itens.find(x=>x.insumoId===id);return it?it.q:'';};
+  b.innerHTML=`<input class="input" id="em_bulk_busca" value="${esc(estMovBulkQ)}" placeholder="🔎 Filtrar por produto ou categoria…" style="margin-bottom:8px" oninput="estMovBulkQ=this.value;estMovBulkRender();$('#em_bulk_busca').focus()">
+    <div style="max-height:260px;overflow:auto">${L.map(i=>{const u=uSym(i.uni);const s=estMultiArm()?estSaldoArm(i,d.arm):(+i.estoqueAtual||0);const v=qDe(i.id);return `<div style="display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)"><div style="min-width:0"><div style="font-size:13px;font-weight:${v?700:500};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.nome)}</div><div style="font-size:11px;color:${s<-0.0005?'var(--red)':'var(--soft)'}">saldo ${estQ(s,u)}${i.sub||i.cat?' · '+esc(i.sub||i.cat):''}</div></div><input class="input" type="number" step="0.001" min="0" inputmode="decimal" value="${v||''}" placeholder="${d.tipo==='ajuste'?'saldo':u||'qtd'}" style="text-align:right;padding:6px 8px" oninput="estMovBulkSet('${i.id}',this.value)"></div>`;}).join('')||'<div class="gp-mini">Nenhum produto com esse filtro.</div>'}</div>
+    <div class="gp-mini" id="em_bulk_n" style="margin-top:6px"></div>`;estMovResumo();}
+function estMovBulkSet(id,v){estMovLer();const d=estMovDraft;const i=d.itens.findIndex(x=>x.insumoId===id);const vazio=v===''||v==null;
+  if(!vazio){if(i>=0)d.itens[i].q=v;else{const it={insumoId:id,q:v,custo:estCustoAtual(DB.insumos[id])};const k=d.itens.findIndex(x=>!x.insumoId);if(k>=0)d.itens[k]=it;else d.itens.push(it);}}
+  else if(i>=0){d.itens.splice(i,1);if(!d.itens.length)d.itens.push({insumoId:'',q:'',custo:0});}
+  estMovLinhas();}
+function estMovSalvar(){estMovLer();const d=estMovDraft;if(!d)return closeModal();const tipo=d.tipo;
+  const itens=estMovValidos();if(!itens.length)return toast('Escolha ao menos um produto da lista e informe a quantidade');
+  const semProd=d.itens.filter(x=>!x.insumoId&&(x.nome||'').trim()).length;if(semProd&&!confirm(semProd+' linha(s) com produto que não está na lista serão ignoradas. Continuar?'))return;
+  const arm=d.arm||'';let n=0,igual=0;
+  itens.forEach(x=>{const ins=DB.insumos[x.insumoId];const q=parseFloat(x.q);let m=null;
+    if(tipo==='ajuste'){const atual=estMultiArm()?estSaldoArm(ins,arm||EST_ARM_PRINCIPAL):(+ins.estoqueAtual||0);const delta=estR(q-atual,3);if(!delta){igual++;return;}m=estMov('ajuste',ins.id,0,{delta,arm,origem:'manual',data:d.data,motivo:'Ajuste manual',obs:d.obs});}
+    else m=estMov(tipo,ins.id,q,{custo:tipo==='entrada'?(+x.custo||0):0,arm,origem:'manual',data:d.data,motivo:d.motivo||'',obs:d.obs});
+    if(m)n++;});
+  if(!n)return toast(igual?'Os saldos já são esses':'Não foi possível registrar');
+  estMovDraft=null;save();closeModal();viewEstoque();toast(EST_TIPOS[tipo][0]+' registrada em '+n+' produto'+(n===1?'':'s')+(igual?' · '+igual+' já estava(m) com esse saldo':''));}
 
 /* ----- Transferência entre armazéns (vários itens de uma vez) ----- */
 let estTransfDraft=null;
