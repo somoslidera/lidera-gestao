@@ -2182,7 +2182,7 @@ function diasPeriodo(R){return Math.max(1,Math.round((new Date(R.ate+'T12:00:00'
 function diasDecorridos(R){const h=hojeISO();if(h<R.de)return 0;if(h>R.ate)return diasPeriodo(R);return Math.round((new Date(h+'T12:00:00')-new Date(R.de+'T12:00:00'))/86400000)+1;}
 /* centros de custo PLL no período (mesma régua do DRE), a partir dos lançamentos + taxa das bandeiras calculada */
 function dashCentros(R){const ls=(DB.lancamentos||[]).filter(l=>l.data>=R.de&&l.data<=R.ate);const rec=ls.filter(l=>grupoTipo(l.grupo)==='receita').reduce((s,l)=>s+(l.valor||0),0);
-  const alvo=DB.cmvAlvo||30;const cs=DRE_CENTROS.map(c=>Object.assign({},c,{total:0}));const m={};cs.forEach(c=>m[c.id]=c);m.cmv.max=alvo;
+  const alvo=DB.cmvAlvo||30;const cs=reguaCentros().map(c=>Object.assign({},c,{total:0}));const m={};cs.forEach(c=>m[c.id]=c);m.cmv.max=alvo;
   ls.forEach(l=>{if(grupoTipo(l.grupo)==='receita')return;m[dreCentroDe(l.grupo,l.sub)].total+=(l.valor||0);});
   contasAbertas(R.de,R.ate).forEach(x=>{m[dreCentroDe(x.grupo,x.sub)].total+=(+x.valor||0);});
   const tx=taxasRecebimento(ls);if(tx.total>0)m.taxas.total+=tx.total;
@@ -2238,7 +2238,7 @@ function viewDashboard(){
     :decorr<dias&&porDia>0?`No ritmo atual (${fmtBRL(porDia)}/dia) o empate chega no <b>dia ${Math.ceil(ritmoDias)}</b>${ritmoDias>dias?', depois do fim do período':''}.`
     :`Faltou vender <b>${fmtBRL(falta)}</b> para pagar todas as contas do período.`;
   const dRec=dashDelta(t.faturamento,tAnt.faturamento),dRes=dashDelta(cen.lucro,cenAnt.lucro);
-  const margemCor=cen.lucro<0?'var(--red)':cen.lucroPct>=DRE_LUCRO_REF?'var(--green)':'var(--amber)';
+  const margemCor=cen.lucro<0?'var(--red)':cen.lucroPct>=reguaLucro()?'var(--green)':'var(--amber)';
   const despPct=t.faturamento>0?cen.desp/t.faturamento*100:0;
   const cmvItens=[{n:'Teórico',v:cmvTeorico},{n:'Real',v:cmvRealP},{n:'Lançado',v:cmvLanc}];
   $('#view').innerHTML=`
@@ -2253,8 +2253,8 @@ function viewDashboard(){
     <div class="dsh-kpi">
       <div class="dsh-kpi-top"><span class="lbl">Resultado</span>${dRes||''}</div>
       <div class="dsh-kpi-val" style="color:${margemCor}">${fmtBRL(cen.lucro)}</div>
-      <div class="dsh-kpi-foot">${t.faturamento>0?`margem <b style="color:${margemCor}">${fmtPct(cen.lucroPct)}</b> · meta ${DRE_LUCRO_REF}%`:'sem receita no período'}</div>
-      <div class="dsh-kpi-vis">${t.faturamento>0?dashBullet(Math.max(cen.lucroPct,0),DRE_LUCRO_REF,margemCor):''}</div>
+      <div class="dsh-kpi-foot">${t.faturamento>0?`margem <b style="color:${margemCor}">${fmtPct(cen.lucroPct)}</b> · meta ${fmtN(reguaLucro(),reguaLucro()%1?1:0)}%`:'sem receita no período'}</div>
+      <div class="dsh-kpi-vis">${t.faturamento>0?dashBullet(Math.max(cen.lucroPct,0),reguaLucro(),margemCor):''}</div>
     </div>
     <div class="dsh-kpi">
       <div class="dsh-kpi-top"><span class="lbl">${cmvRealP!=null?'CMV real':cmvLanc!=null?'CMV lançado':'CMV teórico'}</span><span class="chip soft">meta ${fmtPct(cmvMeta)}</span></div>
@@ -3841,6 +3841,17 @@ const DRE_CENTROS=[
  {id:'mkt',nome:'Marketing',min:2,max:5,ref:'2% a 5%'},
  {id:'manut',nome:'Manutenção',min:1,max:2,ref:'1% a 2%'}];
 const DRE_LUCRO_REF=15;
+/* Régua ajustável: o dono pode mudar as metas em Parâmetros › Metas (fin.reguaPLL). CMV continua vindo do CMV alvo. */
+function reguaPLL(){return (DB.fin&&DB.fin.reguaPLL)||{};}
+function reguaCentros(){const o=reguaPLL();return DRE_CENTROS.map(c=>{const x=Object.assign({},c,o[c.id]||{});
+  if(x.min!=null&&!(x.min>=0))delete x.min;if(!(x.max>0))x.max=c.max;
+  x.ref=x.min!=null?fmtN(x.min,x.min%1?1:0)+'% a '+fmtN(x.max,x.max%1?1:0)+'%':'≤ '+fmtN(x.max,x.max%1?1:0)+'%';return x;});}
+function reguaLucro(){const v=+reguaPLL().lucro;return v>0?v:DRE_LUCRO_REF;}
+function reguaSet(id,campo,v){DB.fin.reguaPLL=DB.fin.reguaPLL||{};const n=parseFloat(String(v).replace(',','.'));
+  if(id==='lucro'){if(n>0)DB.fin.reguaPLL.lucro=n;else delete DB.fin.reguaPLL.lucro;}
+  else{const o=DB.fin.reguaPLL[id]||{};if(isFinite(n)&&n>=0)o[campo]=n;else delete o[campo];if(o.min!=null&&o.max!=null&&o.min>o.max)o.min=o.max;if(Object.keys(o).length)DB.fin.reguaPLL[id]=o;else delete DB.fin.reguaPLL[id];}
+  save();viewFinanceiro();}
+function reguaReset(){delete DB.fin.reguaPLL;save();viewFinanceiro();toast('Régua de volta ao padrão PLL');}
 function dreCentroDe(grupo,sub){const g=lmNorm(grupo),s=lmNorm(sub);
   if(g==='cmv')return 'cmv';
   if(g==='mao de obra'||g==='encargos sociais'||g==='beneficios')return 'cmo';
@@ -3849,7 +3860,7 @@ function dreCentroDe(grupo,sub){const g=lmNorm(grupo),s=lmNorm(sub);
   if(s.includes('manuten'))return 'manut';
   if(g==='despesas financeiras'&&s.includes('taxa')&&(s.includes('cart')||s.includes('receb')))return 'taxas';
   return 'fixas';}
-function dreCentros(d){const alvo=DB.cmvAlvo||30;const cs=DRE_CENTROS.map(c=>Object.assign({},c,{total:0,itens:[]}));const m={};cs.forEach(c=>m[c.id]=c);
+function dreCentros(d){const alvo=DB.cmvAlvo||30;const cs=reguaCentros().map(c=>Object.assign({},c,{total:0,itens:[]}));const m={};cs.forEach(c=>m[c.id]=c);
   m.cmv.max=alvo;m.cmv.ref='≤ '+fmtN(alvo,alvo%1?1:0)+'%';   // o CMV usa a meta do próprio restaurante (padrão 30%)
   Object.keys(d.despesa).forEach(g=>Object.entries(d.despesa[g]).forEach(([sub,v])=>{const c=m[dreCentroDe(g,sub)];c.total+=v;c.itens.push({g,s:sub,v});}));
   cs.forEach(c=>c.itens.sort((a,b)=>b.v-a.v));return cs;}
@@ -3890,20 +3901,20 @@ function viewDRE(){
         ${centros.map(c=>{const p=pct(c.total);const st=dreCentroStatus(c,p,!!rec);const ab=dreOpen.has(c.id);const varios=new Set(c.itens.map(x=>x.g)).size>1;
           return `<tr class="dre-cat" onclick="dreToggleCentro('${c.id}')" style="cursor:pointer" title="${c.itens.length?'Clique para ver o que compõe este centro':'Nenhum lançamento neste centro no mês'}"><td style="font-size:11px;letter-spacing:.5px;color:var(--gold);text-transform:uppercase;font-weight:700;padding:10px 13px 8px"><span style="display:inline-block;width:12px;color:var(--muted)">${c.itens.length?(ab?'▾':'▸'):''}</span> ${c.nome}${mob?`<div style="font-size:10.5px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted);margin:2px 0 0 15px"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${st.cor};margin-right:4px"></span>ref. ${c.ref}</div>`:''}</td><td class="num" style="font-weight:700;color:${c.total?'var(--red)':'var(--soft)'}">${fmtBRL(-c.total)}</td><td class="num" style="font-weight:700;color:${st.cor}">${pctTxt(c.total)}</td>${mob?'':`<td class="num" style="font-size:11.5px;color:var(--muted);white-space:nowrap" title="${st.txt}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${st.cor};margin-right:5px"></span>${c.ref}</td>`}</tr>`
           +(ab?c.itens.map(x=>`<tr class="ind"><td>${varios?`<span style="color:var(--soft)">${esc(x.g)} › </span>`:''}${esc(x.s)}${(x.g===TAXA_GRUPO&&x.s===TAXA_SUB)?` <span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px" title="Calculado a partir das receitas × a taxa de cada bandeira (Financeiro → Parâmetros). Não é um lançamento.">CALCULADO</span>`:''}</td><td class="num" style="color:var(--red)">${fmtBRL(-x.v)}</td><td class="num" style="color:var(--soft)">${pctTxt(x.v)}</td>${mob?'':'<td></td>'}</tr>`).join(''):'');}).join('')}
-        <tr class="total"><td>(=) Lucro líquido${mob?`<div style="font-size:10.5px;font-weight:500;color:var(--muted);margin-top:2px">ref. ≥ ${DRE_LUCRO_REF}%</div>`:''}</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(lucro)}</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${pctTxt(lucro)}</td>${mob?'':`<td class="num" style="font-size:11.5px;white-space:nowrap;font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${!rec?'var(--soft)':pct(lucro)>=DRE_LUCRO_REF?'var(--green)':pct(lucro)>=0?'var(--amber)':'var(--red)'};margin-right:5px"></span>≥ ${DRE_LUCRO_REF}%</td>`}</tr>
+        <tr class="total"><td>(=) Lucro líquido${mob?`<div style="font-size:10.5px;font-weight:500;color:var(--muted);margin-top:2px">ref. ≥ ${reguaLucro()}%</div>`:''}</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(lucro)}</td><td class="num" style="color:${lucro>=0?'var(--green)':'var(--red)'}">${pctTxt(lucro)}</td>${mob?'':`<td class="num" style="font-size:11.5px;white-space:nowrap;font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${!rec?'var(--soft)':pct(lucro)>=reguaLucro()?'var(--green)':pct(lucro)>=0?'var(--amber)':'var(--red)'};margin-right:5px"></span>≥ ${reguaLucro()}%</td>`}</tr>
       </tbody></table>
     </div>
     <div>
       <div class="card card-pad" style="margin-bottom:16px"><div class="k-lbl">Margem líquida</div>
         <div class="k-val" style="color:${lucro>=0?'var(--green)':'var(--red)'};font-size:34px">${pctTxt(lucro)}</div>
         <div class="bar"><i style="width:${clamp(pct(lucro),2,100)}%;background:${barC(pct(lucro))}"></i></div>
-        <div style="font-size:12.5px;color:var(--muted);margin-top:10px">${lucro>=0?'Operação no azul. ':'Resultado negativo. '}Referência PLL: lucro líquido de <b>${DRE_LUCRO_REF}%</b> ou mais.</div></div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:10px">${lucro>=0?'Operação no azul. ':'Resultado negativo. '}Referência PLL: lucro líquido de <b>${reguaLucro()}%</b> ou mais.</div></div>
       <div class="card card-pad" style="margin-bottom:16px"><div class="k-lbl">CMV real</div>
         <div class="k-val" style="color:${rec?cmvCorRef(cmvPct):'var(--soft)'};font-size:34px">${rec?fmtPct(cmvPct):'—'}</div>
         <div style="font-size:12.5px;color:var(--muted);margin-top:6px">Meta (CMV alvo): ${fmtPct(alvo)}${rec?` · <b style="color:${cmvStatus[1]}">${cmvStatus[0]}</b>`:' · sem receita lançada'}</div></div>
       <div class="card card-pad"><div class="ttl" style="margin-bottom:4px">Composição da receita</div><div class="desc" style="margin-bottom:14px">Cada centro comparado à Estrutura de Referência PLL</div>
         ${centros.map(c=>{const v=pct(c.total);const st=dreCentroStatus(c,v,!!rec);return `<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><span>${c.nome} <span style="font-size:11px;color:var(--soft)">${c.ref}</span></span><b style="color:${st.cor}">${rec?fmtPct(v):'—'}</b></div><div class="bar"><i style="width:${clamp(v,0,100)}%;background:${rec?st.cor:'var(--gold)'}"></i></div></div>`;}).join('')}
-        <div style="margin-top:4px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>Lucro líquido <span style="font-size:11px;color:var(--soft)">≥ ${DRE_LUCRO_REF}%</span></span><b>${pctTxt(lucro)}</b></div><div class="bar"><i style="width:${clamp(pct(lucro),0,100)}%;background:var(--green)"></i></div></div>
+        <div style="margin-top:4px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>Lucro líquido <span style="font-size:11px;color:var(--soft)">≥ ${reguaLucro()}%</span></span><b>${pctTxt(lucro)}</b></div><div class="bar"><i style="width:${clamp(pct(lucro),0,100)}%;background:var(--green)"></i></div></div>
       </div>
     </div>
   </div>`}`;
@@ -5647,7 +5658,9 @@ function prmFormasHTML(){return `<div class="card card-pad" style="max-width:820
     ${finFormasInner()}
     ${prmOnde(['Lançamentos','Contas a pagar e a receber','Custos fixos'])}</div>`;}
 function prmCategoriasHTML(){return `${finCategorias()}<div style="max-width:880px">${prmOnde(['Lançamentos (Grupo → Subcategoria)','DRE (linhas e centros PLL)','Custos fixos','Leitura de nota por IA'])}</div>`;}
-function prmMetasHTML(){const fin=DB.fin;const ref=[['CMV',30],['CMO (pessoal)',25],['Despesas fixas',15],['Impostos',8],['Taxas de cartão',3],['Marketing','2 a 5'],['Manutenção','1 a 2'],['Lucro','15 ou mais']];
+function prmMetasHTML(){const fin=DB.fin;const regua=reguaCentros();const custom=!!Object.keys(reguaPLL()).length;
+  const NOMES={cmv:'CMV',cmo:'CMO (pessoal)',fixas:'Despesas fixas e operacionais',impostos:'Impostos',taxas:'Taxas de cartão',mkt:'Marketing',manut:'Manutenção'};
+  const inp=(id,campo,v)=>`<input class="input" type="number" step="0.5" min="0" max="100" value="${v==null?'':v}" style="width:74px;padding:5px 8px;text-align:right" onchange="reguaSet('${id}','${campo}',this.value)">`;
   return `<div class="prm-grid">
     <div class="card card-pad">
       <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Metas</div><div class="desc">O que o Flow usa para dizer se está bom ou ruim</div></div></div>
@@ -5661,9 +5674,15 @@ function prmMetasHTML(){const fin=DB.fin;const ref=[['CMV',30],['CMO (pessoal)',
       ${prmOnde(['Dashboard','Controle de CMV','Engenharia de menu','DRE','Ponto de equilíbrio'])}
     </div>
     <div class="card card-pad">
-      <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Régua de referência PLL</div><div class="desc">Como o DRE compara cada centro de custo (só leitura)</div></div></div>
-      <table style="width:100%"><tbody>${ref.map(([n,v])=>`<tr><td style="padding:7px 0;border-top:1px solid var(--line)">${n}</td><td class="num" style="padding:7px 0;border-top:1px solid var(--line);font-weight:700">${typeof v==='number'?'≤ '+v+'%':v+'%'}</td></tr>`).join('')}</tbody></table>
-      <div class="gp-mini" style="margin-top:8px">Percentuais sobre o faturamento. O DRE mostra verde quando o centro está dentro da régua e vermelho quando passa.</div>
+      <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Régua de referência PLL</div><div class="desc">Meta de cada centro de custo, em % do faturamento. Ajuste para a realidade do restaurante.</div></div>${custom?`<button class="btn btn-ghost btn-sm" onclick="reguaReset()" title="Volta para CMO 25 · Fixas 15 · Impostos 8 · Taxas 3 · Marketing 2 a 5 · Manutenção 1 a 2 · Lucro 15">Padrão PLL</button>`:''}</div>
+      <table style="width:100%"><thead><tr><th style="text-align:left;padding:4px 0;font-size:10.5px;color:var(--soft)">Centro</th><th class="num" style="padding:4px 0;font-size:10.5px;color:var(--soft)">Mínimo</th><th class="num" style="padding:4px 0;font-size:10.5px;color:var(--soft)">Máximo</th></tr></thead><tbody>
+      ${regua.map(c=>`<tr><td style="padding:6px 0;border-top:1px solid var(--line)">${NOMES[c.id]||c.nome}${c.id==='cmv'?'<div class="gp-mini">usa o CMV alvo acima</div>':''}</td>
+        <td class="num" style="padding:6px 0 6px 8px;border-top:1px solid var(--line)">${c.id==='cmv'?'':(c.id==='mkt'||c.id==='manut')?inp(c.id,'min',c.min):'<span style="color:var(--soft)">—</span>'}</td>
+        <td class="num" style="padding:6px 0 6px 8px;border-top:1px solid var(--line);font-weight:700">${c.id==='cmv'?'≤ '+fmtN(DB.cmvAlvo||30,(DB.cmvAlvo||30)%1?1:0)+'%':inp(c.id,'max',c.max)}</td></tr>`).join('')}
+      <tr><td style="padding:6px 0;border-top:1px solid var(--line)">Lucro líquido<div class="gp-mini">meta mínima</div></td><td class="num" style="padding:6px 0 6px 8px;border-top:1px solid var(--line)">${inp('lucro','min',reguaLucro())}</td><td class="num" style="padding:6px 0 6px 8px;border-top:1px solid var(--line);color:var(--soft)">ou mais</td></tr>
+      </tbody></table>
+      <div class="gp-mini" style="margin-top:8px">O DRE e o Dashboard mostram verde quando o centro está dentro da régua, âmbar até 15% acima do máximo e vermelho quando passa. Marketing e Manutenção têm faixa: abaixo do mínimo também avisa.</div>
+      ${prmOnde(['DRE (composição da receita)','Dashboard (margem e centros)'])}
     </div></div>`;}
 function prmContasHTML(){return `<div class="card card-pad" style="max-width:620px">
     <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Contas bancárias</div><div class="desc">Saldo atual de cada conta ou caixa</div></div></div>
