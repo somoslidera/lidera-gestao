@@ -4334,8 +4334,8 @@ function lmParcAdd(i){const r=lmRow(i);const ult=r.parcelasLista[r.parcelasLista
   r.parcelasLista.push({data:diasSoma((ult&&ult.data)||r.data||hojeISO(),30),valor:0});lmParcRender(i);}
 function lmParcDel(i,k){const r=lmRow(i);r.parcelasLista.splice(k,1);lmParcRender(i);}
 function lmParcSet(i,k,campo,v){const r=lmRow(i);const p=r.parcelasLista[k];if(!p)return;
-  if(campo==='data')p.data=v; else p.valor=moneyVal('pc_v_'+k);
-  lmParcRender(i);}
+  if(campo==='data'){p.data=v;return;}             // data: só guarda; nada na tela depende dela
+  p.valor=moneyVal('pc_v_'+k);lmParcRender(i);}
 function lmParcRender(i){const r=lmRow(i);const total=lmTotalLinha(r);
   const lista=r.parcelasLista||[];
   const soma=+lista.reduce((s,x)=>s+(+x.valor||0),0).toFixed(2);
@@ -5260,12 +5260,12 @@ function finContas(key){
   const aberto=noMes.filter(c=>!c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const feito=noMes.filter(c=>c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const gC='1.5fr 1.2fr 1.2fr 142px 124px 128px 108px 30px';
-  const linhas=all.map((row,i)=>{if(row.vencimento&&ymOf(row.vencimento)!==ym)return '';const subs=ordPt((DB.categorias[row.grupo]||{subs:[]}).subs);return `
+  const linhas=all.map((row,i)=>{if(row.vencimento&&ymOf(row.vencimento)!==ym&&!cpMostrar.has(row.id))return '';const subs=ordPt((DB.categorias[row.grupo]||{subs:[]}).subs);return `
     <div class="comp-row" style="grid-template-columns:${gC};align-items:center">
       <input class="input" value="${(row.descricao||'').replace(/"/g,'&quot;')}" placeholder="Descrição" oninput="DB.fin.${key}[${i}].descricao=this.value;contaResync('${key}',${i})">
       <select class="input" onchange="contaSetGrupo('${key}',${i},this.value)">${grupos.map(g=>`<option ${g===row.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
       <select class="input" onchange="DB.fin.${key}[${i}].sub=this.value;contaResync('${key}',${i})">${subs.map(s=>`<option ${s===row.sub?'selected':''}>${esc(s)}</option>`).join('')||'<option value="">—</option>'}</select>
-      <input type="date" class="input" value="${row.vencimento||''}" onchange="DB.fin.${key}[${i}].vencimento=this.value;contaResync('${key}',${i});viewFinanceiro()">
+      <input type="date" class="input" value="${row.vencimento||''}" ${row.vencimento&&ymOf(row.vencimento)!==ym?'style="border-color:var(--gold)" title="Vence em outro mês: aparece na lista do mês dela"':''} onchange="cpVenc('${key}',${i},this.value)">
       <div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(row.valor||0)}" oninput="DB.fin.${key}[${i}].valor=moneyMask(this);contaResync('${key}',${i})" onblur="viewFinanceiro()"></div>
       ${formaSelect(row.forma,`DB.fin.${key}[${i}].forma=this.value;contaResync('${key}',${i})`)}
       <button class="icon-btn" onclick="contaToggle('${key}',${i})" title="Marcar como ${fLabel.toLowerCase()}" style="white-space:nowrap;width:auto;padding:0 10px;${row[cf]?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${row[cf]?'✓ ':'○ '}${fLabel}</button>
@@ -5298,7 +5298,7 @@ function finContas(key){
     </div>`;
   return `<div class="card card-pad" style="max-width:1220px">
     <div class="section-head" style="flex-wrap:wrap;gap:10px"><div><div class="ttl">${isPagar?'Contas a Pagar':'Contas a Receber'}</div><div class="desc">Previsão do que ainda ${isPagar?'sai':'entra'}. Dar baixa registra o dinheiro no Fluxo de Caixa, sem lançar de novo no DRE.</div></div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${isPagar?`<button class="btn btn-ghost btn-sm" onclick="cpImprimirModal()" title="Lista das contas de um dia ou período para imprimir ou salvar em PDF">🖨️ Imprimir pagamentos</button>`:''}<input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()"></div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${isPagar?`<button class="btn btn-ghost btn-sm" onclick="cpImprimirModal()" title="Lista das contas de um dia ou período para imprimir ou salvar em PDF">🖨️ Imprimir pagamentos</button>`:''}<input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;cpMostrar.clear();viewFinanceiro()"></div></div>
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <div class="dash-pill"><span>Total do mês</span><b>${fmtBRL(total+pAberto+pFeito)}</b></div>
       <div class="dash-pill"><span>${isPagar?'A pagar (em aberto)':'A receber (em aberto)'}</span><b style="color:${isPagar?'var(--red)':'var(--amber)'}">${fmtBRL(aberto+pAberto)}</b></div>
@@ -5314,6 +5314,14 @@ function finContas(key){
   </div>`;
 }
 function pad2(n){return String(n).padStart(2,'0');}
+/* vencimento da conta avulsa: só recarrega a tela quando a data está completa (ano com 4 dígitos); se cair em outro mês,
+   a linha continua visível até sair da tela, em vez de sumir no meio da digitação */
+const cpMostrar=new Set();
+function cpVenc(key,i,v){const row=(DB.fin[key]||[])[i];if(!row)return;row.vencimento=v||'';contaResync(key,i);
+  if(!v||v.slice(0,4)<'1900')return;              // ainda digitando
+  const ym=curYM();if(ymOf(v)!==ym){cpMostrar.add(row.id);toast('Vencimento em '+fmtDataBR(v)+': a conta fica na lista de '+mesNomeYM(ymOf(v))+'. Aqui ela continua visível até você sair da tela.',5000);}
+  viewFinanceiro();}
+function mesNomeYM(ym){const [y,m]=(ym||'').split('-');const N=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];return (N[(+m||1)-1]||'')+(y?'/'+y:'');}
 /* ===== Impressão dos pagamentos de um dia ou período (parcelas de lançamentos + contas avulsas) ===== */
 let cpImp={de:'',ate:'',modo:'todas'};
 function cpLinhasPeriodo(de,ate,modo){const out=[];
