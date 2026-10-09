@@ -2095,7 +2095,8 @@ function normData(){
   }
   f.meios=f.meios.filter(m=>m&&m.id);
   f.meios.forEach(m=>{m.nome=(''+(m.nome||'')).trim()||'Meio de recebimento';m.tipo=m.tipo||'Crédito';m.taxa=Math.max(0,+m.taxa||0);
-    if(m.prazo==null)m.prazo=(m.tipo==='Crédito')?30:(m.tipo==='Débito'?1:0);m.prazo=Math.max(0,parseInt(m.prazo)||0);});
+    if(m.prazo==null)m.prazo=(m.tipo==='Crédito')?30:(m.tipo==='Débito'?1:0);m.prazo=Math.max(0,parseInt(m.prazo)||0);
+    if(m.regra&&m.regra!=='prazo'){m.corte=Math.max(0,parseInt(m.corte)||0);if(m.regra==='mensal'&&!(parseInt(m.dia1)>0))m.dia1=parseInt(m.dia2)>0?m.dia2:10;}});
   if(f.receitaBruta==null)f.receitaBruta=true;
   sincronizarMeios();
   Object.values(DB.fichas||{}).forEach(fi=>{if(!fi||typeof fi!=='object')return;
@@ -3761,8 +3762,9 @@ function liqNome(l){const f=(l.fornecedor||'').trim(),nf=(l.nfe||'').trim();
   if(f&&nf)return f+' · NF '+nf;if(f)return f+(l.descricao?' · '+l.descricao:'');return (l.descricao||'(sem descrição)')+(nf?' · NF '+nf:'');}
 /* parcelas dos itens de uma mesma nota (NF + fornecedor + vencimento + nº da parcela) viram UMA linha no Contas a Pagar */
 function liqAgrupar(parc){const map=new Map();
-  parc.forEach(x=>{const l=x.lanc;const k=nfKey(l.nfe)?('nf|'+nfKey(l.nfe)+'|'+(l.fornecedor||'').trim().toLowerCase()+'|'+x.liq.data+'|'+x.idx):('id|'+l.id+'|'+x.idx);
-    let g=map.get(k);if(!g){g={key:k,nome:liqNome(l),data:x.liq.data,idx:x.idx,n:(l.liquidacoes||[]).length,valor:0,pago:true,ids:[],itens:[],cats:new Set()};map.set(k,g);}
+  parc.forEach(x=>{const l=x.lanc;const mr=grupoTipo(l.grupo)==='receita'?meioDoLanc(l):null;const rec=mr&&meioRegra(mr)!=='prazo';
+    const k=rec?('rec|'+mr.id+'|'+x.liq.data):nfKey(l.nfe)?('nf|'+nfKey(l.nfe)+'|'+(l.fornecedor||'').trim().toLowerCase()+'|'+x.liq.data+'|'+x.idx):('id|'+l.id+'|'+x.idx);
+    let g=map.get(k);if(!g){g={key:k,nome:rec?mr.nome:liqNome(l),data:x.liq.data,idx:rec?0:x.idx,n:rec?1:(l.liquidacoes||[]).length,valor:0,pago:true,ids:[],itens:[],cats:new Set(),vendas:!!rec};map.set(k,g);}
     g.valor=+(g.valor+(+x.liq.valor||0)).toFixed(2);g.pago=g.pago&&!!x.liq.pago;g.ids.push(l.id);g.itens.push(x);g.cats.add((l.grupo||'')+(l.sub?' · '+l.sub:''));});
   return Array.from(map.values()).map(g=>{g.cat=g.cats.size===1?[...g.cats][0]:[...new Set(g.itens.map(x=>x.lanc.grupo||''))].join(', ');return g;}).sort((a,b)=>(a.data||'').localeCompare(b.data||''));}
 function liqTogglePagoMulti(ids,idx){const ls=(''+ids).split(',').map(id=>(DB.lancamentos||[]).find(x=>x.id===id)).filter(Boolean);if(!ls.length)return;
@@ -3793,7 +3795,9 @@ function aplicarLiquidacoes(l,cond){
   if(!l||!(+l.valor>0))return l;
   const ehRec=grupoTipo(l.grupo)==='receita';
   if(ehRec){
-    const m=meioDoLanc(l);const pz=m?meioPrazo(m):0;
+    const m=meioDoLanc(l);
+    if(m&&meioRegra(m)!=='prazo'){l.liquidacoes=[{data:meioProximaData(m,l.data),valor:liqValor(l,+l.valor||0),pago:false}];return l;}
+    const pz=m?meioPrazo(m):0;
     const parc=Math.max(1,parseInt(m&&m.parcelas)||1);
     if(!m||(pz===0&&parc===1))return l;                       // à vista de verdade
     const liq=liqValor(l,+l.valor||0);
@@ -3952,6 +3956,26 @@ function meiosRec(){const f=(DB&&DB.fin)||{};return Array.isArray(f.meios)?f.mei
 function meioPorId(id){return meiosRec().find(m=>m.id===id)||null;}
 function meioTaxa(m){return Math.max(0,+(m&&m.taxa)||0);}
 function meioPrazo(m){return Math.max(0,parseInt((m&&m.prazo))||0);}   // dias até o dinheiro cair
+/* Regra de recebimento do meio: 'prazo' (D+N, padrão), 'mensal' (1 ou 2 dias fixos do mês: m.dia1/m.dia2),
+   'semanal' (m.diaSemana 0-6). m.corte = vendas até N dias antes da data entram nela; depois disso vão para a próxima. */
+const MEIO_REGRAS=[['prazo','Dias após a venda'],['mensal','Dia(s) fixo(s) do mês'],['semanal','Dia da semana']];
+const DIAS_SEMANA=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+function meioRegra(m){return (m&&(m.regra==='mensal'||m.regra==='semanal'))?m.regra:'prazo';}
+function meioRegraTxt(m){const r=meioRegra(m);if(r==='mensal'){const ds=[m.dia1,m.dia2].filter(d=>d>0);return 'todo dia '+ds.join(' e ')+(m.corte>0?' · vendas até '+m.corte+' dia(s) antes':'');}
+  if(r==='semanal')return 'toda '+(DIAS_SEMANA[m.diaSemana!=null?m.diaSemana:5]||'sexta').toLowerCase()+(m.corte>0?' · vendas até '+m.corte+' dia(s) antes':'');
+  const p=meioPrazo(m);return p?'D+'+p:'no dia';}
+function meioProximaData(m,dataVenda){const r=meioRegra(m);const base=dataVenda||hojeISO();if(r==='prazo')return diasSoma(base,meioPrazo(m));
+  const min=diasSoma(base,Math.max(0,parseInt(m.corte)||0));   // primeira data em que a venda já "fechou"
+  if(r==='semanal'){const alvo=(m.diaSemana!=null&&m.diaSemana>=0)?+m.diaSemana:5;const d=new Date(min+'T12:00:00');const dif=(alvo-d.getDay()+7)%7;return diasSoma(min,dif);}
+  const dias=[m.dia1,m.dia2].map(x=>parseInt(x)||0).filter(x=>x>0);if(!dias.length)return min;
+  const y=+min.slice(0,4),mo=+min.slice(5,7)-1;const cands=[];
+  for(let k=0;k<3;k++){const ult=new Date(y,mo+k+1,0).getDate();dias.forEach(d=>{const dd=new Date(y,mo+k,Math.min(d,ult));cands.push(dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0'));});}
+  cands.sort();return cands.find(c=>c>=min)||cands[cands.length-1];}
+/* recalcula a data de recebimento das vendas desse meio que ainda não foram baixadas (depois de mudar a regra) */
+function meioReaplicar(i){const m=meiosRec()[i];if(!m)return;let n=0;
+  (DB.lancamentos||[]).forEach(l=>{if(grupoTipo(l.grupo)!=='receita')return;const mm=meioDoLanc(l);if(!mm||mm.id!==m.id)return;
+    if((l.liquidacoes||[]).some(x=>x&&x.pago))return;delete l.liquidacoes;aplicarLiquidacoes(l,{});n++;});
+  save();viewFinanceiro();toast(n?n+' venda(s) de '+m.nome+' com a data de recebimento recalculada':'Nenhuma venda em aberto desse meio');}
 function receitaEhBruta(){return (DB.fin||{}).receitaBruta!==false;}   // padrão: ligado
 /* acha o meio de um lançamento: pelo id gravado; senão pelo nome (sub ou forma) */
 function meioDoLanc(l){if(!l)return null;
@@ -4607,6 +4631,7 @@ function saveLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!
   const nfAntes=l.nfe||'',fornAntes=l.fornecedor||'';const irmaos=nfKey(nfAntes)?notaItens(nfAntes,fornAntes).filter(x=>x.id!==id):[];
   l.data=$('#el_data').value||l.data;l.grupo=$('#el_grupo').value;l.sub=$('#el_sub').value||'';l.descricao=($('#el_desc').value||'').trim();l.nfe=($('#el_nfe')?($('#el_nfe').value||'').trim():(l.nfe||''));l.fornecedor=($('#el_fornecedor')?($('#el_fornecedor').value||'').trim():(l.fornecedor||''));l.valor=valor;l.forma=$('#el_forma').value||'';
   if(irmaos.length&&nfKey(l.nfe)&&nfKey(l.nfe)!==nfKey(nfAntes)&&confirm('Esta nota tem mais '+irmaos.length+(irmaos.length===1?' item':' itens')+' com o número '+nfAntes+'.\n\nAplicar o novo número ('+l.nfe+') a todos, para continuarem agrupados?'))irmaos.forEach(x=>{x.nfe=l.nfe;});
+  if(grupoTipo(l.grupo)==='receita'&&!(l.liquidacoes||[]).some(x=>x&&x.pago)){const _m=meioDoLanc(l);if(_m)l.meioId=_m.id;else delete l.meioId;delete l.liquidacoes;aplicarLiquidacoes(l,{});}
   syncTaxaLanc(l);save();closeModal();viewFinanceiro();toast('Lançamento atualizado');}
 function lancFiltrados(ym){
   const fl=lancFiltro, ativo=fl.data||fl.grupo||fl.sub||fl.desc||fl.nf||fl.fornecedor||fl.forma;
@@ -5299,7 +5324,7 @@ function finContas(key){
       ${liqAgrupar(parc).map(g=>{const atras=!g.pago&&g.data<hoje;
         const desc=g.nome+(g.n>1?' · '+(g.idx+1)+'/'+g.n:'');
         return `<div class="comp-row" style="grid-template-columns:${gP};align-items:center">
-        <div style="min-width:0;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(desc)}${g.itens.length>1?' · '+g.itens.length+' itens da nota':''}">${esc(desc)}${g.itens.length>1?` <span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px">${g.itens.length} ITENS</span>`:''}</div>
+        <div style="min-width:0;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(desc)}${g.vendas?' · '+g.itens.length+' venda(s) de '+fmtDataBR(g.itens.map(x=>x.lanc.data).sort()[0])+' a '+fmtDataBR(g.itens.map(x=>x.lanc.data).sort().slice(-1)[0]):g.itens.length>1?' · '+g.itens.length+' itens da nota':''}">${esc(desc)}${g.vendas?` <span class="tag tag-navy" style="font-size:9px;letter-spacing:.3px">${g.itens.length} VENDA${g.itens.length>1?'S':''}</span>`:g.itens.length>1?` <span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px">${g.itens.length} ITENS</span>`:''}</div>
         <div style="font-size:12.5px;${atras?'color:var(--red);font-weight:600':''}">${atras?'⚠ ':''}${fmtDataBR(g.data)}</div>
         <div style="font-size:12.5px;font-weight:600">${fmtBRL(g.valor)}</div>
         <div style="font-size:11.5px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(g.cat)}">${esc(g.cat)}</div>
@@ -5517,15 +5542,20 @@ function meiosEditorHTML(){const ms=meiosRec();const bruta=receitaEhBruta();
       <div style="font-size:12.5px;font-weight:600;color:var(--muted)">Meios de recebimento e taxas</div>
       <button class="btn btn-ghost btn-sm" onclick="meioAdd()" style="padding:4px 9px;font-size:11.5px">${icoPlus} Adicionar bandeira</button>
     </div>
-    <div style="font-size:11.5px;color:var(--soft);margin-bottom:8px">Cada bandeira aqui vira <b>forma de pagamento</b> no lançamento e <b>subcategoria de Receita</b>. Renomear atualiza os lançamentos que já usavam o nome antigo. O <b>prazo</b> diz em quantos dias o dinheiro cai e é o que joga a venda para a data certa no <b>Fluxo de Caixa</b>.</div>
-    ${ms.length?`<div class="mob-head" style="display:grid;grid-template-columns:minmax(110px,1fr) 108px 76px 84px 34px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 4px"><span>Bandeira</span><span>Tipo</span><span>Taxa %</span><span>Prazo (dias)</span><span></span></div>`:''}
-    ${ms.map((m,i)=>`<div class="mob-stack" style="display:grid;grid-template-columns:minmax(110px,1fr) 108px 76px 84px 34px;gap:8px;align-items:center;margin-bottom:6px">
-      <input class="input" value="${esc(m.nome)}" placeholder="Ex.: Visa Crédito" onchange="meioSet(${i},'nome',this.value)" style="padding:7px 9px">
-      <select class="input" onchange="meioSet(${i},'tipo',this.value)" style="padding:7px 9px">${['Crédito','Débito','PIX','Voucher','Dinheiro','Marketplace'].map(t=>`<option ${t===m.tipo?'selected':''}>${t}</option>`).join('')}</select>
+    <div style="font-size:11.5px;color:var(--soft);margin-bottom:8px">Cada bandeira ou empresa aqui vira <b>forma de pagamento</b> no lançamento e <b>subcategoria de Receita</b>. Renomear atualiza os lançamentos que já usavam o nome antigo. A regra <b>Recebe</b> diz quando o dinheiro cai: é o que joga a venda para a data certa no <b>Contas a Receber</b> e no <b>Fluxo de Caixa</b>. Para empresas que pagam em dia fixo (convênios, refeição corporativa), use <b>Dia(s) fixo(s) do mês</b> ou <b>Dia da semana</b>: as vendas do ciclo vão se somando numa única linha a receber.</div>
+    ${ms.length?`<div class="mob-head" style="display:grid;grid-template-columns:minmax(110px,1fr) 108px 72px 150px 34px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 4px"><span>Bandeira / empresa</span><span>Tipo</span><span>Taxa %</span><span>Recebe</span><span></span></div>`:''}
+    ${ms.map((m,i)=>{const r=meioRegra(m);const inp=(campo,v,w,t)=>`<input class="input" type="number" step="1" min="0" value="${v==null?'':v}" title="${t||''}" onchange="meioSet(${i},'${campo}',this.value)" style="padding:5px 7px;text-align:center;width:${w||64}px">`;
+      const det=r==='prazo'?`<span>Cai em</span>${inp('prazo',meioPrazo(m),64,'Dias até o dinheiro cair. 0 = no mesmo dia.')}<span>dia(s) após a venda</span>`
+        :r==='mensal'?`<span>Paga todo dia</span>${inp('dia1',m.dia1||'',58,'Dia do mês (1 a 31)')}<span>e dia</span>${inp('dia2',m.dia2||'',58,'Segundo dia, se receber 2x por mês (deixe vazio se não)')}<span>· vendas até</span>${inp('corte',m.corte||0,52,'Fechamento: vendas feitas até N dias antes da data entram nela. 0 = até o próprio dia.')}<span>dia(s) antes</span>`
+        :`<span>Paga toda</span><select class="input" onchange="meioSet(${i},'diaSemana',this.value)" style="padding:5px 7px;width:112px">${DIAS_SEMANA.map((d,k)=>`<option value="${k}" ${(m.diaSemana!=null?+m.diaSemana:5)===k?'selected':''}>${d}</option>`).join('')}</select><span>· vendas até</span>${inp('corte',m.corte||0,52,'Fechamento: vendas feitas até N dias antes da data entram nela. 0 = até o próprio dia.')}<span>dia(s) antes</span>`;
+      return `<div class="mob-stack" style="display:grid;grid-template-columns:minmax(110px,1fr) 108px 72px 150px 34px;gap:8px;align-items:center;margin-bottom:${r==='prazo'?'4':'2'}px">
+      <input class="input" value="${esc(m.nome)}" placeholder="Ex.: Visa Crédito ou Empresa X" onchange="meioSet(${i},'nome',this.value)" style="padding:7px 9px">
+      <select class="input" onchange="meioSet(${i},'tipo',this.value)" style="padding:7px 9px">${['Crédito','Débito','PIX','Voucher','Dinheiro','Marketplace','Empresa / convênio'].map(t=>`<option ${t===m.tipo?'selected':''}>${t}</option>`).join('')}</select>
       <input class="input" type="number" step="0.01" min="0" value="${m.taxa}" onchange="meioSet(${i},'taxa',this.value)" style="padding:7px 9px">
-      <input class="input" type="number" step="1" min="0" value="${meioPrazo(m)}" title="Dias até o dinheiro cair na conta. 0 = no mesmo dia." onchange="meioSet(${i},'prazo',this.value)" style="padding:7px 9px;text-align:center">
+      <select class="input" onchange="meioSet(${i},'regra',this.value)" style="padding:7px 9px">${MEIO_REGRAS.map(([k,l])=>`<option value="${k}" ${r===k?'selected':''}>${l}</option>`).join('')}</select>
       <button class="btn btn-ghost btn-sm" title="Remover" onclick="meioDel(${i})" style="padding:4px 6px;color:var(--red)">✕</button>
-    </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--muted);padding:0 2px;margin-bottom:${r==='prazo'?'8':'10'}px">${det}${r!=='prazo'?`<span style="color:var(--soft)">· próxima: <b>${fmtDataBR(meioProximaData(m,hojeISO()))}</b></span><a onclick="meioReaplicar(${i})" style="margin-left:auto;color:var(--navy);cursor:pointer;font-weight:600" title="Recalcula a data de recebimento das vendas desse meio que ainda não foram baixadas">recalcular vendas em aberto</a>`:''}</div>`;}).join('')}
     <label style="display:flex;gap:9px;align-items:flex-start;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-top:10px;cursor:pointer;font-size:12px">
       <input type="checkbox" ${bruta?'checked':''} onchange="DB.fin.receitaBruta=this.checked;save();viewFinanceiro()" style="width:16px;height:16px;margin-top:1px;flex:0 0 auto">
       <span>Descontar a taxa no DRE automaticamente<br>
@@ -5537,6 +5567,10 @@ function meioSet(i,campo,v){const ms=meiosRec();const m=ms[i];if(!m)return;
   if(campo==='nome'){renomearMeio(m,(''+v).trim()||'Meio de recebimento');}
   else if(campo==='taxa')m.taxa=Math.max(0,parseFloat(v)||0);
   else if(campo==='prazo')m.prazo=Math.max(0,parseInt(v)||0);
+  else if(campo==='regra'){m.regra=v;if(v==='mensal'&&!(parseInt(m.dia1)>0))m.dia1=10;if(v==='semanal'&&m.diaSemana==null)m.diaSemana=5;if(m.corte==null)m.corte=0;}
+  else if(campo==='dia1'||campo==='dia2'){const d=Math.min(31,Math.max(0,parseInt(v)||0));if(campo==='dia1'&&!d)return toast('Informe o primeiro dia');m[campo]=d||0;}
+  else if(campo==='diaSemana')m.diaSemana=Math.min(6,Math.max(0,parseInt(v)||0));
+  else if(campo==='corte')m.corte=Math.max(0,parseInt(v)||0);
   else m.tipo=v;
   DB.fin.meios=ms;sincronizarMeios();save();viewFinanceiro();}
 function meioDel(i){const ms=meiosRec();const m=ms[i];if(!m)return;
