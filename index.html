@@ -2137,6 +2137,8 @@ document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',e=>{e.
 function toggleSidebar(open){const sb=$('#sidebar'),bd=$('#backdrop');if(open===undefined)open=!sb.classList.contains('open');sb.classList.toggle('open',open);bd.classList.toggle('hidden',!open);}
 function normData(){
   DB.fin=DB.fin||{};const f=DB.fin;
+  // vendas importadas do PDV (Suitable): a Edge Function não conhece as regras dos meios; o app aplica aqui
+  try{let mudou=0;(DB.lancamentos||[]).forEach(l=>{if(l&&l.fromSuitable&&!l.liqAplicada){delete l.liquidacoes;aplicarLiquidacoes(l,{});l.liqAplicada=true;mudou++;}});if(mudou&&typeof CLOUD!=='undefined'&&CLOUD)setTimeout(()=>{try{save();}catch(e){}},2500);}catch(e){}
   if(!Array.isArray(DB.estoqueMov))DB.estoqueMov=[];if(!Array.isArray(DB.contagens))DB.contagens=[];if(!Array.isArray(DB.vendasBaixa))DB.vendasBaixa=[];
   if(!Array.isArray(DB.producoes))DB.producoes=[];if(!Array.isArray(DB.transferencias))DB.transferencias=[];if(!Array.isArray(DB.requisicoes))DB.requisicoes=[];if(!Array.isArray(DB.vendasPendentes))DB.vendasPendentes=[];if(!DB.pdvMapa||typeof DB.pdvMapa!=='object')DB.pdvMapa={};
   // armazéns: quem nunca usou fica só com o principal; o saldo por armazém nasce do saldo atual (soma sempre bate com estoqueAtual)
@@ -5804,9 +5806,57 @@ function prmEstoqueHTML(){const c=estCfg();const arms=estArmazens();const auto=[
     <div class="card card-pad">
       <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Sistema de vendas (PDV)</div><div class="desc">De onde vêm as vendas por prato</div></div></div>
       <div class="field"><label>Nome do PDV <span class="hint">opcional</span></label><input class="input" value="${esc((DB.fin&&DB.fin.pdvNome)||'')}" placeholder="Ex.: Vuca, Consumer, Saipos…" onchange="DB.fin.pdvNome=this.value.trim();save()"></div>
-      <div class="prm-exemplo">As vendas chegam por planilha (Estoque → Baixa por vendas) ou pela API do Flow. O Flow casa cada item com a ficha técnica pelo <b>código no PDV</b>; o que não casar você vincula uma vez.</div>
+      <div class="prm-exemplo">As vendas chegam por planilha (Estoque → Baixa por vendas), pela API do Flow ou pela integração com a Suitable abaixo. O Flow casa cada item com a ficha técnica pelo <b>código no PDV</b>; o que não casar você vincula uma vez.</div>
       ${prmOnde(['Estoque (baixa por vendas)','Fichas técnicas (código no PDV)','API do Flow'])}
-    </div></div>`;}
+    </div>
+    ${suitableCardHTML()}</div>`;}
+/* ===== Integração Suitable (PDV) · a chave fica só no servidor (Edge Function suitable-sync) ===== */
+let suiStatus=null;
+function suitableCardHTML(){if(!(typeof sb!=='undefined'&&sb&&CLOUD&&ORG))return '';
+  setTimeout(suitableCarregarStatus,50);
+  const formas=(DB.fin&&DB.fin.suitableFormas)||[];const mapa=(DB.fin&&DB.fin.suitableMeios)||{};const meios=meiosRec();
+  return `<div class="card card-pad" style="grid-column:1/-1">
+    <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Suitable · integração automática</div><div class="desc">Puxa os pedidos pagos do PDV Suitable: receita por forma de pagamento nos Lançamentos e vendas por prato na Baixa por vendas. Roda sozinha a cada 15 minutos.</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="suitableSync()">⟳ Sincronizar agora</button><button class="btn btn-ghost btn-sm" onclick="suitableDiag()" title="Mostra o relógio dos pedidos para conferir o fuso e o dia do negócio">Diagnóstico</button></div></div>
+    <div id="sui_status" class="gp-mini" style="margin-bottom:10px">Consultando…</div>
+    <div class="grid-2">
+      <div class="field"><label>client_id <span class="hint">gerado em Suitable › Aplicativos › SuitAPI</span></label><input class="input" id="sui_id" placeholder="sk_…" autocomplete="off"></div>
+      <div class="field"><label>client_secret <span class="hint">só é enviado ao servidor; nunca fica no navegador</span></label><input class="input" id="sui_secret" type="password" placeholder="deixe em branco para manter o atual" autocomplete="new-password"></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div class="field" style="margin:0"><label>Importar desde</label><input type="date" class="input" id="sui_desde" value="${(DB.fin&&DB.fin.suitableDesde)||'2026-10-01'}"></div>
+      <div class="field" style="margin:0"><label>Ajuste de relógio (h) <span class="hint">0 se os horários já batem</span></label><input type="number" class="input" id="sui_hajuste" step="1" value="${(DB.fin&&DB.fin.suitableHorasAjuste)||0}" style="width:110px"></div>
+      <div class="field" style="margin:0"><label>Dia vira às (h) <span class="hint">pedidos até essa hora contam no dia anterior</span></label><input type="number" class="input" id="sui_diavira" min="0" max="12" step="1" value="${(DB.fin&&DB.fin.suitableDiaVira)||0}" style="width:110px"></div>
+      <button class="btn btn-primary btn-sm" onclick="suitableSalvar()">Salvar e testar</button>
+      <button class="btn btn-ghost btn-sm" onclick="suitableLigar(false)" style="color:var(--red)">Desligar</button>
+    </div>
+    ${formas.length?`<div style="margin-top:14px"><div style="font-size:12.5px;font-weight:600;margin-bottom:4px">Formas de pagamento da Suitable → meio de recebimento do Flow</div><div class="gp-mini" style="margin-bottom:8px">A primeira vez cria um meio com o mesmo nome. Troque aqui se quiser juntar (ex.: "Cartão - Tuna" em Cartão de Crédito). Vale para as próximas sincronizações.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px 14px">${formas.map(f=>`<div style="display:flex;gap:8px;align-items:center;font-size:12.5px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.tipo||'')} ${esc(f.sub||'')}">${esc(f.nome)}</span><select class="input" style="flex:1;padding:5px 8px" onchange="DB.fin.suitableMeios=DB.fin.suitableMeios||{};DB.fin.suitableMeios['${esc(f.id)}']=this.value;save()">${meios.map(m=>`<option value="${m.id}" ${mapa[f.id]===m.id?'selected':''}>${esc(m.nome)}</option>`).join('')}</select></div>`).join('')}</div></div>`:''}
+    ${prmOnde(['Lançamentos (Receita por meio, "Vendas Suitable")','Estoque › Baixa por vendas','Dashboard e DRE'])}
+  </div>`;}
+async function suitableCarregarStatus(){const el=$('#sui_status');if(!el)return;try{const r=await chamarFn('suitable-sync',{acao:'status',orgId:ORG.id});const c=r.data&&r.data.cfg;
+  if(!r.data||!r.data.ok){el.innerHTML='<span style="color:var(--red)">Não foi possível consultar: '+esc((r.data&&r.data.erro)||r.status)+'</span>';return;}
+  if(!c){el.innerHTML='Ainda não configurado. Cole a chave da Suitable e clique em <b>Salvar e testar</b>.';return;}
+  if($('#sui_id')&&!$('#sui_id').value)$('#sui_id').placeholder=c.client_id||'sk_…';if($('#sui_desde')&&c.desde)$('#sui_desde').value=c.desde;if($('#sui_hajuste'))$('#sui_hajuste').value=c.horas_ajuste||0;if($('#sui_diavira'))$('#sui_diavira').value=c.dia_vira||0;
+  const ult=c.log&&c.log[0];el.innerHTML=`<span class="tag ${c.ativo?'tag-green':'tag-gray'}">${c.ativo?'ligada':'desligada'}</span> loja <b>${esc(c.loja||c.tenant||'')}</b> · ${esc(c.ambiente||'')} · escopos ${esc(c.escopos||'')} · <b>${r.data.pedidos}</b> pedidos importados${c.ultimo_sync?' · última sincronização '+notifQuando(c.ultimo_sync):''}${c.pendentes?' · <span style="color:var(--amber)">'+c.pendentes+' pedido(s) na fila</span>':''}${c.ultimo_erro?' · <span style="color:var(--red)">erro: '+esc(c.ultimo_erro)+'</span>':''}${ult?'<div>última: '+ult.novos+' pedido(s) · '+fmtBRL(ult.valor||0)+' · '+(ult.dias||[]).map(fmtDataBR).join(', ')+'</div>':''}`;}catch(e){el.textContent='Falha ao consultar.';}}
+async function suitableSalvar(){const body={acao:'config',orgId:ORG.id,client_id:($('#sui_id').value||'').trim(),client_secret:($('#sui_secret').value||'').trim(),desde:$('#sui_desde').value,horas_ajuste:parseInt($('#sui_hajuste').value)||0,dia_vira:parseInt($('#sui_diavira').value)||0};
+  toast('Testando a chave na Suitable…');const r=await chamarFn('suitable-sync',body);if(!r.data||!r.data.ok)return toast('Suitable: '+((r.data&&r.data.erro)||'falha'),6000);
+  DB.fin.suitableDesde=body.desde;DB.fin.suitableHorasAjuste=body.horas_ajuste;DB.fin.suitableDiaVira=body.dia_vira;DB.fin.pdvNome='Suitable';DB.fin.pdvTipo='suitable';save();$('#sui_secret').value='';
+  toast('Conectado à loja '+(r.data.loja||r.data.tenant)+' · '+r.data.formas+' formas de pagamento',6000);suitableCarregarStatus();}
+async function suitableSync(){toast('Sincronizando com a Suitable…');const r=await chamarFn('suitable-sync',{acao:'sync',orgId:ORG.id});if(!r.data||!r.data.ok)return toast('Suitable: '+((r.data&&r.data.erro)||'falha'),7000);
+  toast(r.data.novos+' pedido(s) importados · '+fmtBRL(r.data.valor||0)+(r.data.aviso?' · '+r.data.aviso:''),8000);
+  // recarrega os dados da nuvem (a função gravou direto no restaurante)
+  try{const q=await sb.from('organizacoes').select('dados,atualizado_em').eq('id',ORG.id).maybeSingle();if(q.data&&q.data.dados){DB=q.data.dados;CLOUD_TS=q.data.atualizado_em;CLOUD_BASE=_cloneDB(DB);normData();}}catch(e){}
+  if(current==='financeiro')viewFinanceiro();else if(current==='estoque')viewEstoque();suitableCarregarStatus();}
+async function suitableDiag(){const r=await chamarFn('suitable-sync',{acao:'diagnostico',orgId:ORG.id});if(!r.data||!r.data.ok)return toast('Suitable: '+((r.data&&r.data.erro)||'falha'),6000);const d=r.data;
+  modal(`<div class="modal-head"><h3>Diagnóstico Suitable</h3><button class="x" onclick="closeModal()">${icoX}</button></div><div class="modal-body" style="font-size:13px">
+    <div><b>${esc(d.loja||'')}</b> · fuso ${esc(d.fuso||'')} · funcionamento ${esc((d.abre||[]).join(', '))}</div>
+    <div class="gp-mini" style="margin:8px 0">Pedidos por hora do relógio da Suitable (${d.pedidos} últimos). Se os horários aparecem fora do expediente (ex.: 01h, 02h), ajuste o relógio em horas; se a casa fecha depois da meia-noite, use "Dia vira às".</div>
+    <div style="display:flex;gap:3px;align-items:flex-end;height:120px;border-bottom:1px solid var(--line)">${Array.from({length:24},(_,h)=>{const k=String(h).padStart(2,'0');const v=(d.por_hora||{})[k]||0;const mx=Math.max(1,...Object.values(d.por_hora||{}));return `<div title="${k}h: ${v}" style="flex:1;background:var(--navy);height:${Math.round(v/mx*100)}%;min-height:1px"></div>`;}).join('')}</div>
+    <div style="display:flex;gap:3px;font-size:9px;color:var(--soft)">${Array.from({length:24},(_,h)=>`<div style="flex:1;text-align:center">${h%3?'':h}</div>`).join('')}</div>
+    <div style="margin-top:10px"><b>Formas de pagamento:</b> ${(d.formas||[]).map(f=>esc(f.nome)).join(' · ')}</div>
+  </div><div class="modal-foot"><button class="btn btn-primary" onclick="closeModal()">Fechar</button></div>`);}
+async function suitableLigar(on){const r=await chamarFn('suitable-sync',{acao:on?'ligar':'desligar',orgId:ORG.id});toast(r.data&&r.data.ok?(on?'Integração ligada':'Integração desligada'):'Falha');suitableCarregarStatus();}
 
 /* ===================== EQUIPE ===================== */
 const ACESSOS=[['dashboard','Dashboard'],['insumos','Produtos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['checklists','Checklists'],['pops','POPs · Procedimentos'],['cargos','Descrições de Cargos'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE (no Financeiro)'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['formacao','Formação em Gestão'],['mapa','Plano de Guerra'],['equipe','Equipe'],['conta','Configurações']];
@@ -7493,6 +7543,7 @@ function estVendasHTML(){pdvProcessarPendentes(false);const bs=estBaixas().slice
     ${pend.map((v,vi)=>(v.itens||[]).map((it,ii)=>`<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);flex-wrap:wrap"><div style="flex:1 1 200px;min-width:0"><b>${esc(it.nome||it.codigo||'?')}</b>${it.codigo&&it.nome?` <span class="gp-mini">${esc(it.codigo)}</span>`:''}<div class="gp-mini">${fmtDataBR(v.data||'')} · ${fmtN(+it.qtd||0)} vendido(s)</div></div><select class="input" style="flex:1 1 220px;padding:6px 8px;font-size:13px" onchange="pdvVincularPendente(${vi},${ii},this.value)"><option value="">Vincular a…</option>${fichas.map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('')}<option value="__ignorar__">Ignorar este item</option></select></div>`).join('')).join('')}</div>`:''}
   <div class="card card-pad" style="margin-bottom:16px">
     <div class="section-head"><div><div class="ttl">Baixa por vendas</div><div class="desc">Informe quantos pratos vendeu e a ficha técnica dá baixa nos ingredientes${estMultiArm()?' em <b>'+esc(estArmNome(cfg.armVendas))+'</b>':''} (subprodutos saem como porcionado; preparados descem até o bruto).</div></div>
+      ${(DB.fin&&DB.fin.pdvTipo==='suitable'&&typeof sb!=='undefined'&&sb&&CLOUD)?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="suitableSync()">⟳ Sincronizar Suitable</button></div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Planilha exportada do PDV: colunas com código ou nome do prato e a quantidade vendida (CSV, ; ou tabulação)">⬆ Relatório do ${esc(pdv)} (CSV)<input type="file" accept=".csv,.txt,.tsv" style="display:none" onchange="estVendasCSV(this)"></label></div></div>
     ${!cfg.vendas?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div>A baixa automática por vendas está <b>desligada</b> em <a onclick="estCfgModal()" style="color:var(--navy);cursor:pointer;font-weight:600">configurar</a>. Você ainda pode baixar manualmente aqui.</div></div>`:''}
     ${fichas.length?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><input type="date" class="input" style="max-width:150px" value="${data}" onchange="estVendaDraft.data=this.value"><input class="input" style="max-width:240px" placeholder="🔎 Filtrar prato" oninput="filtrarLinhas(this,'#ev_rows')"></div>
