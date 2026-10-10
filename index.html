@@ -196,6 +196,8 @@ th.num{text-align:right}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy-900);color:#fff;padding:13px 22px;border-radius:12px;font-size:13.5px;font-weight:500;box-shadow:var(--shadow-lg);z-index:1200;display:flex;align-items:center;gap:9px;animation:pop .2s}
 .toast svg{width:17px;height:17px;color:var(--gold-soft)}
 .pill-filter{display:flex;gap:6px;flex-wrap:wrap}
+.pill-filter.tabs{row-gap:8px}
+@media (max-width:760px){.pill-filter.tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;margin-right:-16px;padding-right:40px;mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent)}.pill-filter.tabs::-webkit-scrollbar{display:none}.pill-filter.tabs button{flex:0 0 auto;white-space:nowrap}}
 .pill-filter button{padding:7px 13px;border-radius:20px;font-size:12.5px;font-weight:600;background:#fff;border:1px solid var(--line);color:var(--muted)}
 .pill-filter button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .dash-pill{display:flex;flex-direction:column;gap:1px;padding:7px 14px;border:1px solid var(--line);border-radius:11px;background:#FAFBFC;min-width:96px}
@@ -2375,6 +2377,7 @@ function editInsumo(id){
       <div class="field"><label>Unidade</label><select class="input" id="i_uni" onchange="updUniLabels();updInsPreview()">${UNIDADES.map(u=>`<option value="${u}" ${u===i.uni?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
       <div class="field"><label>Fornecedor <span class="hint">opcional · digite para cadastrar um novo</span>${i.id&&DB.insumos[i.id]?` <a onclick="estHistAbrir('${i.id}')" style="float:right;font-size:11px;color:var(--navy);cursor:pointer;font-weight:600" title="Todas as compras deste produto, de todos os fornecedores">histórico de compras ›</a>`:''}</label><input class="input" id="i_forn" list="forn_dl" value="${esc(i.fornecedor||'')}" placeholder="Nome do fornecedor">${fornDatalist()}</div>
     </div>
+    ${setoresSemPrincipal().length?`<div class="field"><label>Disponível nos setores <span class="hint">exceção deste produto · vazio = segue a subcategoria</span></label><div style="display:flex;gap:8px 14px;flex-wrap:wrap;padding:4px 0">${setoresSemPrincipal().map(a=>`<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer"><input type="checkbox" class="i_setor" value="${esc(a.id)}" ${(i.setores||[]).includes(a.id)?'checked':''} style="width:15px;height:15px;accent-color:var(--navy)"> ${esc(a.nome)}</label>`).join('')}</div></div>`:''}
     <div id="pronto_block">
       ${embDatalist()}
       <div class="field"><label>Como você compra <span class="hint">padrão de compra</span></label>
@@ -2461,6 +2464,7 @@ function saveInsumo(id){const nome=$('#i_nome').value.trim();if(!nome)return toa
     const embOn=$('#i_emb_on')&&$('#i_emb_on').value==='1';const embNome=embOn?($('#i_emb_nome').value||'').trim():'';const embQtd=embOn?parseFloat($('#i_emb_qtd').value)||0:0;
     if(embOn&&(!embNome||!(embQtd>0)))return toast('Informe o nome da embalagem e quanto ela contém');
     obj.embNome=embNome;obj.embQtd=embQtd;obj.reqLote=parseFloat(($('#i_reqlote')||{}).value)||0;obj.reqMin=parseFloat(($('#i_reqmin')||{}).value)||0;}
+  const setoresSel=[...document.querySelectorAll('input.i_setor:checked')].map(c=>c.value);if(document.querySelector('input.i_setor'))obj.setores=setoresSel;
   // merge: preserva estoque, mínimo, apelidos e outros campos que o modal não edita
   DB.insumos[obj.id]=Object.assign({},DB.insumos[obj.id]||{},obj);save();closeModal();viewInsumos();toast(id?'Insumo atualizado':'Insumo adicionado');}
 function delInsumo(id){
@@ -2491,7 +2495,9 @@ function gerenciarCategorias(t){catTab=t||catTab||'insumo';dbCats();DB.fin=DB.fi
     body=`<div class="field" style="margin-bottom:8px"><label>Categoria</label><select class="input" onchange="catGrupoIns=this.value;gerenciarCategorias('insumo')">${grupos.map(g=>`<option ${g===catGrupoIns?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
     <div style="display:flex;gap:8px;margin-bottom:6px"><input class="input" id="cat_new" placeholder="Nova subcategoria em ${esc(catGrupoIns)}..." onkeydown="if(event.key==='Enter')addCatItem()"><button class="btn btn-primary" style="padding:0 18px" onclick="addCatItem()">${icoPlus}</button></div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:13px">São as mesmas categorias e subcategorias dos <b>Lançamentos Financeiros</b>. O que você mudar aqui vale para os dois lugares.</div>
-    <div class="cat-scroll">${subs.length?subs.map(x=>`<div class="cat-row"><span>${esc(x)}</span><button class="mini-del" onclick="delSubIns('${esc(catGrupoIns).replace(/'/g,'&#39;')}','${esc(x).replace(/'/g,'&#39;')}')">${icoX}</button></div>`).join(''):'<div style="font-size:13px;color:var(--soft);padding:8px 0">Nenhuma subcategoria nesta categoria.</div>'}</div>`;
+    ${setoresSemPrincipal().length?`<div style="font-size:12px;color:var(--muted);margin:-6px 0 10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px"><b>Setores:</b> clique nos setores em que cada subcategoria fica disponível para requisição, contagem e posição. Sem nenhum marcado, aparece em todos. O estoque principal sempre vê tudo.</div>`:''}
+    <div class="cat-scroll">${subs.length?subs.map(x=>{const g=esc(catGrupoIns).replace(/'/g,'&#39;'),sx=esc(x).replace(/'/g,'&#39;');const lig=catSetoresDe(catGrupoIns,x);
+      return `<div class="cat-row" style="flex-wrap:wrap;gap:6px"><span style="flex:1 1 140px">${esc(x)}</span>${setoresSemPrincipal().length?`<span style="display:flex;gap:4px;flex-wrap:wrap">${setoresSemPrincipal().map(a=>`<button type="button" class="tag ${lig.includes(a.id)?'tag-navy':'tag-gray'}" style="cursor:pointer;border:0;font-size:10.5px;padding:2px 8px" title="${lig.includes(a.id)?'Disponível em '+esc(a.nome)+' (clique para tirar)':'Clique para liberar em '+esc(a.nome)}" onclick="catSetorToggle('${g}','${sx}','${esc(a.id)}');gerenciarCategorias('insumo')">${esc(a.nome)}</button>`).join('')}${lig.length?'':'<span class="gp-mini" style="align-self:center">todos</span>'}</span>`:''}<button class="mini-del" onclick="delSubIns('${g}','${sx}')">${icoX}</button></div>`;}).join(''):'<div style="font-size:13px;color:var(--soft);padding:8px 0">Nenhuma subcategoria nesta categoria.</div>'}</div>`;
   }else{
     const list=catList(catTab);
     body=`<div style="display:flex;gap:8px;margin-bottom:6px"><input class="input" id="cat_new" placeholder="Nova categoria de ${catTab==='prato'?'prato':'insumo'}..." onkeydown="if(event.key==='Enter')addCatItem()"><button class="btn btn-primary" style="padding:0 18px" onclick="addCatItem()">${icoPlus}</button></div>
@@ -4939,7 +4945,7 @@ function finList(key,cols){
   <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:6px">${icoPlus} Adicionar</button>`;
 }
 function finTabsHTML(tabs){tabs=tabs||[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
-  return `<div class="pill-filter" style="margin-bottom:18px">${tabs.map(([k,l])=>`<button class="${finTab===k?'on':''}" onclick="finTab='${k}';viewFinanceiro()">${l}</button>`).join('')}</div>`;}
+  return `<div class="pill-filter tabs" style="margin-bottom:18px">${tabs.map(([k,l])=>`<button class="${finTab===k?'on':''}" onclick="finTab='${k}';viewFinanceiro()">${l}</button>`).join('')}</div>`;}
 function viewFinanceiro(){
   const t=totaisGerais(finTab==='visao'?periodoRange():undefined);
   const tabs=[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
@@ -5730,6 +5736,7 @@ function prmEstoqueHTML(){const c=estCfg();const arms=estArmazens();const auto=[
       <div class="prm-kv"><span>Vendas baixam de</span><b>${esc(estArmNome(c.armVendas))}</b></div>
       <div class="prm-kv"><span>Compras entram em</span><b>${esc(estArmNome(c.armEntrada))}</b></div>
       <div class="prm-kv"><span>Automático</span><b>${auto.length?auto.join(', '):'nada'}</b></div>
+      ${arms.length>1?`<div class="prm-kv"><span>Categorias por setor</span><b><a class="gp-link" onclick="gerenciarCategorias('insumo')">configurar</a> <span class="gp-mini">(${Object.keys(catSetoresMap()).length} subcategoria(s) restrita(s))</span></b></div>`:''}
       ${prmOnde(['Estoque & Compras','Lançamentos (entrada de nota)','Desperdícios','Baixa por vendas'])}
     </div>
     <div class="card card-pad">
@@ -5741,13 +5748,23 @@ function prmEstoqueHTML(){const c=estCfg();const arms=estArmazens();const auto=[
 
 /* ===================== EQUIPE ===================== */
 const ACESSOS=[['dashboard','Dashboard'],['insumos','Produtos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['checklists','Checklists'],['pops','POPs · Procedimentos'],['cargos','Descrições de Cargos'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE (no Financeiro)'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['formacao','Formação em Gestão'],['mapa','Plano de Guerra'],['equipe','Equipe'],['conta','Configurações']];
+/* Subpermissões dentro de Estoque & Compras (e a nota do Financeiro). Membro antigo sem `sub` gravado = tudo liberado dentro das áreas dele. */
+const ESTOQUE_SUBS=[['posicao','Posição de estoque (ver)'],['mov','Movimentações (ver e registrar)'],['contagem','Contagem física (lançar)'],['req_criar','Requisição: criar para o seu setor'],['req_separar','Requisição: separar e concluir (estoquista)'],['retorno_aceitar','Aceitar retorno ao principal'],['producao','Registrar produção'],['vendas','Baixa por venda'],['cmv','Registro de CMV'],['compras','Lista de compras'],['historico','Histórico de compras'],['nota','Lançamento de nota']];
+const SUB_TUDO=Object.fromEntries(ESTOQUE_SUBS.map(([k])=>[k,true]));
+const subDe=keys=>Object.fromEntries(ESTOQUE_SUBS.map(([k])=>[k,keys.includes(k)]));
 const NIVEIS={
-  admin:{label:'Administrador',desc:'Acesso total a tudo',perms:ACESSOS.map(a=>a[0])},
-  gerente:{label:'Gerente',desc:'Operação + indicadores (sem equipe/config)',perms:['dashboard','insumos','fichas','estoque','checklists','engenharia','cmv','desperdicio','buffet','faturamento','dre','mapa']},
-  operador:{label:'Operador',desc:'Só operação do dia a dia',perms:['insumos','fichas','estoque','checklists','cmv','desperdicio','buffet']},
-  personalizado:{label:'Personalizado',desc:'Você escolhe cada acesso',perms:[]}
+  admin:{label:'Administrador',desc:'Acesso total a tudo',perms:ACESSOS.map(a=>a[0]),sub:SUB_TUDO},
+  gerente:{label:'Gerente',desc:'Operação + indicadores (sem equipe/config)',perms:['dashboard','insumos','estoque','checklists','cmv','desperdicio','buffet','faturamento','dre','mapa'],sub:SUB_TUDO},
+  operador:{label:'Operador',desc:'Só operação do dia a dia',perms:['insumos','estoque','checklists','cmv','desperdicio','buffet'],sub:SUB_TUDO},
+  estoquista:{label:'Estoquista',desc:'Estoque principal: recebe, separa requisições, aceita retornos, conta e registra CMV',perms:['insumos','estoque','cmv'],sub:subDe(['posicao','mov','contagem','req_separar','retorno_aceitar','cmv']),setorPrincipal:true},
+  chefe:{label:'Chefe de setor',desc:'Requisita para o próprio setor, conta e vê o saldo dele',perms:['estoque'],sub:subDe(['posicao','contagem','req_criar'])},
+  producao:{label:'Chefe da produção',desc:'Chefe de setor + registra produção e devolve preparados ao principal',perms:['estoque'],sub:subDe(['posicao','mov','contagem','req_criar','producao'])},
+  compras:{label:'Compras',desc:'Lança nota, lista e histórico de compras, cadastro de produto',perms:['insumos','estoque','financeiro'],sub:subDe(['posicao','mov','compras','historico','nota'])},
+  financeiro:{label:'Financeiro',desc:'Só o módulo financeiro',perms:['dashboard','financeiro','dre','folha'],sub:subDe([])},
+  personalizado:{label:'Personalizado',desc:'Você escolhe cada acesso',perms:[],sub:null}
 };
-function normMembro(m){if(!m.nivel)m.nivel='gerente';if(!Array.isArray(m.permissoes))m.permissoes=(NIVEIS[m.nivel]||NIVEIS.gerente).perms.slice();return m;}
+function normMembro(m){if(!m.nivel||!NIVEIS[m.nivel])m.nivel=m.nivel||'gerente';if(!NIVEIS[m.nivel])m.nivel='personalizado';if(!Array.isArray(m.permissoes))m.permissoes=(NIVEIS[m.nivel]||NIVEIS.gerente).perms.slice();if(!Array.isArray(m.setores))m.setores=[];if(m.sub&&typeof m.sub!=='object')delete m.sub;return m;}
+function membroSetoresTxt(m){if(m.nivel==='admin')return 'Todos';const s=(m.setores||[]).map(id=>estArmNome(id));return s.length?s.join(', '):'<span style="color:var(--soft)">—</span>';}
 function viewEquipe(){
   DB.equipe=(DB.equipe||[]).map(normMembro);
   $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="addMembro()">${icoPlus} Adicionar membro</button>`;
@@ -5755,11 +5772,12 @@ function viewEquipe(){
   $('#view').innerHTML=`<div class="card card-pad" style="max-width:920px">
     <div class="section-head"><div><div class="ttl">Membros da equipe</div><div class="desc">Crie acessos para a equipe e escolha o nível de acesso de cada um. Sem limite de membros.</div></div></div>
     ${arr.length?`<div class="scroll-x"><table>
-      <thead><tr><th>Nome</th><th>E-mail de login</th><th>Nível de acesso</th><th class="num">Áreas</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>E-mail de login</th><th>Nível de acesso</th><th>Setores</th><th class="num">Áreas</th><th></th></tr></thead>
       <tbody>${arr.map((m,i)=>`<tr>
         <td><b>${esc(m.nome)||'<span style="color:var(--soft)">Sem nome</span>'}</b></td>
         <td>${esc(m.email)||'<span style="color:var(--soft)">—</span>'}</td>
-        <td><span class="tag ${m.nivel==='admin'?'tag-navy':m.nivel==='personalizado'?'tag-gold':'tag-gray'}">${NIVEIS[m.nivel].label}</span></td>
+        <td><span class="tag ${m.nivel==='admin'?'tag-navy':m.nivel==='personalizado'?'tag-gold':'tag-gray'}">${(NIVEIS[m.nivel]||NIVEIS.personalizado).label}</span></td>
+        <td style="font-size:12.5px">${membroSetoresTxt(m)}</td>
         <td class="num">${m.nivel==='admin'?'Todas':m.permissoes.length+' de '+ACESSOS.length}</td>
         <td><div class="row-actions"><button class="icon-btn" onclick="editMembro('${m.id}')">${icoEdit}</button><button class="icon-btn del" onclick="removerMembro('${m.id}')">${icoTrash}</button></div></td></tr>`).join('')}</tbody></table></div>`
     :emptyState('Nenhum membro cadastrado','Crie acessos para sua equipe operar o sistema.','addMembro()')}
@@ -5781,6 +5799,16 @@ function editMembro(id){editMembroId=id;const m=normMembro(DB.equipe.find(x=>x.i
       <select class="input" id="mb_nivel" onchange="membroSetNivel(this.value)">${Object.entries(NIVEIS).map(([k,v])=>`<option value="${k}" ${m.nivel===k?'selected':''}>${v.label} · ${v.desc}</option>`).join('')}</select></div>
     <div style="font-size:12px;font-weight:600;color:var(--muted);margin:6px 0 8px">Áreas que este membro pode acessar</div>
     <div id="mb_perms" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px">${ACESSOS.map(([k,l])=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" data-perm="${k}" ${m.permissoes.includes(k)?'checked':''} onchange="membroTogglePerm()" style="width:16px;height:16px;accent-color:var(--navy)"> ${l}</label>`).join('')}</div>
+    <div id="mb_setores_box" style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px">
+      <div style="font-size:12px;font-weight:600;color:var(--muted)">Setores (estoques) deste membro</div>
+      <div style="font-size:11.5px;color:var(--soft);margin:2px 0 8px">Chefe de setor só vê, requisita e conta o estoque dos setores marcados. Marque <b>${esc(estArmNome(EST_ARM_PRINCIPAL))}</b> para estoquistas. Administrador vê tudo.${estMultiArm()?'':' <a class="gp-link" onclick="closeModal();estCfgModal()">Criar os setores em Estoque › configurar</a>.'}</div>
+      <div style="display:flex;gap:8px 14px;flex-wrap:wrap">${estArmazens().map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer"><input type="checkbox" data-setor="${esc(a.id)}" ${(m.setores||[]).includes(a.id)?'checked':''} style="width:16px;height:16px;accent-color:var(--navy)"> ${esc(a.nome)}</label>`).join('')}</div>
+    </div>
+    <div id="mb_sub_box" style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px">
+      <div style="font-size:12px;font-weight:600;color:var(--muted)">Dentro de Estoque & Compras, o que pode fazer</div>
+      <div style="font-size:11.5px;color:var(--soft);margin:2px 0 8px">Vale quando a área Estoque & Compras está marcada acima. "Lançamento de nota" libera o botão de lançar nota também para quem não tem o Financeiro.</div>
+      <div id="mb_sub" style="display:grid;grid-template-columns:1fr 1fr;gap:7px 16px">${ESTOQUE_SUBS.map(([k,l])=>`<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer"><input type="checkbox" data-sub="${k}" ${(m.sub?!!m.sub[k]:true)?'checked':''} onchange="membroTogglePerm()" style="width:15px;height:15px;accent-color:var(--navy)"> ${l}</label>`).join('')}</div>
+    </div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>${m.authId?`<button class="btn btn-ghost" onclick="redefinirSenhaMembro()">🔑 Redefinir senha</button>`:''}<button class="btn btn-primary" onclick="saveMembro()">Salvar membro</button></div>`);
 }
@@ -5797,8 +5825,10 @@ async function redefinirSenhaMembro(){
   if(!res||!res.data||!res.data.ok)return membroErro((res&&res.data&&res.data.error)||'Não foi possível redefinir a senha. Tente novamente.');
   m.senha=senha;save();toast('Senha redefinida! O membro já entra com a nova senha.');
 }
-function membroSetNivel(nivel){const checks=document.querySelectorAll('#mb_perms input[data-perm]');const perms=(NIVEIS[nivel]||{perms:[]}).perms;
-  if(nivel!=='personalizado')checks.forEach(c=>c.checked=perms.includes(c.dataset.perm));}
+function membroSetNivel(nivel){const N=NIVEIS[nivel]||{perms:[]};const checks=document.querySelectorAll('#mb_perms input[data-perm]');
+  if(nivel!=='personalizado'){checks.forEach(c=>c.checked=N.perms.includes(c.dataset.perm));
+    document.querySelectorAll('#mb_sub input[data-sub]').forEach(c=>c.checked=N.sub?!!N.sub[c.dataset.sub]:true);
+    if(N.setorPrincipal){const p=document.querySelector('#mb_setores_box input[data-setor="'+EST_ARM_PRINCIPAL+'"]');if(p)p.checked=true;}}}
 function membroTogglePerm(){const sel=document.getElementById('mb_nivel');if(sel)sel.value='personalizado';}
 function membroErro(msg){const el=document.getElementById('mb_erro');if(el){el.textContent=msg||'';el.style.display=msg?'block':'none';}if(msg)toast(msg);}
 /* O Supabase responde em inglês; aqui vira instrução de como resolver. */
@@ -5815,6 +5845,11 @@ async function saveMembro(){const m=DB.equipe.find(x=>x.id===editMembroId);if(!m
   m.nome=nome;m.email=email;m.senha=senha;m.nivel=$('#mb_nivel').value;
   m.permissoes=[...document.querySelectorAll('#mb_perms input[data-perm]:checked')].map(c=>c.dataset.perm);
   if(m.nivel==='admin')m.permissoes=NIVEIS.admin.perms.slice();
+  m.setores=[...document.querySelectorAll('#mb_setores_box input[data-setor]:checked')].map(c=>c.dataset.setor);
+  m.sub=Object.fromEntries([...document.querySelectorAll('#mb_sub input[data-sub]')].map(c=>[c.dataset.sub,c.checked]));
+  if(m.nivel!=='admin'&&m.permissoes.includes('estoque')&&estMultiArm()){
+    const precisaSetor=(m.sub.req_criar||m.sub.contagem||m.sub.posicao)&&!m.setores.length;
+    if(precisaSetor)return membroErro('Este membro tem permissão de estoque (requisição, contagem ou posição) mas nenhum setor marcado. Marque ao menos um setor, ou o estoque principal para estoquistas.');}
   const btn=document.querySelector('.modal-foot .btn-primary');
   // cria a conta de login real na 1ª vez (precisa estar na nuvem)
   if(sb&&CLOUD&&!m.authId){
@@ -6283,7 +6318,7 @@ function imprimirDesperdicio(){
 }
 let cmvAno='todos';
 function viewCMV(){
-  $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editCmvReg()">${icoPlus} Nova contagem</button>`;
+  $('#topActions').innerHTML=pode('cmv')?`<button class="btn btn-primary" onclick="editCmvReg()">${icoPlus} Nova contagem</button>`:'';
   const regs=(DB.cmvRegistros||[]).map(cmvRegCalc).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
   const anos=['todos',...new Set(regs.map(r=>(r.data||'').slice(0,4)).filter(Boolean))];
   if(!anos.includes(cmvAno))cmvAno='todos';
@@ -6348,7 +6383,7 @@ function viewCMV(){
     </table></div></div>`:''}`;
 }
 let cmvManual={compras:false,vendas:false};
-function editCmvReg(id,prefill){
+function editCmvReg(id,prefill){if(!pode('cmv'))return toast('Seu acesso não permite registrar CMV');
   _cmvZeraEstoque=!!(prefill&&prefill._est);
   cmvManual={compras:false,vendas:false};
   const last=(DB.cmvRegistros||[]).filter(x=>x.id!==id).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];
@@ -6450,7 +6485,7 @@ function cmvPeriodoAuto(de,ate){const ls=(DB.lancamentos||[]).filter(l=>l.data&&
   const comp=ls.filter(l=>l.grupo==='CMV'),rec=ls.filter(l=>grupoTipo(l.grupo)==='receita');
   const r2=v=>Math.round(v*100)/100;
   return {compras:r2(comp.reduce((s,l)=>s+(l.valor||0),0)),nCompras:comp.length,vendas:r2(rec.reduce((s,l)=>s+(l.valor||0),0)),nVendas:rec.length};}
-function lancarCmvDoEstoque(){const v=Math.round(estoqueValorCMV()*100)/100;editCmvReg(null,{ef:v,_est:true});toast('Estoque CMV atual ('+fmtBRL(v)+') lançado como estoque final.');}
+function lancarCmvDoEstoque(){if(!pode('cmv'))return toast('Seu acesso não permite registrar CMV');const v=Math.round(estoqueValorCMV()*100)/100;editCmvReg(null,{ef:v,_est:true});toast('Estoque CMV atual ('+fmtBRL(v)+') lançado como estoque final.');}
 function imprimirContagem(){
   const items=estoqueItens().slice().sort((a,b)=>((ehInsumoCMV(b.ins)?1:0)-(ehInsumoCMV(a.ins)?1:0))||(a.cat||'').localeCompare(b.cat||'')||a.nome.localeCompare(b.nome));
   if(!items.length)return toast('Nenhum insumo marcado para contagem');
@@ -6473,6 +6508,7 @@ function imprimirContagem(){
   setTimeout(fim,1500);
 }
 function viewEstoque(){
+  const abas=estAbasPermitidas();if(!abas.some(([k])=>k===estoqueTab)){if(!abas.length){$('#topActions').innerHTML='';$('#view').innerHTML=`<div class="card">${emptyState('Sem permissões de estoque','Peça ao administrador para liberar o que você pode fazer em Estoque & Compras.','')}</div>`;return;}estoqueTab=abas[0][0];estReqSel=null;}
   const items=estoqueItens();
   const valorTotal=items.reduce((s,x)=>s+x.valorEstoque,0);
   const itCMV=items.filter(x=>ehInsumoCMV(x.ins)), itFora=items.filter(x=>!ehInsumoCMV(x.ins));
@@ -6483,12 +6519,13 @@ function viewEstoque(){
   $('#topActions').innerHTML = estoqueTab==='compras'
     ? `<button class="btn btn-gold no-print" onclick="window.print()">🖨️ Imprimir lista</button>`
     : estoqueTab==='historico' ? `<button class="btn btn-gold no-print" onclick="window.print()">🖨️ Imprimir / PDF</button>`
-    : estoqueTab==='contar' ? `<button class="btn btn-primary no-print" onclick="estContagemNova()">${icoPlus} Nova contagem</button>`
-    : estoqueTab==='mov' ? `<button class="btn btn-primary no-print" onclick="estMovModal('saida')">${icoPlus} Nova movimentação</button>`
+    : estoqueTab==='contar' ? (pode('contagem')?`<button class="btn btn-primary no-print" onclick="estContagemNova()">${icoPlus} Nova contagem</button>`:'')
+    : estoqueTab==='mov' ? (souDoPrincipal()?`<button class="btn btn-primary no-print" onclick="estMovModal('saida')">${icoPlus} Nova movimentação</button>`:'')
     : estoqueTab==='vendas' ? ''
     : estoqueTab==='producao' ? (estSubprodutos().length?`<button class="btn btn-primary no-print" onclick="estProducaoModal()">${icoPlus} Registrar produção</button>`:'')
-    : estoqueTab==='requisicoes' ? (estMultiArm()&&!estReqSel?`<button class="btn btn-primary no-print" onclick="estReqNova()">${icoPlus} Nova requisição</button>`:'')
-    : `<button class="btn btn-primary no-print" onclick="estMovModal('saida')">${icoPlus} Movimentação</button>${(estMultiArm()||estTransfEntreUnidades())?`<button class="btn btn-ghost no-print" onclick="estTransfModal('',{})">⇄ Transferir</button>`:''}<button class="btn btn-ghost no-print" onclick="estContagemNova()">📋 Contar</button><button class="btn btn-ghost no-print" onclick="lancarCmvDoEstoque()">↗ Registrar no CMV</button>`;
+    : estoqueTab==='requisicoes' ? (estMultiArm()&&!estReqSel&&pode('req_criar')?`<button class="btn btn-primary no-print" onclick="estReqNova()">${icoPlus} Nova requisição</button>`:'')
+    : `${pode('mov')&&souDoPrincipal()?`<button class="btn btn-primary no-print" onclick="estMovModal('saida')">${icoPlus} Movimentação</button>${(estMultiArm()||estTransfEntreUnidades())?`<button class="btn btn-ghost no-print" onclick="estTransfModal('',{})">⇄ Transferir</button>`:''}`:''}${pode('contagem')?`<button class="btn btn-ghost no-print" onclick="estContagemNova()">📋 Contar</button>`:''}${pode('cmv')&&souDoPrincipal()?`<button class="btn btn-ghost no-print" onclick="lancarCmvDoEstoque()">↗ Registrar no CMV</button>`:''}`;
+  if(pode('nota')&&MEMBRO_PERMS&&!MEMBRO_PERMS.includes('financeiro')&&['compras','historico','contagem'].includes(estoqueTab))$('#topActions').innerHTML+=`<button class="btn btn-ghost no-print" onclick="lancarModal()">📄 Lançar nota</button>`;
   if(estoqueTab==='historico'){$('#view').innerHTML=estHistHTML();return;}
   if(estoqueTab==='producao'){$('#view').innerHTML=estProducaoHTML();return;}
   if(estoqueTab==='requisicoes'){$('#view').innerHTML=estRequisicoesHTML();return;}
@@ -6499,32 +6536,33 @@ function viewEstoque(){
   if(estoqueTab==='contagem'){
     const cats=['Todos',...new Set(items.map(x=>x.cat))];
     if(!cats.includes(estoqueFiltro))estoqueFiltro='Todos';
-    const base=estoqueCmvF==='cmv'?itCMV:estoqueCmvF==='fora'?itFora:items;
+    const base0=estoqueCmvF==='cmv'?itCMV:estoqueCmvF==='fora'?itFora:items;
+    const base=souDoPrincipal()?base0:base0.filter(x=>armazensPermitidos().some(a=>prodNoSetor(x.ins,a.id)));   // chefe de setor: só os produtos das categorias do setor dele
     const filt=applySort('estoque',estoqueFiltro==='Todos'?base:base.filter(x=>x.cat===estoqueFiltro));
     $('#view').innerHTML=`
     ${estTabsHTML()}
-    <div class="kpi-grid kpi5">
+    ${souDoPrincipal()?`<div class="kpi-grid kpi5">
       <div class="kpi"><div class="ic ic-navy">${ico('cash')}</div><div class="k-lbl">Estoque CMV</div><div class="k-val">${fmtBRL(valorCMV)}</div><div class="k-sub" style="color:var(--soft)">${itCMV.length} produtos · entra no CMV</div></div>
       <div class="kpi"><div class="ic ic-gold">${ico('cash')}</div><div class="k-lbl">Estoque CMV no último registro</div><div class="k-val">${ultReg?fmtBRL(+ultReg.ef||0):'—'}</div><div class="k-sub" style="color:var(--soft)">${ultReg?('em '+fmtDataBR(ultReg.data)):'nenhum registro ainda'}</div></div>
       <div class="kpi"><div class="ic ${comprarList.length?'ic-red':'ic-green'}">${ico('cmv')}</div><div class="k-lbl">Itens a comprar</div><div class="k-val" style="color:${comprarList.length?'var(--red)':'var(--green)'}">${comprarList.length}</div><div class="k-sub" style="color:var(--soft)">abaixo do mínimo</div></div>
       <div class="kpi"><div class="ic ic-gold">${ico('mc')}</div><div class="k-lbl">Compra prevista</div><div class="k-val">${fmtBRL(totalCompras)}</div><div class="k-sub" style="color:var(--soft)">para repor o mínimo</div></div>
       <div class="kpi"><div class="ic ic-navy">${ico('profit')}</div><div class="k-lbl">Fora do CMV</div><div class="k-val">${fmtBRL(valorFora)}</div><div class="k-sub" style="color:var(--soft)">${itFora.length} itens · limpeza, materiais… · total ${fmtBRL(valorTotal)}</div></div>
     </div>
-    ${estAlertasHTML(items)}
+    ${estAlertasHTML(items)}`:`<div class="card card-pad" style="padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--muted)">Saldo de <b>${armazensPermitidos().map(a=>esc(a.nome)).join(', ')}</b>. Só os produtos liberados para o seu setor aparecem aqui; a contagem e a requisição usam a mesma lista.</div>`}
     <div class="section-head no-print" style="flex-wrap:wrap;gap:10px"><div class="pill-filter" style="margin:0">${[['todos','Todos'],['cmv','Só CMV'],['fora','Fora do CMV']].map(([k,l])=>`<button class="${estoqueCmvF===k?'on':''}" onclick="estoqueCmvF='${k}';viewEstoque()">${l}</button>`).join('')}</div>
       <select class="input" style="max-width:220px" onchange="estoqueFiltro=this.value;viewEstoque()">${cats.map(c=>`<option ${c===estoqueFiltro?'selected':''}>${c}</option>`).join('')}</select>
       <input class="input" id="estBusca" value="${esc(buscaEst)}" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="buscaEst=this.value;filtrarLinhas(this,'#estoqueTbody')"></div>
     <div class="card"><div class="scroll-x"><table>
-      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Mínimo','min',1)}${estMultiArm()?estArmazens().map(a=>`<th class="num" title="Saldo em ${esc(a.nome)}">${esc(a.nome)}</th>`).join('')+thS('estoque','Total','atual',1):thS('estoque','Atual','atual',1)}<th class="num" title="Dias de estoque pelo consumo dos últimos 30 dias (vendas baixadas, perdas e saídas)">Cobertura</th>${thS('estoque','Categoria','grupo')}${thS('estoque','Subcategoria','sub')}${thS('estoque','Fornecedor','fornecedor')}${thS('estoque','Custo médio','custo',1)}${thS('estoque','Unid.','uni',1)}</tr></thead>
+      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Mínimo','min',1)}${estMultiArm()?armazensPermitidos().map(a=>`<th class="num" title="Saldo em ${esc(a.nome)}">${esc(a.nome)}</th>`).join('')+(souDoPrincipal()?thS('estoque','Total','atual',1):''):thS('estoque','Atual','atual',1)}<th class="num" title="Dias de estoque pelo consumo dos últimos 30 dias (vendas baixadas, perdas e saídas)">Cobertura</th>${thS('estoque','Categoria','grupo')}${thS('estoque','Subcategoria','sub')}${thS('estoque','Fornecedor','fornecedor')}${thS('estoque','Custo médio','custo',1)}${thS('estoque','Unid.','uni',1)}</tr></thead>
       <tbody id="estoqueTbody">${filt.map(x=>`
         <tr>
           <td><a onclick="estKardex('${x.ins.id}')" title="Ver o kardex (histórico de entradas e saídas)" style="font-weight:700;cursor:pointer">${x.nome}</a>${x.ins.tipo==='preparado'?'<div style="font-size:11px;color:var(--gold);font-weight:600">subproduto</div>':''}</td>
-          <td class="num"><input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.min||''}" placeholder="0" oninput="DB.insumos['${x.ins.id}'].estoqueMin=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()"></td>
-          ${estMultiArm()?estArmazens().map(a=>{const v=estSaldoArm(x.ins,a.id);return `<td class="num" style="${v<-0.0005?'color:var(--red);font-weight:700':''}" title="${v<-0.0005?'Saldo negativo: saiu mais do que entrou neste armazém':''}">${v?estQ(v):'<span style=\"color:var(--soft)\">—</span>'}</td>`;}).join('')+`<td class="num"><b>${estQ(x.atual)}</b></td>`:`<td class="num"><b>${estQ(x.atual)}</b></td>`}
+          <td class="num">${souDoPrincipal()?`<input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.min||''}" placeholder="0" oninput="DB.insumos['${x.ins.id}'].estoqueMin=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()">`:`<span style="color:var(--muted)">${x.min?estQ(x.min):'—'}</span>`}</td>
+          ${estMultiArm()?armazensPermitidos().map(a=>{const v=estSaldoArm(x.ins,a.id);return `<td class="num" style="${v<-0.0005?'color:var(--red);font-weight:700':''}" title="${v<-0.0005?'Saldo negativo: saiu mais do que entrou neste armazém':''}">${v?estQ(v):'<span style=\"color:var(--soft)\">—</span>'}</td>`;}).join('')+(souDoPrincipal()?`<td class="num"><b>${estQ(x.atual)}</b></td>`:''):`<td class="num"><b>${estQ(x.atual)}</b></td>`}
           <td class="num">${(function(){const i=estInfoProduto(x.ins);return i.cob==null?'<span style="color:var(--soft)" title="Sem consumo registrado nos últimos 30 dias">—</span>':`<span style="font-weight:600;color:${i.ruptura?'var(--red)':i.cob<15?'var(--amber)':'var(--green)'}" title="${fmtN(i.cons.diario,2)} ${uSym(x.uni)}/dia">${Math.round(i.cob)} d</span>`;})()}</td>
           <td>${ehInsumoCMV(x.ins)?`<span class="tag tag-gray">CMV</span>`:`<span class="tag tag-amber" title="Não entra na apuração do CMV">${esc(x.grupo)}</span>`}</td>
           <td>${(x.sub||x.cat)?`<span style="font-size:12.5px">${esc(x.sub||x.cat)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
-          <td><input class="input" style="min-width:130px" value="${esc(x.ins.fornecedor)}" placeholder="Fornecedor" oninput="DB.insumos['${x.ins.id}'].fornecedor=this.value;finTouch()"></td>
+          <td>${souDoPrincipal()?`<input class="input" style="min-width:130px" value="${esc(x.ins.fornecedor)}" placeholder="Fornecedor" oninput="DB.insumos['${x.ins.id}'].fornecedor=this.value;finTouch()">`:`<span style="font-size:12.5px;color:var(--muted)">${esc(x.ins.fornecedor||'—')}</span>`}</td>
           <td class="num">${fmtBRL(x.custo)}</td>
           <td class="num">${uSym(x.uni)}</td>
         </tr>`).join('')}</tbody>
@@ -6592,6 +6630,16 @@ function estTransfParaSelect(sel){const arms=estArmazens();const us=estTransfEnt
   return `<select class="input" id="tr_para" onchange="estTransfDraft.para=this.value;estTransfLinhas()">${arms.length>1||!us.length?`<optgroup label="Armazéns desta unidade">${arms.map(a=>`<option value="${esc(a.id)}" ${a.id===sel?'selected':''}>${esc(a.nome)}</option>`).join('')}</optgroup>`:''}${us.length?`<optgroup label="Outra unidade do grupo">${us.map(u=>`<option value="org:${u.id}" ${'org:'+u.id===sel?'selected':''}>${esc(orgNomeExib(u))}</option>`).join('')}</optgroup>`:''}</select>`;}
 function estEnsureSubTransf(){const c=DB.categorias&&DB.categorias['CMV'];if(c){c.subs=c.subs||[];if(!c.subs.includes('Transferência entre unidades'))c.subs.push('Transferência entre unidades');}}
 function estMultiArm(){return estArmazens().length>1;}
+/* Categoria (grupo › subcategoria do produto) liberada em quais setores. Sem vínculo = em todos. Produto pode ter exceção própria (ins.setores). */
+function catSetoresMap(){DB.fin=DB.fin||{};if(!DB.fin.catSetores||typeof DB.fin.catSetores!=='object')DB.fin.catSetores={};return DB.fin.catSetores;}
+function catSetorKey(grupo,sub){return (grupo||'CMV')+'|'+(sub||'');}
+function catSetoresDe(grupo,sub){const l=catSetoresMap()[catSetorKey(grupo,sub)];return Array.isArray(l)?l.filter(id=>estArm(id)):[];}
+function catSetorToggle(grupo,sub,arm){const m=catSetoresMap();const k=catSetorKey(grupo,sub);let l=Array.isArray(m[k])?m[k].slice():[];l=l.includes(arm)?l.filter(x=>x!==arm):l.concat([arm]);if(l.length)m[k]=l;else delete m[k];save();}
+function prodNoSetor(ins,arm){if(!ins||!arm||arm===EST_ARM_PRINCIPAL||!estMultiArm())return true;
+  if(Array.isArray(ins.setores)&&ins.setores.length)return ins.setores.includes(arm);
+  const l=catSetoresDe(ins.grupo||'CMV',ins.sub||ins.cat||'');return !l.length||l.includes(arm);}
+function setoresSemPrincipal(){return estArmazens().filter(a=>a.id!==EST_ARM_PRINCIPAL);}
+function estProdDatalistSetor(id,arm){return `<datalist id="${id}">${Object.values(DB.insumos).filter(i=>estEstocavel(i)&&prodNoSetor(i,arm)).sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>`<option value="${esc(i.nome)}"></option>`).join('')}</datalist>`;}
 function estArmValido(id){return estArm(id)?id:EST_ARM_PRINCIPAL;}
 function estArmSelect(id,sel,attrs){return `<select class="input" id="${id}" ${attrs||''}>${estArmazens().map(a=>`<option value="${esc(a.id)}" ${a.id===sel?'selected':''}>${esc(a.nome)}</option>`).join('')}</select>`;}
 function estEstocavel(ins){return !!(ins&&(ins.tipo!=='preparado'||ins.estocavel));}   // tem estoque próprio?
@@ -6786,7 +6834,9 @@ function estHistHTML(){const {de,ate}=estHistPeriodo();const rows=estHistLinhas(
     </div>
     ${tabela(g)}
   </div>`).join(''):`<div class="card">${emptyState('Nenhuma compra no período','As compras aparecem aqui quando o lançamento tem um produto vinculado (leitor de notas ou lançamento manual com produto).','lancarModal()')}</div>`}`;}
-function estTabsHTML(){return `<div class="pill-filter no-print" style="margin-bottom:16px">${EST_ABAS.map(([k,l])=>`<button class="${estoqueTab===k?'on':''}" onclick="estoqueTab='${k}';viewEstoque()">${l}</button>`).join('')}</div>`;}
+const EST_ABA_PERM={contagem:['posicao'],mov:['mov'],contar:['contagem'],producao:['producao'],requisicoes:['req_criar','req_separar'],vendas:['vendas'],compras:['compras'],historico:['historico']};
+function estAbasPermitidas(){return EST_ABAS.filter(([k])=>(EST_ABA_PERM[k]||[]).some(p=>pode(p)));}
+function estTabsHTML(){return `<div class="pill-filter tabs no-print" style="margin-bottom:16px">${estAbasPermitidas().map(([k,l])=>`<button class="${estoqueTab===k?'on':''}" onclick="estoqueTab='${k}';viewEstoque()">${l}</button>`).join('')}</div>`;}
 function estTipoTag(t){const T=EST_TIPOS[t]||['?','tag-gray'];return `<span class="tag ${T[1]}">${T[0]}</span>`;}
 function estProdDatalist(id){return `<datalist id="${id}">${Object.values(DB.insumos).filter(estEstocavel).sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>`<option value="${esc(i.nome)}"></option>`).join('')}</datalist>`;}
 function estProdPorNome(nome){const n=lmNorm(nome);if(!n)return null;const L=Object.values(DB.insumos).filter(estEstocavel);return L.find(i=>lmNorm(i.nome)===n)||L.find(i=>lmNorm(i.nome).startsWith(n))||null;}
@@ -7016,13 +7066,13 @@ function estTransfRepetir(){if(!estTransfUltima)return;const outras=estUnidadesD
 /* ----- aba Movimentações ----- */
 let estMovF={tipo:'',q:'',ym:'',arm:''};
 function estMovHTML(){const ym=estMovF.ym||ymOf(hojeISO());const q=lmNorm(estMovF.q);const multi=estMultiArm();
-  const movs=estMovs().filter(m=>ymOf(m.data)===ym&&(!estMovF.tipo||m.tipo===estMovF.tipo)&&(!estMovF.arm||(m.arm||EST_ARM_PRINCIPAL)===estMovF.arm)&&(!q||lmNorm(((DB.insumos[m.insumoId]||{}).nome||'')+' '+estOrigemTxt(m)).includes(q))).sort((a,b)=>((b.data||'')+(b.hora||'')).localeCompare((a.data||'')+(a.hora||'')));
+  const movs=estMovs().filter(m=>setorPermitido(m.arm||EST_ARM_PRINCIPAL)&&ymOf(m.data)===ym&&(!estMovF.tipo||m.tipo===estMovF.tipo)&&(!estMovF.arm||(m.arm||EST_ARM_PRINCIPAL)===estMovF.arm)&&(!q||lmNorm(((DB.insumos[m.insumoId]||{}).nome||'')+' '+estOrigemTxt(m)).includes(q))).sort((a,b)=>((b.data||'')+(b.hora||'')).localeCompare((a.data||'')+(a.hora||'')));
   const tot={};movs.forEach(m=>{if(m.tipo==='transf')return;tot[m.tipo]=(tot[m.tipo]||0)+m.valor;});
   const resumo=Object.keys(EST_TIPOS).filter(t=>tot[t]).map(t=>`<div class="dash-pill"><span>${EST_TIPOS[t][0]}</span><b>${fmtBRL(tot[t])}</b></div>`).join('');
   const trs=estTransfs().filter(t=>ymOf(t.data)===ym).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
   return `${estTabsHTML()}<div class="card card-pad">
     <div class="section-head"><div><div class="ttl">Movimentações de estoque</div><div class="desc">Entradas, saídas, perdas, vendas, produções, transferências e ajustes, com o saldo depois de cada uma</div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><input type="month" class="input" style="max-width:160px" value="${ym}" onchange="estMovF.ym=this.value;viewEstoque()"><select class="input" style="max-width:150px" onchange="estMovF.tipo=this.value;viewEstoque()"><option value="">Todos os tipos</option>${Object.entries(EST_TIPOS).map(([k,v])=>`<option value="${k}" ${estMovF.tipo===k?'selected':''}>${v[0]}</option>`).join('')}</select>${multi?`<select class="input" style="max-width:170px" onchange="estMovF.arm=this.value;viewEstoque()"><option value="">Todos os armazéns</option>${estArmazens().map(a=>`<option value="${a.id}" ${estMovF.arm===a.id?'selected':''}>${esc(a.nome)}</option>`).join('')}</select>`:''}<input class="input" style="max-width:200px" value="${esc(estMovF.q)}" placeholder="🔎 Produto ou origem" oninput="estMovF.q=this.value;clearTimeout(window._emq);window._emq=setTimeout(viewEstoque,300)"></div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><input type="month" class="input" style="max-width:160px" value="${ym}" onchange="estMovF.ym=this.value;viewEstoque()"><select class="input" style="max-width:150px" onchange="estMovF.tipo=this.value;viewEstoque()"><option value="">Todos os tipos</option>${Object.entries(EST_TIPOS).map(([k,v])=>`<option value="${k}" ${estMovF.tipo===k?'selected':''}>${v[0]}</option>`).join('')}</select>${multi?`<select class="input" style="max-width:170px" onchange="estMovF.arm=this.value;viewEstoque()"><option value="">${meusSetores()?'Meus setores':'Todos os armazéns'}</option>${armazensPermitidos().map(a=>`<option value="${a.id}" ${estMovF.arm===a.id?'selected':''}>${esc(a.nome)}</option>`).join('')}</select>`:''}<input class="input" style="max-width:200px" value="${esc(estMovF.q)}" placeholder="🔎 Produto ou origem" oninput="estMovF.q=this.value;clearTimeout(window._emq);window._emq=setTimeout(viewEstoque,300)"></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${resumo||'<span style="font-size:12.5px;color:var(--soft)">Sem movimentações neste mês.</span>'}</div>
     ${movs.length?`<div class="scroll-x"><table><thead><tr><th>Data</th><th>Tipo</th><th>Produto</th>${multi?'<th>Armazém</th>':''}<th class="num">Qtd</th><th class="num">Custo un.</th><th class="num">Valor</th><th class="num">Saldo</th><th>Origem</th><th></th></tr></thead><tbody>
       ${movs.slice(0,400).map(m=>{const ins=DB.insumos[m.insumoId]||{nome:'(produto removido)',uni:''};const u=uSym(ins.uni);return `<tr><td style="white-space:nowrap">${fmtDataBR(m.data)} <span style="color:var(--soft);font-size:11px">${esc(m.hora||'')}</span></td><td>${estTipoTag(m.tipo)}</td><td><a onclick="estKardex('${m.insumoId}')" style="font-weight:600;cursor:pointer">${esc(ins.nome)}</a></td>${multi?`<td style="font-size:12px;white-space:nowrap">${esc(estArmNome(m.arm||EST_ARM_PRINCIPAL))}</td>`:''}<td class="num" style="font-weight:600;color:${m.q>0?'var(--green)':m.q<0?'var(--red)':'var(--muted)'}">${m.q>0?'+':''}${estQ(m.q,u)}</td><td class="num">${fmtBRL(m.custo)}</td><td class="num">${fmtBRL(m.valor)}</td><td class="num">${estQ(multi&&m.saldoArm!=null?m.saldoArm:m.saldo)}</td><td style="font-size:12px;color:var(--muted);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(estOrigemTxt(m))}">${esc(estOrigemTxt(m))}</td><td>${(m.origem==='manual')?`<button class="icon-btn del" title="Desfazer" onclick="estMovDel('${m.id}');viewEstoque()">${icoX}</button>`:m.origem==='transf'?`<button class="icon-btn del" title="Desfazer a transferência inteira" onclick="estTransfDel('${m.refId}')">${icoX}</button>`:''}</td></tr>`;}).join('')}
@@ -7033,17 +7083,20 @@ function estMovHTML(){const ym=estMovF.ym||ymOf(hojeISO());const q=lmNorm(estMov
 
 /* ----- aba Contagem física (por armazém quando há mais de um) ----- */
 let estContFiltro='cmv', estContDraft=null;
-function estContarHTML(){const cs=estContagens().slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));const multi=estMultiArm();
+function estContarHTML(){const cs=estContagens().filter(c=>setorPermitido(c.arm||EST_ARM_PRINCIPAL)).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));const multi=estMultiArm();
   return `${estTabsHTML()}<div class="card card-pad">
     <div class="section-head"><div><div class="ttl">Contagem física</div><div class="desc">Compare o estoque contado com o livro. A diferença mostra o que sumiu, quebrou ou não foi lançado.${multi?' Com mais de um armazém, cada contagem é de um local.':''}</div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm no-print" onclick="imprimirContagem()">🖨️ Folha de contagem</button><button class="btn btn-primary btn-sm" onclick="estContagemNova()">${icoPlus} Nova contagem</button></div></div>
-    ${cs.length?`<div class="scroll-x"><table><thead><tr><th>Data</th>${multi?'<th>Armazém</th>':''}<th class="num">Itens</th><th class="num">Com diferença</th><th class="num">Faltou (R$)</th><th class="num">Sobrou (R$)</th><th class="num">Divergência</th><th>Obs.</th><th></th></tr></thead><tbody>
-      ${cs.map(c=>`<tr><td><b>${fmtDataBR(c.data)}</b></td>${multi?`<td>${esc(estArmNome(c.arm||EST_ARM_PRINCIPAL))}</td>`:''}<td class="num">${c.itens.length}</td><td class="num">${c.itens.filter(x=>Math.abs(x.dif)>0.0005).length}</td><td class="num" style="color:var(--red)">${fmtBRL(c.itens.filter(x=>x.valorDif<0).reduce((s,x)=>s+x.valorDif,0))}</td><td class="num" style="color:var(--green)">${fmtBRL(c.itens.filter(x=>x.valorDif>0).reduce((s,x)=>s+x.valorDif,0))}</td><td class="num" style="font-weight:700;color:${Math.abs(c.totalDif)>0.005?'var(--red)':'var(--green)'}">${fmtBRL(c.totalDif)}</td><td style="font-size:12px;color:var(--muted)">${esc(c.obs||'')}</td><td><button class="icon-btn" title="Ver detalhes" onclick="estContagemVer('${c.id}')">${icoEdit}</button></td></tr>`).join('')}
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm no-print" onclick="imprimirContagem()">🖨️ Folha de contagem</button>${pode('contagem')?`<button class="btn btn-primary btn-sm" onclick="estContagemNova()">${icoPlus} Nova contagem</button>`:''}</div></div>
+    ${cs.length?`<div class="scroll-x"><table><thead><tr><th>Data</th>${multi?'<th>Armazém</th>':''}<th>Quem contou</th><th class="num">Itens</th><th class="num">Com diferença</th><th class="num">Faltou (R$)</th><th class="num">Sobrou (R$)</th><th class="num">Divergência</th><th>Obs.</th><th></th></tr></thead><tbody>
+      ${cs.map(c=>`<tr><td><b>${fmtDataBR(c.data)}</b></td>${multi?`<td>${esc(estArmNome(c.arm||EST_ARM_PRINCIPAL))}</td>`:''}<td style="font-size:12px;color:var(--muted)">${esc(c.por||'—')}${c.em?'<div class="gp-mini">'+c.em.slice(11,16)+'</div>':''}</td><td class="num">${c.itens.length}</td><td class="num">${c.itens.filter(x=>Math.abs(x.dif)>0.0005).length}</td><td class="num" style="color:var(--red)">${fmtBRL(c.itens.filter(x=>x.valorDif<0).reduce((s,x)=>s+x.valorDif,0))}</td><td class="num" style="color:var(--green)">${fmtBRL(c.itens.filter(x=>x.valorDif>0).reduce((s,x)=>s+x.valorDif,0))}</td><td class="num" style="font-weight:700;color:${Math.abs(c.totalDif)>0.005?'var(--red)':'var(--green)'}">${fmtBRL(c.totalDif)}</td><td style="font-size:12px;color:var(--muted)">${esc(c.obs||'')}</td><td><button class="icon-btn" title="Ver detalhes" onclick="estContagemVer('${c.id}')">${icoEdit}</button></td></tr>`).join('')}
     </tbody></table></div>`:`<div style="font-size:13px;color:var(--soft);padding:10px 0">Nenhuma contagem registrada. Imprima a folha, conte e lance aqui: o Flow compara com o livro e acerta o saldo.</div>`}
   </div>`;}
-function estContagemNova(){const items=estoqueItens().filter(x=>estContFiltro!=='cmv'||ehInsumoCMV(x.ins)).sort((a,b)=>(a.cat||'').localeCompare(b.cat||'')||a.nome.localeCompare(b.nome));
-  if(!estContDraft||estContDraft.filtro!==estContFiltro)estContDraft={filtro:estContFiltro,data:hojeISO(),arm:(estContDraft&&estContDraft.arm)||EST_ARM_PRINCIPAL,vals:{},obs:''};
+function estContagemNova(){if(!pode('contagem'))return toast('Seu acesso não permite lançar contagem');
+  const permitidos=armazensPermitidos();if(!permitidos.length)return toast('Você não tem setor vinculado. Peça ao administrador.');
+  if(!estContDraft||estContDraft.filtro!==estContFiltro)estContDraft={filtro:estContFiltro,data:hojeISO(),arm:(estContDraft&&estContDraft.arm)||permitidos[0].id,vals:{},obs:''};
+  if(!permitidos.some(a=>a.id===estContDraft.arm)){estContDraft.arm=permitidos[0].id;estContDraft.vals={};}
   const multi=estMultiArm();const arm=estArmValido(estContDraft.arm);const mob=ehMobile();let lastCat=null,rows='';
+  const items=estoqueItens().filter(x=>(estContFiltro!=='cmv'||ehInsumoCMV(x.ins))&&prodNoSetor(x.ins,arm)).sort((a,b)=>(a.cat||'').localeCompare(b.cat||'')||a.nome.localeCompare(b.nome));
   items.forEach(x=>{if(x.cat!==lastCat){lastCat=x.cat;rows+=`<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--gold);font-weight:700;padding:10px 0 4px">${esc(x.cat||'Sem categoria')}</div>`;}
     const v=estContDraft.vals[x.ins.id];const teo=multi?estSaldoArm(x.ins,arm):(+x.ins.estoqueAtual||0);const u=uSym(x.uni);
     rows+=`<div style="display:grid;grid-template-columns:${mob?'1fr 82px 96px':'1fr 110px 130px 120px 130px'};gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)">
@@ -7057,7 +7110,7 @@ function estContagemNova(){const items=estoqueItens().filter(x=>estContFiltro!==
   <div class="modal-body">
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
       <input type="date" class="input" style="max-width:150px" value="${estContDraft.data}" onchange="estContDraft.data=this.value">
-      ${multi?estArmSelect('ec_arm',arm,`style="max-width:190px" onchange="estContDraft.arm=this.value;estContDraft.vals={};estContagemNova()"`):''}
+      ${multi?`<select class="input" id="ec_arm" style="max-width:190px" onchange="estContDraft.arm=this.value;estContDraft.vals={};estContagemNova()">${permitidos.map(a=>`<option value="${esc(a.id)}" ${a.id===arm?'selected':''}>${esc(a.nome)}</option>`).join('')}</select>`:''}
       <div class="pill-filter" style="margin:0">${[['cmv','Só CMV'],['todos','Todos']].map(([k,l])=>`<button class="${estContFiltro===k?'on':''}" onclick="estContFiltro='${k}';estContagemNova()">${l}</button>`).join('')}</div>
       <span style="font-size:12px;color:var(--soft)">${items.length} itens · deixe em branco o que não contou (fica como está)</span></div>
     ${mob?'':`<div style="display:grid;grid-template-columns:1fr 110px 130px 120px 130px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 0 4px"><span>Produto</span><span style="text-align:right">Livro</span><span style="text-align:right">Contado</span><span style="text-align:right">Diferença</span><span style="text-align:right">Custo médio</span></div>`}
@@ -7074,11 +7127,12 @@ function estContagemSalvar(){const d=estContDraft;if(!d)return;const itens=[];co
   Object.entries(d.vals).forEach(([id,v])=>{if(v==null||v==='')return;const ins=DB.insumos[id];if(!ins)return;const cont=+v||0;const teo=estContLivro(ins);const dif=estR(cont-teo,3);const custo=estCustoAtual(ins);
     itens.push({insumoId:id,teorico:teo,contado:cont,dif,valorDif:estR(dif*custo,2)});});
   if(!itens.length)return toast('Preencha ao menos um item contado');
-  const c={id:uid(),data,arm,itens,obs:(d.obs||'').trim(),totalDif:estR(itens.reduce((s,x)=>s+x.valorDif,0),2)};
+  if(!setorPermitido(arm))return toast('Você não pode contar '+estArmNome(arm));
+  const c={id:uid(),data,arm,itens,obs:(d.obs||'').trim(),totalDif:estR(itens.reduce((s,x)=>s+x.valorDif,0),2),por:quemSou(),em:new Date().toISOString()};
   itens.forEach(x=>{if(x.dif)estMov('ajuste',x.insumoId,0,{delta:x.dif,arm,origem:'contagem',refId:c.id,data,motivo:'Contagem física',obs:x.dif<0?'faltou na contagem':'sobrou na contagem'});});
   estContagens().push(c);estContDraft=null;save();closeModal();estoqueTab='contar';viewEstoque();
   toast('Contagem salva · '+itens.length+' itens · divergência '+fmtBRL(c.totalDif));
-  if(itens.length&&(!estMultiArm()||arm===EST_ARM_PRINCIPAL))setTimeout(()=>{if(confirm('Registrar esta contagem no Controle de CMV como estoque final ('+fmtBRL(estoqueValorCMV())+')?'))lancarCmvDoEstoque();},400);}
+  if(itens.length&&pode('cmv')&&(!estMultiArm()||arm===EST_ARM_PRINCIPAL))setTimeout(()=>{if(confirm('Registrar esta contagem no Controle de CMV como estoque final ('+fmtBRL(estoqueValorCMV())+')?'))lancarCmvDoEstoque();},400);}
 function estContagemVer(id){const c=estContagens().find(x=>x.id===id);if(!c)return;const its=c.itens.slice().sort((a,b)=>a.valorDif-b.valorDif);
   modal(`<div class="modal-head"><h3>Contagem de ${fmtDataBR(c.data)}${estMultiArm()?' · '+esc(estArmNome(c.arm||EST_ARM_PRINCIPAL)):''}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">${c.obs?`<div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">${esc(c.obs)}</div>`:''}
@@ -7142,19 +7196,21 @@ const REQ_TURNOS=[['dia','Dia inteiro'],['manha','Manhã'],['tarde','Tarde'],['n
 let estReqSel=null;
 function estReqDestinoPadrao(){const c=estCfg();if(c.armVendas!==EST_ARM_PRINCIPAL)return c.armVendas;const a=estArmazens().find(x=>x.id!==EST_ARM_PRINCIPAL);return a?a.id:'';}
 function estRequisicoesHTML(){if(estReqSel){const r=estRequisicoes().find(x=>x.id===estReqSel);if(r)return estReqEditorHTML(r);estReqSel=null;}
-  const rs=estRequisicoes().slice().sort((a,b)=>((b.data||'')+(b.criadoEm||'')).localeCompare((a.data||'')+(a.criadoEm||'')));const multi=estMultiArm();
+  const rs=estRequisicoes().filter(r=>pode('req_separar')||setorPermitido(r.para)).slice().sort((a,b)=>((b.data||'')+(b.criadoEm||'')).localeCompare((a.data||'')+(a.criadoEm||'')));const multi=estMultiArm();
   return `${estTabsHTML()}<div class="card card-pad">
     <div class="section-head"><div><div class="ttl">Requisições para a cozinha</div><div class="desc">Diga quantos pratos espera vender, o Flow calcula pela ficha técnica o que precisa ir do estoque para a cozinha, desconta o que já está lá e gera a lista para separar. Ao confirmar, vira transferência.</div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">${multi?`<button class="btn btn-primary btn-sm" onclick="estReqNova()">${icoPlus} Nova requisição</button>`:''}</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${multi&&pode('req_criar')?`<button class="btn btn-primary btn-sm" onclick="estReqNova()">${icoPlus} Nova requisição</button>`:''}</div></div>
     ${multi?'':`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div>A requisição transfere itens do estoque principal para um segundo armazém (a cozinha). <a class="gp-link" onclick="estArmCozinhaRapido()">Criar o armazém "Cozinha" agora</a> ou <a class="gp-link" onclick="estCfgModal()">configurar</a>.</div></div>`}
     ${rs.length?`<div class="scroll-x"><table><thead><tr><th>Data</th><th>Turno</th><th>De → Para</th><th class="num">Pratos previstos</th><th class="num">Itens</th><th>Situação</th><th>Obs.</th><th></th></tr></thead><tbody>
       ${rs.map(r=>`<tr style="cursor:pointer" onclick="estReqAbrir('${r.id}')"><td><b>${fmtDataBR(r.data)}</b></td><td>${esc((REQ_TURNOS.find(t=>t[0]===r.turno)||['','Dia inteiro'])[1])}</td><td style="font-size:12px">${esc(estArmNome(r.de))} → ${esc(estArmNome(r.para))}</td><td class="num">${(r.pratos||[]).reduce((s,x)=>s+(+x[1]||0),0)}</td><td class="num">${(r.itens||[]).filter(x=>+x.qtd>0).length}</td><td>${r.status==='separada'?'<span class="tag tag-green">separada</span>':'<span class="tag tag-amber">aberta</span>'}</td><td style="font-size:12px;color:var(--muted)">${esc(r.obs||'')}</td><td><div class="row-actions"><button class="icon-btn" title="Abrir" onclick="event.stopPropagation();estReqAbrir('${r.id}')">${icoEdit}</button><button class="icon-btn del" title="Excluir" onclick="event.stopPropagation();estReqDel('${r.id}')">${icoTrash}</button></div></td></tr>`).join('')}
     </tbody></table></div>`:`<div style="font-size:13px;color:var(--soft);padding:10px 0">Nenhuma requisição ainda.${multi?' Clique em "Nova requisição": a previsão pode vir da média de vendas do mesmo dia da semana.':''}</div>`}
   </div>`;}
 function estArmCozinhaRapido(){const arms=estArmazens();if(arms.some(a=>a.id==='cozinha'))return toast('Já existe');arms.push({id:'cozinha',nome:'Cozinha'});estCfg().armVendas='cozinha';save();viewEstoque();toast('Armazém "Cozinha" criado. As vendas passam a baixar dele.');}
-function estReqNova(){const para=estReqDestinoPadrao();if(!para)return toast('Crie um segundo armazém primeiro');
-  const r={id:uid(),data:hojeISO(),turno:'dia',de:EST_ARM_PRINCIPAL,para,status:'aberta',pratos:[],itens:[],obs:'',criadoEm:new Date().toISOString(),transfId:''};
-  estRequisicoes().push(r);estReqSel=r.id;save();viewEstoque();}
+function estReqSetoresDestino(){const s=meusSetores();return setoresSemPrincipal().filter(a=>!s||s.includes(a.id));}
+function estReqNova(){if(!pode('req_criar'))return toast('Seu acesso não permite criar requisição');
+  const dest=estReqSetoresDestino();const para=dest.length?(dest.some(a=>a.id===estReqDestinoPadrao())?estReqDestinoPadrao():dest[0].id):estReqDestinoPadrao();if(!para)return toast(meusSetores()?'Você não tem setor vinculado para requisitar':'Crie um segundo armazém primeiro');
+  const r={id:uid(),data:hojeISO(),turno:'dia',de:EST_ARM_PRINCIPAL,para,status:'aberta',pratos:[],itens:[],obs:'',criadoEm:new Date().toISOString(),transfId:'',por:quemSou()};
+  estRequisicoes().push(r);estReqSel=r.id;estoqueTab='requisicoes';save();viewEstoque();}
 function estReqAbrir(id){estReqSel=id;estoqueTab='requisicoes';viewEstoque();}
 function estReqDel(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)return;if(r.status==='separada'&&!confirm('Esta requisição já virou transferência. Excluir a requisição mantém a transferência no estoque. Continuar?'))return;
   if(r.status!=='separada'&&!confirm('Excluir esta requisição?'))return;DB.requisicoes=estRequisicoes().filter(x=>x.id!==id);if(estReqSel===id)estReqSel=null;save();viewEstoque();}
@@ -7184,12 +7240,12 @@ function estReqEditorHTML(r){const fichas=fichasVendaveis().slice().sort((a,b)=>
   <div class="print-only" style="margin-bottom:14px"><div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700">Requisição para ${esc(estArmNome(r.para))}</div><div style="font-size:13px;color:#555">${(DB.conta&&DB.conta.restaurante)||'Restaurante'} · ${fmtDataBR(r.data)} · ${esc((REQ_TURNOS.find(t=>t[0]===r.turno)||['','Dia inteiro'])[1])}${r.obs?' · '+esc(r.obs):''}</div></div>
   <div class="card card-pad no-print" style="margin-bottom:12px">
     <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Requisição de ${fmtDataBR(r.data)} ${fechada?'<span class="tag tag-green">separada</span>':'<span class="tag tag-amber">aberta</span>'}</div><div class="desc">${fechada?'Já virou transferência para '+esc(estArmNome(r.para))+'.':'1) Preencha a previsão de pratos. 2) Gere a lista. 3) Ajuste e confirme a separação.'}</div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="estReqSel=null;viewEstoque()">← Voltar</button>${nSep?`<button class="btn btn-ghost btn-sm" onclick="estReqImprimir('${r.id}')">🖨️ Imprimir</button>`:''}${fechada?'':`<button class="btn btn-primary btn-sm" ${nSep?'':'disabled'} onclick="estReqConfirmar('${r.id}')">✓ Confirmar separação (${nSep})</button>`}</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="estReqSel=null;viewEstoque()">← Voltar</button>${nSep?`<button class="btn btn-ghost btn-sm" onclick="estReqImprimir('${r.id}')">🖨️ Imprimir</button>`:''}${fechada||!pode('req_separar')?'':`<button class="btn btn-primary btn-sm" ${nSep?'':'disabled'} onclick="estReqConfirmar('${r.id}')">✓ Confirmar separação (${nSep})</button>`}</div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
       <div class="field" style="margin:0"><label>Data</label><input type="date" class="input" value="${r.data}" ${fechada?'disabled':''} onchange="estReqSet('${r.id}','data',this.value)"></div>
       <div class="field" style="margin:0"><label>Turno</label><select class="input" ${fechada?'disabled':''} onchange="estReqSet('${r.id}','turno',this.value)">${REQ_TURNOS.map(([v,l])=>`<option value="${v}" ${r.turno===v?'selected':''}>${l}</option>`).join('')}</select></div>
       <div class="field" style="margin:0"><label>De</label>${estArmSelect('rq_de',r.de,`${fechada?'disabled':''} onchange="estReqSet('${r.id}','de',this.value)"`)}</div>
-      <div class="field" style="margin:0"><label>Para</label>${estArmSelect('rq_para',r.para,`${fechada?'disabled':''} onchange="estReqSet('${r.id}','para',this.value)"`)}</div>
+      <div class="field" style="margin:0"><label>Para</label><select class="input" id="rq_para" ${fechada?'disabled':''} onchange="estReqSet('${r.id}','para',this.value)">${(meusSetores()&&!pode('req_separar')?estReqSetoresDestino():estArmazens()).map(a=>`<option value="${esc(a.id)}" ${a.id===r.para?'selected':''}>${esc(a.nome)}</option>`).join('')}</select></div>
       <div class="field" style="margin:0;flex:1 1 200px"><label>Observação</label><input class="input" value="${esc(r.obs||'')}" ${fechada?'disabled':''} placeholder="Ex.: evento à noite, 40 pessoas" onchange="estReqSet('${r.id}','obs',this.value)"></div>
     </div>
   </div>
@@ -7205,7 +7261,7 @@ function estReqEditorHTML(r){const fichas=fichasVendaveis().slice().sort((a,b)=>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><div style="font-weight:700">${fechada?'Itens separados':'3. Itens a separar'} <span class="gp-mini">${nSep} item(ns) · ${fmtBRL(custo)}</span></div>${fechada?'':`<a class="gp-link" style="font-size:12px" onclick="estReqAddItem('${r.id}')">+ item avulso</a>`}</div>
       ${itens.length?`<div class="scroll-x"><table><thead><tr><th>Produto</th><th class="num no-print" title="Necessário pela ficha técnica para os pratos previstos">Necessário</th><th class="num no-print" title="Saldo que já está no destino">Já tem</th><th class="num">Separar</th><th class="print-only">Conferido</th><th class="no-print"></th></tr></thead><tbody>
         ${(function(){let last=null;return itens.slice().sort((a,b)=>{const ia=DB.insumos[a.insumoId]||{},ib=DB.insumos[b.insumoId]||{};return (ia.cat||'').localeCompare(ib.cat||'')||(ia.nome||'').localeCompare(ib.nome||'');}).map(x=>{const i=DB.insumos[x.insumoId];if(!i)return '';const u=uSym(i.uni);const cab=i.cat!==last?`<tr><td colspan="6" style="padding:8px 13px 2px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--gold);font-weight:700;border:0">${esc(i.cat||'Sem categoria')}</td></tr>`:'';last=i.cat;const sDe=estSaldoArm(i,r.de);
-          return cab+`<tr><td><b>${esc(i.nome)}</b>${i.tipo==='preparado'?' <span class="tag tag-gold" style="font-size:10px;padding:0 6px">subproduto</span>':''}<div class="gp-mini no-print">em ${esc(estArmNome(r.de))}: <span style="color:${sDe<(+x.qtd||0)?'var(--red)':'inherit'}">${estQReq(sDe,i)}</span>${insEmb(i)?' · embalagem de '+estQ(insEmb(i).qtd,u):''}</div></td><td class="num no-print">${estQReq(x.nec,i)}</td><td class="num no-print">${estQReq(x.tem,i)}</td><td class="num">${fechada?`<b>${estQReq(x.qtd,i)}</b>`:`<input class="input no-print" type="number" step="0.001" min="0" inputmode="decimal" value="${x.qtd}" style="width:96px;text-align:right;padding:5px 8px" title="Na unidade do produto (${u})" onchange="estReqQtd('${r.id}','${x.insumoId}',this.value)"><div class="gp-mini no-print" style="text-align:right">${estQReq(x.qtd,i)}</div><span class="print-only"><b>${estQReq(x.qtd,i)}</b></span>`}</td><td class="print-only" style="width:70px;border-bottom:1px solid #999"></td><td class="no-print">${fechada?'':`<button class="icon-btn del" onclick="estReqRemItem('${r.id}','${x.insumoId}')">${icoX}</button>`}</td></tr>`;}).join('');})()}
+          return cab+`<tr><td><b>${esc(i.nome)}</b>${i.tipo==='preparado'?' <span class="tag tag-gold" style="font-size:10px;padding:0 6px">subproduto</span>':''}${prodNoSetor(i,r.para)?'':' <span class="tag tag-amber" style="font-size:10px;padding:0 6px" title="A subcategoria deste produto não está liberada para '+esc(estArmNome(r.para))+'. Veio da ficha técnica.">fora do setor</span>'}<div class="gp-mini no-print">em ${esc(estArmNome(r.de))}: <span style="color:${sDe<(+x.qtd||0)?'var(--red)':'inherit'}">${estQReq(sDe,i)}</span>${insEmb(i)?' · embalagem de '+estQ(insEmb(i).qtd,u):''}</div></td><td class="num no-print">${estQReq(x.nec,i)}</td><td class="num no-print">${estQReq(x.tem,i)}</td><td class="num">${fechada?`<b>${estQReq(x.qtd,i)}</b>`:`<input class="input no-print" type="number" step="0.001" min="0" inputmode="decimal" value="${x.qtd}" style="width:96px;text-align:right;padding:5px 8px" title="Na unidade do produto (${u})" onchange="estReqQtd('${r.id}','${x.insumoId}',this.value)"><div class="gp-mini no-print" style="text-align:right">${estQReq(x.qtd,i)}</div><span class="print-only"><b>${estQReq(x.qtd,i)}</b></span>`}</td><td class="print-only" style="width:70px;border-bottom:1px solid #999"></td><td class="no-print">${fechada?'':`<button class="icon-btn del" onclick="estReqRemItem('${r.id}','${x.insumoId}')">${icoX}</button>`}</td></tr>`;}).join('');})()}
       </tbody></table></div>`:`<div style="font-size:13px;color:var(--soft);padding:10px 0">${fechada?'Sem itens.':'Preencha a previsão e clique em "Gerar lista de itens". O Flow explode as fichas até os itens com estoque (subprodutos ou brutos), desconta o que já está em '+esc(estArmNome(r.para))+' e sugere o que separar.'}</div>`}
       ${fechada&&r.transfId?`<div class="gp-mini no-print" style="margin-top:8px">Transferência registrada em ${fmtDataBR(r.data)}. Para desfazer, use Movimentações → Transferências.</div>`:''}
     </div>
@@ -7242,9 +7298,9 @@ function estReqGerar(id){const r=estRequisicoes().find(x=>x.id===id);if(!r||r.st
 function estReqQtd(id,insumoId,v){const r=estRequisicoes().find(x=>x.id===id);if(!r)return;const it=(r.itens||[]).find(x=>x.insumoId===insumoId);if(!it)return;it.qtd=parseFloat(v)||0;it.manual=true;save();}
 function estReqRemItem(id,insumoId){const r=estRequisicoes().find(x=>x.id===id);if(!r)return;r.itens=(r.itens||[]).filter(x=>x.insumoId!==insumoId);save();viewEstoque();}
 function estReqAddItem(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)return;
-  modal(`<div class="modal-head"><h3>Item avulso</h3><button class="x" onclick="closeModal()">${icoX}</button></div><div class="modal-body">${estProdDatalist('est_prod_dl')}<div class="field"><label>Produto</label><input class="input" id="ra_prod" list="est_prod_dl" placeholder="Digite o nome…"></div><div class="field"><label>Quantidade</label><input class="input" id="ra_q" type="number" step="0.001" min="0"></div></div>
-  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="(function(){const ins=estProdPorNome(document.getElementById('ra_prod').value);const q=parseFloat(document.getElementById('ra_q').value)||0;if(!ins||!(q>0))return toast('Escolha o produto e a quantidade');const r=estRequisicoes().find(x=>x.id==='${id}');r.itens=(r.itens||[]).filter(x=>x.insumoId!==ins.id);r.itens.push({insumoId:ins.id,nec:0,tem:estR(Math.max(0,estSaldoArm(ins,r.para)),3),qtd:q,manual:true,avulso:true});save();closeModal();viewEstoque();})()">Adicionar</button></div>`);}
-function estReqConfirmar(id){const r=estRequisicoes().find(x=>x.id===id);if(!r||r.status==='separada')return;const itens=(r.itens||[]).filter(x=>+x.qtd>0).map(x=>({insumoId:x.insumoId,q:+x.qtd}));if(!itens.length)return toast('Nenhum item com quantidade');
+  modal(`<div class="modal-head"><h3>Item avulso</h3><button class="x" onclick="closeModal()">${icoX}</button></div><div class="modal-body">${estProdDatalistSetor('est_prod_dl',r.para)}<div class="field"><label>Produto</label><input class="input" id="ra_prod" list="est_prod_dl" placeholder="Digite o nome…"></div><div class="field"><label>Quantidade</label><input class="input" id="ra_q" type="number" step="0.001" min="0"></div></div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="(function(){const ins=estProdPorNome(document.getElementById('ra_prod').value);const q=parseFloat(document.getElementById('ra_q').value)||0;if(!ins||!(q>0))return toast('Escolha o produto e a quantidade');const r=estRequisicoes().find(x=>x.id==='${id}');if(!prodNoSetor(ins,r.para))return toast('Este produto não está liberado para '+estArmNome(r.para)+'. Libere a subcategoria dele em Categorias.');r.itens=(r.itens||[]).filter(x=>x.insumoId!==ins.id);r.itens.push({insumoId:ins.id,nec:0,tem:estR(Math.max(0,estSaldoArm(ins,r.para)),3),qtd:q,manual:true,avulso:true});save();closeModal();viewEstoque();})()">Adicionar</button></div>`);}
+function estReqConfirmar(id){if(!pode('req_separar'))return toast('Só o estoquista conclui a separação');const r=estRequisicoes().find(x=>x.id===id);if(!r||r.status==='separada')return;const itens=(r.itens||[]).filter(x=>+x.qtd>0).map(x=>({insumoId:x.insumoId,q:+x.qtd}));if(!itens.length)return toast('Nenhum item com quantidade');
   const neg=itens.filter(x=>estSaldoArm(DB.insumos[x.insumoId],r.de)<x.q);
   if(!confirm('Confirmar a separação de '+itens.length+' item(ns) de '+estArmNome(r.de)+' para '+estArmNome(r.para)+'?'+(neg.length?'\n\nAtenção: '+neg.length+' item(ns) ficam negativos em '+estArmNome(r.de)+' (faltou entrada ou contagem).':'')))return;
   const t=estTransferir(r.data,r.de,r.para,itens,'Requisição '+(REQ_TURNOS.find(x=>x[0]===r.turno)||['','dia'])[1].toLowerCase(),{origem:'requisicao',reqId:r.id});if(!t)return toast('Não foi possível transferir');
@@ -7294,7 +7350,14 @@ function emptyState(t,d,action){return `<div class="empty"><svg viewBox="0 0 24 
 /* ===================== SAAS: AUTH + NUVEM + ADMIN ===================== */
 const SUPA_URL='https://fvcbxorfstqqeewocxkf.supabase.co', SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2J4b3Jmc3RxcWVld29jeGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzM5MjgsImV4cCI6MjA5Njg0OTkyOH0.X9gnZt535F1ASHpUaL24eEZysHHECwzfBwjaR4kVnyw';
 const sb=(window.supabase&&SUPA_URL.indexOf('http')===0)?window.supabase.createClient(SUPA_URL,SUPA_ANON):null;
-let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false, MEMBRO_PERMS=null;
+let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false, MEMBRO_PERMS=null, MEMBRO_SUB=null, MEMBRO_SETORES=null, MEMBRO_NOME='';
+/* pode('contagem') etc.: admin/dono = sempre; membro sem `sub` gravado = tudo dentro das áreas dele */
+function pode(k){if(!MEMBRO_PERMS)return true;if(MEMBRO_SUB&&Object.prototype.hasOwnProperty.call(MEMBRO_SUB,k))return !!MEMBRO_SUB[k];return true;}
+function meusSetores(){return MEMBRO_PERMS?(MEMBRO_SETORES||[]):null;}          // null = todos
+function setorPermitido(arm){const s=meusSetores();return !s||s.includes(arm||EST_ARM_PRINCIPAL);}
+function souDoPrincipal(){const s=meusSetores();return !s||s.includes(EST_ARM_PRINCIPAL);}
+function armazensPermitidos(){const s=meusSetores();return estArmazens().filter(a=>!s||s.includes(a.id));}
+function quemSou(){if(MEMBRO_NOME)return MEMBRO_NOME;const e=(PERFIL&&PERFIL.email)||'';const n=(DB.conta&&DB.conta.nome)||'';return n||e||'';}
 let CLOUD_TS=null, SAVE_STATE='idle', SAVE_RETRY=0, CLOUD_CONFLICT=false, CLOUD_BASE=null, _mergeHouve=false;
 let IS_SUPER=false, MY_UID=null, MY_LIMITE=5, CONSULTORES=[], adminConsFiltro='';
 let DONO_MODE=false, DONO_UNIDADES=[], DONO_EMAIL='', DONO_UID=null; // cliente que administra várias unidades (usa organizacoes.consultor_id, sem ser consultor)
@@ -7468,7 +7531,7 @@ async function entrarComoCliente(orgId,email){
   CLOUD=true;ADMIN_MODE=false;hideAdmin();
   // O ADMINISTRADOR da conta tem SEMPRE acesso total a todos os módulos, mesmo que o e-mail dele também esteja na Equipe.
   // Admin = e-mail cadastrado em Configurações (conta.email); se ainda não houver, quem NÃO está na Equipe é o dono.
-  MEMBRO_PERMS=null;
+  MEMBRO_PERMS=null;MEMBRO_SUB=null;MEMBRO_SETORES=null;MEMBRO_NOME='';
   DB.conta=DB.conta||{};
   const emailLogin=(email||'').trim().toLowerCase();
   const donoEmail=(DB.conta.email||'').trim().toLowerCase();
@@ -7477,7 +7540,9 @@ async function entrarComoCliente(orgId,email){
   if(ehAdmin){
     if(!donoEmail&&emailLogin){DB.conta.email=emailLogin;setTimeout(()=>{try{save();}catch(e){}},800);} // fixa o admin da conta 1x, p/ nunca mais ser limitado se for adicionado à Equipe
   }else if(naEquipe){
-    MEMBRO_PERMS=(naEquipe.permissoes||[]).slice();
+    MEMBRO_PERMS=(naEquipe.permissoes||[]).slice();normMembro(naEquipe);
+    MEMBRO_SUB=(naEquipe.sub&&typeof naEquipe.sub==='object')?Object.assign({},naEquipe.sub):null;
+    MEMBRO_SETORES=(naEquipe.setores||[]).slice();MEMBRO_NOME=naEquipe.nome||emailLogin;
     if(!MEMBRO_PERMS.length){telaMensagem('Acesso não configurado','Seu acesso ainda não tem áreas liberadas. Fale com o responsável pela conta.');return;}
   }
   bannerCloud();renderFoot();setSaveStatus('saved');
