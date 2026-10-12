@@ -7583,7 +7583,7 @@ const sb=(window.supabase&&SUPA_URL.indexOf('http')===0)?window.supabase.createC
 let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false, MEMBRO_PERMS=null, MEMBRO_SUB=null, MEMBRO_SETORES=null, MEMBRO_NOME='';
 /* pode('contagem') etc.: admin/dono = sempre; membro sem `sub` gravado = tudo dentro das áreas dele */
 function pode(k){if(!MEMBRO_PERMS)return true;if(MEMBRO_SUB&&Object.prototype.hasOwnProperty.call(MEMBRO_SUB,k))return !!MEMBRO_SUB[k];return true;}
-function meusSetores(){return MEMBRO_PERMS?(MEMBRO_SETORES||[]):null;}          // null = todos
+function meusSetores(){if(!MEMBRO_PERMS||!MEMBRO_SETORES)return null;if(typeof estMultiArm==='function'&&!estMultiArm())return null;return MEMBRO_SETORES;} // null = todos (admin da Equipe, dono, ou cliente com um armazém só)
 function setorPermitido(arm){const s=meusSetores();return !s||s.includes(arm||EST_ARM_PRINCIPAL);}
 function souDoPrincipal(){const s=meusSetores();return !s||s.includes(EST_ARM_PRINCIPAL);}
 function armazensPermitidos(){const s=meusSetores();return estArmazens().filter(a=>!s||s.includes(a.id));}
@@ -7834,8 +7834,9 @@ async function entrarComoCliente(orgId,email){
     if(!donoEmail&&emailLogin){DB.conta.email=emailLogin;setTimeout(()=>{try{save();}catch(e){}},800);} // fixa o admin da conta 1x, p/ nunca mais ser limitado se for adicionado à Equipe
   }else if(naEquipe){
     MEMBRO_PERMS=(naEquipe.permissoes||[]).slice();normMembro(naEquipe);
-    MEMBRO_SUB=(naEquipe.sub&&typeof naEquipe.sub==='object')?Object.assign({},naEquipe.sub):null;
-    MEMBRO_SETORES=(naEquipe.setores||[]).slice();MEMBRO_NOME=naEquipe.nome||emailLogin;
+    const ehAdminEquipe=naEquipe.nivel==='admin';
+    MEMBRO_SUB=(!ehAdminEquipe&&naEquipe.sub&&typeof naEquipe.sub==='object')?Object.assign({},naEquipe.sub):null;
+    MEMBRO_SETORES=ehAdminEquipe?null:(naEquipe.setores||[]).slice();MEMBRO_NOME=naEquipe.nome||emailLogin;
     if(!MEMBRO_PERMS.length){telaMensagem('Acesso não configurado','Seu acesso ainda não tem áreas liberadas. Fale com o responsável pela conta.');return;}
   }
   bannerCloud();renderFoot();setSaveStatus('saved');iniciarPoll();
