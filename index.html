@@ -828,6 +828,17 @@ thead th{letter-spacing:.7px}
 .gp-op .t{font-size:13px;line-height:1.35}
 .gp-op.done .t{text-decoration:line-through;color:var(--soft)}
 .gp-check.ok{background:var(--green);border-color:var(--green);color:#fff}
+.gp-subs{margin-top:6px;border-left:2px solid var(--line);padding-left:8px}
+.gp-sub{display:flex;gap:8px;align-items:flex-start;padding:3px 0;font-size:12.5px;line-height:1.35}
+.gp-sub .gp-check,.gp-sub .gp-check:hover{width:18px;height:18px;margin-top:1px}
+.gp-sub .gp-check svg{width:10px;height:10px}
+.gp-sub .st{flex:1;min-width:0}
+.gp-sub.done .st{text-decoration:line-through;color:var(--soft)}
+.gp-sub-tog{display:inline-flex;align-items:center;gap:4px;cursor:pointer;color:var(--navy);font-weight:600}
+.gp-sub-tog:hover{text-decoration:underline}
+.gt-sub{display:grid;grid-template-columns:24px minmax(0,1fr) 126px 28px;gap:6px;align-items:center;margin-bottom:6px}
+@media(max-width:640px){.gt-sub{grid-template-columns:24px minmax(0,1fr) 28px}.gt-sub .gt-sub-p{grid-column:2;}}
+@media(max-width:640px){.gp-sub .gp-check{width:22px;height:22px}}
 .gp-check.ok:hover{background:var(--soft);border-color:var(--soft)}
 .gp-note-box{border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:var(--bg);margin-bottom:14px}
 .gp-note-box label.t{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer}
@@ -8411,14 +8422,44 @@ async function gpAgendaGoogle(o,r,acao,opts){opts=opts||{};
 const GP_QUEM={lidera:['Nossa','tag-navy'],cliente:['Do cliente','tag-gold'],plano:['Plano de Guerra','tag-gray']};
 function gpTarefasOp(o){const c=gpCrm(o);if(!Array.isArray(c.tarefas))c.tarefas=[];return c.tarefas;}
 function gpOpNova(o,titulo,quem,prazo,extra){const t=Object.assign({id:'d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),titulo:(titulo||'').trim(),quem:quem==='cliente'?'cliente':'lidera',feito:false,feitoEm:'',prazo:prazo||'',criadoEm:hojeISO(),obs:''},extra||{});gpTarefasOp(o).push(t);return t;}
+/* SUBTAREFAS: t.subs=[{id,t,feito,feitoEm,prazo}]. A demanda-mãe fecha sozinha quando a última subtarefa fecha; o prazo efetivo é o da próxima subtarefa aberta. */
+function gpSubs(t){if(!t)return [];if(!Array.isArray(t.subs))t.subs=[];return t.subs;}
+function gpSubsInfo(t){const h=hojeISO();const s=(t&&Array.isArray(t.subs)?t.subs:[]).filter(x=>x&&x.t);const ab=s.filter(x=>!x.feito);const prox=ab.slice().sort((a,b)=>(a.prazo||'9999').localeCompare(b.prazo||'9999'))[0]||null;return {n:s.length,feitas:s.length-ab.length,abertas:ab.length,prox,atras:ab.filter(x=>x.prazo&&x.prazo<h).length};}
+function gpOpPrazo(t){if(!t)return '';const i=gpSubsInfo(t);if(!t.feito&&i.abertas&&i.prox&&i.prox.prazo)return i.prox.prazo;return t.prazo||'';}
+let _gpSubAberto=new Set();
+function gpSubAbrir(tid){if(_gpSubAberto.has(tid))_gpSubAberto.delete(tid);else _gpSubAberto.add(tid);gpRefresh();}
+async function gpSubToggle(orgId,tid,sid){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const t=gpTarefasOp(o).find(x=>x.id===tid);if(!t)return;const sub=gpSubs(t).find(x=>x.id===sid);if(!sub)return;
+  sub.feito=!sub.feito;sub.feitoEm=sub.feito?hojeISO():'';const i=gpSubsInfo(t);
+  if(i.n&&!i.abertas&&!t.feito){t.feito=true;t.feitoEm=hojeISO();toast('Última subtarefa feita: demanda concluída');}
+  else if(t.feito&&i.abertas){t.feito=false;t.feitoEm='';toast('Demanda reaberta');}
+  else toast(sub.feito?'Subtarefa concluída':'Subtarefa reaberta');
+  gpRefresh();await adminSaveKeys(o,['_crm']);}
+function gpSubsHTML(o,t){const subs=gpSubs(t).filter(x=>x&&x.t);if(!subs.length)return '';const h=hojeISO();const i=gpSubsInfo(t);const ab=_gpSubAberto.has(t.id)||(!t.feito&&i.abertas<=3);
+  const tog=`<span class="gp-sub-tog" onclick="event.stopPropagation();gpSubAbrir('${t.id}')">${ab?'▾':'▸'} ${i.feitas} de ${i.n} feita${i.n===1?'':'s'}</span>`;
+  if(!ab)return `<div class="gp-mini" style="margin-top:3px">${tog}${i.prox?` · próxima: ${esc(i.prox.t.slice(0,50))}${i.prox.prazo?' até '+fmtDataBR(i.prox.prazo).slice(0,5):''}`:''}</div>`;
+  return `<div class="gp-mini" style="margin-top:3px">${tog}</div><div class="gp-subs" onclick="event.stopPropagation()">${subs.map(x=>{const atr=!x.feito&&x.prazo&&x.prazo<h;return `<div class="gp-sub ${x.feito?'done':''}"><button class="gp-check ${x.feito?'ok':''}" title="${x.feito?'Reabrir':'Concluir'}" onclick="gpSubToggle('${o.id}','${t.id}','${x.id}')">${icoGpCheck}</button><div class="st">${esc(x.t)}${x.prazo?` <span class="gp-mini" style="${atr?'color:var(--red);font-weight:600':''}">· ${x.feito?'feita '+fmtDataBR(x.feitoEm||x.prazo).slice(0,5):atr?'atrasada '+gpHa(x.prazo):'até '+fmtDataBR(x.prazo).slice(0,5)}</span>`:''}</div></div>`;}).join('')}</div>`;}
 function gpOpLinhas(txt){return String(txt||'').split('\n').map(x=>x.replace(/^[\s\-•▸*]+/,'').trim()).filter(x=>x.length>2);}
 function gpOpCriarDeTexto(o,txt,quem,prazo,rid){let n=0;const ts=gpTarefasOp(o);gpOpLinhas(txt).forEach(tit=>{if(ts.some(t=>!t.feito&&lmNorm(t.titulo)===lmNorm(tit)))return;gpOpNova(o,tit,quem,prazo,{deReuniao:rid||''});n++;});return n;}
-async function gpOpToggle(orgId,tid){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const t=gpTarefasOp(o).find(x=>x.id===tid);if(!t)return;t.feito=!t.feito;t.feitoEm=t.feito?hojeISO():'';gpRefresh();toast(t.feito?'Demanda concluída':'Demanda reaberta');await adminSaveKeys(o,['_crm']);}
+async function gpOpToggle(orgId,tid){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const t=gpTarefasOp(o).find(x=>x.id===tid);if(!t)return;t.feito=!t.feito;t.feitoEm=t.feito?hojeISO():'';if(t.feito)gpSubs(t).forEach(x=>{if(x&&!x.feito){x.feito=true;x.feitoEm=t.feitoEm;}});gpRefresh();toast(t.feito?'Demanda concluída':'Demanda reaberta');await adminSaveKeys(o,['_crm']);}
 async function gpOpDel(orgId,tid){if(!confirm('Excluir esta demanda?'))return;const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const c=gpCrm(o);c.tarefas=gpTarefasOp(o).filter(x=>x.id!==tid);closeModal();gpRefresh();await adminSaveKeys(o,['_crm']);}
 async function gpOpAddRapido(orgId,quem){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const inp=$('#op_add_'+quem);const tit=((inp||{}).value||'').trim();if(!tit)return toast('Descreva a demanda');gpOpNova(o,tit,quem,(($('#op_add_p_'+quem)||{}).value)||'');gpRefresh();toast('Demanda criada');await adminSaveKeys(o,['_crm']);}
 let _gtQuem='lidera';
 function gpOpQuem(q){_gtQuem=q;['lidera','cliente'].forEach(x=>{const b=$('#gt_q_'+x);if(b)b.classList.toggle('on',x===q);});}
+let _gtSubs=[];
+function gtSubsHTML(){const rows=_gtSubs;const h=hojeISO();return rows.map((x,i)=>`<div class="gt-sub" data-i="${i}">
+    <button class="gp-check ${x.feito?'ok':''}" style="width:22px;height:22px" title="${x.feito?'Reabrir':'Concluir'}" onclick="gtSubFeito(${i})">${icoGpCheck}</button>
+    <input class="input gt-sub-t" value="${esc(x.t)}" placeholder="Ex.: Enviar o relatório de CMV" style="padding:8px 10px;font-size:13px;min-width:0;${x.feito?'text-decoration:line-through;color:var(--soft)':''}" onkeydown="if(event.key==='Enter'){event.preventDefault();gtSubAdd(${i});}">
+    <input type="date" class="input gt-sub-p" value="${esc(x.prazo||'')}" style="padding:8px 6px;font-size:12.5px" title="Prazo desta subtarefa">
+    <button class="icon-btn" title="Remover" style="width:28px;height:28px" onclick="gtSubDel(${i})">${icoX}</button></div>`).join('')
+  +`<a class="gp-link" style="font-size:12px" onclick="gtSubAdd()">+ subtarefa</a>`;}
+function gtSubsLer(){const box=$('#gt_subs');if(!box)return;const rows=[...box.querySelectorAll('.gt-sub')];_gtSubs=rows.map((row,i)=>Object.assign({},_gtSubs[i]||{},{t:(row.querySelector('.gt-sub-t').value||'').trim(),prazo:row.querySelector('.gt-sub-p').value||''}));}
+function gtSubsDesenhar(foco){const box=$('#gt_subs');if(!box)return;box.innerHTML=gtSubsHTML();if(foco!=null){const t=box.querySelectorAll('.gt-sub-t')[foco];if(t)t.focus();}}
+function gtSubAdd(depois){gtSubsLer();const rows=_gtSubs;const base=(depois!=null?rows[depois]:rows[rows.length-1])||{};const nova={id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:'',feito:false,feitoEm:'',prazo:base.prazo||(($('#gt_prazo')||{}).value)||''};
+  if(depois!=null&&depois<rows.length-1)rows.splice(depois+1,0,nova);else rows.push(nova);gtSubsDesenhar(depois!=null?depois+1:rows.length-1);}
+function gtSubDel(i){gtSubsLer();_gtSubs.splice(i,1);gtSubsDesenhar();}
+function gtSubFeito(i){gtSubsLer();const x=_gtSubs[i];if(!x)return;x.feito=!x.feito;x.feitoEm=x.feito?hojeISO():'';gtSubsDesenhar();}
 function gpOpModal(orgId,tid,quemDef){const o=orgId?ADMIN_ORGS.find(x=>x.id===orgId):null;const t=(o&&tid)?gpTarefasOp(o).find(x=>x.id===tid):null;_gtQuem=t?t.quem:(quemDef==='cliente'?'cliente':'lidera');const h=hojeISO();
+  _gtSubs=(t?gpSubs(t):[]).filter(x=>x&&typeof x==='object').map(x=>Object.assign({},x));
   const clientes=gpCarteira().map(i=>i.o).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
   modal(`<div class="modal-head"><h3>${t?'Demanda':'Nova demanda'}${o?' · '+esc(o.nome||''):''}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
@@ -8427,6 +8468,11 @@ function gpOpModal(orgId,tid,quemDef){const o=orgId?ADMIN_ORGS.find(x=>x.id===or
     <div class="field"><label>O que precisa ser feito</label><input class="input" id="gt_tit" value="${esc(t?t.titulo:'')}" placeholder="Ex.: Enviar as notas de agosto" onkeydown="if(event.key==='Enter')gpOpSalvar('${orgId||''}','${tid||''}')"></div>
     <div class="grid-2"><div class="field"><label>Prazo</label><input type="date" class="input" id="gt_prazo" value="${t?(t.prazo||''):diasSoma(h,7)}"></div>
       ${t?`<div class="field"><label>Situação</label><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;min-height:40px"><input type="checkbox" id="gt_feito" style="width:16px;height:16px" ${t.feito?'checked':''}> Concluída${t.feitoEm?' <span class="gp-mini">em '+fmtDataBR(t.feitoEm)+'</span>':''}</label></div>`:''}</div>
+    <div class="gp-note-box" style="padding-top:10px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:600">Subtarefas <span class="hint">opcional · cada uma com o próprio prazo</span></div>
+      <div class="gp-mini" style="margin:2px 0 8px">Quebre a demanda em passos. A demanda fecha sozinha quando o último passo fechar. Enter pula para a próxima linha.</div>
+      <div id="gt_subs">${gtSubsHTML()}</div>
+    </div>
     <div class="field" style="margin:0"><label>Observações <span class="hint">opcional</span></label><textarea class="input" id="gt_obs" rows="2" placeholder="Detalhes, combinados, links…">${esc(t?t.obs||'':'')}</textarea></div>
     ${t&&t.deReuniao?`<div class="gp-mini" style="margin-top:8px">Criada a partir de uma reunião${t.criadoEm?' · '+fmtDataBR(t.criadoEm):''}.</div>`:''}
   </div>
@@ -8436,19 +8482,21 @@ async function gpOpSalvar(orgId,tid){orgId=orgId||(($('#gt_org')||{}).value||'')
   const tit=(($('#gt_tit')||{}).value||'').trim();if(!tit)return toast('Descreva a demanda');const prazo=(($('#gt_prazo')||{}).value)||'';
   let t=tid?gpTarefasOp(o).find(x=>x.id===tid):null;if(!t)t=gpOpNova(o,tit,_gtQuem,prazo);else Object.assign(t,{titulo:tit,quem:_gtQuem,prazo});
   t.obs=(($('#gt_obs')||{}).value||'').trim();const f=$('#gt_feito');if(f&&f.checked!==!!t.feito){t.feito=f.checked;t.feitoEm=f.checked?hojeISO():'';}
+  gtSubsLer();t.subs=_gtSubs.filter(x=>x.t).map(x=>({id:x.id||('s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)),t:x.t,feito:!!x.feito,feitoEm:x.feito?(x.feitoEm||hojeISO()):'',prazo:x.prazo||''}));if(!t.subs.length)delete t.subs;
+  {const i=gpSubsInfo(t);if(i.n&&!i.abertas&&!t.feito){t.feito=true;t.feitoEm=hojeISO();}else if(i.abertas&&t.feito&&f&&!f.checked){t.feito=false;t.feitoEm='';}}
   closeModal();gpRefresh();toast(tid?'Demanda atualizada':'Demanda criada');await adminSaveKeys(o,['_crm']);}
-function gpOpRowHTML(o,t,opts){opts=opts||{};const h=hojeISO();const atras=!t.feito&&t.prazo&&t.prazo<h;const q=GP_QUEM[t.quem]||GP_QUEM.lidera;
+function gpOpRowHTML(o,t,opts){opts=opts||{};const h=hojeISO();const pz=gpOpPrazo(t);const atras=!t.feito&&pz&&pz<h;const q=GP_QUEM[t.quem]||GP_QUEM.lidera;const si=gpSubsInfo(t);
   return `<div class="gp-op ${t.feito?'done':''}">
     <button class="gp-check ${t.feito?'ok':''}" title="${t.feito?'Reabrir':'Marcar como concluída'}" onclick="event.stopPropagation();gpOpToggle('${o.id}','${t.id}')">${icoGpCheck}</button>
-    <div class="b" onclick="gpOpModal('${o.id}','${t.id}')"><div class="t">${esc(t.titulo)}</div><div class="gp-mini">${opts.cliente?`<b style="color:var(--ink)">${esc(o.nome||'')}</b> · `:''}${t.feito?('concluída'+(t.feitoEm?' '+fmtDataBR(t.feitoEm).slice(0,5):'')):t.prazo?(atras?`<span style="color:var(--red);font-weight:600">atrasada ${gpHa(t.prazo)}</span>`:'até '+fmtDataBR(t.prazo).slice(0,5)+' · '+gpEm(t.prazo)):'sem prazo'}${t.deReuniao?' · da reunião':''}${t.obs?' · '+esc(t.obs.slice(0,60))+(t.obs.length>60?'…':''):''}</div></div>
+    <div class="b" onclick="gpOpModal('${o.id}','${t.id}')"><div class="t">${esc(t.titulo)}</div><div class="gp-mini">${opts.cliente?`<b style="color:var(--ink)">${esc(o.nome||'')}</b> · `:''}${t.feito?('concluída'+(t.feitoEm?' '+fmtDataBR(t.feitoEm).slice(0,5):'')):pz?(atras?`<span style="color:var(--red);font-weight:600">atrasada ${gpHa(pz)}</span>`:'até '+fmtDataBR(pz).slice(0,5)+' · '+gpEm(pz)):'sem prazo'}${si.n&&!t.feito&&pz!==(t.prazo||'')&&t.prazo?' · fim '+fmtDataBR(t.prazo).slice(0,5):''}${t.deReuniao?' · da reunião':''}${t.obs?' · '+esc(t.obs.slice(0,60))+(t.obs.length>60?'…':''):''}</div>${gpSubsHTML(o,t)}</div>
     <span class="tag ${q[1]}" style="white-space:nowrap">${q[0]}</span></div>`;}
 function gpPlanoRowHTML(o,t,opts){opts=opts||{};const h=hojeISO();const atras=!t.feito&&t.prazo&&t.prazo<h;
   return `<div class="gp-op ${t.feito?'done':''}">
     <button class="gp-check ${t.feito?'ok':''}" title="${t.feito?'Concluída':'Marcar como concluída'}" onclick="event.stopPropagation();${t.feito?`gpDesfazer('${o.id}','${t.id}')`:`gpConcluir('${o.id}','${t.id}')`}">${icoGpCheck}</button>
     <div class="b" onclick="gpAbrir('${o.id}','projeto')"><div class="t">${esc(t.titulo)}</div><div class="gp-mini">${opts.cliente?`<b style="color:var(--ink)">${esc(o.nome||'')}</b> · `:''}${esc(t.fase||'')}${t.resp?' · '+esc(t.resp):''}${t.prazo?(atras?` · <span style="color:var(--red);font-weight:600">atrasada ${gpHa(t.prazo)}</span>`:' · até '+fmtDataBR(t.prazo).slice(0,5)):''}</div></div>
     <span class="tag tag-gray" style="white-space:nowrap">Plano de Guerra</span></div>`;}
-function tarefasClienteHTML(o){const ts=gpTarefasOp(o);const h=hojeISO();const porPrazo=(a,b)=>((a.prazo||'9999').localeCompare(b.prazo||'9999'));
-  const col=(quem,rot,cls,ph)=>{const ab=ts.filter(t=>t.quem===quem&&!t.feito).sort(porPrazo);const fe=ts.filter(t=>t.quem===quem&&t.feito).sort((a,b)=>(b.feitoEm||'').localeCompare(a.feitoEm||''));const atr=ab.filter(t=>t.prazo&&t.prazo<h).length;
+function tarefasClienteHTML(o){const ts=gpTarefasOp(o);const h=hojeISO();const porPrazo=(a,b)=>((gpOpPrazo(a)||'9999').localeCompare(gpOpPrazo(b)||'9999'));
+  const col=(quem,rot,cls,ph)=>{const ab=ts.filter(t=>t.quem===quem&&!t.feito).sort(porPrazo);const fe=ts.filter(t=>t.quem===quem&&t.feito).sort((a,b)=>(b.feitoEm||'').localeCompare(a.feitoEm||''));const atr=ab.filter(t=>gpOpPrazo(t)&&gpOpPrazo(t)<h).length;
     return `<div class="card card-pad" style="padding:14px 16px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tag ${cls}" style="font-size:12.5px">${rot}</span><span class="gp-mini">${ab.length} aberta${ab.length===1?'':'s'}${atr?` · <span style="color:var(--red);font-weight:600">${atr} atrasada${atr>1?'s':''}</span>`:''}</span></div></div>
       <div style="display:flex;gap:6px;margin-bottom:4px"><input class="input" id="op_add_${quem}" placeholder="${ph}" style="flex:1;min-width:0;padding:8px 10px;font-size:13px" onkeydown="if(event.key==='Enter')gpOpAddRapido('${o.id}','${quem}')"><input type="date" class="input" id="op_add_p_${quem}" value="${diasSoma(h,7)}" style="width:140px;flex:0 0 auto;padding:8px 8px;font-size:13px"><button class="btn btn-primary btn-sm" onclick="gpOpAddRapido('${o.id}','${quem}')" title="Adicionar">${icoPlus}</button></div>
@@ -8460,11 +8508,11 @@ function tarefasClienteHTML(o){const ts=gpTarefasOp(o);const h=hojeISO();const p
 function gpTarefasHTML(list){const h=hojeISO(),em7=diasSoma(h,7);const q=GP.tq||'',st=GP.tst||'abertas',grp=GP.tgrp||'prazo',plano=!!GP.tplano;
   const itens=[];list.forEach(i=>{gpTarefasOp(i.o).forEach(t=>{if(q&&t.quem!==q)return;if(st==='abertas'&&t.feito)return;if(st==='feitas'&&!t.feito)return;itens.push({o:i.o,t,tipo:'op'});});
     if(plano&&!q)i.ts.forEach(t=>{if(st==='abertas'&&t.feito)return;if(st==='feitas'&&!t.feito)return;itens.push({o:i.o,t,tipo:'plano'});});});
-  itens.sort((a,b)=>((a.t.prazo||'9999').localeCompare(b.t.prazo||'9999'))||(a.o.nome||'').localeCompare(b.o.nome||''));
+  itens.sort((a,b)=>((gpOpPrazo(a.t)||'9999').localeCompare(gpOpPrazo(b.t)||'9999'))||(a.o.nome||'').localeCompare(b.o.nome||''));
   const grupos=[];const add=(k,x)=>{let g=grupos.find(g=>g.k===k);if(!g){g={k,itens:[]};grupos.push(g);}g.itens.push(x);};
   if(grp==='cliente'){itens.slice().sort((a,b)=>(a.o.nome||'').localeCompare(b.o.nome||'','pt',{sensitivity:'base'})).forEach(x=>add(x.o.nome||'',x));}
-  else{const ordem=['Atrasadas','Hoje','Esta semana','Mais adiante','Sem prazo'];itens.forEach(x=>{const p=x.t.prazo;add(!p?'Sem prazo':p<h?'Atrasadas':p===h?'Hoje':p<=em7?'Esta semana':'Mais adiante',x);});grupos.sort((a,b)=>ordem.indexOf(a.k)-ordem.indexOf(b.k));}
-  const nOp=itens.filter(x=>x.tipo==='op').length,nAtr=itens.filter(x=>!x.t.feito&&x.t.prazo&&x.t.prazo<h).length;
+  else{const ordem=['Atrasadas','Hoje','Esta semana','Mais adiante','Sem prazo'];itens.forEach(x=>{const p=gpOpPrazo(x.t);add(!p?'Sem prazo':p<h?'Atrasadas':p===h?'Hoje':p<=em7?'Esta semana':'Mais adiante',x);});grupos.sort((a,b)=>ordem.indexOf(a.k)-ordem.indexOf(b.k));}
+  const nOp=itens.filter(x=>x.tipo==='op').length,nAtr=itens.filter(x=>!x.t.feito&&gpOpPrazo(x.t)&&gpOpPrazo(x.t)<h).length;
   const seg=(k,opts)=>`<div class="gp-seg">${opts.map(([v,l])=>`<button class="${(GP[k]||'')===v?'on':''}" onclick="gpSet('${k}','${v}')">${l}</button>`).join('')}</div>`;
   return `<div class="card" style="padding:10px 14px;margin-bottom:12px"><div class="gp-bar">
       ${seg('tq',[['','Todas'],['lidera','Nossas'],['cliente','Do cliente']])}
@@ -8516,7 +8564,7 @@ function gpInfo(o){const h=hojeISO();const d=o.dados||{};const p=(d._projeto&&Ar
   const ag=rs.filter(r=>!r.realizada&&r.data).sort((a,b)=>a.data.localeCompare(b.data));
   const ultR=feitas[0]||null;const proxR=ag.find(r=>r.data>=h)||null;const pendConf=ag.filter(r=>r.data<h);
   const diasSem=ultR?gpDias(ultR.data,h):null;
-  const ops=gpTarefasOp(o);const opAbL=ops.filter(t=>!t.feito);const opAtrL=opAbL.filter(t=>t.prazo&&t.prazo<h);const opMax=opAtrL.length?Math.max(...opAtrL.map(t=>gpDias(t.prazo,h))):0;
+  const ops=gpTarefasOp(o);const opAbL=ops.filter(t=>!t.feito);const opAtrL=opAbL.filter(t=>gpOpPrazo(t)&&gpOpPrazo(t)<h);const opMax=opAtrL.length?Math.max(...opAtrL.map(t=>gpDias(gpOpPrazo(t),h))):0;
   let ultAtiv=ultR?ultR.data:'';ts.forEach(t=>{if(t.feito&&(t.feitoEm||'')>ultAtiv)ultAtiv=t.feitoEm;});ops.forEach(t=>{if(t.feito&&(t.feitoEm||'')>ultAtiv)ultAtiv=t.feitoEm;});
   const cad=d._cadastro||{};const motivos=[];let nivel=0;const add=(n,t)=>{motivos.push({n,t});if(n>nivel)nivel=n;};
   let sit;
@@ -8540,7 +8588,7 @@ const GP_SIT={critico:['Crítico','tag-red','var(--red)'],atencao:['Atenção','
 function gpCarteira(){return ADMIN_ORGS.filter(o=>!(o.dados&&(o.dados._arquivado||o.dados._demo))&&!grupoDe(o)).map(gpInfo);}
 function gpFiltrar(infos){const q=lmNorm(GP.q);const h=hojeISO(),em7=diasSoma(h,7);
   const out=infos.filter(i=>{
-    if(q&&!lmNorm([i.o.nome,i.seg,i.socios,i.o.responsavel,i.etapa,i.prox?i.prox.titulo:'',gpTarefasOp(i.o).filter(t=>!t.feito).map(t=>t.titulo).join(' '),orgDonoId(i.o)?donoNome(orgDonoId(i.o)):''].join(' ')).includes(q))return false;
+    if(q&&!lmNorm([i.o.nome,i.seg,i.socios,i.o.responsavel,i.etapa,i.prox?i.prox.titulo:'',gpTarefasOp(i.o).filter(t=>!t.feito).map(t=>t.titulo+' '+gpSubs(t).map(x=>x.t).join(' ')).join(' '),orgDonoId(i.o)?donoNome(orgDonoId(i.o)):''].join(' ')).includes(q))return false;
     if(GP.etapa&&i.etapa!==GP.etapa)return false;
     if(GP.sit&&i.sit!==GP.sit)return false;
     if(GP.seg&&i.seg!==GP.seg)return false;
@@ -8689,7 +8737,7 @@ function gpAgendaHTML(list){const h=hojeISO(),em7=diasSoma(h,7),em30=diasSoma(h,
   const aConf=reun.filter(x=>x.r.data<h).sort((a,b)=>a.r.data.localeCompare(b.r.data));
   const semana=reun.filter(x=>x.r.data>=h&&x.r.data<=em7).sort((a,b)=>(a.r.data+(a.r.hora||'')).localeCompare(b.r.data+(b.r.hora||'')));
   const depois=reun.filter(x=>x.r.data>em7&&x.r.data<=em30).sort((a,b)=>(a.r.data+(a.r.hora||'')).localeCompare(b.r.data+(b.r.hora||'')));
-  const tarefas=[];list.forEach(i=>{if(!gpVivo(i))return;i.ts.forEach(t=>{if(!t.feito&&t.prazo&&t.prazo<=em7)tarefas.push({i,t,tipo:'plano'});});gpTarefasOp(i.o).forEach(t=>{if(!t.feito&&t.prazo&&t.prazo<=em7)tarefas.push({i,t,tipo:'op'});});});
+  const tarefas=[];list.forEach(i=>{if(!gpVivo(i))return;i.ts.forEach(t=>{if(!t.feito&&t.prazo&&t.prazo<=em7)tarefas.push({i,t,tipo:'plano'});});gpTarefasOp(i.o).forEach(t=>{const pz=gpOpPrazo(t);if(!t.feito&&pz&&pz<=em7)tarefas.push({i,t:Object.assign({},t,{prazo:pz}),tipo:'op'});});});
   tarefas.sort((a,b)=>a.t.prazo.localeCompare(b.t.prazo));
   const semContato=list.filter(i=>gpVivo(i)&&!i.proxR&&(i.diasSem==null||i.diasSem>GP_DIAS_ATENCAO)).sort((a,b)=>((b.diasSem==null?9999:b.diasSem)-(a.diasSem==null?9999:a.diasSem)));
   const diaSem=d=>['dom','seg','ter','qua','qui','sex','sáb'][new Date(d+'T12:00:00').getDay()];
@@ -8739,7 +8787,7 @@ function gpReuniaoModal(orgId,rid,modo){const _g=grupoDe(ADMIN_ORGS.find(x=>x.id
     <div id="gr_so_feita" style="display:${_grModo==='feita'?'block':'none'}">
       <div class="gp-note-box" style="padding-top:10px">
         <div style="font-size:13px;font-weight:600">Próximos passos <span class="hint">um por linha</span></div>
-        <div class="gp-mini" style="margin:2px 0 8px">Cada linha vira uma demanda em "Tarefas" com a sua data, separada do Plano de Guerra. Enter pula para a próxima linha; linhas já em aberto não são duplicadas.</div>
+        <div class="gp-mini" style="margin:2px 0 8px">Vira uma demanda "Reunião dd/mm · Cliente" em "Tarefas", com cada linha como subtarefa com a sua data. Enter pula para a próxima linha; linhas repetidas não são duplicadas.</div>
         ${grPassosInicial(r)}
         <div class="grid-2" style="align-items:start">
           <div><div style="font-size:12.5px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px"><span class="tag tag-navy">Nossos</span><span class="hint">o que a Lidera faz</span></div><div id="gr_pl_lidera">${grPassosHTML('lidera')}</div></div>
@@ -8777,7 +8825,15 @@ function grPassoAdd(q,depois){grPassosLer(q);const rows=_grPassos[q];const base=
   if(depois!=null&&depois<rows.length-1)rows.splice(depois+1,0,nova);else rows.push(nova);grPassosDesenhar(q,depois!=null?depois+1:rows.length-1);}
 function grPassoDel(q,i){grPassosLer(q);_grPassos[q].splice(i,1);if(!_grPassos[q].length)_grPassos[q]=[{t:'',p:diasSoma(hojeISO(),7)}];grPassosDesenhar(q);}
 function grPassosColher(){['lidera','cliente'].forEach(grPassosLer);const out=[];['lidera','cliente'].forEach(q=>(_grPassos[q]||[]).forEach(x=>{if(x.t&&x.t.length>1)out.push({quem:q,t:x.t,p:x.p||''});}));return out;}
-function gpOpCriarItens(o,itens,rid){let n=0;const ts=gpTarefasOp(o);itens.forEach(x=>{if(ts.some(t=>!t.feito&&lmNorm(t.titulo)===lmNorm(x.t)))return;gpOpNova(o,x.t,x.quem,x.p,{deReuniao:rid||''});n++;});return n;}
+/* Cada reunião registrada vira UMA demanda por lado (nossa / do cliente): "Reunião dd/mm · Cliente", e cada próximo passo é uma subtarefa com o próprio prazo. Editar a reunião acrescenta os passos novos na mesma demanda. */
+function gpOpCriarItens(o,itens,r){let n=0;const rid=(r&&r.id)||(typeof r==='string'?r:'');const data=(r&&r.data)||hojeISO();const ts=gpTarefasOp(o);
+  ['lidera','cliente'].forEach(quem=>{const its=itens.filter(x=>x.quem===quem&&x.t&&x.t.length>1);if(!its.length)return;
+    let t=ts.find(x=>x.deReuniao===rid&&x.quem===quem&&Array.isArray(x.subs));
+    if(!t){t=gpOpNova(o,'Reunião '+fmtDataBR(data).slice(0,5)+' · '+(o.nome||''),quem,'',{deReuniao:rid,reuniaoData:data});t.subs=[];}
+    its.forEach(x=>{if(gpSubs(t).some(s=>lmNorm(s.t)===lmNorm(x.t)))return;gpSubs(t).push({id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:x.t,feito:false,feitoEm:'',prazo:x.p||''});n++;});
+    const pr=gpSubs(t).map(s=>s.prazo).filter(Boolean).sort();t.prazo=pr.length?pr[pr.length-1]:'';
+    if(t.feito&&gpSubsInfo(t).abertas){t.feito=false;t.feitoEm='';}});
+  return n;}
 function gpReuniaoModo(m){_grModo=m;['feita','agendar'].forEach(x=>{const b=$('#gr_m_'+x);if(b)b.classList.toggle('on',x===m);});
   const s=$('#gr_so_feita');if(s)s.style.display=m==='feita'?'block':'none';const sa=$('#gr_so_agendar');if(sa)sa.style.display=m==='agendar'?'block':'none';const l=$('#gr_lbl_resumo');if(l)l.textContent=m==='feita'?'Resumo e decisões':'Pauta';
   const hw=$('#gr_hora_wrap');if(hw)hw.style.display=m==='agendar'?'none':'block';{const a=$('#gr_hora'),f=$('#gr_hora_feita');if(a&&f){if(m==='agendar'&&!a.value&&f.value){a.value=f.value;gcalIniMudou();}if(m==='feita'&&!f.value&&a.value)f.value=a.value;}}const sv=$('#gr_salvar');if(sv)sv.textContent=m==='feita'?'Registrar':'Agendar';
@@ -8793,11 +8849,11 @@ async function gpReuniaoSalvar(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===orgI
   {const lk={};GP_LINKS.forEach(([k])=>{const v=(($('#gr_l_'+k)||{}).value||'').trim();if(v)lk[k]=v;});if(Object.keys(lk).length)r.links=lk;else delete r.links;}
   const keys=['_crm'];let criadas=0;
   if(feita){const itens=grPassosColher();r.passosItens=itens;r.passosLidera=itens.filter(x=>x.quem==='lidera').map(x=>x.t).join('\n');r.passosCliente=itens.filter(x=>x.quem==='cliente').map(x=>x.t).join('\n');delete r.passos;
-    criadas+=gpOpCriarItens(o,itens,r.id);
+    criadas+=gpOpCriarItens(o,itens,r);
     const pd=$('#gr_prox_data');if(pd&&pd.value&&pd.value>h&&!crm.reunioes.some(x=>!x.realizada&&x.data===pd.value))crm.reunioes.push({id:uid(),data:pd.value,hora:($('#gr_prox_hora')&&$('#gr_prox_hora').value)||'',tipo:'Acompanhamento',resumo:'',realizada:false});}
   const querGoogle=!feita&&$('#gr_gcal')&&$('#gr_gcal').checked&&data>=h;const gOpts=feita?{}:gcalLerForm();
   if(!feita){r.gcalCal=gOpts.calendarId;r.gcalTitulo=gOpts.titulo||('PLL - '+(o.nome||''));r.gcalConv=gOpts.convidados;r.gcalFim=gOpts.horaFim||'';if(!gOpts.titulo)delete gOpts.titulo;}
-  closeModal();gpRefresh();toast((feita?'Reunião registrada':'Reunião agendada')+(criadas?' · '+criadas+' demanda(s) criada(s)':'')+(querGoogle?' · criando no Google Agenda…':''));
+  closeModal();gpRefresh();toast((feita?'Reunião registrada':'Reunião agendada')+(criadas?' · '+criadas+' subtarefa(s) na demanda da reunião':'')+(querGoogle?' · criando no Google Agenda…':''));
   await adminSaveKeys(o,keys);
   if(querGoogle){const g=await gpAgendaGoogle(o,r,r.gcalId?'atualizar':'criar',gOpts);
     if(g&&g.ok){if(g.eventId)r.gcalId=g.eventId;if(g.calendarId)r.gcalCal=g.calendarId;r.links=Object.assign({},r.links||{},g.link?{evento:g.link}:{},g.meet?{meet:g.meet}:{});gpRefresh();await adminSaveKeys(o,['_crm']);
