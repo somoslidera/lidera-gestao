@@ -2483,6 +2483,13 @@ function editInsumo(id){
         </div>
       </div>
     </div>
+    <div class="field" style="margin-top:12px"><label>Estoque e compras <span class="hint">opcional</span></label>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+        <div><div class="gp-mini" style="margin-bottom:3px" title="Quanto você quer ter depois de comprar">Estoque ideal</div><input class="input" id="i_estmin" type="number" step="0.001" min="0" value="${i.estoqueMin||''}" placeholder="0" style="text-align:right"></div>
+        <div><div class="gp-mini" style="margin-bottom:3px" title="Ponto de pedido: ao chegar aqui, entra na lista de compras">Estoque crítico</div><input class="input" id="i_estcrit" type="number" step="0.001" min="0" value="${i.estoqueCrit||''}" placeholder="—" style="text-align:right"></div>
+        <div><div class="gp-mini" style="margin-bottom:3px" title="Quantos dias o fornecedor leva para entregar">Reposição (dias)</div><input class="input" id="i_prazorep" type="number" step="1" min="0" value="${i.prazoRep||''}" placeholder="—" style="text-align:right"></div>
+      </div>
+      <div style="font-size:11.5px;color:var(--soft);margin-top:5px">Ideal = quanto comprar (ex.: 72 cervejas por semana). Crítico = quando comprar (ex.: 20): o item só entra na lista ao chegar no crítico, sugerindo ideal menos saldo. Sem crítico, a lista usa o ideal como mínimo, como sempre foi.</div></div>
     <div id="i_preview" style="font-size:13px;color:var(--muted);margin-top:12px"></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveInsumo('${id||''}')">Salvar produto</button></div>`);
@@ -2540,6 +2547,7 @@ function saveInsumo(id){const nome=$('#i_nome').value.trim();if(!nome)return toa
     if(embOn&&(!embNome||!(embQtd>0)))return toast('Informe o nome da embalagem e quanto ela contém');
     obj.embNome=embNome;obj.embQtd=embQtd;obj.reqLote=parseFloat(($('#i_reqlote')||{}).value)||0;obj.reqMin=parseFloat(($('#i_reqmin')||{}).value)||0;}
   const setoresSel=[...document.querySelectorAll('input.i_setor:checked')].map(c=>c.value);if(document.querySelector('input.i_setor'))obj.setores=setoresSel;
+  if($('#i_estmin'))obj.estoqueMin=parseFloat($('#i_estmin').value)||0;if($('#i_estcrit'))obj.estoqueCrit=parseFloat($('#i_estcrit').value)||0;if($('#i_prazorep'))obj.prazoRep=parseInt($('#i_prazorep').value)||0;
   // merge: preserva estoque, mínimo, apelidos e outros campos que o modal não edita
   DB.insumos[obj.id]=Object.assign({},DB.insumos[obj.id]||{},obj);save();closeModal();viewInsumos();toast(id?'Insumo atualizado':'Insumo adicionado');}
 function delInsumo(id){
@@ -3012,7 +3020,7 @@ function updPrepPreview(){const el=$('#i_preview');if(!el)return;const uni=($('#
 function editPreparado(id){
   const p=id?DB.insumos[id]:{nome:'',cat:'',tipo:'preparado',uni:'g',rendimento:'',comps:[],fornecedor:'',tempoPreparo:'',utensilios:'',modoPreparo:[],foto:''};
   editingInsId=id||null; draftComps=JSON.parse(JSON.stringify(p.comps||[])); fichaEditIdx=-1;
-  draftModo=JSON.parse(JSON.stringify(p.modoPreparo||[])); draftFoto=p.foto||'';
+  draftModo=JSON.parse(JSON.stringify(p.modoPreparo||[])); draftFoto=p.foto||'';draftRendForn=JSON.parse(JSON.stringify(Array.isArray(p.rendForn)?p.rendForn:[]));
   modal(`<div class="ficha-split">
     <div class="fx-left"><div class="fx-left-body">
       <div id="fx_left_custos" style="display:flex;flex-direction:column;flex:1"></div>
@@ -3037,6 +3045,14 @@ function editPreparado(id){
           </div>
           <div class="field" style="max-width:260px"><label>Rendimento da receita</label><div style="display:flex;gap:6px"><input class="input" id="i_rend" type="number" step="0.001" value="${p.rendimento||''}" placeholder="Ex.: 1000" style="flex:1;min-width:0" oninput="updPrepPreview()"><select class="input" id="i_uni" style="flex:0 0 84px" onchange="updPrepPreview()">${UNIDADES.map(u=>`<option value="${u}" ${u===p.uni?'selected':''}>${uSym(u)}</option>`).join('')}</select></div></div>
           <div id="i_preview" style="font-size:13px;color:var(--muted);margin-top:8px"></div>
+          <div style="border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-top:10px;background:var(--bg)">
+            <div style="font-size:13px;font-weight:600">Controle de rendimento <span class="hint">opcional</span></div>
+            <div style="font-size:11.5px;color:var(--muted);margin:2px 0 8px">Produção que render menos que o mínimo (menos a tolerância) só conclui com aprovação de um responsável e motivo.</div>
+            <div class="fx-g2"><div class="field" style="margin:0"><label>Rendimento mínimo aceito <span class="hint"><span id="pp_rendmin_u">${uSym(p.uni||'g')}</span> por receita</span></label><input class="input" id="pp_rendmin" type="number" step="0.001" min="0" value="${p.rendMin||''}" placeholder="Ex.: 6000"></div>
+              <div class="field" style="margin:0"><label>Tolerância <span class="hint">%</span></label><input class="input" id="pp_toler" type="number" step="0.1" min="0" max="100" value="${p.toler!=null&&p.toler!==''?p.toler:''}" placeholder="Ex.: 5"></div></div>
+            <div style="font-size:12.5px;font-weight:600;margin:10px 0 4px">Rendimento por fornecedor <span class="hint">meça 3 vezes e use o menor</span></div>
+            <div id="pp_rendforn"></div>
+          </div>
           <div style="border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-top:10px;background:var(--bg)"><label style="display:flex;gap:9px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="pp_estocavel" ${p.estocavel?'checked':''} style="width:17px;height:17px;margin-top:2px;flex:0 0 auto"><div><div style="font-size:13px;font-weight:600">Subproduto com estoque (porcionado)</div><div style="font-size:11.5px;color:var(--muted)">Ex.: bife 180 g feito de contrafilé, bolinho de costela, frango desfiado. Entra no estoque quando você registra a <b>Produção</b> (que baixa os brutos) e a venda baixa o subproduto, não o bruto. Desmarcado, é um preparado comum: a venda desce direto aos ingredientes.</div></div></label></div>
           <div style="font-size:12px;color:var(--soft);margin-top:8px">O preparado é usado como ingrediente nas fichas técnicas e no Mapa do Buffet. O custo por unidade vem dos ingredientes ÷ rendimento (subproduto: custo médio das produções, quando houver).</div>
         </div>
@@ -3062,14 +3078,19 @@ function editPreparado(id){
     </div>
   </div>`,true);
   const mc=document.querySelector('#modalRoot .modal');if(mc)mc.classList.add('fichamodal');
-  renderInsumosPanel();renderModoList();renderFichaFoto();updPrepPreview();
+  renderInsumosPanel();renderModoList();renderFichaFoto();updPrepPreview();renderRendForn();
 }
+let draftRendForn=[];
+function renderRendForn(){const el=$('#pp_rendforn');if(!el)return;const forns=(DB.fin&&Array.isArray(DB.fin.fornecedores)?DB.fin.fornecedores.map(f=>typeof f==='string'?f:(f&&f.nome)||''):[]).filter(Boolean);const u=uSym(($('#i_uni')||{}).value||'g');
+  el.innerHTML=draftRendForn.map((r,i)=>`<div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 28px;gap:6px;align-items:center;margin-bottom:6px"><input class="input" list="pp_forn_dl" value="${esc(r.forn||'')}" placeholder="Fornecedor" style="padding:7px 10px;font-size:13px" oninput="draftRendForn[${i}].forn=this.value"><input class="input" type="number" step="0.001" min="0" value="${r.rend||''}" placeholder="rende ${u}" style="padding:7px 8px;font-size:13px;text-align:right" oninput="draftRendForn[${i}].rend=parseFloat(this.value)||0"><button class="icon-btn" style="width:28px;height:28px" onclick="draftRendForn.splice(${i},1);renderRendForn()">${icoX}</button></div>`).join('')
+    +`<datalist id="pp_forn_dl">${forns.map(f=>`<option value="${esc(f)}"></option>`).join('')}</datalist><a class="gp-link" style="font-size:12px" onclick="draftRendForn.push({forn:'',rend:0});renderRendForn()">+ fornecedor</a>`;}
 function savePreparado(id){
   const nome=($('#pp_nome').value||'').trim();if(!nome)return toast('Informe o nome do preparado');
   const comps=draftComps.filter(c=>c[0]&&c[1]>0).map(c=>[c[0],c[1]]);if(!comps.length)return toast('Adicione ao menos um ingrediente');
   const uni=$('#i_uni').value, cat=$('#pp_cat').value.trim()||'Preparado', forn=$('#pp_forn')?$('#pp_forn').value:'';
   const obj={id:id||uid(),nome,cat,tipo:'preparado',uni,rendimento:parseFloat($('#i_rend').value)||1,comps,fornecedor:forn,estocavel:!!($('#pp_estocavel')&&$('#pp_estocavel').checked),
-    tempoPreparo:$('#pp_tempo').value||'',utensilios:($('#pp_utens').value||'').trim(),modoPreparo:draftModo.filter(s=>(s||'').trim()),foto:draftFoto||''};
+    tempoPreparo:$('#pp_tempo').value||'',utensilios:($('#pp_utens').value||'').trim(),modoPreparo:draftModo.filter(s=>(s||'').trim()),foto:draftFoto||'',
+    rendMin:parseFloat(($('#pp_rendmin')||{}).value)||0,toler:(($('#pp_toler')||{}).value!==''&&$('#pp_toler'))?(parseFloat($('#pp_toler').value)||0):'',rendForn:(draftRendForn||[]).filter(r=>(r.forn||'').trim()&&r.rend>0).map(r=>({forn:r.forn.trim(),rend:+r.rend}))};
   const antes=DB.insumos[obj.id];if(antes&&antes.estocavel&&!obj.estocavel&&Math.abs(+antes.estoqueAtual||0)>0.0005&&!confirm('Este subproduto tem '+fmtN(+antes.estoqueAtual||0,3).replace(/,?0+$/,'')+' '+uSym(antes.uni)+' em estoque. Ao desmarcar, esse saldo deixa de ser controlado. Continuar?'))return;
   DB.insumos[obj.id]=Object.assign({},antes||{},obj);   // preserva estoque, custo médio, mínimo e saldo por armazém
   save();closeModal();viewFichas();toast(id?'Preparado atualizado':'Preparado criado');
@@ -3269,6 +3290,7 @@ function editFicha(id){
             <div class="field"><label>Categoria</label><select class="input" id="f_cat">${catOptions('prato',f.cat)}</select></div>
             <div class="field"><label>Código no PDV <span class="hint">como o prato aparece no sistema de vendas</span></label><input class="input" id="f_codpdv" value="${(f.codPdv||'').replace(/"/g,'&quot;')}" placeholder="Ex.: 1042 ou ALA MINUTA CARNE"></div>
           </div>
+          ${estMultiArm()?`<div class="field"><label>Setor que vende este prato <span class="hint">a baixa por venda sai deste estoque</span></label><select class="input" id="f_armvenda"><option value="">Padrão (${esc(estArmNome(estCfg().armVendas))})</option>${setoresSemPrincipal().map(a=>`<option value="${a.id}" ${f.armVenda===a.id?'selected':''}>${esc(a.nome)}</option>`).join('')}</select></div>`:''}
           <div class="fx-g2">
             <div class="field"><label>Rendimento</label><div style="display:flex;gap:6px"><input class="input" id="f_rend" type="number" step="0.001" value="${f.rendGramas||''}" placeholder="0" style="flex:1"><select class="input" id="f_renduni" style="flex:0 0 78px">${UNIDADES.map(u=>`<option value="${u}" ${(f.rendUni||'g')===u?'selected':''}>${uSym(u)}</option>`).join('')}</select></div></div>
             <div class="field"><label>Custo embalagem</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="f_emb" inputmode="numeric" value="${fmtMoneyInput(f.custoEmbalagem||0)}" oninput="moneyMask(this);recalcFicha()"></div></div>
@@ -3458,7 +3480,7 @@ function coletarFichaForm(id){const nome=($('#f_nome').value||'').trim();
     precoVenda:moneyVal('f_preco')||0,precos:coletarPrecosCanais(id),
     vendasMes:parseInt($('#f_vendas').value)||0,tempoPreparo:parseFloat($('#f_tempo')?.value)||0,
     utensilios:$('#f_utens')?.value||'',modoPreparo:draftModo.filter(s=>(s||'').trim()),
-    padraoFinalizacao:$('#f_final')?.value||'',foto:draftFoto||'',codPdv:(($('#f_codpdv')||{}).value||'').trim(),comps:draftComps.filter(c=>c[0]&&c[1]>0),
+    padraoFinalizacao:$('#f_final')?.value||'',foto:draftFoto||'',codPdv:(($('#f_codpdv')||{}).value||'').trim(),armVenda:(($('#f_armvenda')||{}).value||''),comps:draftComps.filter(c=>c[0]&&c[1]>0),
     criada:(id&&DB.fichas[id]&&DB.fichas[id].criada)||hoje()};}
 function saveFicha(id){if(!($('#f_nome').value||'').trim())return toast('Informe o nome');
   const obj=coletarFichaForm(id);
@@ -3497,7 +3519,7 @@ function imprimirFicha(){
 /* Ficha do preparado/porcionado para a cozinha: mesma folha da ficha técnica. Se o editor estiver aberto, imprime o que está na tela. */
 function imprimirPreparado(id){
   const aberto=!!$('#pp_nome');const base=(id&&DB.insumos[id])||null;
-  const f=aberto?{nome:($('#pp_nome').value||'').trim(),cat:($('#pp_cat').value||'').trim()||'Preparado',uni:($('#i_uni')||{}).value||(base&&base.uni)||'g',rendimento:parseFloat(($('#i_rend')||{}).value)||(base&&base.rendimento)||0,comps:(draftComps||[]).filter(c=>c[0]&&c[1]>0),tempoPreparo:($('#pp_tempo')||{}).value||'',utensilios:(($('#pp_utens')||{}).value||'').trim(),modoPreparo:(draftModo||[]).filter(x=>(x||'').trim()),foto:draftFoto||'',estocavel:!!($('#pp_estocavel')&&$('#pp_estocavel').checked)}
+  const f=aberto?{nome:($('#pp_nome').value||'').trim(),cat:($('#pp_cat').value||'').trim()||'Preparado',uni:($('#i_uni')||{}).value||(base&&base.uni)||'g',rendimento:parseFloat(($('#i_rend')||{}).value)||(base&&base.rendimento)||0,rendMin:parseFloat(($('#pp_rendmin')||{}).value)||0,toler:parseFloat(($('#pp_toler')||{}).value)||0,rendForn:(draftRendForn||[]).filter(r=>r.forn&&r.rend>0),comps:(draftComps||[]).filter(c=>c[0]&&c[1]>0),tempoPreparo:($('#pp_tempo')||{}).value||'',utensilios:(($('#pp_utens')||{}).value||'').trim(),modoPreparo:(draftModo||[]).filter(x=>(x||'').trim()),foto:draftFoto||'',estocavel:!!($('#pp_estocavel')&&$('#pp_estocavel').checked)}
     :base;
   if(!f||!f.nome)return toast('Informe o nome do preparado antes de imprimir');
   const ings=(f.comps||[]).map(([cid,q])=>{const ins=DB.insumos[cid];if(!ins)return '';const fc=ins.fc||ins.fatorCorrecao||1;const u=bSym(ins.uni);
@@ -3506,7 +3528,7 @@ function imprimirPreparado(id){
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
   pa.innerHTML=`<table class="fp-page"><thead><tr><td></td></tr></thead><tfoot><tr><td></td></tr></tfoot><tbody><tr><td><div class="fp">
     <div class="fp-title">${f.estocavel?'SUBPRODUTO':'PREPARADO'} – ${esc((f.nome||'').toUpperCase())}</div>
-    <div class="fp-meta"><span><b>Categoria:</b> ${esc(f.cat||'—')}</span><span><b>Preparo:</b> ${f.tempoPreparo?f.tempoPreparo+' min':'—'}</span><span><b>Rendimento:</b> ${f.rendimento?nNum(f.rendimento)+' '+uSym(f.uni||'g'):'—'}</span><span><b>Utensílios:</b> ${esc(f.utensilios||'—')}</span></div>
+    <div class="fp-meta"><span><b>Categoria:</b> ${esc(f.cat||'—')}</span><span><b>Preparo:</b> ${f.tempoPreparo?f.tempoPreparo+' min':'—'}</span><span><b>Rendimento esperado:</b> ${f.rendimento?nNum(f.rendimento)+' '+uSym(f.uni||'g'):'—'}</span>${(f.rendMin>0)?`<span><b>Mínimo aceito:</b> ${nNum(f.rendMin)} ${uSym(f.uni||'g')}${(+f.toler>0)?' (tolerância '+f.toler+'%, piso '+nNum(estR(f.rendMin*(1-(+f.toler)/100),3))+' '+uSym(f.uni||'g')+')':''} · abaixo disso, chame o responsável</span>`:''}${(Array.isArray(f.rendForn)&&f.rendForn.length)?`<span><b>Por fornecedor:</b> ${f.rendForn.map(r=>esc(r.forn)+' '+nNum(r.rend)+' '+uSym(f.uni||'g')).join(' · ')}</span>`:''}<span><b>Utensílios:</b> ${esc(f.utensilios||'—')}</span></div>
     <div class="fp-row">
       <div class="fp-foto">${f.foto?`<img src="${f.foto}">`:'FOTO DO PREPARADO'}</div>
       <div class="fp-ing">
@@ -6588,16 +6610,24 @@ function embDatalist(){return `<datalist id="emb_dl">${EMB_SUGESTOES.map(x=>`<op
 function estoqueItens(){
   return Object.values(DB.insumos).filter(i=>estEstocavel(i)&&i.noEstoque!==false).map(i=>{
     const custo=estCustoAtual(i);
-    const min=+i.estoqueMin||0, atual=+i.estoqueAtual||0;
+    const min=+i.estoqueMin||0, atual=+i.estoqueAtual||0, crit=+i.estoqueCrit||0;
     const necessidade=Math.max(0,min-atual);
     const valorEstoque=custo*atual;
-    const qtdPedir=(i.qtdPedir!=null&&i.qtdPedir!=='')?(+i.qtdPedir||0):necessidade;
+    // ponto de pedido (seção 8): com crítico cadastrado, o item só entra na lista quando o saldo chega ao crítico; a sugestão é "ideal menos saldo" arredondada para a embalagem de compra
+    const comprar=crit>0?(atual<=crit&&min>0):atual<min;
+    const sugerido=estCompraArredonda(necessidade,i);
+    const qtdPedir=(i.qtdPedir!=null&&i.qtdPedir!=='')?(+i.qtdPedir||0):sugerido;
     const totalPrevisto=custo*qtdPedir;
-    const comprar=atual<min;
-    return {ins:i,nome:i.nome,cat:i.cat,grupo:i.grupo||'',sub:i.sub||i.cat||'',uni:i.uni,fornecedor:i.fornecedor||'Sem fornecedor',custo,min,atual,necessidade,valorEstoque,qtdPedir,totalPrevisto,comprar};
+    return {ins:i,nome:i.nome,cat:i.cat,grupo:i.grupo||'',sub:i.sub||i.cat||'',uni:i.uni,fornecedor:i.fornecedor||'Sem fornecedor',custo,min,crit,atual,necessidade,sugerido,valorEstoque,qtdPedir,totalPrevisto,comprar,prazoRep:+i.prazoRep||0};
   });
 }
 function estoqueValorTotal(){return estoqueItens().reduce((s,x)=>s+x.valorEstoque,0);}
+/* compra arredondada para a embalagem (fardo, caixa, barril). Sem embalagem cadastrada, fica como está. */
+function estCompraArredonda(q,ins){q=+q||0;if(!(q>0))return 0;const emb=insEmb(ins);if(emb&&emb.qtd>0)return estR(Math.ceil(q/emb.qtd-1e-9)*emb.qtd,3);return estR(q,3);}
+/* aviso ao perfil Compras quando um produto cruza o crítico (uma vez por cruzamento; some quando o saldo volta acima) */
+function estCritAvisos(items){let n=0;(items||estoqueItens()).forEach(x=>{const i=x.ins;if(!(x.crit>0))return;
+  if(x.atual<=x.crit){if(!i.critAvisado){i.critAvisado=true;n++;notificar({perm:'compras'},'Ponto de pedido: '+i.nome,'Saldo '+estQ(x.atual,uSym(i.uni))+' · crítico '+estQ(x.crit,uSym(i.uni))+' · comprar '+estQ(x.sugerido,uSym(i.uni))+(x.prazoRep?' · reposição em '+x.prazoRep+' dia(s)':''),{rota:'estoque',tab:'compras'});}}
+  else if(i.critAvisado)delete i.critAvisado;});if(n){try{save();}catch(e){}}return n;}
 function estAjusteRapido(id,v){const ins=DB.insumos[id];if(!ins)return;const novo=parseFloat(v)||0;const delta=estR(novo-(+ins.estoqueAtual||0),3);if(!delta)return;
   estMov('ajuste',id,0,{delta,origem:'manual',motivo:'Ajuste na posição',obs:''});save();viewEstoque();}
 // Só produtos da categoria CMV entram na apuração do CMV (limpeza, escritório etc. ficam no estoque, mas fora da conta)
@@ -6632,7 +6662,7 @@ function imprimirContagem(){
 }
 function viewEstoque(){
   const abas=estAbasPermitidas();if(!abas.some(([k])=>k===estoqueTab)){if(!abas.length){$('#topActions').innerHTML='';$('#view').innerHTML=`<div class="card">${emptyState('Sem permissões de estoque','Peça ao administrador para liberar o que você pode fazer em Estoque & Compras.','')}</div>`;return;}estoqueTab=abas[0][0];estReqSel=null;}
-  const items=estoqueItens();
+  const items=estoqueItens();try{estCritAvisos(items);}catch(e){}
   const valorTotal=items.reduce((s,x)=>s+x.valorEstoque,0);
   const itCMV=items.filter(x=>ehInsumoCMV(x.ins)), itFora=items.filter(x=>!ehInsumoCMV(x.ins));
   const valorCMV=itCMV.reduce((s,x)=>s+x.valorEstoque,0), valorFora=valorTotal-valorCMV;
@@ -6677,11 +6707,12 @@ function viewEstoque(){
       <select class="input" style="max-width:220px" onchange="estoqueFiltro=this.value;viewEstoque()">${cats.map(c=>`<option ${c===estoqueFiltro?'selected':''}>${c}</option>`).join('')}</select>
       <input class="input" id="estBusca" value="${esc(buscaEst)}" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="buscaEst=this.value;filtrarLinhas(this,'#estoqueTbody')"></div>
     <div class="card"><div class="scroll-x"><table>
-      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Mínimo','min',1)}${estMultiArm()?armazensPermitidos().map(a=>`<th class="num" title="Saldo em ${esc(a.nome)}">${esc(a.nome)}</th>`).join('')+(souDoPrincipal()?thS('estoque','Total','atual',1):''):thS('estoque','Atual','atual',1)}<th class="num" title="Dias de estoque pelo consumo dos últimos 30 dias (vendas baixadas, perdas e saídas)">Cobertura</th>${thS('estoque','Categoria','grupo')}${thS('estoque','Subcategoria','sub')}${thS('estoque','Fornecedor','fornecedor')}${thS('estoque','Custo médio','custo',1)}${thS('estoque','Unid.','uni',1)}</tr></thead>
+      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Ideal','min',1)}${thS('estoque','Crítico','crit',1)}${estMultiArm()?armazensPermitidos().map(a=>`<th class="num" title="Saldo em ${esc(a.nome)}">${esc(a.nome)}</th>`).join('')+(souDoPrincipal()?thS('estoque','Total','atual',1):''):thS('estoque','Atual','atual',1)}<th class="num" title="Dias de estoque pelo consumo dos últimos 30 dias (vendas baixadas, perdas e saídas)">Cobertura</th>${thS('estoque','Categoria','grupo')}${thS('estoque','Subcategoria','sub')}${thS('estoque','Fornecedor','fornecedor')}${thS('estoque','Custo médio','custo',1)}${thS('estoque','Unid.','uni',1)}</tr></thead>
       <tbody id="estoqueTbody">${filt.map(x=>`
         <tr>
           <td><a onclick="estKardex('${x.ins.id}')" title="Ver o kardex (histórico de entradas e saídas)" style="font-weight:700;cursor:pointer">${x.nome}</a>${x.ins.tipo==='preparado'?'<div style="font-size:11px;color:var(--gold);font-weight:600">subproduto</div>':''}</td>
-          <td class="num">${souDoPrincipal()?`<input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.min||''}" placeholder="0" oninput="DB.insumos['${x.ins.id}'].estoqueMin=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()">`:`<span style="color:var(--muted)">${x.min?estQ(x.min):'—'}</span>`}</td>
+          <td class="num">${souDoPrincipal()?`<input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.min||''}" placeholder="0" title="Estoque ideal: quanto você quer ter depois de comprar" oninput="DB.insumos['${x.ins.id}'].estoqueMin=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()">`:`<span style="color:var(--muted)">${x.min?estQ(x.min):'—'}</span>`}</td>
+          <td class="num">${souDoPrincipal()?`<input class="input" type="number" step="0.01" style="width:74px;text-align:right;${x.crit>0&&x.atual<=x.crit?'border-color:var(--red);color:var(--red);font-weight:700':''}" value="${x.crit||''}" placeholder="—" title="Estoque crítico (ponto de pedido): ao chegar aqui, entra na lista de compras. Vazio = usa o ideal como hoje." oninput="DB.insumos['${x.ins.id}'].estoqueCrit=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()">`:`<span style="color:${x.crit>0&&x.atual<=x.crit?'var(--red)':'var(--muted)'}">${x.crit?estQ(x.crit):'—'}</span>`}</td>
           ${estMultiArm()?armazensPermitidos().map(a=>{const v=estSaldoArm(x.ins,a.id);return `<td class="num" style="${v<-0.0005?'color:var(--red);font-weight:700':''}" title="${v<-0.0005?'Saldo negativo: saiu mais do que entrou neste armazém':''}">${v?estQ(v):'<span style=\"color:var(--soft)\">—</span>'}</td>`;}).join('')+(souDoPrincipal()?`<td class="num"><b>${estQ(x.atual)}</b></td>`:''):`<td class="num"><b>${estQ(x.atual)}</b></td>`}
           <td class="num">${(function(){const i=estInfoProduto(x.ins);return i.cob==null?'<span style="color:var(--soft)" title="Sem consumo registrado nos últimos 30 dias">—</span>':`<span style="font-weight:600;color:${i.ruptura?'var(--red)':i.cob<15?'var(--amber)':'var(--green)'}" title="${fmtN(i.cons.diario,2)} ${uSym(x.uni)}/dia">${Math.round(i.cob)} d</span>`;})()}</td>
           <td>${ehInsumoCMV(x.ins)?`<span class="tag tag-gray">CMV</span>`:`<span class="tag tag-amber" title="Não entra na apuração do CMV">${esc(x.grupo)}</span>`}</td>
@@ -6714,11 +6745,11 @@ function viewEstoque(){
     <div class="card" style="margin-bottom:16px">
       <div class="card-pad" style="padding-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div class="ttl">${fn}</div><div style="font-weight:700">${fmtBRL(sub)}</div></div>
       <div class="scroll-x"><table>
-        <thead><tr><th>Produto</th><th class="num">Un.</th><th class="num">Mínimo</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Qtd a pedir</th><th class="num">Custo un.</th><th class="num">Total previsto</th></tr></thead>
+        <thead><tr><th>Produto</th><th class="num">Un.</th><th class="num" title="Estoque ideal (quanto ter depois da compra)">Ideal</th><th class="num" title="Ponto de pedido">Crítico</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Qtd a pedir</th><th class="num">Custo un.</th><th class="num">Total previsto</th></tr></thead>
         <tbody>${arr.sort((a,b)=>a.nome.localeCompare(b.nome)).map(x=>`
           <tr>
-            <td><b>${x.nome}</b></td><td class="num">${uSym(x.uni)}</td><td class="num">${fmtN(x.min,x.min%1?2:0)}</td><td class="num">${fmtN(x.atual,x.atual%1?2:0)}</td>
-            <td class="num">${fmtN(x.necessidade,x.necessidade%1?2:0)}</td>
+            <td><b>${x.nome}</b>${x.prazoRep?`<div class="gp-mini" title="Prazo de reposição cadastrado no produto">fornecedor entrega em ${x.prazoRep} dia${x.prazoRep>1?'s':''}</div>`:''}</td><td class="num">${uSym(x.uni)}</td><td class="num">${fmtN(x.min,x.min%1?2:0)}</td><td class="num" style="${x.crit>0?'color:var(--red);font-weight:600':'color:var(--soft)'}">${x.crit>0?fmtN(x.crit,x.crit%1?2:0):'—'}</td><td class="num">${fmtN(x.atual,x.atual%1?2:0)}</td>
+            <td class="num">${fmtN(x.necessidade,x.necessidade%1?2:0)}${x.sugerido!==x.necessidade&&insEmb(x.ins)?`<div class="gp-mini" title="Arredondado para ${esc(insEmb(x.ins).nome)} de ${fmtN(insEmb(x.ins).qtd)}">${fmtN(x.sugerido,x.sugerido%1?2:0)} em ${esc(insEmb(x.ins).nome)}</div>`:''}</td>
             <td class="num"><input class="input no-print" type="number" step="0.01" style="width:78px;text-align:right" value="${x.qtdPedir}" oninput="DB.insumos['${x.ins.id}'].qtdPedir=this.value;finTouch()" onchange="viewEstoque()"><span class="print-only">${fmtN(x.qtdPedir,x.qtdPedir%1?2:0)}</span></td>
             <td class="num">${fmtBRL(x.custo)}</td><td class="num"><b>${fmtBRL(x.totalPrevisto)}</b></td>
           </tr>`).join('')}</tbody>
@@ -6761,6 +6792,7 @@ function catSetoresDe(grupo,sub){const l=catSetoresMap()[catSetorKey(grupo,sub)]
 function catSetorToggle(grupo,sub,arm){const m=catSetoresMap();const k=catSetorKey(grupo,sub);let l=Array.isArray(m[k])?m[k].slice():[];l=l.includes(arm)?l.filter(x=>x!==arm):l.concat([arm]);if(l.length)m[k]=l;else delete m[k];save();}
 function prodNoSetor(ins,arm){if(!ins||!arm||arm===EST_ARM_PRINCIPAL||!estMultiArm())return true;
   if(Array.isArray(ins.setores)&&ins.setores.length)return ins.setores.includes(arm);
+  if(ins.tipo==='preparado'&&ins.estocavel)return true;   // subproduto produzido na casa: pode ser requisitado e devolvido por qualquer setor
   const l=catSetoresDe(ins.grupo||'CMV',ins.sub||ins.cat||'');return !l.length||l.includes(arm);}
 function setoresSemPrincipal(){return estArmazens().filter(a=>a.id!==EST_ARM_PRINCIPAL);}
 function estProdDatalistSetor(id,arm){return `<datalist id="${id}">${Object.values(DB.insumos).filter(i=>estEstocavel(i)&&prodNoSetor(i,arm)).sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>`<option value="${esc(i.nome)}"></option>`).join('')}</datalist>`;}
@@ -6828,10 +6860,14 @@ function estPerdaDeDesp(d){if(!estCfg().perdas)return;
   const f=DB.fichas[d.refId];if(!f)return;let n;
   if(d.unidade==='un')n=d.qtd;else{const pesoBase=(f.comps||[]).reduce((s,[id,q])=>{const i=DB.insumos[id];return s+((i&&(BASE[i.uni]==='g'||BASE[i.uni]==='ml'))?(q||0):0);},0);n=pesoBase?(d.qtd/pesoBase)*(f.porcoes||1):0;}
   if(!(n>0))return;const acc=estExplodir(f,n);Object.entries(acc).forEach(([id,q])=>estMov('perda',id,q,{origem:'desp',refId:d.id,data:d.data,arm:estCfg().armVendas,motivo:d.motivo||'Desperdício',obs:'via '+f.nome}));}
-function estBaixaVendas(data,itens,obs,opts){opts=opts||{};const acc={};let pratos=0;itens.forEach(({fichaId,qtd})=>{const f=DB.fichas[fichaId];if(!f||!(qtd>0))return;pratos+=qtd;estExplodir(f,qtd,acc);});
-  const arm=estArmValido(opts.arm||estCfg().armVendas);
-  const b={id:uid(),data,itens:itens.filter(x=>x.qtd>0),pratos,obs:obs||'',valor:0,nIns:0,arm,origem:opts.origem||'manual'};
-  Object.entries(acc).forEach(([id,q])=>{const m=estMov('venda',id,q,{origem:'venda',refId:b.id,data,arm,obs:'baixa por vendas'});if(m){b.valor+=m.valor;b.nIns++;}});
+/* de qual estoque sai a venda deste prato: setor da ficha › armazém padrão. Com "vendas nunca saem do principal" ligado, prato sem setor não baixa (fica em b.semSetor). */
+function estArmVendaDe(f,opts){opts=opts||{};const cfg=estCfg();const arm=estArmValido((f&&f.armVenda)||opts.arm||cfg.armVendas);if(cfg.vendasNuncaPrincipal&&estMultiArm()&&arm===EST_ARM_PRINCIPAL)return null;return arm;}
+function fichasSemSetorVenda(){const cfg=estCfg();if(!(cfg.vendasNuncaPrincipal&&estMultiArm()))return [];return fichasVendaveis().filter(f=>!estArmVendaDe(f));}
+function estBaixaVendas(data,itens,obs,opts){opts=opts||{};const porArm={};let pratos=0;const semSetor=[];const ok=[];
+  itens.forEach(({fichaId,qtd})=>{const f=DB.fichas[fichaId];if(!f||!(qtd>0))return;const arm=estArmVendaDe(f,opts);if(!arm){semSetor.push({fichaId,qtd});return;}pratos+=qtd;ok.push({fichaId,qtd,arm});porArm[arm]=porArm[arm]||{};estExplodir(f,qtd,porArm[arm]);});
+  const arms=Object.keys(porArm);if(!arms.length){return {id:'',data,itens:[],pratos:0,valor:0,nIns:0,arm:'',arms:[],semSetor,vazia:true};}
+  const b={id:uid(),data,itens:ok,pratos,obs:obs||'',valor:0,nIns:0,arm:arms[0],arms,origem:opts.origem||'manual',semSetor};
+  arms.forEach(arm=>Object.entries(porArm[arm]).forEach(([id,q])=>{const m=estMov('venda',id,q,{origem:'venda',refId:b.id,data,arm,obs:'baixa por vendas'});if(m){b.valor+=m.valor;b.nIns++;}}));
   b.valor=estR(b.valor,2);estBaixas().push(b);return b;}
 
 /* ----- transferência entre armazéns (não muda custo; só muda de lugar) ----- */
@@ -6862,15 +6898,16 @@ function estReceitaPara(sub,qtd){const fator=(+qtd||0)/((+sub.rendimento)||1);co
   const mapa={};out.forEach(x=>{mapa[x.insumoId]=estR((mapa[x.insumoId]||0)+x.q,3);});return Object.entries(mapa).map(([insumoId,q])=>({insumoId,q}));}
 function estProduzir(p){const sub=DB.insumos[p.subId];if(!sub||!sub.estocavel||!(p.qtd>0))return null;
   const armDe=estArmValido(p.armDe||EST_ARM_PRINCIPAL),armPara=estArmValido(p.armPara||estCfg().armVendas);
-  const rec={id:uid(),data:p.data||hojeISO(),subId:sub.id,qtd:estR(p.qtd,3),armDe,armPara,comps:[],custoTotal:0,custoUn:0,rendTeorico:0,obs:p.obs||''};
+  const rec={id:uid(),data:p.data||hojeISO(),subId:sub.id,qtd:estR(p.qtd,3),armDe,armPara,comps:[],custoTotal:0,custoUn:0,rendTeorico:0,obs:p.obs||'',forn:p.forn||'',esperado:+p.esperado||0,por:p.por||quemSou()};
+  if(p.abaixoMin){Object.assign(rec,{abaixoMin:true,piso:p.piso,minimo:p.minimo,motivo:p.motivo||'',aprovadoPor:p.aprovadoPor||''});}
   (p.comps||[]).forEach(({insumoId,q})=>{const c=DB.insumos[insumoId];if(!c||!(q>0)||!estEstocavel(c))return;const custo=estCustoAtual(c);
     const m=estMov('producao',c.id,0,{delta:-q,arm:armDe,custo,origem:'producao',refId:rec.id,data:rec.data,obs:'produção de '+sub.nome});
     if(m){rec.comps.push({insumoId:c.id,q:estR(q,3),custo:estR(custo,4),valor:m.valor});rec.custoTotal+=m.valor;}});
   rec.custoTotal=estR(rec.custoTotal,2);rec.custoUn=rec.qtd?estR(rec.custoTotal/rec.qtd,4):0;
   // rendimento teórico: quantas unidades a receita diz que esses brutos deveriam dar (para medir a quebra)
   const teor=estReceitaPara(sub,sub.rendimento||1);const ref=teor.find(x=>rec.comps.some(c=>c.insumoId===x.insumoId));
-  if(ref){const usado=rec.comps.find(c=>c.insumoId===ref.insumoId);rec.rendTeorico=ref.q?estR((usado.q/ref.q)*(sub.rendimento||1),3):0;}
-  const m=estMov('producao',sub.id,0,{delta:+rec.qtd,arm:armPara,custo:rec.custoUn,origem:'producao',refId:rec.id,data:rec.data,obs:'produzido a partir de '+rec.comps.length+' ingrediente(s)'});
+  if(ref){const usado=rec.comps.find(c=>c.insumoId===ref.insumoId);rec.rendTeorico=ref.q?estR((usado.q/ref.q)*(rec.esperado||sub.rendimento||1),3):0;}
+  const m=estMov('producao',sub.id,0,{delta:+rec.qtd,arm:armPara,custo:rec.custoUn,origem:'producao',refId:rec.id,data:rec.data,obs:'produzido a partir de '+rec.comps.length+' ingrediente(s)'+(rec.abaixoMin?' · ABAIXO DO MÍNIMO ('+rec.motivo+'; aprovado por '+rec.aprovadoPor+')':'')});
   if(!m){estReverter('producao',rec.id);return null;}
   estProducoes().push(rec);return rec;}
 function estProducaoDel(id){const p=estProducoes().find(x=>x.id===id);if(!p)return;if(!confirm('Desfazer esta produção? Os ingredientes voltam ao estoque e o subproduto sai.'))return;
@@ -6889,8 +6926,9 @@ function pdvVincular(chave,fichaId){const k=pdvChave(chave);if(!k)return;if(fich
 function pdvPendentes(){if(!Array.isArray(DB.vendasPendentes))DB.vendasPendentes=[];return DB.vendasPendentes;}
 function pdvProcessarPendentes(silencioso){const pend=pdvPendentes();if(!pend.length)return 0;let baixas=0,semFicha=0;const restantes=[];
   pend.forEach(v=>{const itens=[];const sobra=[];(v.itens||[]).forEach(it=>{const f=pdvAcharFicha(it.codigo,it.nome);const q=+it.qtd||0;if(f&&q>0)itens.push({fichaId:f.id,qtd:q});else if(q>0)sobra.push(it);});
-    if(itens.length){estBaixaVendas(v.data||hojeISO(),itens,'PDV'+(v.pdv?' '+v.pdv:''),{origem:'pdv'});baixas++;}
-    if(sobra.length){semFicha+=sobra.length;restantes.push(Object.assign({},v,{itens:sobra}));}});
+    if(itens.length){const b=estBaixaVendas(v.data||hojeISO(),itens,'PDV'+(v.pdv?' '+v.pdv:''),{origem:'pdv'});if(!b.vazia)baixas++;
+      (b.semSetor||[]).forEach(x=>{const f=DB.fichas[x.fichaId];sobra.push({codigo:f?f.codPdv||'':'',nome:f?f.nome:'?',qtd:x.qtd,semSetor:true});});}
+    if(sobra.length){semFicha+=sobra.filter(x=>!x.semSetor).length;restantes.push(Object.assign({},v,{itens:sobra}));}});
   DB.vendasPendentes=restantes;if(baixas)save();
   if(!silencioso&&(baixas||semFicha))toast((baixas?baixas+' dia(s) de vendas do PDV baixado(s)':'')+(semFicha?(baixas?' · ':'')+semFicha+' item(ns) sem ficha vinculada':''));
   return baixas;}
@@ -6969,7 +7007,7 @@ function estArmChip(arm){return estMultiArm()?`<span class="tag tag-gray" style=
 function estAlertasHTML(items){const h=hojeISO();const abaixo=items.filter(x=>x.comprar).length;let rupt=0,parados=0;
   items.forEach(x=>{const i=estInfoProduto(x.ins);if(i.ruptura&&!x.comprar)rupt++;if(i.semMov30&&(+x.ins.estoqueAtual||0)>0)parados++;});
   const ult=estContagens().slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];const neg=estMultiArm()?estNegativos():[];const pend=pdvPendentes().reduce((s,v)=>s+(v.itens||[]).length,0);
-  const partes=[];if(abaixo)partes.push(`<a onclick="estoqueTab='compras';viewEstoque()" style="color:var(--red);font-weight:600;cursor:pointer">${abaixo} abaixo do mínimo</a>`);
+  const nCrit=items.filter(x=>x.comprar&&x.crit>0).length;const partes=[];if(abaixo)partes.push(`<a onclick="estoqueTab='compras';viewEstoque()" style="color:var(--red);font-weight:600;cursor:pointer" title="${nCrit?nCrit+' no ponto de pedido (crítico)':''}">${abaixo} para comprar${nCrit?' · '+nCrit+' no crítico':''}</a>`);
   if(neg.length)partes.push(`<a onclick="estRegularizarNegativos()" style="color:var(--red);font-weight:700;cursor:pointer" title="Saiu de um armazém mais do que entrou nele: faltou registrar uma transferência ou produção. Clique para regularizar transferindo do principal.">${neg.length} saldo(s) negativo(s) em armazém</a>`);
   if(rupt)partes.push(`<span style="color:var(--amber);font-weight:600" title="Pelo consumo dos últimos 30 dias, o saldo acaba em até 7 dias">${rupt} com ruptura prevista em 7 dias</span>`);
   if(parados)partes.push(`<span style="color:var(--soft)" title="Com saldo, mas sem nenhuma movimentação há mais de 30 dias">${parados} parado(s) há 30 dias</span>`);
@@ -6989,7 +7027,8 @@ function estCfgModal(){const c=estCfg();const arms=estArmazens();
       <div style="font-size:12px;color:var(--muted);margin:2px 0 8px">Com mais de um armazém, cada movimento diz de onde saiu e para onde foi. A venda baixa do armazém escolhido abaixo (normalmente a cozinha) e a requisição transfere do principal para lá.</div>
       <div id="cfg_arms">${arms.map(a=>`<div style="display:flex;gap:8px;align-items:center;padding:5px 0"><input class="input" value="${esc(a.nome)}" style="flex:1;padding:7px 10px" onchange="estArmRenomear('${a.id}',this.value)">${a.id===EST_ARM_PRINCIPAL?'<span class="tag tag-gray">principal</span>':`<label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);cursor:pointer;white-space:nowrap" title="Setor de produção: devolve preparados ao principal e o estoquista confere antes de entrar"><input type="checkbox" ${a.producao?'checked':''} onchange="estArm('${a.id}').producao=this.checked;save()" style="width:15px;height:15px">produção</label><button class="icon-btn del" title="Remover (só se estiver zerado)" onclick="estArmRemover('${a.id}')">${icoX}</button>`}</div>`).join('')}</div>
       <div style="display:flex;gap:8px;margin-top:6px"><input class="input" id="cfg_arm_novo" placeholder="Novo armazém (ex.: Cozinha)" style="flex:1;padding:7px 10px" onkeydown="if(event.key==='Enter')estArmAdd()"><button class="btn btn-ghost btn-sm" onclick="estArmAdd()">${icoPlus} Adicionar</button></div>
-      ${arms.length>1?`<div class="grid-2" style="margin-top:10px"><div class="field" style="margin:0"><label>Vendas baixam de</label>${estArmSelect('cfg_arm_vendas',c.armVendas,`onchange="estCfg().armVendas=this.value;save()"`)}</div><div class="field" style="margin:0"><label>Compras entram em</label>${estArmSelect('cfg_arm_entrada',c.armEntrada,`onchange="estCfg().armEntrada=this.value;save()"`)}</div></div>`:''}
+      ${arms.length>1?`<div class="grid-2" style="margin-top:10px"><div class="field" style="margin:0"><label>Vendas baixam de <span class="hint">padrão; cada ficha pode ter o seu setor</span></label>${estArmSelect('cfg_arm_vendas',c.armVendas,`onchange="estCfg().armVendas=this.value;save()"`)}</div><div class="field" style="margin:0"><label>Compras entram em</label>${estArmSelect('cfg_arm_entrada',c.armEntrada,`onchange="estCfg().armEntrada=this.value;save()"`)}</div></div>
+      <label style="display:flex;gap:10px;align-items:flex-start;padding:10px 0 0;cursor:pointer"><input type="checkbox" ${c.vendasNuncaPrincipal?'checked':''} onchange="estCfg().vendasNuncaPrincipal=this.checked;save()" style="width:17px;height:17px;margin-top:2px"><div><div style="font-size:13.5px;font-weight:600">Vendas nunca saem do estoque principal</div><div style="font-size:12px;color:var(--muted)">Cada prato precisa de um setor de venda na ficha técnica (bar, cozinha, pizzaria…). Prato sem setor não baixa e fica avisado na aba Baixa por vendas.</div></div></label>`:''}
     </div>
     <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><div class="field" style="margin:0"><label>Sistema de vendas (PDV) <span class="hint">opcional · só o nome, para os relatórios</span></label><input class="input" value="${esc((DB.fin&&DB.fin.pdvNome)||'')}" placeholder="Ex.: Vuca, Consumer, Saipos…" onchange="DB.fin.pdvNome=this.value.trim();save()"></div>
       <div style="font-size:11.5px;color:var(--soft);margin-top:6px">As vendas do PDV chegam por planilha (aba Baixa por vendas) ou pela API do Flow. O casamento com a ficha técnica é pelo <b>código no PDV</b> cadastrado na ficha, e o que não casar você vincula uma vez só.</div></div>
@@ -7279,17 +7318,32 @@ function estProducaoHTML(){const subs=estSubprodutos();const ps=estProducoes().s
   </div>
   <div class="card card-pad"><div class="ttl" style="margin-bottom:8px">Produções registradas</div>
     ${ps.length?`<div class="scroll-x"><table><thead><tr><th>Data</th><th>Subproduto</th><th class="num">Produzido</th><th class="num">Custo total</th><th class="num">Custo un.</th><th class="num" title="Quanto a receita dizia que esses ingredientes renderiam. Abaixo de 100% = quebra.">Rendimento</th>${multi?'<th>Brutos de / porcionado para</th>':''}<th>Obs.</th><th></th></tr></thead><tbody>
-      ${ps.map(p=>{const s=DB.insumos[p.subId]||{nome:'(removido)',uni:'un'};const u=uSym(s.uni);const rend=p.rendTeorico?Math.round(p.qtd/p.rendTeorico*100):null;return `<tr><td><b>${fmtDataBR(p.data)}</b></td><td><a onclick="estProducaoVer('${p.id}')" style="font-weight:600;cursor:pointer">${esc(s.nome)}</a><div class="gp-mini">${p.comps.map(c=>esc((DB.insumos[c.insumoId]||{nome:'?'}).nome)+' '+estQ(c.q,uSym((DB.insumos[c.insumoId]||{}).uni))).join(' · ')}</div></td><td class="num">${estQ(p.qtd,u)}</td><td class="num">${fmtBRL(p.custoTotal)}</td><td class="num">${fmtBRL(p.custoUn)}</td><td class="num" style="color:${rend==null?'var(--soft)':rend<90?'var(--red)':rend<100?'var(--amber)':'var(--green)'};font-weight:600">${rend==null?'—':rend+'%'}</td>${multi?`<td style="font-size:12px">${esc(estArmNome(p.armDe))} → ${esc(estArmNome(p.armPara))}</td>`:''}<td style="font-size:12px;color:var(--muted)">${esc(p.obs||'')}</td><td><button class="icon-btn del" title="Desfazer" onclick="estProducaoDel('${p.id}')">${icoX}</button></td></tr>`;}).join('')}
+      ${ps.map(p=>{const s=DB.insumos[p.subId]||{nome:'(removido)',uni:'un'};const u=uSym(s.uni);const rend=p.rendTeorico?Math.round(p.qtd/p.rendTeorico*100):null;return `<tr><td><b>${fmtDataBR(p.data)}</b></td><td><a onclick="estProducaoVer('${p.id}')" style="font-weight:600;cursor:pointer">${esc(s.nome)}</a><div class="gp-mini">${p.comps.map(c=>esc((DB.insumos[c.insumoId]||{nome:'?'}).nome)+' '+estQ(c.q,uSym((DB.insumos[c.insumoId]||{}).uni))).join(' · ')}</div></td><td class="num">${estQ(p.qtd,u)}</td><td class="num">${fmtBRL(p.custoTotal)}</td><td class="num">${fmtBRL(p.custoUn)}</td><td class="num" style="color:${rend==null?'var(--soft)':rend<90?'var(--red)':rend<100?'var(--amber)':'var(--green)'};font-weight:600">${rend==null?'—':rend+'%'}${p.abaixoMin?`<div><span class="tag tag-red" title="Piso ${estQ(p.piso,u)} · ${esc(p.motivo||'')} · aprovado por ${esc(p.aprovadoPor||'')}">abaixo do mínimo</span></div>`:''}${p.forn?`<div class="gp-mini">${esc(p.forn)}</div>`:''}</td>${multi?`<td style="font-size:12px">${esc(estArmNome(p.armDe))} → ${esc(estArmNome(p.armPara))}</td>`:''}<td style="font-size:12px;color:var(--muted)">${esc(p.obs||'')}${p.abaixoMin?`<div style="color:var(--red)">${esc(p.motivo||'')} · aprovado por <b>${esc(p.aprovadoPor||'')}</b></div>`:''}</td><td><button class="icon-btn del" title="Desfazer" onclick="estProducaoDel('${p.id}')">${icoX}</button></td></tr>`;}).join('')}
     </tbody></table></div>`:`<div style="font-size:13px;color:var(--soft)">Nenhuma produção ainda.</div>`}
-  </div>`;}
+  </div>${estProdComparacaoHTML()}`;}
+/* Requisitado × devolvido (seção 11): o que a produção recebeu do principal, o que produziu e o que devolveu, nos últimos 30 dias; rendimento real × receita por subproduto. */
+function estProdComparacaoHTML(){const dias=30;const de=diasSoma(hojeISO(),-dias);const multi=estMultiArm();const subs=estSubprodutos();if(!subs.length)return '';
+  const ps=estProducoes().filter(p=>p.data>=de);const linhas=subs.map(s=>{const mine=ps.filter(p=>p.subId===s.id);if(!mine.length)return null;const u=uSym(s.uni);
+    const teor=estReceitaPara(s,s.rendimento||1);const refId=teor[0]&&teor[0].insumoId;const ref=refId&&DB.insumos[refId];let bruto=0,prod=0,teorico=0,nAb=0;
+    mine.forEach(p=>{prod+=+p.qtd||0;teorico+=+p.rendTeorico||0;const c=(p.comps||[]).find(x=>x.insumoId===refId);if(c)bruto+=+c.q||0;if(p.abaixoMin)nAb++;});
+    const real=bruto>0?prod/bruto:0;const fichaR=(ref&&teor[0].q>0)?(s.rendimento||1)/teor[0].q:0;
+    const dev=estTransfs().filter(t=>t.data>=de&&t.para===EST_ARM_PRINCIPAL&&t.origem==='retorno').reduce((a,t)=>a+(t.itens||[]).filter(x=>x.insumoId===s.id).reduce((b,x)=>b+(+x.q||0),0),0);
+    return `<tr><td><b>${esc(s.nome)}</b><div class="gp-mini">${mine.length} produção(ões)${ref?' · bruto: '+esc(ref.nome):''}</div></td><td class="num">${ref?estQ(bruto,uSym(ref.uni)):'—'}</td><td class="num">${estQ(prod,u)}</td><td class="num">${multi?estQ(dev,u):'—'}</td><td class="num" style="font-weight:600;color:${!fichaR||!real?'var(--soft)':real<fichaR*0.9?'var(--red)':real<fichaR?'var(--amber)':'var(--green)'}" title="Produzido ÷ bruto usado, comparado ao rendimento da receita">${real&&ref?fmtN(real,2)+' '+u+'/'+uSym(ref.uni):'—'}${fichaR&&ref?`<div class="gp-mini">receita ${fmtN(fichaR,2)} ${u}/${uSym(ref.uni)}${teorico?' · '+Math.round(prod/teorico*100)+'% do esperado':''}</div>`:''}</td><td class="num">${nAb?`<span class="tag tag-red">${nAb}</span>`:'<span style="color:var(--soft)">0</span>'}</td></tr>`;}).filter(Boolean);
+  let recebido='';if(multi){const armsP=estArmsProducao();if(armsP.length){const linhasArm=armsP.map(a=>{let rec=0,recV=0,dev=0,devV=0;estTransfs().forEach(t=>{if(t.data<de)return;if(t.para===a.id&&t.origem==='requisicao')(t.itens||[]).forEach(x=>{rec+=+x.q||0;recV+=(+x.q||0)*(+x.custo||0);});if(t.de===a.id&&t.para===EST_ARM_PRINCIPAL&&t.origem==='retorno')(t.itens||[]).forEach(x=>{dev+=+x.q||0;devV+=(+x.q||0)*(+x.custo||0);});});
+      return `<tr><td><b>${esc(a.nome)}</b></td><td class="num">${fmtBRL(recV)}</td><td class="num">${fmtBRL(devV)}</td><td class="num" style="font-weight:600;color:${recV?'var(--navy)':'var(--soft)'}">${recV?Math.round(devV/recV*100)+'%':'—'}</td></tr>`;}).join('');
+    recebido=`<div style="margin-top:12px"><div style="font-size:12.5px;font-weight:600;margin-bottom:4px">Recebido do principal × devolvido, por setor de produção <span class="hint">em R$, ao custo</span></div><div class="scroll-x"><table><thead><tr><th>Setor</th><th class="num">Recebido (requisições)</th><th class="num">Devolvido (retornos aceitos)</th><th class="num">Devolvido ÷ recebido</th></tr></thead><tbody>${linhasArm}</tbody></table></div><div class="gp-mini" style="margin-top:4px">O que foi recebido e não voltou como preparado está em uso, virou venda no próprio setor ou é perda. "Liberei 20 kg para 50 porções e voltaram 25": a tabela acima mostra isso por subproduto.</div></div>`;}}
+  if(!linhas.length&&!recebido)return '';
+  return `<div class="card card-pad" style="margin-top:16px"><div class="ttl" style="margin-bottom:2px">Requisitado × devolvido · últimos ${dias} dias</div><div class="desc" style="margin-bottom:8px">Bruto usado nas produções, quanto virou subproduto, quanto voltou ao principal e o rendimento real contra a receita.</div>
+    ${linhas.length?`<div class="scroll-x"><table><thead><tr><th>Subproduto</th><th class="num">Bruto usado</th><th class="num">Produzido</th><th class="num">Devolvido ao principal</th><th class="num">Rendimento real</th><th class="num" title="Produções abaixo do mínimo aceito">Abaixo do mín.</th></tr></thead><tbody>${linhas.join('')}</tbody></table></div>`:''}${recebido}</div>`;}
 function estProducaoModal(subId){const subs=estSubprodutos();if(!subs.length)return toast('Marque um preparado como subproduto com estoque primeiro');
   const sub=DB.insumos[subId]||subs[0];const multi=estMultiArm();const cfg=estCfg();
-  if(!estProdDraft||estProdDraft.subId!==sub.id){estProdDraft={subId:sub.id,data:hojeISO(),qtd:+sub.rendimento||1,armDe:EST_ARM_PRINCIPAL,armPara:cfg.armVendas,comps:estReceitaPara(sub,+sub.rendimento||1).map(x=>({insumoId:x.insumoId,q:x.q})),obs:''};}
-  const d=estProdDraft;const u=uSym(sub.uni);
+  if(!estProdDraft||estProdDraft.subId!==sub.id){estProdDraft={subId:sub.id,data:hojeISO(),qtd:+sub.rendimento||1,armDe:EST_ARM_PRINCIPAL,armPara:cfg.armVendas,comps:estReceitaPara(sub,+sub.rendimento||1).map(x=>({insumoId:x.insumoId,q:x.q})),obs:'',forn:estProdFornPadrao(sub)};}
+  const d=estProdDraft;const u=uSym(sub.uni);const rf=Array.isArray(sub.rendForn)?sub.rendForn:[];
   modal(`<div class="modal-head"><h3>Registrar produção</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div class="grid-2"><div class="field"><label>Subproduto</label><select class="input" id="pr_sub" onchange="estProdDraft=null;estProducaoModal(this.value)">${subs.map(s=>`<option value="${s.id}" ${s.id===sub.id?'selected':''}>${esc(s.nome)}</option>`).join('')}</select></div>
       <div class="field"><label>Quantidade produzida <span class="hint">${u}</span></label><input class="input" id="pr_qtd" type="number" step="0.001" min="0" value="${d.qtd}" oninput="estProdRecalc(true)"></div></div>
+    ${rf.length?`<div class="field"><label>Fornecedor do bruto <span class="hint">muda o rendimento esperado</span></label><select class="input" id="pr_forn" onchange="estProdDraft.forn=this.value;estProdRecalc()"><option value="">Padrão da receita (${estQ(sub.rendimento||1,u)})</option>${rf.map(r=>`<option value="${esc(r.forn)}" ${d.forn===r.forn?'selected':''}>${esc(r.forn)} · rende ${estQ(r.rend,u)}</option>`).join('')}</select></div>`:''}
     <div class="grid-2"><div class="field"><label>Data</label><input type="date" class="input" id="pr_data" value="${d.data}" onchange="estProdDraft.data=this.value"></div>
       ${multi?`<div class="field"><label>Brutos saem de / porcionado entra em</label><div style="display:flex;gap:6px">${estArmSelect('pr_de',d.armDe,`style="flex:1" onchange="estProdDraft.armDe=this.value;estProdRecalc()"`)}${estArmSelect('pr_para',d.armPara,`style="flex:1" onchange="estProdDraft.armPara=this.value"`)}</div></div>`:`<div class="field"><label>Observação <span class="hint">opcional</span></label><input class="input" id="pr_obs" value="${esc(d.obs)}" placeholder="Ex.: lote da manhã" oninput="estProdDraft.obs=this.value"></div>`}</div>
     <div style="font-size:12.5px;font-weight:600;margin-bottom:4px">Ingredientes consumidos <span class="hint">pela receita, ajuste pelo que realmente usou</span></div>
@@ -7297,23 +7351,39 @@ function estProducaoModal(subId){const subs=estSubprodutos();if(!subs.length)ret
     <div id="pr_comps"></div>
     ${multi?`<div class="field" style="margin-top:10px"><label>Observação <span class="hint">opcional</span></label><input class="input" id="pr_obs" value="${esc(d.obs)}" placeholder="Ex.: lote da manhã" oninput="estProdDraft.obs=this.value"></div>`:''}
     <div id="pr_tot" style="border-top:2px solid var(--navy);margin-top:10px;padding-top:10px;font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"></div>
+    <div id="pr_aprov" style="display:none"></div>
   </div><div class="modal-foot"><button class="btn btn-ghost" onclick="estProdDraft=null;closeModal()">Cancelar</button><button class="btn btn-primary" onclick="estProducaoSalvar()">Registrar produção</button></div>`,true);
   estProdRecalc();}
+/* rendimento esperado da produção: pelo fornecedor escolhido (ou o da última compra do bruto principal), senão o da receita */
+function estProdFornPadrao(sub){const rf=Array.isArray(sub.rendForn)?sub.rendForn:[];if(!rf.length)return '';const teor=estReceitaPara(sub,sub.rendimento||1);const ref=teor[0]&&DB.insumos[teor[0].insumoId];const f=ref&&(ref.fornecedor||'');const m=f?rf.find(r=>lmNorm(r.forn)===lmNorm(f)):null;return m?m.forn:'';}
+function estProdEsperado(sub,forn){const rf=Array.isArray(sub.rendForn)?sub.rendForn:[];const m=forn?rf.find(r=>r.forn===forn):null;return (m&&m.rend>0)?+m.rend:(+sub.rendimento||1);}
+/* piso aceito para a quantidade de bruto usada: mínimo × (bruto usado ÷ bruto da receita) × (1 − tolerância) */
+function estProdPiso(sub,comps){if(!(+sub.rendMin>0))return null;const teor=estReceitaPara(sub,sub.rendimento||1);const ref=teor.find(x=>(comps||[]).some(c=>c.insumoId===x.insumoId));if(!ref||!(ref.q>0))return null;const usado=comps.find(c=>c.insumoId===ref.insumoId);const fator=(+usado.q||0)/ref.q;const tol=(+sub.toler||0)/100;return {piso:estR(+sub.rendMin*fator*(1-tol),3),minimo:estR(+sub.rendMin*fator,3),ref:DB.insumos[ref.insumoId]};}
+function estProdAprovHTML(sub,piso,qtd){const u=uSym(sub.uni);const podeAprovar=!MEMBRO_PERMS||souDoPrincipal();
+  return `<div class="alert alert-amber" style="margin-top:10px;display:block"><div style="display:flex;gap:8px;align-items:flex-start">${icoWarn}<div><b>Rendimento abaixo do mínimo aceito.</b> Esta produção rendeu ${estQ(qtd,u)}; o piso para o bruto usado é ${estQ(piso.piso,u)} (mínimo ${estQ(piso.minimo,u)}${(+sub.toler>0)?', tolerância '+sub.toler+'%':''}). Se a limpeza foi correta, o problema é o fornecedor; se não, é operacional. Só conclui com aprovação de um responsável.</div></div>
+    <div class="field" style="margin-top:10px"><label>Motivo <span class="hint">obrigatório</span></label><input class="input" id="pr_motivo" placeholder="Ex.: costela veio com mais gordura; sobra descartada antes da conferência" oninput="estProdDraft.motivo=this.value"></div>
+    ${podeAprovar?`<label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" id="pr_aprovo" style="width:17px;height:17px"> Aprovo esta produção abaixo do mínimo (${esc(quemSou()||'responsável')})</label>`:`<div class="field" style="margin:0"><label>Aprovado por <span class="hint">nome do chefe do setor ou administrador que autorizou</span></label><input class="input" id="pr_aprovador" placeholder="Ex.: Niedja" oninput="estProdDraft.aprovador=this.value"></div>`}</div>`;}
 function estProdRecalc(deQtd){const d=estProdDraft;const sub=DB.insumos[d.subId];if(!sub)return;const q=parseFloat(($('#pr_qtd')||{}).value);if(q>=0)d.qtd=q;
   if(deQtd){const teor=estReceitaPara(sub,d.qtd);d.comps=teor.map(x=>({insumoId:x.insumoId,q:x.q}));}
   const box=$('#pr_comps');if(!box)return;let total=0;
   box.innerHTML=d.comps.map((c,i)=>{const ins=DB.insumos[c.insumoId];if(!ins)return '';const u=uSym(ins.uni);const custo=estCustoAtual(ins)*(+c.q||0);total+=custo;const sal=estMultiArm()?estSaldoArm(ins,d.armDe):(+ins.estoqueAtual||0);
     return `<div style="display:grid;grid-template-columns:minmax(0,1fr) 110px 110px;gap:6px;align-items:center;padding:5px 0;border-top:1px solid var(--line)"><div style="min-width:0"><div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)}</div><div style="font-size:11px;color:${sal<(+c.q||0)?'var(--red)':'var(--soft)'}">saldo ${estQ(sal,u)}${sal<(+c.q||0)?' · vai ficar negativo':''}</div></div><input class="input" type="number" step="0.001" min="0" inputmode="decimal" value="${c.q}" style="text-align:right;padding:6px 8px" oninput="estProdDraft.comps[${i}].q=parseFloat(this.value)||0;estProdRecalc()"><div style="text-align:right;font-size:12.5px">${fmtBRL(custo)}</div></div>`;}).join('')||'<div class="gp-mini">A receita deste subproduto não tem ingredientes.</div>';
-  const un=d.qtd?total/d.qtd:0;const teor=estReceitaPara(sub,sub.rendimento||1);const ref=teor.find(x=>d.comps.some(c=>c.insumoId===x.insumoId));let rend='';
-  if(ref){const usado=d.comps.find(c=>c.insumoId===ref.insumoId);const rt=ref.q?(usado.q/ref.q)*(sub.rendimento||1):0;if(rt>0)rend=`<span title="Pela receita, essa quantidade de ${esc((DB.insumos[ref.insumoId]||{}).nome||'')} renderia ${estQ(rt,uSym(sub.uni))}">rendimento <b style="color:${d.qtd/rt<0.9?'var(--red)':d.qtd/rt<1?'var(--amber)':'var(--green)'}">${Math.round(d.qtd/rt*100)}%</b></span>`;}
-  const t=$('#pr_tot');if(t)t.innerHTML=`<span>Custo dos ingredientes <b>${fmtBRL(total)}</b></span><span>Custo por ${uSym(sub.uni)} <b style="color:var(--navy)">${fmtBRL(un)}</b> <span class="gp-mini">(hoje ${fmtBRL(estCustoAtual(sub))})</span></span>${rend}`;}
+  const un=d.qtd?total/d.qtd:0;const teor=estReceitaPara(sub,sub.rendimento||1);const ref=teor.find(x=>d.comps.some(c=>c.insumoId===x.insumoId));let rend='';const esperado=estProdEsperado(sub,d.forn);
+  if(ref){const usado=d.comps.find(c=>c.insumoId===ref.insumoId);const rt=ref.q?(usado.q/ref.q)*esperado:0;if(rt>0)rend=`<span title="Pela receita${d.forn?' (fornecedor '+esc(d.forn)+')':''}, essa quantidade de ${esc((DB.insumos[ref.insumoId]||{}).nome||'')} renderia ${estQ(rt,uSym(sub.uni))}">rendimento <b style="color:${d.qtd/rt<0.9?'var(--red)':d.qtd/rt<1?'var(--amber)':'var(--green)'}">${Math.round(d.qtd/rt*100)}%</b> <span class="gp-mini">esperado ${estQ(rt,uSym(sub.uni))}</span></span>`;}
+  const t=$('#pr_tot');if(t)t.innerHTML=`<span>Custo dos ingredientes <b>${fmtBRL(total)}</b></span><span>Custo por ${uSym(sub.uni)} <b style="color:var(--navy)">${fmtBRL(un)}</b> <span class="gp-mini">(hoje ${fmtBRL(estCustoAtual(sub))})</span></span>${rend}`;
+  const piso=estProdPiso(sub,d.comps);const ap=$('#pr_aprov');if(ap){const abaixo=!!(piso&&d.qtd>0&&d.qtd<piso.piso);if(abaixo&&ap.style.display==='none'){ap.innerHTML=estProdAprovHTML(sub,piso,d.qtd);}else if(abaixo){const m=$('#pr_motivo');if(m)ap.querySelector('.alert div div').innerHTML=`<b>Rendimento abaixo do mínimo aceito.</b> Esta produção rendeu ${estQ(d.qtd,uSym(sub.uni))}; o piso para o bruto usado é ${estQ(piso.piso,uSym(sub.uni))} (mínimo ${estQ(piso.minimo,uSym(sub.uni))}${(+sub.toler>0)?', tolerância '+sub.toler+'%':''}). Só conclui com aprovação de um responsável.`;}ap.style.display=abaixo?'block':'none';d.abaixoMin=abaixo;d.piso=piso;}}
 function estProducaoSalvar(){const d=estProdDraft;if(!d)return;const sub=DB.insumos[d.subId];if(!sub)return;const qtd=parseFloat(($('#pr_qtd')||{}).value)||d.qtd;if(!(qtd>0))return toast('Informe a quantidade produzida');
   const comps=d.comps.filter(c=>c.insumoId&&c.q>0);if(!comps.length)return toast('Informe os ingredientes consumidos');
-  const p=estProduzir({subId:sub.id,qtd,data:d.data,armDe:d.armDe,armPara:d.armPara,comps,obs:(($('#pr_obs')||{}).value||'').trim()});if(!p)return toast('Não foi possível registrar');
-  estProdDraft=null;save();closeModal();estoqueTab='producao';viewEstoque();toast(estQ(p.qtd,uSym(sub.uni))+' de '+sub.nome+' produzido(s) · custo '+fmtBRL(p.custoUn)+'/'+uSym(sub.uni));}
+  const extra={forn:d.forn||'',esperado:estProdEsperado(sub,d.forn)};const piso=estProdPiso(sub,comps);
+  if(piso&&qtd<piso.piso){const motivo=(($('#pr_motivo')||{}).value||'').trim();if(!motivo)return toast('Produção abaixo do mínimo: informe o motivo');
+    const chk=$('#pr_aprovo');const aprovador=chk?(chk.checked?(quemSou()||'responsável'):''):((($('#pr_aprovador')||{}).value||'').trim());if(!aprovador)return toast(chk?'Marque a aprovação para concluir':'Informe quem aprovou esta produção');
+    Object.assign(extra,{abaixoMin:true,piso:piso.piso,minimo:piso.minimo,motivo,aprovadoPor:aprovador,por:quemSou()});}
+  const p=estProduzir(Object.assign({subId:sub.id,qtd,data:d.data,armDe:d.armDe,armPara:d.armPara,comps,obs:(($('#pr_obs')||{}).value||'').trim()},extra));if(!p)return toast('Não foi possível registrar');
+  if(p.abaixoMin){notificar({admin:true},'Produção abaixo do mínimo: '+sub.nome,estQ(p.qtd,uSym(sub.uni))+' (piso '+estQ(p.piso,uSym(sub.uni))+') · '+p.motivo+' · aprovado por '+p.aprovadoPor,{rota:'estoque',tab:'producao'});}
+  estProdDraft=null;save();closeModal();estoqueTab='producao';viewEstoque();toast(estQ(p.qtd,uSym(sub.uni))+' de '+sub.nome+' produzido(s) · custo '+fmtBRL(p.custoUn)+'/'+uSym(sub.uni)+(p.abaixoMin?' · ABAIXO DO MÍNIMO, aprovado por '+p.aprovadoPor:''),p.abaixoMin?6000:3000);}
 function estProducaoVer(id){const p=estProducoes().find(x=>x.id===id);if(!p)return;const s=DB.insumos[p.subId]||{nome:'(removido)',uni:'un'};
   modal(`<div class="modal-head"><h3>Produção de ${fmtDataBR(p.data)} · ${esc(s.nome)}</h3><button class="x" onclick="closeModal()">${icoX}</button></div><div class="modal-body">
-    <div class="scroll-x"><table><thead><tr><th>Ingrediente</th><th class="num">Qtd</th><th class="num">Custo un.</th><th class="num">Valor</th></tr></thead><tbody>${p.comps.map(c=>{const i=DB.insumos[c.insumoId]||{nome:'?',uni:''};return `<tr><td>${esc(i.nome)}</td><td class="num">${estQ(c.q,uSym(i.uni))}</td><td class="num">${fmtBRL(c.custo)}</td><td class="num">${fmtBRL(c.valor)}</td></tr>`;}).join('')}</tbody><tfoot><tr style="font-weight:700;border-top:2px solid var(--navy)"><td colspan="3">Produzido ${estQ(p.qtd,uSym(s.uni))} · custo por ${uSym(s.uni)} ${fmtBRL(p.custoUn)}</td><td class="num">${fmtBRL(p.custoTotal)}</td></tr></tfoot></table></div>${p.obs?`<div class="gp-mini" style="margin-top:8px">${esc(p.obs)}</div>`:''}
+    <div class="scroll-x"><table><thead><tr><th>Ingrediente</th><th class="num">Qtd</th><th class="num">Custo un.</th><th class="num">Valor</th></tr></thead><tbody>${p.comps.map(c=>{const i=DB.insumos[c.insumoId]||{nome:'?',uni:''};return `<tr><td>${esc(i.nome)}</td><td class="num">${estQ(c.q,uSym(i.uni))}</td><td class="num">${fmtBRL(c.custo)}</td><td class="num">${fmtBRL(c.valor)}</td></tr>`;}).join('')}</tbody><tfoot><tr style="font-weight:700;border-top:2px solid var(--navy)"><td colspan="3">Produzido ${estQ(p.qtd,uSym(s.uni))} · custo por ${uSym(s.uni)} ${fmtBRL(p.custoUn)}</td><td class="num">${fmtBRL(p.custoTotal)}</td></tr></tfoot></table></div>${p.obs?`<div class="gp-mini" style="margin-top:8px">${esc(p.obs)}</div>`:''}${p.forn?`<div class="gp-mini" style="margin-top:4px">Fornecedor do bruto: ${esc(p.forn)} · esperado ${estQ(p.esperado||0,uSym(s.uni))}</div>`:''}${p.abaixoMin?`<div class="alert alert-amber" style="margin-top:8px">${icoWarn}<div><b>Abaixo do mínimo aceito</b> (piso ${estQ(p.piso,uSym(s.uni))}). Motivo: ${esc(p.motivo||'')}. Aprovado por <b>${esc(p.aprovadoPor||'')}</b>${p.por?' · registrado por '+esc(p.por):''}.</div></div>`:''}
   </div><div class="modal-foot"><button class="btn btn-ghost" style="color:var(--red);margin-right:auto" onclick="estProducaoDel('${id}')">Desfazer produção</button><button class="btn btn-primary" onclick="closeModal()">Fechar</button></div>`,true);}
 
 /* ----- aba Requisições (lista interna para a cozinha: previsão de vendas → itens a separar → transferência) ----- */
@@ -7551,19 +7621,20 @@ let estVendaDraft={data:'',itens:{}};
 function estVendasHTML(){pdvProcessarPendentes(false);const bs=estBaixas().slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));const fichas=fichasVendaveis().slice().sort((a,b)=>a.nome.localeCompare(b.nome));
   const data=estVendaDraft.data||hojeISO();const cfg=estCfg();const pend=pdvPendentes();const pdv=(DB.fin&&DB.fin.pdvNome)||'PDV';
   return `${estTabsHTML()}${pend.length?`<div class="card card-pad" style="margin-bottom:16px;border-left:4px solid var(--amber)"><div class="ttl" style="margin-bottom:4px">Itens do ${esc(pdv)} sem ficha técnica vinculada</div><div class="desc" style="margin-bottom:8px">Vieram pela integração mas o Flow não sabe qual prato são. Vincule uma vez e as próximas vendas entram sozinhas.</div>
-    ${pend.map((v,vi)=>(v.itens||[]).map((it,ii)=>`<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);flex-wrap:wrap"><div style="flex:1 1 200px;min-width:0"><b>${esc(it.nome||it.codigo||'?')}</b>${it.codigo&&it.nome?` <span class="gp-mini">${esc(it.codigo)}</span>`:''}<div class="gp-mini">${fmtDataBR(v.data||'')} · ${fmtN(+it.qtd||0)} vendido(s)</div></div><select class="input" style="flex:1 1 220px;padding:6px 8px;font-size:13px" onchange="pdvVincularPendente(${vi},${ii},this.value)"><option value="">Vincular a…</option>${fichas.map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('')}<option value="__ignorar__">Ignorar este item</option></select></div>`).join('')).join('')}</div>`:''}
+    ${pend.map((v,vi)=>(v.itens||[]).map((it,ii)=>`<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);flex-wrap:wrap"><div style="flex:1 1 200px;min-width:0"><b>${esc(it.nome||it.codigo||'?')}</b>${it.codigo&&it.nome?` <span class="gp-mini">${esc(it.codigo)}</span>`:''}<div class="gp-mini">${fmtDataBR(v.data||'')} · ${fmtN(+it.qtd||0)} vendido(s)${it.semSetor?' · <b style="color:var(--red)">ficha sem setor de venda</b>':''}</div></div><select class="input" style="flex:1 1 220px;padding:6px 8px;font-size:13px" onchange="pdvVincularPendente(${vi},${ii},this.value)"><option value="">Vincular a…</option>${fichas.map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('')}<option value="__ignorar__">Ignorar este item</option></select></div>`).join('')).join('')}</div>`:''}
   <div class="card card-pad" style="margin-bottom:16px">
-    <div class="section-head"><div><div class="ttl">Baixa por vendas</div><div class="desc">Informe quantos pratos vendeu e a ficha técnica dá baixa nos ingredientes${estMultiArm()?' em <b>'+esc(estArmNome(cfg.armVendas))+'</b>':''} (subprodutos saem como porcionado; preparados descem até o bruto).</div></div>
+    ${(function(){const ss=fichasSemSetorVenda();return ss.length?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${ss.length} prato(s) sem setor de venda</b> e as vendas não saem do principal. Abra a ficha e escolha o setor: ${ss.slice(0,6).map(f=>`<a onclick="editFicha('${f.id}')" style="color:var(--navy);cursor:pointer;font-weight:600">${esc(f.nome)}</a>`).join(', ')}${ss.length>6?' e mais '+(ss.length-6):''}.</div></div>`:'';})()}
+    <div class="section-head"><div><div class="ttl">Baixa por vendas</div><div class="desc">Informe quantos pratos vendeu e a ficha técnica dá baixa nos ingredientes${estMultiArm()?' no <b>setor que vende cada prato</b> (padrão: '+esc(estArmNome(cfg.armVendas))+')':''} (subprodutos saem como porcionado; preparados descem até o bruto).</div></div>
       ${(DB.fin&&DB.fin.pdvTipo==='suitable'&&typeof sb!=='undefined'&&sb&&CLOUD)?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="suitableSync()">⟳ Sincronizar Suitable</button></div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Planilha exportada do PDV: colunas com código ou nome do prato e a quantidade vendida (CSV, ; ou tabulação)">⬆ Relatório do ${esc(pdv)} (CSV)<input type="file" accept=".csv,.txt,.tsv" style="display:none" onchange="estVendasCSV(this)"></label></div></div>
     ${!cfg.vendas?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div>A baixa automática por vendas está <b>desligada</b> em <a onclick="estCfgModal()" style="color:var(--navy);cursor:pointer;font-weight:600">configurar</a>. Você ainda pode baixar manualmente aqui.</div></div>`:''}
     ${fichas.length?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><input type="date" class="input" style="max-width:150px" value="${data}" onchange="estVendaDraft.data=this.value"><input class="input" style="max-width:240px" placeholder="🔎 Filtrar prato" oninput="filtrarLinhas(this,'#ev_rows')"></div>
-    <div id="ev_rows" style="max-height:46vh;overflow:auto">${fichas.map(f=>{const v=estVendaDraft.itens[f.id];return `<div style="display:grid;grid-template-columns:1fr 100px 130px;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)"><div style="min-width:0"><div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.nome)}${f.codPdv?` <span class="gp-mini">${esc(f.codPdv)}</span>`:''}</div><div style="font-size:11px;color:var(--soft)">${esc(f.cat||'')} · custo ${fmtBRL(custoProduto(f))}</div></div><input class="input" type="number" step="1" min="0" inputmode="numeric" value="${v==null?'':v}" placeholder="qtd" style="text-align:right;padding:6px 8px" oninput="estVendaDraft.itens['${f.id}']=this.value;estVendaTot()"><div id="ev_v_${f.id}" style="text-align:right;font-size:12px;color:var(--soft)">${v>0?fmtBRL(custoFicha(f)/(f.porcoes||1)*v):''}</div></div>`;}).join('')}</div>
+    <div id="ev_rows" style="max-height:46vh;overflow:auto">${fichas.map(f=>{const v=estVendaDraft.itens[f.id];return `<div style="display:grid;grid-template-columns:1fr 100px 130px;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)"><div style="min-width:0"><div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.nome)}${f.codPdv?` <span class="gp-mini">${esc(f.codPdv)}</span>`:''}</div><div style="font-size:11px;color:var(--soft)">${esc(f.cat||'')} · custo ${fmtBRL(custoProduto(f))}${estMultiArm()?' · sai de <b style="color:'+(estArmVendaDe(f)?'var(--muted)':'var(--red)')+'">'+(estArmVendaDe(f)?esc(estArmNome(estArmVendaDe(f))):'sem setor')+'</b>':''}</div></div><input class="input" type="number" step="1" min="0" inputmode="numeric" value="${v==null?'':v}" placeholder="qtd" style="text-align:right;padding:6px 8px" oninput="estVendaDraft.itens['${f.id}']=this.value;estVendaTot()"><div id="ev_v_${f.id}" style="text-align:right;font-size:12px;color:var(--soft)">${v>0?fmtBRL(custoFicha(f)/(f.porcoes||1)*v):''}</div></div>`;}).join('')}</div>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-top:2px solid var(--navy);margin-top:8px;padding-top:10px"><div id="ev_total" style="font-size:13px">${estVendaTotTxt()}</div><button class="btn btn-primary" onclick="estVendasBaixar()">Dar baixa nos ingredientes</button></div>`
     :`<div style="font-size:13px;color:var(--soft);padding:10px 0">Cadastre fichas técnicas para usar a baixa por vendas.</div>`}
   </div>
   <div class="card card-pad"><div class="ttl" style="margin-bottom:8px">Baixas registradas</div>
-    ${bs.length?`<div class="scroll-x"><table><thead><tr><th>Data</th><th class="num">Pratos</th><th class="num">Insumos</th><th class="num">Custo baixado</th><th>Origem</th><th></th></tr></thead><tbody>${bs.slice(0,200).map(b=>`<tr><td><b>${fmtDataBR(b.data)}</b></td><td class="num">${fmtN(b.pratos)}</td><td class="num">${b.nIns}</td><td class="num">${fmtBRL(b.valor)}</td><td style="font-size:12px;color:var(--muted)">${b.origem==='pdv'?esc(pdv)+' (integração)':b.origem==='csv'?'planilha':'manual'}${b.obs&&b.obs!=='PDV'?' · '+esc(b.obs):''}${estMultiArm()&&b.arm?' · '+esc(estArmNome(b.arm)):''}</td><td><button class="icon-btn del" title="Desfazer baixa" onclick="estBaixaDel('${b.id}')">${icoX}</button></td></tr>`).join('')}</tbody></table></div>`:`<div style="font-size:13px;color:var(--soft)">Nenhuma baixa ainda.</div>`}
+    ${bs.length?`<div class="scroll-x"><table><thead><tr><th>Data</th><th class="num">Pratos</th><th class="num">Insumos</th><th class="num">Custo baixado</th><th>Origem</th><th></th></tr></thead><tbody>${bs.slice(0,200).map(b=>`<tr><td><b>${fmtDataBR(b.data)}</b></td><td class="num">${fmtN(b.pratos)}</td><td class="num">${b.nIns}</td><td class="num">${fmtBRL(b.valor)}</td><td style="font-size:12px;color:var(--muted)">${b.origem==='pdv'?esc(pdv)+' (integração)':b.origem==='csv'?'planilha':'manual'}${b.obs&&b.obs!=='PDV'?' · '+esc(b.obs):''}${estMultiArm()&&(b.arms||b.arm)?' · '+(b.arms||[b.arm]).map(a=>esc(estArmNome(a))).join(' + '):''}</td><td><button class="icon-btn del" title="Desfazer baixa" onclick="estBaixaDel('${b.id}')">${icoX}</button></td></tr>`).join('')}</tbody></table></div>`:`<div style="font-size:13px;color:var(--soft)">Nenhuma baixa ainda.</div>`}
   </div>`;}
 function pdvVincularPendente(vi,ii,fichaId){const v=pdvPendentes()[vi];if(!v)return;const it=(v.itens||[])[ii];if(!it)return;
   if(fichaId==='__ignorar__'){v.itens.splice(ii,1);if(!v.itens.length)DB.vendasPendentes=pdvPendentes().filter(x=>x!==v);save();viewEstoque();return;}
@@ -7573,7 +7644,9 @@ function estVendaTotTxt(){let n=0,c=0;Object.entries(estVendaDraft.itens).forEac
 function estVendaTot(){const t=$('#ev_total');if(t)t.innerHTML=estVendaTotTxt();Object.entries(estVendaDraft.itens).forEach(([id,v])=>{const el=$('#ev_v_'+id);const f=DB.fichas[id];if(el&&f)el.textContent=(+v>0)?fmtBRL(custoFicha(f)/(f.porcoes||1)*(+v)):'';});}
 function estVendasBaixar(){const itens=Object.entries(estVendaDraft.itens).map(([fichaId,v])=>({fichaId,qtd:+v||0})).filter(x=>x.qtd>0);if(!itens.length)return toast('Informe a quantidade vendida de ao menos um prato');
   const data=estVendaDraft.data||hojeISO();if(estBaixas().some(b=>b.data===data)&&!confirm('Já existe uma baixa em '+fmtDataBR(data)+'. Registrar outra para o mesmo dia?'))return;
-  const b=estBaixaVendas(data,itens,'',{origem:estVendaDraft.origem||'manual'});estVendaDraft={data:'',itens:{}};save();viewEstoque();toast('Baixa registrada · '+fmtN(b.pratos)+' pratos · '+b.nIns+' insumos · '+fmtBRL(b.valor));}
+  const b=estBaixaVendas(data,itens,'',{origem:estVendaDraft.origem||'manual'});
+  if(b.vazia){return toast('Nenhum prato baixado: '+b.semSetor.length+' prato(s) sem setor de venda. Abra a ficha e escolha o setor que vende.',5000);}
+  const fora=(b.semSetor||[]).reduce((s,x)=>s+x.qtd,0);estVendaDraft={data:'',itens:{}};save();viewEstoque();toast('Baixa registrada · '+fmtN(b.pratos)+' pratos · '+b.nIns+' insumos · '+fmtBRL(b.valor)+(fora?' · '+fmtN(fora)+' prato(s) NÃO baixados por falta de setor na ficha':''),fora?6000:3000);}
 function estBaixaDel(id){if(!confirm('Desfazer esta baixa? Os ingredientes voltam ao estoque.'))return;estReverter('venda',id);DB.vendasBaixa=estBaixas().filter(b=>b.id!==id);save();viewEstoque();toast('Baixa desfeita');}
 /* planilha do PDV: aceita "nome;qtd", "codigo;nome;qtd", com ou sem cabeçalho, valores no meio são ignorados */
 function estVendasCSV(input){const f=input.files&&input.files[0];input.value='';if(!f)return;const rd=new FileReader();rd.onload=()=>{const txt=String(rd.result||'');let ok=0;const nao=[];
