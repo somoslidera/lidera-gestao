@@ -8522,12 +8522,12 @@ let _gtSubs=[];
 function gtSubsHTML(){const rows=_gtSubs;const h=hojeISO();return rows.map((x,i)=>`<div class="gt-sub" data-i="${i}">
     <button class="gp-check ${x.feito?'ok':''}" style="width:22px;height:22px" title="${x.feito?'Reabrir':'Concluir'}" onclick="gtSubFeito(${i})">${icoGpCheck}</button>
     <input class="input gt-sub-t" value="${esc(x.t)}" placeholder="Ex.: Enviar o relatório de CMV" style="padding:8px 10px;font-size:13px;min-width:0;${x.feito?'text-decoration:line-through;color:var(--soft)':''}" onkeydown="if(event.key==='Enter'){event.preventDefault();gtSubAdd(${i});}">
-    <input type="date" class="input gt-sub-p" value="${esc(x.prazo||'')}" style="padding:8px 6px;font-size:12.5px" title="Prazo desta subtarefa">
+    <input type="date" class="input gt-sub-p" value="${esc(x.prazo||'')}" style="padding:8px 6px;font-size:12.5px" title="Prazo desta subtarefa (opcional)">
     <button class="icon-btn" title="Remover" style="width:28px;height:28px" onclick="gtSubDel(${i})">${icoX}</button></div>`).join('')
   +`<a class="gp-link" style="font-size:12px" onclick="gtSubAdd()">+ subtarefa</a>`;}
 function gtSubsLer(){const box=$('#gt_subs');if(!box)return;const rows=[...box.querySelectorAll('.gt-sub')];_gtSubs=rows.map((row,i)=>Object.assign({},_gtSubs[i]||{},{t:(row.querySelector('.gt-sub-t').value||'').trim(),prazo:row.querySelector('.gt-sub-p').value||''}));}
 function gtSubsDesenhar(foco){const box=$('#gt_subs');if(!box)return;box.innerHTML=gtSubsHTML();if(foco!=null){const t=box.querySelectorAll('.gt-sub-t')[foco];if(t)t.focus();}}
-function gtSubAdd(depois){gtSubsLer();const rows=_gtSubs;const base=(depois!=null?rows[depois]:rows[rows.length-1])||{};const nova={id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:'',feito:false,feitoEm:'',prazo:base.prazo||(($('#gt_prazo')||{}).value)||''};
+function gtSubAdd(depois){gtSubsLer();const rows=_gtSubs;const base=(depois!=null?rows[depois]:rows[rows.length-1])||{};const nova={id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:'',feito:false,feitoEm:'',prazo:''};
   if(depois!=null&&depois<rows.length-1)rows.splice(depois+1,0,nova);else rows.push(nova);gtSubsDesenhar(depois!=null?depois+1:rows.length-1);}
 function gtSubDel(i){gtSubsLer();_gtSubs.splice(i,1);gtSubsDesenhar();}
 function gtSubFeito(i){gtSubsLer();const x=_gtSubs[i];if(!x)return;x.feito=!x.feito;x.feitoEm=x.feito?hojeISO():'';gtSubsDesenhar();}
@@ -8542,7 +8542,7 @@ function gpOpModal(orgId,tid,quemDef){const o=orgId?ADMIN_ORGS.find(x=>x.id===or
     <div class="grid-2"><div class="field"><label>Prazo</label><input type="date" class="input" id="gt_prazo" value="${t?(t.prazo||''):diasSoma(h,7)}"></div>
       ${t?`<div class="field"><label>Situação</label><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;min-height:40px"><input type="checkbox" id="gt_feito" style="width:16px;height:16px" ${t.feito?'checked':''}> Concluída${t.feitoEm?' <span class="gp-mini">em '+fmtDataBR(t.feitoEm)+'</span>':''}</label></div>`:''}</div>
     <div class="gp-note-box" style="padding-top:10px;margin-bottom:12px">
-      <div style="font-size:13px;font-weight:600">Subtarefas <span class="hint">opcional · cada uma com o próprio prazo</span></div>
+      <div style="font-size:13px;font-weight:600">Subtarefas <span class="hint">opcional · prazo opcional em cada uma</span></div>
       <div class="gp-mini" style="margin:2px 0 8px">Quebre a demanda em passos. A demanda fecha sozinha quando o último passo fechar. Enter pula para a próxima linha.</div>
       <div id="gt_subs">${gtSubsHTML()}</div>
     </div>
@@ -8859,7 +8859,7 @@ function gpReuniaoModal(orgId,rid,modo){const _g=grupoDe(ADMIN_ORGS.find(x=>x.id
     <div id="gr_so_agendar" class="gp-note-box" style="display:${_grModo==='agendar'?'block':'none'}">${gcalFormHTML(o,r)}</div>
     <div id="gr_so_feita" style="display:${_grModo==='feita'?'block':'none'}">
       <div class="gp-note-box" style="padding-top:10px">
-        <div style="font-size:13px;font-weight:600">Próximos passos <span class="hint">um por linha</span></div>
+        <div style="font-size:13px;font-weight:600">Próximos passos <span class="hint">um por linha · data opcional</span></div>
         <div class="gp-mini" style="margin:2px 0 8px">Vira uma demanda "Reunião dd/mm · Cliente" em "Tarefas", com cada linha como subtarefa com a sua data. Enter pula para a próxima linha; linhas repetidas não são duplicadas.</div>
         ${grPassosInicial(r)}
         <div class="grid-2" style="align-items:start">
@@ -8882,7 +8882,7 @@ function gpReuniaoDia(){const d=$('#gr_data'),s=$('#gr_dia');if(!d||!s)return;co
 function gpReuniaoPassos(){const t=$('#gr_passos'),b=$('#gr_criar_box');if(t&&b)b.style.display=t.value.trim()?'block':'none';}
 /* próximos passos da reunião: linhas independentes, cada uma com a própria data */
 let _grPassos={lidera:[],cliente:[]};
-function grPassosInicial(r){const h=hojeISO();const d7=diasSoma(h,7);const deTexto=(txt,quem)=>gpOpLinhas(txt).map(t=>({t,p:d7}));
+function grPassosInicial(r){const h=hojeISO();const d7='';const deTexto=(txt,quem)=>gpOpLinhas(txt).map(t=>({t,p:''}));
   if(r&&Array.isArray(r.passosItens)&&r.passosItens.length){_grPassos={lidera:r.passosItens.filter(x=>x.quem!=='cliente').map(x=>({t:x.t||'',p:x.p||''})),cliente:r.passosItens.filter(x=>x.quem==='cliente').map(x=>({t:x.t||'',p:x.p||''}))};}
   else _grPassos={lidera:deTexto(r?(r.passosLidera!=null?r.passosLidera:(r.passos||'')):'','lidera'),cliente:deTexto(r?r.passosCliente||'':'','cliente')};
   ['lidera','cliente'].forEach(q=>{if(!_grPassos[q].length)_grPassos[q]=[{t:'',p:d7}];});return '';}
@@ -8890,13 +8890,13 @@ function grPassosLer(q){const box=$('#gr_pl_'+q);if(!box)return;_grPassos[q]=[..
 function grPassosHTML(q){const rows=_grPassos[q]||[];const ph=q==='cliente'?'Ex.: Enviar as notas de agosto':'Ex.: Revisar as fichas técnicas';
   return rows.map((x,i)=>`<div class="gr-pl" style="display:grid;grid-template-columns:minmax(0,1fr) 126px 28px;gap:6px;align-items:center;margin-bottom:6px">
     <input class="input gr-pl-t" value="${esc(x.t)}" placeholder="${ph}" style="padding:8px 10px;font-size:13px;min-width:0" onkeydown="if(event.key==='Enter'){event.preventDefault();grPassoAdd('${q}',${i});}">
-    <input type="date" class="input gr-pl-p" value="${esc(x.p)}" style="padding:8px 6px;font-size:12.5px" title="Prazo desta demanda">
+    <input type="date" class="input gr-pl-p" value="${esc(x.p)}" style="padding:8px 6px;font-size:12.5px" title="Prazo desta subtarefa (opcional)">
     <button class="icon-btn" title="Remover linha" style="width:28px;height:28px" onclick="grPassoDel('${q}',${i})">${icoX}</button></div>`).join('')
     +`<a class="gp-link" style="font-size:12px" onclick="grPassoAdd('${q}')">+ outra linha</a>`;}
 function grPassosDesenhar(q,focoIdx){const box=$('#gr_pl_'+q);if(!box)return;box.innerHTML=grPassosHTML(q);if(focoIdx!=null){const t=box.querySelectorAll('.gr-pl-t')[focoIdx];if(t)t.focus();}}
-function grPassoAdd(q,depois){grPassosLer(q);const rows=_grPassos[q];const base=(depois!=null?rows[depois]:rows[rows.length-1])||{};const nova={t:'',p:base.p||diasSoma(hojeISO(),7)};
+function grPassoAdd(q,depois){grPassosLer(q);const rows=_grPassos[q];const nova={t:'',p:''};
   if(depois!=null&&depois<rows.length-1)rows.splice(depois+1,0,nova);else rows.push(nova);grPassosDesenhar(q,depois!=null?depois+1:rows.length-1);}
-function grPassoDel(q,i){grPassosLer(q);_grPassos[q].splice(i,1);if(!_grPassos[q].length)_grPassos[q]=[{t:'',p:diasSoma(hojeISO(),7)}];grPassosDesenhar(q);}
+function grPassoDel(q,i){grPassosLer(q);_grPassos[q].splice(i,1);if(!_grPassos[q].length)_grPassos[q]=[{t:'',p:''}];grPassosDesenhar(q);}
 function grPassosColher(){['lidera','cliente'].forEach(grPassosLer);const out=[];['lidera','cliente'].forEach(q=>(_grPassos[q]||[]).forEach(x=>{if(x.t&&x.t.length>1)out.push({quem:q,t:x.t,p:x.p||''});}));return out;}
 /* Cada reunião registrada vira UMA demanda por lado (nossa / do cliente): "Reunião dd/mm · Cliente", e cada próximo passo é uma subtarefa com o próprio prazo. Editar a reunião acrescenta os passos novos na mesma demanda. */
 function gpOpCriarItens(o,itens,r){let n=0;const rid=(r&&r.id)||(typeof r==='string'?r:'');const data=(r&&r.data)||hojeISO();const ts=gpTarefasOp(o);
@@ -8904,7 +8904,7 @@ function gpOpCriarItens(o,itens,r){let n=0;const rid=(r&&r.id)||(typeof r==='str
     let t=ts.find(x=>x.deReuniao===rid&&x.quem===quem&&Array.isArray(x.subs));
     if(!t){t=gpOpNova(o,'Reunião '+fmtDataBR(data).slice(0,5)+' · '+(o.nome||''),quem,'',{deReuniao:rid,reuniaoData:data});t.subs=[];}
     its.forEach(x=>{if(gpSubs(t).some(s=>lmNorm(s.t)===lmNorm(x.t)))return;gpSubs(t).push({id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:x.t,feito:false,feitoEm:'',prazo:x.p||''});n++;});
-    const pr=gpSubs(t).map(s=>s.prazo).filter(Boolean).sort();t.prazo=pr.length?pr[pr.length-1]:'';
+    const pr=gpSubs(t).map(s=>s.prazo).filter(Boolean).sort();t.prazo=pr.length?pr[pr.length-1]:(t.prazo||diasSoma(data,7));
     if(t.feito&&gpSubsInfo(t).abertas){t.feito=false;t.feitoEm='';}});
   return n;}
 function gpReuniaoModo(m){_grModo=m;['feita','agendar'].forEach(x=>{const b=$('#gr_m_'+x);if(b)b.classList.toggle('on',x===m);});
