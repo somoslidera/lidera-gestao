@@ -404,7 +404,8 @@ body.dark .empty svg{opacity:.4}
   #printArea .rel-rest{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#A48A57;font-weight:700}
   #printArea .rel-t{font-size:20px;font-weight:800;font-family:'Fraunces',Georgia,serif;color:#1D3573;line-height:1.15}
   #printArea .rel-meta{font-size:10.5px;color:#5a6577;text-align:right;line-height:1.5}
-  #printArea .rel-foot{margin-top:14px;border-top:1px solid #d7dbe5;padding-top:6px;font-size:9.5px;color:#8a93a5;display:flex;justify-content:space-between}
+  #printArea .rel-foot{position:fixed;left:0;right:0;bottom:0;margin:0;border-top:1px solid #d7dbe5;padding-top:4px;font-size:9px;color:#8a93a5;display:flex;justify-content:space-between;background:#fff}
+  #printArea .rel-body{padding-bottom:18px}
   #printArea .rel-body .card,#printArea .rel-body .kpi,#printArea .rel-body .dash-pill,#printArea .rel-body .fcard,#printArea .rel-body .eng-stat{border:1px solid #d7dbe5!important;border-radius:8px;background:#fff!important}
   #printArea .rel-body .kpi,#printArea .rel-body .dash-pill,#printArea .rel-body .fcard,#printArea .rel-body .eng-stat,#printArea .rel-body tr{break-inside:avoid;page-break-inside:avoid}
   #printArea .rel-body .card{margin-bottom:10px;padding:10px 12px;break-inside:auto}
@@ -421,7 +422,11 @@ body.dark .empty svg{opacity:.4}
   #printArea .rel-body a{color:inherit;text-decoration:none}
   #printArea .rel-body .tag{border:1px solid #cfd4e0;border-radius:6px;padding:0 5px;font-size:9px}
   #printArea .rel-body .alert{border:1px solid #e3c98a;background:#fff8e6;border-radius:6px;padding:6px 8px}
-  #printArea .rel-body .empty,#printArea .rel-body .gp-search,#printArea .rel-body .prm-nav,#printArea .rel-body .prm-top,#printArea .rel-body .section-head>div:last-child{display:none!important}
+  #printArea .rel-body .empty,#printArea .rel-body .gp-search,#printArea .rel-body .prm-nav,#printArea .rel-body .prm-top,#printArea .rel-body .section-head>div+div{display:none!important}
+  #printArea .rel-body .dsh-card{display:block;overflow:hidden;height:auto;break-inside:avoid}#printArea .rel-body .dsh-fit,#printArea .rel-body .dsh-3{display:block}#printArea .rel-body .dsh-3>.card{margin-bottom:10px}#printArea .rel-body .dsh-chart{display:block;height:170px;min-height:170px;flex:none;overflow:hidden}#printArea .rel-body .dsh-chart svg{width:100%!important;height:100%!important;display:block;aspect-ratio:auto!important}#printArea .rel-body .dsh-chart-cmv{height:150px;min-height:150px;max-width:380px;margin:0 auto}
+  #printArea .rel-body .dsh-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}#printArea .rel-body .dsh-kpi{padding:8px 10px}#printArea .rel-body .dsh-kpi-val{font-size:17px}#printArea .rel-body .dsh-arc{width:150px;margin:0 auto}#printArea .rel-body .dsh-pe-n{font-size:22px}#printArea .rel-body .dsh-card{padding:10px 12px;margin-bottom:8px}#printArea .rel-body .dsh-fit{gap:8px}#printArea .rel-body .dsh-vazio{padding:20px 0}
+  #printArea .rel-body .section-head,#printArea .rel-body .dsh-head,#printArea .rel-body .card>.ttl,#printArea .rel-body .card>.card-pad:first-child,#printArea .rel-body thead{break-after:avoid;page-break-after:avoid}
+  #printArea .rel-body .card{break-inside:auto}#printArea .rel-body .card.card-pad:not(.dsh-card){orphans:3;widows:3}
   #printArea .rel-body svg{max-width:100%}
   #printArea .rel-body [style*="max-height"]{max-height:none!important;overflow:visible!important}
   #printArea .rel-body .dsh-fit{height:auto!important}
@@ -6270,7 +6275,7 @@ function cubaCol(c,precoKg){
   return c.cmv<=CMV_ALVO_BUFFET?{bg:'rgba(30,158,106,.14)',br:'var(--green)',tx:'#147a4f'}:{bg:'rgba(210,72,63,.12)',br:'var(--red)',tx:'#9e342c'};
 }
 function viewBuffet(){
-  $('#topActions').innerHTML=`<button class="btn btn-ghost" onclick="window.print()">🖨️ Imprimir</button>`;
+  $('#topActions').innerHTML=`<button class="btn btn-ghost" onclick="imprimirTela()">🖨️ Imprimir</button>`;
   const d=buffetData(); const fichas=Object.values(DB.fichas).sort((a,b)=>a.nome.localeCompare(b.nome));
   const prepsBuffet=Object.values(DB.insumos).filter(i=>i.tipo==='preparado').sort((a,b)=>a.nome.localeCompare(b.nome));
   const pctOf=v=>fmtN(v*100,1)+'%';
@@ -6448,7 +6453,7 @@ function viewDesperdicio(){
     <div class="kpi"><div class="k-lbl">Maior causa</div><div class="k-val" style="font-size:18px">${topMotivo?esc(topMotivo[0]):'—'}</div><div class="k-sub" style="color:var(--soft)">${topMotivo?fmtBRL(topMotivo[1]):''}</div></div>
     <div class="kpi"><div class="k-lbl">Período</div><div class="k-val" style="font-size:18px;text-transform:capitalize">${ymLabel(ym)}</div><div class="k-sub"><input type="month" class="input" style="height:30px;padding:2px 8px;font-size:12px" value="${ym}" onchange="despYM=this.value;viewDesperdicio()"></div></div>
   </div>
-  <div class="card card-pad" style="margin-bottom:18px">
+  <div class="card card-pad no-print" style="margin-bottom:18px">
     <div class="section-head"><div><div class="ttl">Registrar desperdício do dia</div><div class="desc">Adicione vários itens no mesmo lançamento, custo e unidade vêm automáticos da sua base</div></div></div>
     <div class="grid-2" style="margin-bottom:12px">
       <div class="field" style="margin:0"><label>Data do lançamento</label><input type="date" class="input" id="desp_data" value="${hojeISO()}"></div>
@@ -6703,8 +6708,8 @@ function viewEstoque(){
   const comprarList=items.filter(x=>x.comprar);
   const totalCompras=comprarList.reduce((s,x)=>s+x.totalPrevisto,0);
   $('#topActions').innerHTML = estoqueTab==='compras'
-    ? `<button class="btn btn-gold no-print" onclick="window.print()">🖨️ Imprimir lista</button>`
-    : estoqueTab==='historico' ? `<button class="btn btn-gold no-print" onclick="window.print()">🖨️ Imprimir / PDF</button>`
+    ? `<button class="btn btn-gold no-print" onclick="imprimirTela()">🖨️ Imprimir lista</button>`
+    : estoqueTab==='historico' ? `<button class="btn btn-gold no-print" onclick="imprimirTela()">🖨️ Imprimir / PDF</button>`
     : estoqueTab==='contar' ? (pode('contagem')?`<button class="btn btn-primary no-print" onclick="estContagemNova()">${icoPlus} Nova contagem</button>`:'')
     : estoqueTab==='mov' ? (souDoPrincipal()?`<button class="btn btn-primary no-print" onclick="estMovModal('saida')">${icoPlus} Nova movimentação</button>`:'')
     : estoqueTab==='vendas' ? ''
@@ -7675,7 +7680,7 @@ function estVendasHTML(){pdvProcessarPendentes(false);const bs=estBaixas().slice
   const data=estVendaDraft.data||hojeISO();const cfg=estCfg();const pend=pdvPendentes();const pdv=(DB.fin&&DB.fin.pdvNome)||'PDV';
   return `${estTabsHTML()}${pend.length?`<div class="card card-pad" style="margin-bottom:16px;border-left:4px solid var(--amber)"><div class="ttl" style="margin-bottom:4px">Itens do ${esc(pdv)} sem ficha técnica vinculada</div><div class="desc" style="margin-bottom:8px">Vieram pela integração mas o Flow não sabe qual prato são. Vincule uma vez e as próximas vendas entram sozinhas.</div>
     ${pend.map((v,vi)=>(v.itens||[]).map((it,ii)=>`<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);flex-wrap:wrap"><div style="flex:1 1 200px;min-width:0"><b>${esc(it.nome||it.codigo||'?')}</b>${it.codigo&&it.nome?` <span class="gp-mini">${esc(it.codigo)}</span>`:''}<div class="gp-mini">${fmtDataBR(v.data||'')} · ${fmtN(+it.qtd||0)} vendido(s)${it.semSetor?' · <b style="color:var(--red)">ficha sem setor de venda</b>':''}</div></div><select class="input" style="flex:1 1 220px;padding:6px 8px;font-size:13px" onchange="pdvVincularPendente(${vi},${ii},this.value)"><option value="">Vincular a…</option>${fichas.map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('')}<option value="__ignorar__">Ignorar este item</option></select></div>`).join('')).join('')}</div>`:''}
-  <div class="card card-pad" style="margin-bottom:16px">
+  <div class="card card-pad no-print" style="margin-bottom:16px">
     ${(function(){const ss=fichasSemSetorVenda();return ss.length?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${ss.length} prato(s) sem setor de venda</b> e as vendas não saem do principal. Abra a ficha e escolha o setor: ${ss.slice(0,6).map(f=>`<a onclick="editFicha('${f.id}')" style="color:var(--navy);cursor:pointer;font-weight:600">${esc(f.nome)}</a>`).join(', ')}${ss.length>6?' e mais '+(ss.length-6):''}. <a onclick="fichasArmLoteModal()" style="color:var(--navy);cursor:pointer;font-weight:700">Definir em lote</a></div></div>`:'';})()}
     <div class="section-head"><div><div class="ttl">Baixa por vendas</div><div class="desc">Informe quantos pratos vendeu e a ficha técnica dá baixa nos ingredientes${estMultiArm()?' no <b>setor que vende cada prato</b> (padrão: '+esc(estArmNome(cfg.armVendas))+')':''} (subprodutos saem como porcionado; preparados descem até o bruto).</div></div>
       ${(DB.fin&&DB.fin.pdvTipo==='suitable'&&typeof sb!=='undefined'&&sb&&CLOUD)?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="suitableSync()">⟳ Sincronizar Suitable</button></div>`:''}
@@ -7750,7 +7755,15 @@ function imprimirTela(){const view=document.getElementById('view');if(!view)retu
   const topMes=document.querySelector('#topActions input[type=month]');const topSel=document.querySelector('#topActions select');
   let periodo='';if(mesEl&&mesEl.value)periodo=mesNomeYM(mesEl.value);else if(topMes&&topMes.value)periodo=mesNomeYM(topMes.value);else if(topSel){const o=topSel.options[topSel.selectedIndex];periodo=o?o.textContent.trim():'';}
   const clone=view.cloneNode(true);
+  // gráficos desenhados em canvas não sobrevivem ao clone: copia o desenho como imagem
+  {const orig=view.querySelectorAll('canvas'),cl=clone.querySelectorAll('canvas');orig.forEach((c,i)=>{const d=cl[i];if(!d)return;try{const img=document.createElement('img');img.src=c.toDataURL('image/png');img.style.cssText='width:100%;max-width:100%;height:auto;display:block';d.replaceWith(img);}catch(e){}});}
   clone.querySelectorAll('.no-print,button,.pill-filter,.row-actions,.icon-btn,.mini-del,.btn,.dd,datalist,script,style,.money-pre,.prm-nav,.prm-top,.gp-search,.bell-pop,.fcard-acts,a.gp-link,.dsh-pe-base a').forEach(x=>x.remove());
+  // gráficos em SVG usam var(--cor) nos atributos; na impressão isso não resolve, então troca pelos valores reais
+  {const cs=getComputedStyle(view);clone.querySelectorAll('svg').forEach(sv=>{const h=sv.innerHTML;if(h.indexOf('var(--')<0)return;sv.innerHTML=h.replace(/var\(--([a-zA-Z0-9-]+)\)/g,(m,v)=>(cs.getPropertyValue('--'+v)||'').trim()||'#15233f');if(!sv.getAttribute('width')&&sv.getAttribute('preserveAspectRatio')!=='none'){const vb=(sv.getAttribute('viewBox')||'').split(/\s+/);if(vb.length===4){sv.setAttribute('width','100%');sv.style.height='auto';sv.style.aspectRatio=(+vb[2])+' / '+(+vb[3]);}}});}
+  // campos de busca/filtro não têm o que mostrar no papel
+  clone.querySelectorAll('input[type=search],input[placeholder*="Buscar"],input[placeholder*="buscar"],input[placeholder*="Filtrar"],input[placeholder*="filtrar"],input[placeholder*="🔎"]').forEach(x=>{const f=x.closest('.field');(f&&f.children.length<=2?f:x).remove();});
+  // linha de filtros de uma tabela (só selects/inputs, sem texto) some
+  clone.querySelectorAll('tr').forEach(tr=>{const cells=[...tr.children];if(!cells.length)return;const vazio=td=>![...td.children].some(c=>!/^(SELECT|INPUT)$/.test(c.tagName))&&![...td.childNodes].some(n=>n.nodeType===3&&n.textContent.trim());const soFiltro=cells.some(td=>td.querySelector('select,input'))&&cells.every(vazio);if(soFiltro)tr.remove();});
   clone.querySelectorAll('a').forEach(a=>{const sp=document.createElement('span');sp.innerHTML=a.innerHTML;a.replaceWith(sp);});
   let maxCols=0;clone.querySelectorAll('table').forEach(t=>{const tr=t.querySelector('tr');if(tr)maxCols=Math.max(maxCols,tr.children.length);});const paisagem=maxCols>=8;
   clone.querySelectorAll('input,select,textarea').forEach(el=>{let t='';const tp=(el.type||'').toLowerCase();
@@ -7768,6 +7781,7 @@ function imprimirTela(){const view=document.getElementById('view');if(!view)retu
   document.body.classList.add('print-rel');document.body.classList.toggle('print-rel-l',paisagem);document.body.classList.toggle('print-rel-dense',maxCols>=12);
   const fim=()=>{document.body.classList.remove('print-rel');document.body.classList.remove('print-rel-l');document.body.classList.remove('print-rel-dense');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);window.print();setTimeout(fim,2500);}
+document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&!e.altKey&&(e.key==='p'||e.key==='P')){const v=document.getElementById('view');if(!v||!v.offsetParent||document.body.classList.contains('print-rel'))return;if(document.querySelector('#modalRoot .modal'))return;e.preventDefault();try{imprimirTela();}catch(err){}}});
 /* botão "Mais" que agrupa ações secundárias da barra superior (desafoga desktop e celular) */
 function ddMais(inner,label){return `<div class="dd"><button class="btn btn-ghost" onclick="ddToggle(this)">${label||'⋯ Mais'}</button><div class="dd-menu" onclick="ddFechar()">${inner}</div></div>`;}
 function ddToggle(btn){const dd=btn.closest('.dd');const aberto=dd.classList.contains('open');document.querySelectorAll('.dd.open').forEach(x=>x.classList.remove('open'));if(!aberto){dd.classList.add('open');setTimeout(()=>document.addEventListener('click',ddFora),0);}}
