@@ -2429,7 +2429,12 @@ function viewInsumos(){
   if(buscaProd){const _e=$('#prodBusca');if(_e)filtrarLinhas(_e,'#insumosTbody');}
 }
 let editingInsId=null, draftInsTipo='pronto', draftInsComps=[];
-let catGrupoIns='CMV';
+let catGrupoIns='CMV';let estoqueArmF='';
+/* Lista de compras: agrupamento escolhido na hora (fornecedor ou categoria) + filtro de quais grupos puxar. Estrutura aberta para outros agrupamentos. */
+const LC_AGRUP={fornecedor:{rot:'fornecedor',de:x=>x.fornecedor||'Sem fornecedor'},categoria:{rot:'categoria',de:x=>x.sub||x.cat||'Sem categoria'}};
+let LC=Object.assign({agrup:'fornecedor',sel:[]},(function(){try{return JSON.parse(localStorage.getItem('flow_lc')||'{}');}catch(e){return {};}})());
+function lcSet(k,v){LC[k]=v;if(k==='agrup')LC.sel=[];try{localStorage.setItem('flow_lc',JSON.stringify(LC));}catch(e){}viewEstoque();}
+function lcToggle(key){const i=LC.sel.indexOf(key);if(i>=0)LC.sel.splice(i,1);else LC.sel.push(key);try{localStorage.setItem('flow_lc',JSON.stringify(LC));}catch(e){}viewEstoque();}
 // Categoria (grupo DRE) → Subcategoria dependentes, iguais às dos Lançamentos (fonte: DB.categorias)
 function insGrupoOptions(sel){let gs=ordPt(Object.keys(DB.categorias||{}));if(sel&&!gs.includes(sel))gs.unshift(sel);return gs.map(g=>`<option ${g===sel?'selected':''}>${esc(g)}</option>`).join('');}
 function insSubOptions(grupo,sel){let subs=ordPt(((DB.categorias[grupo]||{subs:[]}).subs)||[]).slice();if(sel&&!subs.includes(sel))subs.unshift(sel);return `<option value="">—</option>`+subs.map(s=>`<option value="${esc(s)}" ${s===sel?'selected':''}>${esc(s)}</option>`).join('')+`<option value="__new__">＋ Nova subcategoria…</option>`;}
@@ -2452,7 +2457,7 @@ function editInsumo(id){
       <div class="field"><label>Unidade</label><select class="input" id="i_uni" onchange="updUniLabels();updInsPreview()">${UNIDADES.map(u=>`<option value="${u}" ${u===i.uni?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
       <div class="field"><label>Fornecedor <span class="hint">opcional · digite para cadastrar um novo</span>${i.id&&DB.insumos[i.id]?` <a onclick="estHistAbrir('${i.id}')" style="float:right;font-size:11px;color:var(--navy);cursor:pointer;font-weight:600" title="Todas as compras deste produto, de todos os fornecedores">histórico de compras ›</a>`:''}</label><input class="input" id="i_forn" list="forn_dl" value="${esc(i.fornecedor||'')}" placeholder="Nome do fornecedor">${fornDatalist()}</div>
     </div>
-    ${setoresSemPrincipal().length?`<div class="field"><label>Disponível nos setores <span class="hint">exceção deste produto · vazio = segue a subcategoria</span></label><div style="display:flex;gap:8px 14px;flex-wrap:wrap;padding:4px 0">${setoresSemPrincipal().map(a=>`<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer"><input type="checkbox" class="i_setor" value="${esc(a.id)}" ${(i.setores||[]).includes(a.id)?'checked':''} style="width:15px;height:15px;accent-color:var(--navy)"> ${esc(a.nome)}</label>`).join('')}</div></div>`:''}
+    ${setoresSemPrincipal().length?`<div class="field"><label>Disponível nos setores <span class="hint">exceção deste produto · vazio = segue a subcategoria${podeEditarSetoresProduto()?'':' · só administrador e gerente alteram'}</span></label><div style="display:flex;gap:8px 14px;flex-wrap:wrap;padding:4px 0;${podeEditarSetoresProduto()?'':'opacity:.6'}">${setoresSemPrincipal().map(a=>`<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:${podeEditarSetoresProduto()?'pointer':'not-allowed'}"><input type="checkbox" class="i_setor" value="${esc(a.id)}" ${(i.setores||[]).includes(a.id)?'checked':''} ${podeEditarSetoresProduto()?'':'disabled'} style="width:15px;height:15px;accent-color:var(--navy)"> ${esc(a.nome)}</label>`).join('')}</div></div>`:''}
     <div id="pronto_block">
       ${embDatalist()}
       <div class="field"><label>Como você compra <span class="hint">padrão de compra</span></label>
@@ -2546,7 +2551,7 @@ function saveInsumo(id){const nome=$('#i_nome').value.trim();if(!nome)return toa
     const embOn=$('#i_emb_on')&&$('#i_emb_on').value==='1';const embNome=embOn?($('#i_emb_nome').value||'').trim():'';const embQtd=embOn?parseFloat($('#i_emb_qtd').value)||0:0;
     if(embOn&&(!embNome||!(embQtd>0)))return toast('Informe o nome da embalagem e quanto ela contém');
     obj.embNome=embNome;obj.embQtd=embQtd;obj.reqLote=parseFloat(($('#i_reqlote')||{}).value)||0;obj.reqMin=parseFloat(($('#i_reqmin')||{}).value)||0;}
-  const setoresSel=[...document.querySelectorAll('input.i_setor:checked')].map(c=>c.value);if(document.querySelector('input.i_setor'))obj.setores=setoresSel;
+  const setoresSel=[...document.querySelectorAll('input.i_setor:checked')].map(c=>c.value);if(document.querySelector('input.i_setor:not([disabled])'))obj.setores=setoresSel;
   if($('#i_estmin'))obj.estoqueMin=parseFloat($('#i_estmin').value)||0;if($('#i_estcrit'))obj.estoqueCrit=parseFloat($('#i_estcrit').value)||0;if($('#i_prazorep'))obj.prazoRep=parseInt($('#i_prazorep').value)||0;
   // merge: preserva estoque, mínimo, apelidos e outros campos que o modal não edita
   DB.insumos[obj.id]=Object.assign({},DB.insumos[obj.id]||{},obj);save();closeModal();viewInsumos();toast(id?'Insumo atualizado':'Insumo adicionado');}
@@ -2578,9 +2583,9 @@ function gerenciarCategorias(t){catTab=t||catTab||'insumo';dbCats();DB.fin=DB.fi
     body=`<div class="field" style="margin-bottom:8px"><label>Categoria</label><select class="input" onchange="catGrupoIns=this.value;gerenciarCategorias('insumo')">${grupos.map(g=>`<option ${g===catGrupoIns?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
     <div style="display:flex;gap:8px;margin-bottom:6px"><input class="input" id="cat_new" placeholder="Nova subcategoria em ${esc(catGrupoIns)}..." onkeydown="if(event.key==='Enter')addCatItem()"><button class="btn btn-primary" style="padding:0 18px" onclick="addCatItem()">${icoPlus}</button></div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:13px">São as mesmas categorias e subcategorias dos <b>Lançamentos Financeiros</b>. O que você mudar aqui vale para os dois lugares.</div>
-    ${setoresSemPrincipal().length?`<div style="font-size:12px;color:var(--muted);margin:-6px 0 10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px"><b>Setores:</b> clique nos setores em que cada subcategoria fica disponível para requisição, contagem e posição. Sem nenhum marcado, aparece em todos. O estoque principal sempre vê tudo.</div>`:''}
-    <div class="cat-scroll">${subs.length?subs.map(x=>{const g=esc(catGrupoIns).replace(/'/g,'&#39;'),sx=esc(x).replace(/'/g,'&#39;');const lig=catSetoresDe(catGrupoIns,x);
-      return `<div class="cat-row" style="flex-wrap:wrap;gap:6px"><span style="flex:1 1 140px">${esc(x)}</span>${setoresSemPrincipal().length?`<span style="display:flex;gap:4px;flex-wrap:wrap">${setoresSemPrincipal().map(a=>`<button type="button" class="tag ${lig.includes(a.id)?'tag-navy':'tag-gray'}" style="cursor:pointer;border:0;font-size:10.5px;padding:2px 8px" title="${lig.includes(a.id)?'Disponível em '+esc(a.nome)+' (clique para tirar)':'Clique para liberar em '+esc(a.nome)}" onclick="catSetorToggle('${g}','${sx}','${esc(a.id)}');gerenciarCategorias('insumo')">${esc(a.nome)}</button>`).join('')}${lig.length?'':'<span class="gp-mini" style="align-self:center">todos</span>'}</span>`:''}<button class="mini-del" onclick="delSubIns('${g}','${sx}')">${icoX}</button></div>`;}).join(''):'<div style="font-size:13px;color:var(--soft);padding:8px 0">Nenhuma subcategoria nesta categoria.</div>'}</div>`;
+    ${setoresSemPrincipal().length?`<div style="font-size:12px;color:var(--muted);margin:-6px 0 10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px"><b>Setores:</b> clique nos setores em que cada subcategoria fica disponível para requisição, contagem e posição. Um setor com alguma subcategoria marcada passa a ver <b>só</b> o que está marcado para ele (mais as exceções por produto). Setor sem nada marcado vê tudo o que não foi dado a outro setor. O principal sempre vê tudo.<br><b>Entra em:</b> onde a compra dessa subcategoria dá entrada (padrão: ${esc(estArmNome(estCfg().armEntrada))}).</div>`:''}
+    <div class="cat-scroll">${subs.length?subs.map(x=>{const g=esc(catGrupoIns).replace(/'/g,'&#39;'),sx=esc(x).replace(/'/g,'&#39;');const lig=catSetoresDe(catGrupoIns,x);const nP=nProdutosDaSub(catGrupoIns,x);const ent=catEntradaDe(catGrupoIns,x);
+      return `<div class="cat-row" style="flex-wrap:wrap;gap:6px"><span style="flex:1 1 140px">${esc(x)}${nP?` <span class="gp-mini">${nP} produto${nP>1?'s':''}</span>`:''}</span>${setoresSemPrincipal().length?`<span style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">${setoresSemPrincipal().map(a=>`<button type="button" class="tag ${lig.includes(a.id)?'tag-navy':'tag-gray'}" style="cursor:pointer;border:0;font-size:10.5px;padding:2px 8px" title="${lig.includes(a.id)?'Disponível em '+esc(a.nome)+' (clique para tirar)':'Clique para liberar em '+esc(a.nome)}" onclick="catSetorToggle('${g}','${sx}','${esc(a.id)}');gerenciarCategorias('insumo')">${esc(a.nome)}</button>`).join('')}${lig.length?'':'<span class="gp-mini" style="align-self:center">todos</span>'}<select class="input" style="padding:2px 6px;font-size:11px;height:auto;min-height:0;width:auto;max-width:150px;${ent?'color:var(--navy);font-weight:600':''}" title="Estoque de entrada: onde a compra desta subcategoria dá entrada" onchange="catEntradaSet('${g}','${sx}',this.value);gerenciarCategorias('insumo')"><option value="">entra no ${esc(estArmNome(estCfg().armEntrada))}</option>${setoresSemPrincipal().map(a=>`<option value="${esc(a.id)}" ${ent===a.id?'selected':''}>entra em ${esc(a.nome)}</option>`).join('')}</select></span>`:''}<button class="mini-del" onclick="delSubIns('${g}','${sx}')">${icoX}</button></div>`;}).join(''):'<div style="font-size:13px;color:var(--soft);padding:8px 0">Nenhuma subcategoria nesta categoria.</div>'}</div>`;
   }else{
     const list=catList(catTab);
     body=`<div style="display:flex;gap:8px;margin-bottom:6px"><input class="input" id="cat_new" placeholder="Nova categoria de ${catTab==='prato'?'prato':'insumo'}..." onkeydown="if(event.key==='Enter')addCatItem()"><button class="btn btn-primary" style="padding:0 18px" onclick="addCatItem()">${icoPlus}</button></div>
@@ -2951,29 +2956,44 @@ function viewFichas(){
     +ddMais(`<button class="btn btn-ghost" onclick="editModular()">${icoPlus} Nova ficha modular</button>`
     +`<button class="btn btn-ghost" onclick="gerenciarCategorias('prato')">≡ Categorias de prato</button>`
     +`<button class="btn btn-ghost" onclick="baixarModeloFichas()">⬇ Baixar modelo (planilha)</button>`
-    +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Importar planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarFichas(this)"></label>`);
+    +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Importar planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarFichas(this)"></label>`
+    +(estMultiArm()?`<button class="btn btn-ghost" onclick="fichasArmLoteModal()">🏬 Estoque de saída em lote</button>`:''));
   const fichas=Object.values(DB.fichas);
   const preparados=Object.values(DB.insumos).filter(i=>i.tipo==='preparado');
   const modulares=Object.values(DB.modulares||{});
   const cats=['Todas',...new Set(fichas.map(f=>f.cat).filter(Boolean))];
   if(modulares.length)cats.push('Modular');
   if(preparados.length)cats.push('Preparado');
+  const semArm=estMultiArm()?fichas.filter(f=>!f.armVenda).length:0;if(semArm)cats.push('Sem estoque de saída');
   if(!cats.includes(fichaFiltro))fichaFiltro='Todas';
   const T=totaisGerais();const fixosPct=T.fixosPct||0;
   let cards='';
   if(fichaFiltro!=='Preparado'&&fichaFiltro!=='Modular'){
-    const ff=fichaFiltro==='Todas'?fichas:fichas.filter(f=>f.cat===fichaFiltro);
+    const ff=fichaFiltro==='Todas'?fichas:fichaFiltro==='Sem estoque de saída'?fichas.filter(f=>!f.armVenda):fichas.filter(f=>f.cat===fichaFiltro);
     cards+=ff.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(f=>fichaCard(f,fixosPct)).join('');
   }
   if(fichaFiltro==='Todas'||fichaFiltro==='Modular')cards+=modulares.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(m=>modularFichaCard(m)).join('');
   if(fichaFiltro==='Todas'||fichaFiltro==='Preparado')cards+=preparados.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(p=>preparadoCard(p)).join('');
   const temAlgo=cards!=='';
   $('#view').innerHTML=`
-  <div class="section-head"><div class="pill-filter">${cats.map(c=>`<button class="${c===fichaFiltro?'on':''}" onclick="fichaFiltro='${c}';viewFichas()">${c}</button>`).join('')}</div>
+  <div class="section-head"><div class="pill-filter">${cats.map(c=>`<button class="${c===fichaFiltro?'on':''}" ${c==='Sem estoque de saída'?'style="color:var(--red)"':''} onclick="fichaFiltro='${c}';viewFichas()">${c}${c==='Sem estoque de saída'?' ('+semArm+')':''}</button>`).join('')}</div>
     <input class="input" id="fichaBusca" value="${esc(buscaFicha)}" style="max-width:260px" placeholder="🔎 Buscar ficha por nome..." oninput="buscaFicha=this.value;filtrarCards(this,'#fgrid')"></div>
   ${temAlgo?`<div class="fgrid" id="fgrid">${cards}</div>`:emptyState('Nenhuma ficha técnica','Monte seus pratos a partir dos insumos.','editFicha()')}`;
   if(buscaFicha){const _e=$('#fichaBusca');if(_e)filtrarCards(_e,'#fgrid');}
 }
+/* definir o estoque de saída de várias fichas de uma vez (seção 4): filtro por categoria e busca, marcar todas, aplicar */
+let _flSel=new Set(),_flCat='',_flQ='';
+function fichasArmLoteModal(){const arms=setoresSemPrincipal();if(!arms.length)return toast('Cadastre os estoques de setor em Estoque › configurar');
+  const fichas=Object.values(DB.fichas).sort((a,b)=>a.nome.localeCompare(b.nome));const cats=[...new Set(fichas.map(f=>f.cat).filter(Boolean))].sort();
+  const vis=fichas.filter(f=>(!_flCat||f.cat===_flCat)&&(!_flQ||lmNorm(f.nome).includes(lmNorm(_flQ))));
+  modal(`<div class="modal-head"><h3>Estoque de saída em lote</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div class="gp-mini" style="margin-bottom:8px">Marque as fichas, escolha o estoque e aplique. A baixa por venda passa a sair desse estoque. ${fichas.filter(f=>!f.armVenda).length} ficha(s) ainda sem estoque de saída.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><select class="input" style="max-width:200px" onchange="_flCat=this.value;fichasArmLoteModal()"><option value="">Todas as categorias</option>${cats.map(c=>`<option ${_flCat===c?'selected':''}>${esc(c)}</option>`).join('')}</select><input class="input" style="max-width:220px" value="${esc(_flQ)}" placeholder="🔎 Buscar" oninput="_flQ=this.value;fichasArmLoteModal();setTimeout(()=>{const i=document.querySelector('#fl_q');if(i){i.focus();i.setSelectionRange(99,99);}},30)" id="fl_q"><button class="btn btn-ghost btn-sm" onclick="(function(){const v=${JSON.stringify(vis.map(f=>f.id))};const todas=v.every(id=>_flSel.has(id));v.forEach(id=>todas?_flSel.delete(id):_flSel.add(id));fichasArmLoteModal();})()">${vis.every(f=>_flSel.has(f.id))&&vis.length?'Desmarcar':'Marcar'} as ${vis.length} visíveis</button></div>
+    <div style="max-height:44vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:4px 10px">${vis.map(f=>`<label style="display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:13px;cursor:pointer"><input type="checkbox" ${_flSel.has(f.id)?'checked':''} onchange="this.checked?_flSel.add('${f.id}'):_flSel.delete('${f.id}');const c=document.querySelector('#fl_n');if(c)c.textContent=_flSel.size" style="width:16px;height:16px"><span style="flex:1;min-width:0">${esc(f.nome)} <span class="gp-mini">${esc(f.cat||'')}</span></span><span class="gp-mini" style="${f.armVenda?'':'color:var(--red)'}">${f.armVenda&&estArm(f.armVenda)?esc(estArmNome(f.armVenda)):'sem estoque'}</span></label>`).join('')||'<div class="gp-mini" style="padding:10px 0">Nenhuma ficha com esse filtro.</div>'}</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px"><span style="font-size:13px"><b id="fl_n">${_flSel.size}</b> marcada(s) →</span><select class="input" id="fl_arm" style="max-width:220px">${arms.map(a=>`<option value="${esc(a.id)}">${esc(a.nome)}</option>`).join('')}</select><button class="btn btn-primary" onclick="fichasArmLoteAplicar()">Aplicar</button></div>
+  </div><div class="modal-foot"><button class="btn btn-ghost" onclick="_flSel=new Set();closeModal()">Fechar</button></div>`,true);}
+function fichasArmLoteAplicar(){const arm=(($('#fl_arm')||{}).value)||'';if(!arm||!estArm(arm))return toast('Escolha o estoque');if(!_flSel.size)return toast('Marque ao menos uma ficha');let n=0;_flSel.forEach(id=>{const f=DB.fichas[id];if(f){f.armVenda=arm;n++;}});_flSel=new Set();save();toast(n+' ficha(s) agora saem de '+estArmNome(arm));fichasArmLoteModal();if(typeof viewFichas==='function'&&document.querySelector('#fgrid'))viewFichas();}
 function fichaCard(f,fixosPct){
   const m=metricasFicha(f);
   const insumos=custoFicha(f)/(f.porcoes||1), emb=f.custoEmbalagem||0, custo=insumos+emb;
@@ -2983,7 +3003,7 @@ function fichaCard(f,fixosPct){
   const cmvCls=cmvClasse(cmv);const badge=preco>0?`<span class="fcard-badge ${cmvCls==='excelente'?'tag-green':cmvCls==='atencao'?'tag-amber':'tag-red'}">CMV ${fmtPct(cmv)}</span>`:`<span class="fcard-badge tag-amber">sem preço</span>`;
   return `<div class="fcard" data-nome="${esc(f.nome)}">
     <div class="fcard-top"><div class="fcard-ic">${icoFicha}</div>
-      <div style="min-width:0"><div class="fcard-nm">${esc(f.nome)}</div><div class="fcard-sub">${esc(f.cat||'—')}${f.criada?' · criada '+f.criada:''}</div></div>${badge}</div>
+      <div style="min-width:0"><div class="fcard-nm">${esc(f.nome)}</div><div class="fcard-sub">${esc(f.cat||'—')}${f.criada?' · criada '+f.criada:''}${estMultiArm()?(f.armVenda&&estArm(f.armVenda)?' · sai de '+esc(estArmNome(f.armVenda)):(estCfg().vendasNuncaPrincipal?' · <span style="color:var(--red);font-weight:600">sem estoque de saída</span>':'')):''}</div></div>${badge}</div>
     <div class="fcard-acts"><span>${(f.comps||[]).length} insumos</span>
       <button onclick="delFicha('${f.id}')">${icoTrash} Excluir</button>
       <button onclick="duplicarFicha('${f.id}')">${icoCopy} Duplicar</button>
@@ -3290,7 +3310,7 @@ function editFicha(id){
             <div class="field"><label>Categoria</label><select class="input" id="f_cat">${catOptions('prato',f.cat)}</select></div>
             <div class="field"><label>Código no PDV <span class="hint">como o prato aparece no sistema de vendas</span></label><input class="input" id="f_codpdv" value="${(f.codPdv||'').replace(/"/g,'&quot;')}" placeholder="Ex.: 1042 ou ALA MINUTA CARNE"></div>
           </div>
-          ${estMultiArm()?`<div class="field"><label>Setor que vende este prato <span class="hint">a baixa por venda sai deste estoque</span></label><select class="input" id="f_armvenda"><option value="">Padrão (${esc(estArmNome(estCfg().armVendas))})</option>${setoresSemPrincipal().map(a=>`<option value="${a.id}" ${f.armVenda===a.id?'selected':''}>${esc(a.nome)}</option>`).join('')}</select></div>`:''}
+          ${estMultiArm()?`<div class="field"><label>Estoque de saída <span class="hint">de onde os insumos saem quando o item é vendido</span></label><select class="input" id="f_armvenda"><option value="">${estCfg().vendasNuncaPrincipal?'Sem estoque de saída (fica como pendência na baixa)':'Padrão ('+esc(estArmNome(estCfg().armVendas))+')'}</option>${setoresSemPrincipal().map(a=>`<option value="${a.id}" ${f.armVenda===a.id?'selected':''}>${esc(a.nome)}</option>`).join('')}</select></div>`:''}
           <div class="fx-g2">
             <div class="field"><label>Rendimento</label><div style="display:flex;gap:6px"><input class="input" id="f_rend" type="number" step="0.001" value="${f.rendGramas||''}" placeholder="0" style="flex:1"><select class="input" id="f_renduni" style="flex:0 0 78px">${UNIDADES.map(u=>`<option value="${u}" ${(f.rendUni||'g')===u?'selected':''}>${uSym(u)}</option>`).join('')}</select></div></div>
             <div class="field"><label>Custo embalagem</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="f_emb" inputmode="numeric" value="${fmtMoneyInput(f.custoEmbalagem||0)}" oninput="moneyMask(this);recalcFicha()"></div></div>
@@ -4285,7 +4305,8 @@ function lmProdutoCel(r,i){const ins=r.insumoId&&DB.insumos[r.insumoId];
   if(ins){const qi=lmQtdNaUnidade(r,ins);const emb=insEmb(ins);const ru=r.uni||'';
     if(qi==null&&+r.qtd>0)return `<button title="A nota veio em '${esc(ru||'?')}' e o produto é em ${uSym(ins.uni)}. Clique para dizer quanto cada embalagem contém (padrão de compra)." style="display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;color:var(--amber);border:1px solid var(--amber);background:var(--amber-bg);border-radius:9px;padding:7px 8px;width:100%;text-align:left" onclick="lmPadraoCompraModal(${i})"><span style="flex:0 0 auto">⚠</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)} · ${esc(ru)} ≠ ${uSym(ins.uni)}</span></button>`;
     const conv=(qi!=null&&(emb||(ru&&ru!==ins.uni)))?` = ${fmtN(qi,qi%1?2:0)} ${uSym(ins.uni)}`:'';
-    return `<div title="Vinculado ao produto: ${esc(ins.nome)}${emb?' · comprado em '+esc(emb.nome)+' com '+emb.qtd+' '+uSym(ins.uni):''}${conv}" style="display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;color:var(--green);background:var(--green-bg);border-radius:9px;padding:7px 8px"><span style="flex:0 0 auto">✓</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)}${conv?`<span style="color:var(--muted)">${conv}</span>`:''}</span><button title="Desvincular" onclick="lmDesvincular(${i})" style="flex:0 0 auto;margin-left:auto;color:var(--soft);font-size:14px;line-height:1">×</button></div>`;}
+    const entra=estMultiArm()?estArmEntradaDe(ins):'';
+    return `<div title="Vinculado ao produto: ${esc(ins.nome)}${emb?' · comprado em '+esc(emb.nome)+' com '+emb.qtd+' '+uSym(ins.uni):''}${conv}${entra?' · entra em '+esc(estArmNome(entra)):''}" style="display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;color:var(--green);background:var(--green-bg);border-radius:9px;padding:7px 8px"><span style="flex:0 0 auto">✓</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)}${conv?`<span style="color:var(--muted)">${conv}</span>`:''}${entra&&entra!==EST_ARM_PRINCIPAL?`<span style="color:var(--navy);font-weight:600"> → ${esc(estArmNome(entra))}</span>`:''}</span><button title="Desvincular" onclick="lmDesvincular(${i})" style="flex:0 0 auto;margin-left:auto;color:var(--soft);font-size:14px;line-height:1">×</button></div>`;}
   if(!r.fromIA)return `<button class="btn btn-ghost btn-sm" title="Vincular a um produto do catálogo (opcional)" style="min-width:0;color:var(--soft);padding:7px 8px;font-size:11.5px;white-space:nowrap" onclick="lmVincularModal(${i})">＋ produto</button>`;
   const sug=r.insSugerido&&DB.insumos[r.insSugerido];
   if(sug)return `<button class="btn btn-ghost btn-sm" title="Existe '${esc(sug.nome)}', mas de outro fornecedor. Clique para vincular ou cadastrar novo." style="min-width:0;color:var(--amber);border-color:var(--amber);background:var(--amber-bg);padding:7px 8px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="lmVincularModal(${i})">⚠ outro fornec.</button>`;
@@ -6690,8 +6711,9 @@ function viewEstoque(){
   if(estoqueTab==='contagem'){
     const cats=['Todos',...new Set(items.map(x=>x.cat))];
     if(!cats.includes(estoqueFiltro))estoqueFiltro='Todos';
+    const selArmF=(estMultiArm()&&souDoPrincipal())?`<select class="input" style="max-width:200px" title="Mostrar só os produtos liberados para um estoque" onchange="estoqueArmF=this.value;viewEstoque()"><option value="">Todos os estoques</option>${setoresSemPrincipal().map(a=>`<option value="${esc(a.id)}" ${estoqueArmF===a.id?'selected':''}>Só ${esc(a.nome)}</option>`).join('')}</select>`:'';
     const base0=estoqueCmvF==='cmv'?itCMV:estoqueCmvF==='fora'?itFora:items;
-    const base=souDoPrincipal()?base0:base0.filter(x=>armazensPermitidos().some(a=>prodNoSetor(x.ins,a.id)));   // chefe de setor: só os produtos das categorias do setor dele
+    const base=souDoPrincipal()?(estoqueArmF&&estArm(estoqueArmF)?base0.filter(x=>prodNoSetor(x.ins,estoqueArmF)):base0):base0.filter(x=>armazensPermitidos().some(a=>prodNoSetor(x.ins,a.id)));   // chefe de setor: só os produtos das categorias do setor dele; admin pode filtrar por um estoque
     const filt=applySort('estoque',estoqueFiltro==='Todos'?base:base.filter(x=>x.cat===estoqueFiltro));
     $('#view').innerHTML=`
     ${estTabsHTML()}
@@ -6727,19 +6749,27 @@ function viewEstoque(){
   }
 
   // ===== LISTA DE COMPRAS =====
-  const byForn={};comprarList.forEach(x=>{(byForn[x.fornecedor]=byForn[x.fornecedor]||[]).push(x);});
-  const forns=Object.keys(byForn).sort();
+  const AG=LC_AGRUP[LC.agrup]||LC_AGRUP.fornecedor;const chaves=[...new Set(comprarList.map(AG.de))].sort((a,b)=>a.localeCompare(b,'pt'));
+  LC.sel=(LC.sel||[]).filter(k=>chaves.includes(k));const filtrada=LC.sel.length?comprarList.filter(x=>LC.sel.includes(AG.de(x))):comprarList;
+  const byForn={};filtrada.forEach(x=>{const k=AG.de(x);(byForn[k]=byForn[k]||[]).push(x);});
+  const forns=Object.keys(byForn).sort((a,b)=>a.localeCompare(b,'pt'));const totalFiltro=filtrada.reduce((s,x)=>s+x.totalPrevisto,0);
   const hoje=new Date().toLocaleDateString('pt-BR');
   $('#view').innerHTML=`
   ${estTabsHTML()}
   <div class="print-only" style="margin-bottom:14px">
     <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700">Lista de Compras</div>
-    <div style="font-size:13px;color:#555">${(DB.conta&&DB.conta.restaurante)||'Restaurante'} · ${hoje}</div>
+    <div style="font-size:13px;color:#555">${(DB.conta&&DB.conta.restaurante)||'Restaurante'} · ${hoje} · por ${AG.rot}${LC.sel.length?' · '+LC.sel.map(esc).join(', '):''}</div>
   </div>
   ${comprarList.length===0?`<div class="card">${emptyState('Nada a comprar','Todos os insumos estão no nível mínimo ou acima. Faça a contagem para atualizar.','estoqueTab=&#39;contagem&#39;;viewEstoque()')}</div>`:`
-  <div class="card card-pad no-print" style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-    <div><div class="ttl">${comprarList.length} item(ns) para comprar</div><div class="desc">Agrupados por fornecedor · ajuste a "Qtd a pedir" se quiser comprar em embalagem/múltiplo</div></div>
-    <div style="font-size:20px;font-weight:700;font-family:'Fraunces',serif">Total: ${fmtBRL(totalCompras)}</div>
+  <div class="card card-pad no-print" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div><div class="ttl">${filtrada.length}${LC.sel.length?' de '+comprarList.length:''} item(ns) para comprar</div><div class="desc">Escolha como agrupar e, se quiser, só os ${AG.rot==='fornecedor'?'fornecedores':'categorias'} desta compra. A impressão sai do mesmo jeito.</div></div>
+      <div style="font-size:20px;font-weight:700;font-family:'Fraunces',serif">Total: ${fmtBRL(totalFiltro)}</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
+      <div class="pill-filter" style="margin:0">${Object.entries(LC_AGRUP).map(([k,v])=>`<button class="${LC.agrup===k?'on':''}" onclick="lcSet('agrup','${k}')">Por ${v.rot}</button>`).join('')}</div>
+      <span class="gp-mini">puxar só:</span>${chaves.map(c=>`<button type="button" class="tag ${LC.sel.includes(c)?'tag-navy':'tag-gray'}" style="cursor:pointer;border:0;font-size:11px;padding:3px 9px" onclick="lcToggle(${JSON.stringify(c).replace(/"/g,'&quot;')})">${esc(c)}</button>`).join('')}${LC.sel.length?`<a class="gp-link" style="font-size:12px" onclick="LC.sel=[];lcSet('sel',[])">limpar</a>`:'<span class="gp-mini">(nenhum marcado = tudo)</span>'}
+    </div>
   </div>
   ${forns.map(fn=>{const arr=byForn[fn];const sub=arr.reduce((s,x)=>s+x.totalPrevisto,0);return`
     <div class="card" style="margin-bottom:16px">
@@ -6755,7 +6785,7 @@ function viewEstoque(){
           </tr>`).join('')}</tbody>
       </table></div>
     </div>`;}).join('')}
-  <div class="card card-pad" style="display:flex;justify-content:space-between;align-items:center"><div class="ttl">Total geral da compra</div><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:var(--navy)">${fmtBRL(totalCompras)}</div></div>`}`;
+  <div class="card card-pad" style="display:flex;justify-content:space-between;align-items:center"><div class="ttl">Total ${LC.sel.length?'desta compra':'geral da compra'}</div><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:var(--navy)">${fmtBRL(totalFiltro)}</div></div>`}`;
 }
 
 /* ===================== ESTOQUE · ENTRADAS E SAÍDAS (kardex) =====================
@@ -6788,12 +6818,23 @@ function estMultiArm(){return estArmazens().length>1;}
 /* Categoria (grupo › subcategoria do produto) liberada em quais setores. Sem vínculo = em todos. Produto pode ter exceção própria (ins.setores). */
 function catSetoresMap(){DB.fin=DB.fin||{};if(!DB.fin.catSetores||typeof DB.fin.catSetores!=='object')DB.fin.catSetores={};return DB.fin.catSetores;}
 function catSetorKey(grupo,sub){return (grupo||'CMV')+'|'+(sub||'');}
+/* estoque de entrada por subcategoria (ex.: Vinhos entram direto na Adega). Padrão: armazém de entrada dos parâmetros. */
+function catEntradaMap(){DB.fin=DB.fin||{};if(!DB.fin.catEntrada||typeof DB.fin.catEntrada!=='object')DB.fin.catEntrada={};return DB.fin.catEntrada;}
+function catEntradaDe(grupo,sub){const a=catEntradaMap()[catSetorKey(grupo,sub)];return (a&&estArm(a))?a:'';}
+function catEntradaSet(grupo,sub,arm){const m=catEntradaMap();const k=catSetorKey(grupo,sub);if(arm&&estArm(arm)&&arm!==EST_ARM_PRINCIPAL)m[k]=arm;else delete m[k];save();toast(sub+': entra em '+estArmNome(arm||EST_ARM_PRINCIPAL));}
+function estArmEntradaDe(ins){if(!ins)return estCfg().armEntrada;return estArmValido((ins.armPadrao)||catEntradaDe(ins.grupo||'CMV',ins.sub||ins.cat||'')||estCfg().armEntrada);}
 function catSetoresDe(grupo,sub){const l=catSetoresMap()[catSetorKey(grupo,sub)];return Array.isArray(l)?l.filter(id=>estArm(id)):[];}
-function catSetorToggle(grupo,sub,arm){const m=catSetoresMap();const k=catSetorKey(grupo,sub);let l=Array.isArray(m[k])?m[k].slice():[];l=l.includes(arm)?l.filter(x=>x!==arm):l.concat([arm]);if(l.length)m[k]=l;else delete m[k];save();}
+function catSetorToggle(grupo,sub,arm){const m=catSetoresMap();const k=catSetorKey(grupo,sub);let l=Array.isArray(m[k])?m[k].slice():[];const tira=l.includes(arm);l=tira?l.filter(x=>x!==arm):l.concat([arm]);if(l.length)m[k]=l;else delete m[k];save();toast((tira?'Tirado de ':'Liberado em ')+estArmNome(arm)+': '+sub+' · '+nProdutosDaSub(grupo,sub)+' produto(s)');}
+/* Regra (reunião 14/10): a categoria define o padrão; o produto com "Disponível nos setores" preenchido sobrepõe.
+   Setor CONFIGURADO (tem ao menos uma subcategoria vinculada a ele) mostra só o que está vinculado a ele.
+   Setor sem nenhum vínculo mostra tudo o que não foi vinculado a outro setor (não quebra quem não configurou). O principal vê tudo. */
+function setorConfigurado(arm){const m=catSetoresMap();for(const k in m){const l=m[k];if(Array.isArray(l)&&l.includes(arm))return true;}return false;}
 function prodNoSetor(ins,arm){if(!ins||!arm||arm===EST_ARM_PRINCIPAL||!estMultiArm())return true;
-  if(Array.isArray(ins.setores)&&ins.setores.length)return ins.setores.includes(arm);
+  if(Array.isArray(ins.setores)&&ins.setores.length)return ins.setores.includes(arm);   // exceção do produto
   if(ins.tipo==='preparado'&&ins.estocavel)return true;   // subproduto produzido na casa: pode ser requisitado e devolvido por qualquer setor
-  const l=catSetoresDe(ins.grupo||'CMV',ins.sub||ins.cat||'');return !l.length||l.includes(arm);}
+  const l=catSetoresDe(ins.grupo||'CMV',ins.sub||ins.cat||'');if(l.length)return l.includes(arm);return !setorConfigurado(arm);}
+function podeEditarSetoresProduto(){return !MEMBRO_PERMS||MEMBRO_NIVEL==='admin'||MEMBRO_NIVEL==='gerente';}
+function nProdutosDaSub(grupo,sub){return Object.values(DB.insumos).filter(i=>(i.grupo||'CMV')===(grupo||'CMV')&&(i.sub||i.cat||'')===sub).length;}
 function setoresSemPrincipal(){return estArmazens().filter(a=>a.id!==EST_ARM_PRINCIPAL);}
 function estProdDatalistSetor(id,arm){return `<datalist id="${id}">${Object.values(DB.insumos).filter(i=>estEstocavel(i)&&prodNoSetor(i,arm)).sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>`<option value="${esc(i.nome)}"></option>`).join('')}</datalist>`;}
 function estArmValido(id){return estArm(id)?id:EST_ARM_PRINCIPAL;}
@@ -6811,7 +6852,7 @@ function estR(v,d){const p=Math.pow(10,d==null?3:d);return Math.round((+v||0)*p)
 function estMov(tipo,insumoId,q,opts){opts=opts||{};const ins=DB.insumos[insumoId];if(!ins||!estEstocavel(ins))return null;
   const T=EST_TIPOS[tipo];if(!T)return null;const comSinal=(tipo==='ajuste'||tipo==='transf'||tipo==='producao');let delta=comSinal?(+opts.delta||0):(Math.abs(+q||0)*T[2]);
   if(!delta)return null;
-  const cfg=estCfg();const arm=estArmValido(opts.arm||(tipo==='entrada'?(ins.armPadrao||cfg.armEntrada):tipo==='venda'?cfg.armVendas:EST_ARM_PRINCIPAL));
+  const cfg=estCfg();const arm=estArmValido(opts.arm||(tipo==='entrada'?estArmEntradaDe(ins):tipo==='venda'?cfg.armVendas:EST_ARM_PRINCIPAL));
   const antes=+ins.estoqueAtual||0;let custo=(+opts.custo>0)?+opts.custo:estCustoAtual(ins);
   if((tipo==='entrada'||(tipo==='producao'&&delta>0)||(tipo==='transf'&&opts.cmpEntrada))&&delta>0){const base=Math.max(0,antes);const cmpAntes=estCustoAtual(ins);ins.cmp=estR((base*cmpAntes+delta*custo)/(base+delta),4);}   // custo médio ponderado
   estAplicaSaldo(ins,arm,delta);
@@ -7066,7 +7107,7 @@ function estMovDel(id){const arr=estMovs();const i=arr.findIndex(m=>m.id===id);i
 /* ----- Movimentação manual: vários produtos de uma vez (saída, entrada, perda, ajuste) ----- */
 let estMovDraft=null, estMovBulkQ='';
 const EST_MOV_TIPOS=[['saida','− Saída'],['entrada','+ Entrada'],['perda','Perda'],['ajuste','± Ajuste']];
-function estMovArmDef(tipo,ins){const cfg=estCfg();return tipo==='entrada'?((ins&&ins.armPadrao)||cfg.armEntrada):tipo==='ajuste'?EST_ARM_PRINCIPAL:cfg.armVendas;}
+function estMovArmDef(tipo,ins){const cfg=estCfg();return tipo==='entrada'?estArmEntradaDe(ins):tipo==='ajuste'?EST_ARM_PRINCIPAL:cfg.armVendas;}
 function estMovModal(tipo,insId,manter){tipo=tipo||'saida';const multi=estMultiArm();
   if(manter&&estMovDraft){estMovLer();estMovDraft.tipo=tipo;if(!estMovDraft.armManual)estMovDraft.arm='';estMovDraft.motivo='';}
   else{estMovDraft={tipo,data:hojeISO(),arm:'',armManual:false,obs:'',motivo:'',itens:[]};estMovBulkQ='';}
@@ -7546,12 +7587,12 @@ function estReqCopiarUltima(id){const r=estRequisicoes().find(x=>x.id===id);if(!
 function estReqGerar(id){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;if(!(r.pratos||[]).length)return toast('Informe a previsão de ao menos um prato');
   const acc={};r.pratos.forEach(([fid,q])=>{const f=DB.fichas[fid];if(f&&q>0)estExplodir(f,q,acc);});
   const antigos={};(r.itens||[]).forEach(x=>{antigos[x.insumoId]=x;});const itens=[];
-  Object.entries(acc).forEach(([insumoId,nec])=>{const ins=DB.insumos[insumoId];if(!ins)return;const tem=Math.max(0,estSaldoArm(ins,r.para));
+  let foraSetor=0;Object.entries(acc).forEach(([insumoId,nec])=>{const ins=DB.insumos[insumoId];if(!ins)return;if(!prodNoSetor(ins,r.para)){foraSetor++;return;}const tem=Math.max(0,estSaldoArm(ins,r.para));
     // ponto de reposição: só pede quando o que fica na cozinha depois do uso cai abaixo do mínimo cadastrado
     const falta=Math.max(0,estR(nec+(+ins.reqMin||0)-tem,3));const sug=estReqArredonda(falta,ins);const a=antigos[insumoId];
     itens.push({insumoId,nec:estR(nec,3),tem:estR(tem,3),qtd:(a&&a.manual)?a.qtd:sug,manual:!!(a&&a.manual)});});
   (r.itens||[]).forEach(x=>{if(x.avulso&&!acc[x.insumoId])itens.push(x);});
-  r.itens=itens;save();viewEstoque();toast(itens.filter(x=>x.qtd>0).length+' item(ns) para separar');}
+  r.itens=itens;save();viewEstoque();toast(itens.filter(x=>x.qtd>0).length+' item(ns) para separar'+(foraSetor?' · '+foraSetor+' ignorado(s) por não estarem liberados para '+estArmNome(r.para):''),foraSetor?5000:3000);}
 function estReqQtd(id,insumoId,v){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;const it=(r.itens||[]).find(x=>x.insumoId===insumoId);if(!it)return;it.qtd=parseFloat(v)||0;it.manual=true;save();}
 function estReqRemItem(id,insumoId){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;r.itens=(r.itens||[]).filter(x=>x.insumoId!==insumoId);save();viewEstoque();}
 function estReqAddItem(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)return;
@@ -7623,7 +7664,7 @@ function estVendasHTML(){pdvProcessarPendentes(false);const bs=estBaixas().slice
   return `${estTabsHTML()}${pend.length?`<div class="card card-pad" style="margin-bottom:16px;border-left:4px solid var(--amber)"><div class="ttl" style="margin-bottom:4px">Itens do ${esc(pdv)} sem ficha técnica vinculada</div><div class="desc" style="margin-bottom:8px">Vieram pela integração mas o Flow não sabe qual prato são. Vincule uma vez e as próximas vendas entram sozinhas.</div>
     ${pend.map((v,vi)=>(v.itens||[]).map((it,ii)=>`<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);flex-wrap:wrap"><div style="flex:1 1 200px;min-width:0"><b>${esc(it.nome||it.codigo||'?')}</b>${it.codigo&&it.nome?` <span class="gp-mini">${esc(it.codigo)}</span>`:''}<div class="gp-mini">${fmtDataBR(v.data||'')} · ${fmtN(+it.qtd||0)} vendido(s)${it.semSetor?' · <b style="color:var(--red)">ficha sem setor de venda</b>':''}</div></div><select class="input" style="flex:1 1 220px;padding:6px 8px;font-size:13px" onchange="pdvVincularPendente(${vi},${ii},this.value)"><option value="">Vincular a…</option>${fichas.map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('')}<option value="__ignorar__">Ignorar este item</option></select></div>`).join('')).join('')}</div>`:''}
   <div class="card card-pad" style="margin-bottom:16px">
-    ${(function(){const ss=fichasSemSetorVenda();return ss.length?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${ss.length} prato(s) sem setor de venda</b> e as vendas não saem do principal. Abra a ficha e escolha o setor: ${ss.slice(0,6).map(f=>`<a onclick="editFicha('${f.id}')" style="color:var(--navy);cursor:pointer;font-weight:600">${esc(f.nome)}</a>`).join(', ')}${ss.length>6?' e mais '+(ss.length-6):''}.</div></div>`:'';})()}
+    ${(function(){const ss=fichasSemSetorVenda();return ss.length?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${ss.length} prato(s) sem setor de venda</b> e as vendas não saem do principal. Abra a ficha e escolha o setor: ${ss.slice(0,6).map(f=>`<a onclick="editFicha('${f.id}')" style="color:var(--navy);cursor:pointer;font-weight:600">${esc(f.nome)}</a>`).join(', ')}${ss.length>6?' e mais '+(ss.length-6):''}. <a onclick="fichasArmLoteModal()" style="color:var(--navy);cursor:pointer;font-weight:700">Definir em lote</a></div></div>`:'';})()}
     <div class="section-head"><div><div class="ttl">Baixa por vendas</div><div class="desc">Informe quantos pratos vendeu e a ficha técnica dá baixa nos ingredientes${estMultiArm()?' no <b>setor que vende cada prato</b> (padrão: '+esc(estArmNome(cfg.armVendas))+')':''} (subprodutos saem como porcionado; preparados descem até o bruto).</div></div>
       ${(DB.fin&&DB.fin.pdvTipo==='suitable'&&typeof sb!=='undefined'&&sb&&CLOUD)?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="suitableSync()">⟳ Sincronizar Suitable</button></div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Planilha exportada do PDV: colunas com código ou nome do prato e a quantidade vendida (CSV, ; ou tabulação)">⬆ Relatório do ${esc(pdv)} (CSV)<input type="file" accept=".csv,.txt,.tsv" style="display:none" onchange="estVendasCSV(this)"></label></div></div>
@@ -7664,7 +7705,7 @@ function emptyState(t,d,action){return `<div class="empty"><svg viewBox="0 0 24 
 /* ===================== SAAS: AUTH + NUVEM + ADMIN ===================== */
 const SUPA_URL='https://fvcbxorfstqqeewocxkf.supabase.co', SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2J4b3Jmc3RxcWVld29jeGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzM5MjgsImV4cCI6MjA5Njg0OTkyOH0.X9gnZt535F1ASHpUaL24eEZysHHECwzfBwjaR4kVnyw';
 const sb=(window.supabase&&SUPA_URL.indexOf('http')===0)?window.supabase.createClient(SUPA_URL,SUPA_ANON):null;
-let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false, MEMBRO_PERMS=null, MEMBRO_SUB=null, MEMBRO_SETORES=null, MEMBRO_NOME='';
+let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false, MEMBRO_PERMS=null, MEMBRO_SUB=null, MEMBRO_SETORES=null, MEMBRO_NOME='', MEMBRO_NIVEL='';
 /* pode('contagem') etc.: admin/dono = sempre; membro sem `sub` gravado = tudo dentro das áreas dele */
 function pode(k){if(!MEMBRO_PERMS)return true;if(MEMBRO_SUB&&Object.prototype.hasOwnProperty.call(MEMBRO_SUB,k))return !!MEMBRO_SUB[k];return true;}
 function meusSetores(){if(!MEMBRO_PERMS||!MEMBRO_SETORES)return null;if(typeof estMultiArm==='function'&&!estMultiArm())return null;return MEMBRO_SETORES;} // null = todos (admin da Equipe, dono, ou cliente com um armazém só)
@@ -7908,7 +7949,7 @@ async function entrarComoCliente(orgId,email){
   CLOUD=true;ADMIN_MODE=false;hideAdmin();
   // O ADMINISTRADOR da conta tem SEMPRE acesso total a todos os módulos, mesmo que o e-mail dele também esteja na Equipe.
   // Admin = e-mail cadastrado em Configurações (conta.email); se ainda não houver, quem NÃO está na Equipe é o dono.
-  MEMBRO_PERMS=null;MEMBRO_SUB=null;MEMBRO_SETORES=null;MEMBRO_NOME='';
+  MEMBRO_PERMS=null;MEMBRO_SUB=null;MEMBRO_SETORES=null;MEMBRO_NOME='';MEMBRO_NIVEL='';
   DB.conta=DB.conta||{};
   const emailLogin=(email||'').trim().toLowerCase();
   const donoEmail=(DB.conta.email||'').trim().toLowerCase();
@@ -7920,7 +7961,7 @@ async function entrarComoCliente(orgId,email){
     MEMBRO_PERMS=(naEquipe.permissoes||[]).slice();normMembro(naEquipe);
     const ehAdminEquipe=naEquipe.nivel==='admin';
     MEMBRO_SUB=(!ehAdminEquipe&&naEquipe.sub&&typeof naEquipe.sub==='object')?Object.assign({},naEquipe.sub):null;
-    MEMBRO_SETORES=ehAdminEquipe?null:(naEquipe.setores||[]).slice();MEMBRO_NOME=naEquipe.nome||emailLogin;
+    MEMBRO_SETORES=ehAdminEquipe?null:(naEquipe.setores||[]).slice();MEMBRO_NOME=naEquipe.nome||emailLogin;MEMBRO_NIVEL=naEquipe.nivel||'';
     if(!MEMBRO_PERMS.length){telaMensagem('Acesso não configurado','Seu acesso ainda não tem áreas liberadas. Fale com o responsável pela conta.');return;}
   }
   bannerCloud();renderFoot();setSaveStatus('saved');iniciarPoll();
@@ -8246,7 +8287,29 @@ function cadastroHTML(o){const c=cadDe(o);
         ${tipo==='textarea'?`<textarea class="input" rows="${k==='socios'?3:3}" placeholder="${esc(ph)}" oninput="cadSet('${o.id}','${k}',this.value)">${esc(c[k]||'')}</textarea>`
         :`<input class="input" ${k==='segmento'?'list="cad_seg_opts"':''} value="${esc(c[k]||'')}" placeholder="${esc(ph)}" oninput="cadSet('${o.id}','${k}',this.value)" onchange="renderAdminList()">`}</div>`;}).join('')}
     <div style="font-size:11.5px;color:var(--soft);margin-top:4px">Salva sozinho ao digitar. O segmento aparece na lista de clientes e serve para buscar (ex.: digite "pizzaria" na busca).</div>
+  </div>
+  <div class="card card-pad" style="max-width:760px;margin-top:14px;border-left:4px solid var(--red)">
+    <div class="ttl" style="margin-bottom:2px">Zona de risco · zerar movimentações de estoque</div>
+    <div class="desc" style="margin-bottom:10px">Para depois de um período de teste da equipe. Apaga contagens, requisições, retornos, transferências, baixas por venda, produções, ajustes e os saldos gerados por eles até a data de corte. <b>Não apaga</b> produtos, fichas, preparados, categorias e vínculos com estoques, estoques cadastrados, ideal e crítico, usuários, fornecedores, notas e financeiro.</div>
+    <button class="btn btn-ghost" style="color:var(--red);border-color:var(--red)" onclick="adminZerarEstoqueModal('${o.id}')">Zerar movimentações…</button>
   </div>`;}
+const ZERAR_LISTAS=[['estoqueMov','movimentação(ões) do livro','data'],['contagens','contagem(ns)','data'],['requisicoes','requisição(ões)','data'],['retornos','retorno(s) ao principal','data'],['transferencias','transferência(s)','data'],['vendasBaixa','baixa(s) por venda','data'],['producoes','produção(ões)','data'],['vendasPendentes','dia(s) de vendas do PDV pendentes','data']];
+function adminZerarResumo(d,corte){const out=[];ZERAR_LISTAS.forEach(([k,rot,campo])=>{const arr=Array.isArray(d[k])?d[k]:[];const n=arr.filter(x=>x&&((x[campo]||'').slice(0,10)<=corte)).length;if(n)out.push({k,rot,n});});return out;}
+function adminZerarEstoqueModal(orgId,corte){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;corte=corte||hojeISO();const d=o.dados||{};const res=adminZerarResumo(d,corte);const tot=res.reduce((s,x)=>s+x.n,0);
+  modal(`<div class="modal-head"><h3>Zerar movimentações · ${esc(o.nome||'')}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div class="field"><label>Data de corte <span class="hint">apaga tudo até esta data, inclusive</span></label><input type="date" class="input" style="max-width:180px" value="${corte}" onchange="adminZerarEstoqueModal('${orgId}',this.value)"></div>
+    <div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>Vai apagar ${tot} registro(s)</b> até ${fmtDataBR(corte)}:${res.length?'<ul style="margin:4px 0 0 16px;padding:0">'+res.map(x=>`<li>${x.n} ${x.rot}</li>`).join('')+'</ul>':' nada encontrado nesse período.'}<div style="margin-top:6px">Depois disso os saldos de todos os estoques são recalculados só com o que ficou (normalmente zero). Notas lançadas continuam no financeiro, mas a entrada delas no estoque até a data de corte é apagada junto.</div></div></div>
+    <div class="gp-mini">Mantém: produtos, fichas, preparados, categorias e vínculos com setores, estoques, ideal e crítico, equipe, fornecedores, lançamentos financeiros. Não tem desfazer.</div>
+  </div><div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" style="background:var(--red);border-color:var(--red)" ${tot?'':'disabled'} onclick="adminZerarEstoqueExec('${orgId}','${corte}')">Zerar ${tot} registro(s)…</button></div>`);}
+async function adminZerarEstoqueExec(orgId,corte){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const d=o.dados||{};const res=adminZerarResumo(d,corte);const tot=res.reduce((s,x)=>s+x.n,0);if(!tot)return;
+  if(!confirm('1/2 · Apagar '+tot+' registro(s) de estoque de '+(o.nome||'')+' até '+fmtDataBR(corte)+'? Não tem desfazer.'))return;
+  const dig=prompt('2/2 · Para confirmar, digite o nome do cliente exatamente como aparece: '+(o.nome||''));if((dig||'').trim().toLowerCase()!==(o.nome||'').trim().toLowerCase())return toast('Nome não confere. Nada foi apagado.');
+  withDB(d,()=>{ZERAR_LISTAS.forEach(([k,rot,campo])=>{if(Array.isArray(d[k]))d[k]=d[k].filter(x=>!(x&&((x[campo]||'').slice(0,10)<=corte)));});
+    Object.values(d.insumos||{}).forEach(i=>{i.estoquePor={};i.estoqueAtual=0;delete i.critAvisado;});
+    (d.estoqueMov||[]).forEach(m=>{const i=(d.insumos||{})[m.insumoId];if(i)estAplicaSaldo(i,m.arm||EST_ARM_PRINCIPAL,+m.q||0);});
+    Object.values(d.insumos||{}).forEach(i=>{Object.keys(i.estoquePor||{}).forEach(a=>{if(!i.estoquePor[a]&&a!==EST_ARM_PRINCIPAL)delete i.estoquePor[a];});});});
+  closeModal();const ok=await adminSaveKeys(o,ZERAR_LISTAS.map(x=>x[0]).concat(['insumos']));toast(ok?'Movimentações zeradas até '+fmtDataBR(corte)+' · '+tot+' registro(s) apagado(s)':'Erro ao salvar. Confira a conexão e tente de novo.',6000);renderAdminMain();}
 let _cadSaveT=null;
 function cadSet(orgId,campo,valor){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;o.dados=o.dados||{};o.dados._cadastro=o.dados._cadastro||{};o.dados._cadastro[campo]=valor;
   const st=$('#cad_status');if(st){st.textContent='Salvando…';st.style.color='var(--amber)';}
