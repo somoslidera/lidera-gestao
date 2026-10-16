@@ -4604,8 +4604,9 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
     const fornecedores=((DB.fin&&DB.fin.fornecedores)||[]).map(f=>f.nome).filter(Boolean);
     const {status,data}=await chamarFn('ler-nota',{mime,dataB64:b64,categorias,fornecedores});
     if(status!==200||!data||data.error){const det=String((data&&data.detalhe)||'');const err=String((data&&data.error)||'');
-      if(/402/.test(err)||/prepayment credits|credits are depleted/i.test(det))return lmIaStatus('Os créditos do Gemini (IA) acabaram. Peça à Lidera para recarregar em ai.studio/projects. Enquanto isso, lance manualmente.','erro');
-      if(/40[13]/.test(err)||/API key|PERMISSION_DENIED/i.test(det))return lmIaStatus('A chave da IA foi recusada pelo Google. Avise a Lidera. Enquanto isso, lance manualmente.','erro');
+      // códigos internos (o cliente não vê a causa): L-17 = créditos do Gemini esgotados · L-18 = chave da IA recusada
+      if(/402/.test(err)||/prepayment credits|credits are depleted/i.test(det))return lmIaStatus('A leitura automática está temporariamente indisponível (código L-17). Entre em contato com a Lidera. Enquanto isso, lance manualmente.','erro');
+      if(/40[13]/.test(err)||/API key|PERMISSION_DENIED/i.test(det))return lmIaStatus('A leitura automática está temporariamente indisponível (código L-18). Entre em contato com a Lidera. Enquanto isso, lance manualmente.','erro');
       return lmIaStatus('A IA não conseguiu ler a nota'+(err?': '+err:'')+'. Você pode lançar manualmente.','erro');}
     const itens=(data.itens||[]).filter(it=>it&&(it.valor||it.descricao));
     if(!itens.length)return lmIaStatus('Não encontrei itens na nota. Tente uma foto mais nítida ou lance manualmente.','erro');
