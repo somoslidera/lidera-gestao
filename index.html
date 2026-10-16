@@ -4571,7 +4571,7 @@ function lmComprimeImg(file,max,rot,q){max=max||2560;rot=((+rot||0)%360+360)%360
       const dw=Math.max(1,Math.round(w*sc)),dh=Math.max(1,Math.round(h*sc));const vira=rot===90||rot===270;
       const c=document.createElement('canvas');c.width=vira?dh:dw;c.height=vira?dw:dh;const ctx=c.getContext('2d');
       ctx.translate(c.width/2,c.height/2);ctx.rotate(rot*Math.PI/180);ctx.drawImage(img,-dw/2,-dh/2,dw,dh);
-      URL.revokeObjectURL(url);try{res({mime:'image/jpeg',b64:c.toDataURL('image/jpeg',q).split(',')[1]});}catch(e){res(null);}};
+      URL.revokeObjectURL(url);try{res({mime:'image/jpeg',b64:c.toDataURL('image/jpeg',q).split(',')[1],w,h});}catch(e){res(null);}};
     img.onerror=()=>{URL.revokeObjectURL(url);res(null);};img.src=url;});}
 function lmNorm(s){return (''+(s==null?'':s)).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim();}
 function lmFuzzyFind(list,nome){const alvo=lmNorm(nome);if(!alvo)return '';let hit=list.find(x=>lmNorm(x)===alvo);if(hit)return hit;hit=list.find(x=>{const n=lmNorm(x);return n&&(n.includes(alvo)||alvo.includes(n));});return hit||'';}
@@ -4594,15 +4594,17 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
     if(mime.indexOf('image/')===0){
       // foto de lado derruba a precisão: uma consulta rápida numa miniatura diz para que lado girar
       let rot=0;const th=await lmComprimeImg(file,768,0,.8);
-      if(th){lmLoading(true,'Ajustando a foto…');try{const o=await chamarFn('ler-nota',{mime:th.mime,dataB64:th.b64,modo:'orientacao'});if(o.status===200&&o.data&&[90,180,270].includes(+o.data.rotacao))rot=+o.data.rotacao;}catch(e){}}
+      if(th){lmLoading(true,'Ajustando a foto…');try{const o=await chamarFn('ler-nota',{mime:th.mime,dataB64:th.b64,modo:'orientacao',orgId:(typeof ORG!=='undefined'&&ORG)?ORG.id:''});if(o.status===200&&o.data&&[90,180,270].includes(+o.data.rotacao))rot=+o.data.rotacao;}catch(e){}}
       lmLoading(true,'Lendo a nota com a IA… notas grandes podem levar até 1 minuto.');
-      const c=await lmComprimeImg(file,2560,rot,.9);if(c){mime=c.mime;b64=c.b64;}else{b64=await lmFileToB64(file);}}
+      // cupom fiscal (tira comprida) não precisa de 2.560 px; DANFE A4 continua grande para os algarismos não virarem borrão
+      const cupom=th&&th.w&&th.h&&(Math.max(th.w,th.h)/Math.min(th.w,th.h)>=1.7);
+      const c=await lmComprimeImg(file,cupom?2048:2560,rot,.9);if(c){mime=c.mime;b64=c.b64;}else{b64=await lmFileToB64(file);}}
     else{b64=await lmFileToB64(file);}
     if(!b64)return lmIaStatus('Não consegui ler o arquivo. Tente outra foto.','erro');
     if(typeof normData==='function')normData();
     const categorias=Object.keys(DB.categorias||{}).map(k=>({nome:k,tipo:(DB.categorias[k].tipo||'despesa'),subs:(DB.categorias[k].subs||[])}));
     const fornecedores=((DB.fin&&DB.fin.fornecedores)||[]).map(f=>f.nome).filter(Boolean);
-    const {status,data}=await chamarFn('ler-nota',{mime,dataB64:b64,categorias,fornecedores});
+    const {status,data}=await chamarFn('ler-nota',{mime,dataB64:b64,categorias,fornecedores,orgId:(typeof ORG!=='undefined'&&ORG)?ORG.id:''});
     if(status!==200||!data||data.error){const det=String((data&&data.detalhe)||'');const err=String((data&&data.error)||'');
       // códigos internos (o cliente não vê a causa): L-17 = créditos do Gemini esgotados · L-18 = chave da IA recusada
       if(/402/.test(err)||/prepayment credits|credits are depleted/i.test(det))return lmIaStatus('A leitura automática está temporariamente indisponível (código L-17). Entre em contato com a Lidera. Enquanto isso, lance manualmente.','erro');
@@ -8228,7 +8230,21 @@ function renderAdminMain(){const el=$('#admin_main');if(!el)return;
      <div class="pill-filter" style="margin:14px 0 0">${tabs.map(([v,l])=>`<button class="${adminProjTab===v?'on':''}" onclick="adminProjTab='${v}';renderAdminMain()">${l}</button>`).join('')}</div>
    </div>
    <div style="margin-top:12px">${adminProjTab==='projeto'?projetoHTML(o):adminProjTab==='tarefas'?tarefasClienteHTML(o):adminProjTab==='reunioes'?reunioesHTML(o):adminProjTab==='cadastro'?cadastroHTML(o):grp?grupoUnidadesHTML(o):dadosHTML(o,k,nm,arq)}</div>`;
+  setTimeout(iaUsoCarregar,0);
 }
+/* Leitor de notas: consumo de IA do cliente (tabela ia_uso, gravada pela Edge Function ler-nota) */
+async function iaUsoCarregar(){const box=document.getElementById('ia_uso_box');if(!box||!sb||!box.dataset.org)return;const orgId=box.dataset.org;
+  try{const de=diasSoma(hojeISO(),-30);const {data,error}=await sb.from('ia_uso').select('criado_em,modo,chamadas,entrada,saida,raciocinio,custo_est,revisada,ok,email').eq('org_id',orgId).gte('criado_em',de+'T00:00:00').order('criado_em',{ascending:false}).limit(2000);
+    if(error||!data||!data.length){box.innerHTML='';return;}
+    const notas=data.filter(x=>x.modo==='nota');const custo=data.reduce((s,x)=>s+(+x.custo_est||0),0);const hoje=hojeISO();const dHoje=data.filter(x=>(x.criado_em||'').slice(0,10)===hoje);
+    const custoHoje=dHoje.reduce((s,x)=>s+(+x.custo_est||0),0);const rev=notas.filter(x=>x.revisada).length;const tok=data.reduce((s,x)=>s+(+x.entrada||0)+(+x.saida||0)+(+x.raciocinio||0),0);
+    const porDia={};data.forEach(x=>{const d=(x.criado_em||'').slice(0,10);porDia[d]=porDia[d]||{n:0,c:0};if(x.modo==='nota')porDia[d].n++;porDia[d].c+=(+x.custo_est||0);});
+    const dias=Object.entries(porDia).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,7);
+    const quem={};notas.forEach(x=>{const e=x.email||'?';quem[e]=(quem[e]||0)+1;});const topQuem=Object.entries(quem).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    box.innerHTML=`<div class="card card-pad" style="margin-bottom:14px"><div class="section-head" style="margin-bottom:6px"><div><div class="ttl">Leitor de notas (IA) · últimos 30 dias</div><div class="desc">Custo estimado pelo consumo de tokens do Gemini. Só a Lidera vê.</div></div></div>
+      <div class="kpi-grid kpi5" style="margin-bottom:8px"><div class="kpi"><div class="k-lbl">Notas lidas</div><div class="k-val">${notas.length}</div><div class="k-sub">${rev} precisaram de releitura</div></div><div class="kpi"><div class="k-lbl">Custo 30 dias</div><div class="k-val">${fmtBRL(custo)}</div><div class="k-sub">${notas.length?fmtBRL(custo/notas.length)+' por nota':''}</div></div><div class="kpi"><div class="k-lbl">Hoje</div><div class="k-val">${fmtBRL(custoHoje)}</div><div class="k-sub">${dHoje.filter(x=>x.modo==='nota').length} nota(s)</div></div><div class="kpi"><div class="k-lbl">Tokens</div><div class="k-val">${fmtN(Math.round(tok/1000))}k</div><div class="k-sub">entrada + saída + raciocínio</div></div><div class="kpi"><div class="k-lbl">Quem mais lança</div><div class="k-val" style="font-size:13px">${topQuem.map(([e,n])=>esc(e.split('@')[0])+' '+n).join('<br>')||'—'}</div></div></div>
+      <div class="gp-mini">Últimos dias: ${dias.map(([d,v])=>fmtDataBR(d).slice(0,5)+' '+v.n+' nota(s) '+fmtBRL(v.c)).join(' · ')}</div></div>`;
+  }catch(e){box.innerHTML='';}}
 function gpResumoClienteHTML(o,i){i=i||gpInfo(o);const h=hojeISO();const t=i.prox;const atras=t&&t.prazo&&t.prazo<h;
   const fact=(k,v,s,cor)=>`<div class="gp-fact"><div class="k">${k}</div><div class="v" style="${cor?'color:'+cor:''}" title="${esc(v.replace(/<[^>]+>/g,''))}">${v}</div>${s?`<div class="s">${s}</div>`:''}</div>`;
   const corU=!i.ultR?'var(--amber)':i.diasSem>GP_DIAS_CRITICO?'var(--red)':i.diasSem>GP_DIAS_ATENCAO?'var(--amber)':'';
@@ -8346,7 +8362,7 @@ async function cadSaveOrg(o){if(!o)return;const st=$('#cad_status');
     const r=await sb.from('organizacoes').update({dados}).eq('id',o.id);if(r&&r.error)throw r.error;
     Object.assign(o.dados,dados);if(st){st.textContent='Salvo ✓';st.style.color='var(--green)';}}
   catch(e){if(st){st.textContent='Erro ao salvar';st.style.color='var(--red)';}toast('Erro ao salvar o cadastro');}}
-function dadosHTML(o,k,nm,arq){return `<div class="card card-pad">
+function dadosHTML(o,k,nm,arq){return `<div id="ia_uso_box" data-org="${o.id}"></div><div class="card card-pad">
   <div class="kpi-grid" style="margin:0 0 14px">
    <div class="kpi"><div class="k-lbl">Faturamento</div><div class="k-val" style="font-size:20px">${fmtBRL(k.fat)}</div></div>
    <div class="kpi"><div class="k-lbl">CMV</div><div class="k-val" style="font-size:20px">${k.real!=null?fmtPct(k.real):fmtPct(k.cmv)}</div></div>
