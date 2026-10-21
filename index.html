@@ -211,6 +211,11 @@ th.num{text-align:right}
 body.dark .bell,body.dark .bell-pop{background:#0E1626}body.dark .bell-pop .bi.nova{background:#141f36}
 .pill-filter.tabs{row-gap:8px}
 /* folha de pagamento: a coluna do funcionário fica fixa ao rolar de lado */
+/* conciliação bancária */
+.conc-head,.conc-row{display:grid;grid-template-columns:78px minmax(0,1.3fr) 104px minmax(150px,1fr) auto;gap:10px;align-items:center}
+.conc-head{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 10px 6px}
+.conc-row{padding:9px 10px;border-top:1px solid var(--line)}.conc-row.ok{background:var(--bg)}.conc-row .conc-valor{font-weight:700;white-space:nowrap}.conc-acoes{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:1100px){.conc-head{display:none}.conc-row{grid-template-columns:1fr auto;row-gap:6px}.conc-row>.conc-data{grid-column:1/-1;font-size:11.5px;color:var(--soft);padding:0}.conc-row>:nth-child(4),.conc-row>.conc-acoes{grid-column:1/-1}.conc-row>.conc-acoes{justify-content:flex-start}}
 .folha-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .folha-scroll table th:first-child,.folha-scroll table td:first-child{position:sticky;left:0;z-index:1;background:var(--card);box-shadow:1px 0 0 var(--line)}
 .folha-scroll thead th:first-child{background:var(--bg);z-index:2}
@@ -4902,7 +4907,7 @@ function lancMobileHTML(ls,ativo,filtTot,fl,grupos){
     <div id="lancTbodyM">${lancCardsHTML(ls,ativo)}</div>
     <div id="lancFootM">${(ativo&&ls.length)?`<div style="display:flex;justify-content:space-between;padding:10px 4px;border-top:2px solid var(--navy);font-weight:700"><span>Total filtrado</span><span style="color:${filtTot>=0?'var(--green)':'var(--red)'}">${fmtBRL(filtTot)}</span></div>`:''}</div>`;}
 function lancRowsHTML(ls,ativo){return ls.length?ls.map(l=>{const rec=grupoTipo(l.grupo)==='receita';const auto=l.autoTaxa;return `<tr${auto?' style="background:var(--bg)"':''}>
-      <td>${fmtDataBR(l.data)}</td><td>${esc(l.grupo)}</td><td>${esc(l.sub||'—')}${auto?' <span style="font-size:9.5px;color:var(--soft);border:1px solid var(--line);border-radius:5px;padding:0 4px;letter-spacing:.3px">AUTO</span>':''}</td><td>${esc(l.descricao||'—')}</td><td style="white-space:nowrap">${l.nfe?esc(l.nfe):'<span style="color:var(--soft)">—</span>'}</td><td style="color:var(--soft)">${esc(l.fornecedor||'—')}</td><td style="color:var(--soft)">${esc(l.forma||'—')}</td>
+      <td>${fmtDataBR(l.data)}</td><td>${esc(l.grupo)}</td><td>${esc(l.sub||'—')}${auto?' <span style="font-size:9.5px;color:var(--soft);border:1px solid var(--line);border-radius:5px;padding:0 4px;letter-spacing:.3px">AUTO</span>':''}</td><td>${esc(l.descricao||'—')}${l.conc?` <span class="tag tag-green" style="font-size:9px;padding:0 5px;letter-spacing:.3px" title="Conciliado com o extrato do banco (${fmtDataBR(l.conc.data||'')})">✓ BANCO</span>`:''}</td><td style="white-space:nowrap">${l.nfe?esc(l.nfe):'<span style="color:var(--soft)">—</span>'}</td><td style="color:var(--soft)">${esc(l.fornecedor||'—')}</td><td style="color:var(--soft)">${esc(l.forma||'—')}</td>
       <td class="num" style="color:${rec?'var(--green)':'var(--red)'};font-weight:600;white-space:nowrap">${rec?'+':'−'} ${fmtBRL(l.valor)}</td>
       <td class="num">${auto?`<span style="font-size:10.5px;color:var(--soft)" title="Taxa calculada automaticamente sobre o recebível. Ajuste o % em Parâmetros.">automático</span>`:`<div style="display:inline-flex;gap:6px"><button class="icon-btn" title="Editar" onclick="editLancamento('${l.id}')">${icoEdit}</button>${nfKey(l.nfe)?`<button class="icon-btn" title="Editar a nota inteira (todos os itens da NF ${esc(l.nfe)})" style="width:auto;padding:0 6px;font-size:10px;font-weight:700;letter-spacing:.3px" onclick="editNota('${l.id}')">NF</button>`:''}<button class="icon-btn" title="Excluir" style="color:var(--red)" onclick="delLancamento('${l.id}')">${icoX}</button></div>`}</td></tr>`;}).join(''):`<tr><td colspan="9" style="color:var(--soft);text-align:center;padding:14px">${ativo?'Nenhum lançamento com esse filtro.':'Nenhum lançamento neste mês. Use o formulário acima.'}</td></tr>`;}
 function lancFootHTML(ls,ativo,filtTot){return ativo&&ls.length?`<tr><td colspan="7" style="text-align:right;font-weight:600;border-top:2px solid var(--navy)">Total filtrado</td><td class="num" style="font-weight:700;color:${filtTot>=0?'var(--green)':'var(--red)'};border-top:2px solid var(--navy)">${fmtBRL(filtTot)}</td><td style="border-top:2px solid var(--navy)"></td></tr>`:'';}
@@ -5175,17 +5180,18 @@ function finList(key,cols){
     <button class="mini-del" onclick="DB.fin['${key}'].splice(${i},1);save();viewFinanceiro()">${icoX}</button></div>`).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhum registro.</div>`}
   <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:6px">${icoPlus} Adicionar</button>`;
 }
-function finTabsHTML(tabs){tabs=tabs||[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
+function finTabsHTML(tabs){tabs=tabs||[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['conc','Conciliação'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
   return `<div class="pill-filter tabs" style="margin-bottom:18px">${tabs.map(([k,l])=>`<button class="${finTab===k?'on':''}" onclick="finTab='${k}';viewFinanceiro()">${l}</button>`).join('')}</div>`;}
 function viewFinanceiro(){
   const t=totaisGerais(finTab==='visao'?periodoRange():undefined);
-  const tabs=[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
+  const tabs=[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['conc','Conciliação'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
   const legado={categorias:'categorias',formas:'formas',meios:'recebimento'};if(legado[finTab]){paramSec=legado[finTab];finTab='param';}   // abas antigas viraram seções de Parâmetros
   const tabsHTML=finTabsHTML(tabs);
   if(finTab==='dre'){viewDRE();return;}   // o DRE mesmo recoloca as abas (ver viewDRE), inclusive ao trocar o mês ou abrir/fechar grupos
   let body='';
   if(finTab==='lanc')body=finLancamentos();
   else if(finTab==='fluxo')body=finFluxo();
+  else if(finTab==='conc')body=finConciliacao();
   else if(finTab==='custosfixos')body=finCustosFixos();
   else if(finTab==='visao')body=finVisao(t);
   else if(finTab==='pagar')body=finContas('contasPagar');
@@ -5927,6 +5933,7 @@ const PRM_ICO={
  metasfat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></svg>',
  metas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
  contas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 10l9-6 9 6M5 10v9M9 10v9M15 10v9M19 10v9M3 19h18"/></svg>',
+bancos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4M14 15l2 2 4-4"/></svg>',
  estoque:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>'};
 const PRM_SECOES=[
  {id:'impostos',nome:'Impostos e encargos',desc:'Regime, alíquota e encargos da folha',chaves:'imposto regime simples presumido lucro real mei das aliquota fgts inss encargo clt pro-labore prolabore socio ferias 13'},
@@ -5937,7 +5944,8 @@ const PRM_SECOES=[
  {id:'metasfat',nome:'Metas de faturamento',desc:'Mínimo, realista e desafiador por mês',chaves:'meta faturamento minimo realista desafiador ipca inflacao dias trabalhados funcionamento compra semanal'},
  {id:'metas',nome:'Referências',desc:'CMV alvo, ponto de equilíbrio e a régua PLL',chaves:'referencia cmv alvo ponto de equilibrio margem pll lucro regua'},
  {id:'contas',nome:'Contas bancárias',desc:'Saldos que alimentam a Visão Geral',chaves:'conta banco saldo caixa bancaria'},
- {id:'estoque',nome:'Estoque e PDV',desc:'Armazéns, automações e sistema de vendas',chaves:'estoque armazem cozinha pdv vuca automatico compras vendas desperdicio contagem'}];
+ {id:'estoque',nome:'Estoque e PDV',desc:'Armazéns, automações e sistema de vendas',chaves:'estoque armazem cozinha pdv vuca automatico compras vendas desperdicio contagem'},
+ {id:'bancos',nome:'Bancos e conciliação',desc:'Santander, Bradesco e OFX: extrato que bate com o Flow',chaves:'banco conciliacao conciliar extrato santander bradesco ofx api certificado client id'}];
 let paramSec=(function(){try{return localStorage.getItem('flow_param_sec')||'impostos';}catch(e){return 'impostos';}})(),paramBusca='';
 function prmIr(sec){paramSec=sec;try{localStorage.setItem('flow_param_sec',sec);}catch(e){}finTab='param';viewFinanceiro();}
 function prmBuscar(v){paramBusca=v;const q=lmNorm(v);const hits=PRM_SECOES.filter(s=>q&&lmNorm(s.nome+' '+s.desc+' '+s.chaves).includes(q)).map(s=>s.id);
@@ -5952,7 +5960,7 @@ function prmOnde(itens){return `<div class="prm-onde"><span>Usado em:</span>${it
 function finParamCompleto(){const sec=PRM_SECOES.find(s=>s.id===paramSec)||PRM_SECOES[0];paramSec=sec.id;const mob=ehMobile();
   const q=lmNorm(paramBusca);const hits=PRM_SECOES.filter(x=>!q||lmNorm(x.nome+' '+x.desc+' '+x.chaves).includes(q)).map(x=>x.id);   // busca continua valendo depois de trocar de seção
   const nav=`<div class="prm-nav" id="prm_nav">${PRM_SECOES.map(s=>`<a data-sec="${s.id}" class="${s.id===sec.id?'on':''}" style="${hits.includes(s.id)?'':'display:none'}" onclick="prmIr('${s.id}')">${PRM_ICO[s.id]}<span><b>${s.nome}</b>${mob?'':`<small>${s.desc}</small>`}</span></a>`).join('')}</div>`;
-  const corpo={impostos:prmImpostosHTML,canais:prmCanaisHTML,recebimento:prmRecebimentoHTML,formas:prmFormasHTML,categorias:prmCategoriasHTML,metasfat:()=>`<div class="prm-grid">${prmMetasFatHTML()}</div>`,metas:prmMetasHTML,contas:prmContasHTML,estoque:prmEstoqueHTML}[sec.id]();
+  const corpo={impostos:prmImpostosHTML,canais:prmCanaisHTML,recebimento:prmRecebimentoHTML,formas:prmFormasHTML,categorias:prmCategoriasHTML,metasfat:()=>`<div class="prm-grid">${prmMetasFatHTML()}</div>`,metas:prmMetasHTML,contas:prmContasHTML,estoque:prmEstoqueHTML,bancos:prmBancosHTML}[sec.id]();
   return `<div class="prm-top"><div class="gp-search" style="max-width:380px">${icoGpSearch}<input class="input" id="prm_busca" value="${esc(paramBusca)}" placeholder="Buscar configuração (ex.: iFood, FGTS, pix, CMV)" oninput="prmBuscar(this.value)" onkeydown="if(event.key==='Enter')prmBuscaEnter()"></div><span id="prm_busca_info" class="gp-mini">${q?(hits.length?hits.length+' seção(ões) com "'+esc(paramBusca)+'"':'nada encontrado'):''}</span>${q?`<a class="gp-link" style="font-size:12px" onclick="paramBusca='';viewFinanceiro()">limpar</a>`:''}</div>
   ${prmResumo()}
   <div class="prm-wrap">${nav}<div class="prm-panel"><div class="prm-head"><div class="prm-ico">${PRM_ICO[sec.id]}</div><div><div class="ttl">${sec.nome}</div><div class="desc">${sec.desc}</div></div></div>${corpo}</div></div>`;}
@@ -6042,6 +6050,200 @@ function prmEstoqueHTML(){const c=estCfg();const arms=estArmazens();const auto=[
       ${prmOnde(['Estoque (baixa por vendas)','Fichas técnicas (código no PDV)','API do Flow'])}
     </div>
     ${suitableCardHTML()}</div>`;}
+/* ===== Bancos (Santander / Bradesco / OFX) e Conciliação bancária · as credenciais ficam só no servidor (Edge Function banco-sync) ===== */
+const BANCO_NOME={santander:'Santander',bradesco:'Bradesco',outro:'Outro banco (OFX)'};
+let bancosCache=null;
+function bancoChip(c){return c.modo==='ofx'?'<span class="tag tag-gray">só OFX</span>':c.ultimo_erro?'<span class="tag tag-red">com erro</span>':c.ativo?'<span class="tag tag-green">ligada</span>':'<span class="tag tag-gray">desligada</span>';}
+function prmBancosHTML(){if(!(typeof sb!=='undefined'&&sb&&CLOUD&&ORG))return `<div class="card card-pad"><div class="ttl">Bancos e conciliação</div><div class="desc">Disponível quando o restaurante está logado na nuvem.</div></div>`;
+  setTimeout(bancosCarregar,40);
+  return `<div class="card card-pad" style="grid-column:1/-1">
+    <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Bancos conectados</div><div class="desc">O Flow puxa o extrato direto do banco (Santander e Bradesco, pela API oficial com certificado digital) ou lê o arquivo OFX exportado do internet banking. Depois, em <b>Financeiro › Conciliação</b>, cada linha do extrato é casada com os lançamentos.</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="bancoModal()">${icoPlus} Conectar banco</button><button class="btn btn-ghost btn-sm" onclick="bancoSync()" title="Puxa o extrato de todas as conexões ligadas">⟳ Sincronizar agora</button></div></div>
+    <div id="bancos_lista" class="gp-mini">Consultando…</div>
+    <details style="margin-top:14px"><summary style="cursor:pointer;font-size:13px;font-weight:600">Como obter as credenciais no banco (passo a passo para o cliente)</summary>${bancosGuiaHTML()}</details>
+    ${prmOnde(['Financeiro › Conciliação','Fluxo de Caixa (saldo do banco)'])}
+  </div>`;}
+function bancosGuiaHTML(){return `<div style="font-size:12.5px;line-height:1.55;margin-top:8px;display:grid;gap:14px">
+  <div><b>O que vale para os dois bancos</b><ul style="margin:4px 0 0 18px;padding:0"><li>Conta <b>pessoa jurídica</b>. Quem faz é o usuário <b>master</b> da conta no internet banking (ou alguém que ele autorize).</li><li>Certificado digital <b>A1 (ICP-Brasil)</b> em nome da empresa (razão social + CNPJ no CN), o mesmo tipo usado para nota fiscal. Do arquivo .pfx se extraem dois arquivos: o <b>certificado público</b> (.crt/.pem) e a <b>chave privada</b> (.key). Só o público vai para o banco; os dois são informados aqui no Flow.</li><li>O banco entrega um <b>Client ID</b> e um <b>Client Secret</b>. Eles, mais o certificado e a chave, são colados em "Conectar banco". Nada disso fica no navegador.</li></ul>
+  <div class="gp-mini" style="margin-top:4px">Para extrair do .pfx (no terminal, pede a senha do certificado): <code>openssl pkcs12 -in certificado.pfx -clcerts -nokeys -out certificado.crt</code> e <code>openssl pkcs12 -in certificado.pfx -nocerts -nodes -out chave.key</code></div></div>
+  <div><b>Santander</b> (API "Saldo e extrato", portal developer.santander.com.br)<ol style="margin:4px 0 0 18px;padding:0"><li>Entrar no portal com a <b>conta PJ</b> (usuário master, com ID Santander e e-mail cadastrados; pede dois fatores).</li><li>Com o ambiente em <b>Produção</b>, clicar em <b>Criar aplicação</b> › "Sou um desenvolvedor", escolher a API <b>Saldo e extrato</b>, enviar o certificado público (.crt/.pem, cadeia completa, 2048 bits) e dar um nome à aplicação.</li><li>Abrir a aplicação criada e copiar <b>Client ID</b> e <b>Client Secret</b>.</li><li>Se a API de extrato não aparecer para escolher, pedir ao gerente de cash para liberar.</li></ol></div>
+  <div><b>Bradesco</b> (produto "Saldo e extrato", portal developers.bradesco.com.br)<ol style="margin:4px 0 0 18px;padding:0"><li>Cadastrar a empresa no portal e fazer login.</li><li>Em <b>Produtos</b>, abrir <b>Saldo e extrato</b> e <b>solicitar a assinatura</b> no plano <b>Produção</b> (aprovação em até 2 dias úteis; acompanhar em "Assinaturas").</li><li><b>Registrar aplicação</b>: nome, equipe, escolher a assinatura aprovada e marcar só os recursos com estágio "Produção" (Consulta de Saldos, Consulta de Extratos, Token mTLS).</li><li><b>Solicitar credencial</b> enviando o certificado público (A1, validade entre 2 meses e 3 anos, razão social + CNPJ no CN). Quando o status ficar <b>ATIVO</b>, copiar <b>Client ID</b> e <b>Client Secret</b>. O banco permite até 2 pares de credencial por empresa.</li><li>O extrato pela API só existe da ativação em diante; o período anterior entra por OFX.</li></ol></div>
+  <div><b>OFX</b> (qualquer banco, sem credencial): no internet banking, exportar o extrato em <b>OFX</b> (Santander: Extrato › Exportar; Bradesco: Extrato › Salvar como › OFX/Money) e usar <b>Importar OFX</b> na conexão ou na Conciliação.</div></div>`;}
+async function bancosCarregar(){const el=$('#bancos_lista');if(!el)return;try{const r=await chamarFn('banco-sync',{acao:'status',orgId:ORG.id});if(!r.data||!r.data.ok){el.innerHTML='<span style="color:var(--red)">Não foi possível consultar: '+esc((r.data&&r.data.erro)||r.status)+'</span>';return;}
+  bancosCache=r.data.conexoes||[];if(!bancosCache.length){el.innerHTML='Nenhum banco conectado ainda. Clique em <b>Conectar banco</b> (API) ou importe um OFX.';return;}
+  el.innerHTML=`<div style="display:grid;gap:8px">${bancosCache.map(c=>{const ult=c.log&&c.log[0];const venc=c.cert_validade?(c.cert_validade<hojeISO()?'<span style="color:var(--red)">certificado vencido em '+fmtDataBR(c.cert_validade)+'</span>':c.cert_validade<diasSoma(hojeISO(),30)?'<span style="color:var(--amber)">certificado vence em '+fmtDataBR(c.cert_validade)+'</span>':'certificado até '+fmtDataBR(c.cert_validade)):'';
+    return `<div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div style="flex:1;min-width:220px"><div style="font-weight:700;font-size:13.5px">${esc(BANCO_NOME[c.banco]||c.banco)}${c.apelido?' · '+esc(c.apelido):''} ${bancoChip(c)}${c.ambiente==='sandbox'?' <span class="tag tag-gold">sandbox</span>':''}</div>
+        <div class="gp-mini">ag. ${esc(c.agencia||'—')} · conta ${esc(c.conta||'—')}${c.digito?'-'+esc(c.digito):''}${c.saldo!=null?' · saldo <b>'+fmtBRL(c.saldo)+'</b>'+(c.saldo_em?' ('+notifQuando(c.saldo_em)+')':''):''}${c.ultimo_sync?' · extrato '+notifQuando(c.ultimo_sync):' · nunca sincronizado'}${venc?' · '+venc:''}</div>
+        ${c.ultimo_erro?`<div style="font-size:12px;color:var(--red);margin-top:2px">${esc(c.ultimo_erro)}</div>`:''}${ult?`<div class="gp-mini">última: ${ult.ofx?'OFX':'API'} · ${ult.novas} nova(s) de ${ult.lidas} linha(s)${ult.de?' · '+fmtDataBR(ult.de)+' a '+fmtDataBR(ult.ate):''}</div>`:''}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${c.modo==='api'?`<button class="btn btn-ghost btn-sm" onclick="bancoSync('${c.id}')">⟳ Extrato</button><button class="btn btn-ghost btn-sm" onclick="bancoTestar('${c.id}')">Testar</button>`:''}<button class="btn btn-ghost btn-sm" onclick="ofxImportar('${c.id}')">Importar OFX</button><button class="btn btn-ghost btn-sm" onclick="bancoModal('${c.id}')">${icoEdit}</button><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="bancoRemover('${c.id}')">${icoX}</button></div></div>`;}).join('')}</div>
+    <div class="gp-mini" style="margin-top:6px">${r.data.transacoes} linha(s) de extrato guardadas · <b>${r.data.pendentes}</b> pendente(s) de conciliação nos últimos 90 dias · <a class="gp-link" onclick="finTab='conc';viewFinanceiro()">abrir a Conciliação</a></div>`;}catch(e){el.textContent='Falha ao consultar.';}}
+function bancoModal(id){const c=id?(bancosCache||[]).find(x=>x.id===id):null;const banco=c?c.banco:'santander';window._bancoEdit=c||null;
+  modal(`<div class="modal-head"><h3>${c?'Editar conexão':'Conectar banco'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div class="grid-2">
+      <div class="field"><label>Banco</label><select class="input" id="bk_banco" onchange="bancoModalModo()">${Object.entries(BANCO_NOME).map(([k,v])=>`<option value="${k}" ${k===banco?'selected':''}>${v}</option>`).join('')}</select></div>
+      <div class="field"><label>Apelido <span class="hint">opcional</span></label><input class="input" id="bk_apelido" value="${esc(c&&c.apelido||'')}" placeholder="Ex.: Conta principal"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 80px;gap:10px">
+      <div class="field"><label>Agência <span class="hint">sem dígito</span></label><input class="input" id="bk_ag" inputmode="numeric" value="${esc(c&&c.agencia||'')}" placeholder="0001"></div>
+      <div class="field"><label>Conta <span class="hint">sem dígito</span></label><input class="input" id="bk_conta" inputmode="numeric" value="${esc(c&&c.conta||'')}" placeholder="123456"></div>
+      <div class="field"><label>Dígito</label><input class="input" id="bk_dig" value="${esc(c&&c.digito||'')}" maxlength="2" placeholder="7"></div>
+    </div>
+    <div id="bk_api">
+      <div class="grid-2">
+        <div class="field"><label>Client ID</label><input class="input" id="bk_cid" autocomplete="off" placeholder="${c&&c.client_id?c.client_id+' (manter)':'fornecido pelo banco'}"></div>
+        <div class="field"><label>Client Secret</label><input class="input" id="bk_sec" type="password" autocomplete="new-password" placeholder="${c&&c.client_id?'deixe em branco para manter':'fornecido pelo banco'}"></div>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label>Certificado público <span class="hint">.crt / .pem${c&&c.tem_cert?' · já enviado':''}</span></label><input class="input" type="file" id="bk_cert" accept=".crt,.pem,.cer,.txt"></div>
+        <div class="field"><label>Chave privada <span class="hint">.key / .pem, sem senha${c&&c.tem_chave?' · já enviada':''}</span></label><input class="input" type="file" id="bk_key" accept=".key,.pem,.txt"></div>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label>Ambiente</label><select class="input" id="bk_amb"><option value="producao" ${!c||c.ambiente!=='sandbox'?'selected':''}>Produção</option><option value="sandbox" ${c&&c.ambiente==='sandbox'?'selected':''}>Sandbox (testes do banco)</option></select></div>
+        <div class="field"><label>Importar extrato desde</label><input class="input" type="date" id="bk_desde" value="${esc(c&&c.desde||diasSoma(hojeISO(),-30))}"></div>
+      </div>
+      <div class="gp-mini">Ao salvar, o Flow testa a credencial consultando o saldo. Depois o extrato é puxado 4 vezes ao dia e sempre que você clicar em Sincronizar.</div>
+    </div>
+    <div id="bk_ofx" class="gp-mini" style="display:none">Conexão só para importar arquivos OFX do internet banking. Nenhuma credencial é necessária.</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="bancoSalvar()">${c?'Salvar':'Conectar e testar'}</button></div>`,true);bancoModalModo();}
+function bancoModalModo(){const b=$('#bk_banco').value;const api=b!=='outro';$('#bk_api').style.display=api?'':'none';$('#bk_ofx').style.display=api?'none':'';}
+function lerArquivoTexto(input){return new Promise(res=>{const f=input&&input.files&&input.files[0];if(!f)return res('');const r=new FileReader();r.onload=()=>res(String(r.result||''));r.onerror=()=>res('');r.readAsText(f);});}
+async function bancoSalvar(){const c=window._bancoEdit;const banco=$('#bk_banco').value;
+  const body={acao:'config',orgId:ORG.id,id:c?c.id:undefined,banco,modo:banco==='outro'?'ofx':'api',apelido:$('#bk_apelido').value,agencia:$('#bk_ag').value,conta:$('#bk_conta').value,digito:$('#bk_dig').value,ambiente:($('#bk_amb')||{}).value||'producao',desde:($('#bk_desde')||{}).value||''};
+  if(banco!=='outro'){body.client_id=($('#bk_cid').value||'').trim();body.client_secret=($('#bk_sec').value||'').trim();body.cert_pem=await lerArquivoTexto($('#bk_cert'));body.key_pem=await lerArquivoTexto($('#bk_key'));
+    if(body.cert_pem&&!/BEGIN CERTIFICATE/.test(body.cert_pem))return toast('O arquivo do certificado precisa ser o público (.crt/.pem com BEGIN CERTIFICATE)',6000);
+    if(body.key_pem&&!/PRIVATE KEY/.test(body.key_pem))return toast('O arquivo da chave precisa ser a chave privada (.key com PRIVATE KEY), sem senha',6000);
+    if(!c&&(!body.client_id||!body.client_secret||!body.cert_pem||!body.key_pem))return toast('Preencha Client ID, Client Secret, certificado e chave');
+    if(!dig(body.agencia)||!dig(body.conta))return toast('Informe agência e conta');}
+  toast(banco==='outro'?'Salvando…':'Testando a credencial no banco…');const r=await chamarFn('banco-sync',body);
+  if(!r.data||!r.data.ok){toast('Banco: '+((r.data&&r.data.erro)||'falha'),9000);if(r.data&&r.data.salvo){closeModal();bancosCarregar();}return;}
+  closeModal();toast(banco==='outro'?'Conexão criada':'Conectado · saldo disponível '+fmtBRL((r.data.saldo&&r.data.saldo.disponivel)||0),7000);bancosCarregar();
+  if(banco!=='outro'&&!c&&confirm('Puxar o extrato agora, desde '+fmtDataBR(body.desde||hojeISO())+'?'))bancoSync(r.data.id);}
+function dig(s){return String(s||'').replace(/\D/g,'');}
+async function bancoTestar(id){toast('Consultando saldo…');const r=await chamarFn('banco-sync',{acao:'testar',orgId:ORG.id,id});if(!r.data||!r.data.ok)return toast('Banco: '+((r.data&&r.data.erro)||'falha'),9000);toast('Saldo disponível: '+fmtBRL(r.data.saldo.disponivel||0),6000);bancosCarregar();}
+async function bancoSync(id,de,ate){toast('Puxando o extrato do banco…');const r=await chamarFn('banco-sync',{acao:'sync',orgId:ORG.id,id,de,ate});if(!r.data||!r.data.ok)return toast('Banco: '+((r.data&&r.data.erro)||'falha'),9000);
+  const res=r.data.resultados||[];const msg=res.map(x=>(BANCO_NOME[x.banco]||x.banco)+': '+(x.ok?x.novas+' nova(s) de '+x.lidas:(x.pulado||('erro · '+x.erro)))).join(' · ')||'nenhuma conexão por API ligada';toast(msg,9000);
+  bancosCarregar();if(finTab==='conc')concCarregar();}
+async function bancoRemover(id){const c=(bancosCache||[]).find(x=>x.id===id);if(!confirm('Remover a conexão '+(c?BANCO_NOME[c.banco]+' '+(c.apelido||c.conta):'')+'? As linhas de extrato importadas dela também somem (os lançamentos do Flow ficam).'))return;
+  const r=await chamarFn('banco-sync',{acao:'remover',orgId:ORG.id,id});toast(r.data&&r.data.ok?'Conexão removida':'Falha');bancosCarregar();}
+/* ----- OFX: o app lê o arquivo (SGML ou XML) e manda as linhas para o servidor ----- */
+function ofxParse(txt){const t=String(txt||'');const out=[];const tag=(bloco,n)=>{const m=bloco.match(new RegExp('<'+n+'>([^<\\r\\n]*)','i'));return m?m[1].trim():'';};
+  const blocos=t.split(/<STMTTRN>/i).slice(1);
+  blocos.forEach(b=>{const bl=b.split(/<\/STMTTRN>/i)[0];const dt=tag(bl,'DTPOSTED');const amt=tag(bl,'TRNAMT').replace(',','.');const data=dt.length>=8?dt.slice(0,4)+'-'+dt.slice(4,6)+'-'+dt.slice(6,8):'';const valor=+amt;
+    if(!data||!isFinite(valor)||!valor)return;out.push({data,valor:Math.round(valor*100)/100,descricao:(tag(bl,'MEMO')||tag(bl,'NAME')||tag(bl,'TRNTYPE')).slice(0,120),complemento:tag(bl,'NAME')&&tag(bl,'MEMO')?tag(bl,'NAME'):'',documento:tag(bl,'CHECKNUM')||tag(bl,'REFNUM')||'',fitid:tag(bl,'FITID')});});
+  const bankId=dig(tag(t,'BANKID')),acct=tag(t,'ACCTID'),branch=tag(t,'BRANCHID');const bal=tag(t,'BALAMT').replace(',','.');
+  return {linhas:out,bankId,acct,branch,saldo:bal!==''&&isFinite(+bal)?+bal:null,banco:bankId==='033'?'santander':bankId==='237'?'bradesco':''};}
+function ofxImportar(id){const inp=document.createElement('input');inp.type='file';inp.accept='.ofx,.OFX,.txt';inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;
+  const buf=await f.arrayBuffer();let txt=new TextDecoder('utf-8').decode(buf);if(/CHARSET:1252|ENCODING:USASCII/i.test(txt)||/�/.test(txt))txt=new TextDecoder('windows-1252').decode(buf);
+  const p=ofxParse(txt);if(!p.linhas.length)return toast('Não encontrei lançamentos nesse OFX',6000);
+  let alvo=id;if(!alvo){const cons=bancosCache||[];const mesmoBanco=cons.filter(c=>!p.banco||c.banco===p.banco);const mesmaConta=mesmoBanco.find(c=>dig(c.conta)&&dig(p.acct).endsWith(dig(c.conta)));alvo=(mesmaConta||mesmoBanco[0]||cons[0]||{}).id;
+    if(!alvo){if(!confirm('Nenhuma conexão para '+(BANCO_NOME[p.banco]||'esse banco')+'. Criar uma conexão só de OFX agora?'))return;const r=await chamarFn('banco-sync',{acao:'config',orgId:ORG.id,banco:p.banco||'outro',modo:'ofx',agencia:p.branch,conta:p.acct,apelido:'OFX'});if(!r.data||!r.data.ok)return toast('Falha ao criar a conexão: '+((r.data&&r.data.erro)||''),7000);alvo=r.data.id;}}
+  toast('Enviando '+p.linhas.length+' linha(s) do OFX…');const r=await chamarFn('banco-sync',{acao:'ofx',orgId:ORG.id,id:alvo,linhas:p.linhas,saldo:p.saldo});if(!r.data||!r.data.ok)return toast('OFX: '+((r.data&&r.data.erro)||'falha'),8000);
+  toast(r.data.novas+' nova(s) de '+r.data.lidas+' linha(s) do OFX',7000);bancosCarregar();if(finTab==='conc')concCarregar();};inp.click();}
+
+/* ----- Conciliação: linhas do banco × lançamentos e parcelas do Flow ----- */
+let concState={de:diasSoma(hojeISO(),-30),ate:hojeISO(),conta:'',dados:null,busca:'',filtro:'pend'};
+function finConciliacao(){if(!(typeof sb!=='undefined'&&sb&&CLOUD&&ORG))return `<div class="card card-pad"><div class="ttl">Conciliação bancária</div><div class="desc">Disponível quando o restaurante está logado na nuvem.</div></div>`;
+  setTimeout(concState.dados?concRender:concCarregar,30);
+  return `<div class="card card-pad" style="max-width:1320px">
+    <div class="section-head"><div><div class="ttl">Conciliação bancária</div><div class="desc">Cada linha do extrato do banco é casada com uma parcela ou lançamento do Flow. O que não existir no Flow você lança daqui; transferências e aplicações você ignora.</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="bancoSync()">⟳ Puxar extrato</button><button class="btn btn-ghost btn-sm" onclick="ofxImportar()">Importar OFX</button><button class="btn btn-primary btn-sm" onclick="concAuto()" title="Aceita todas as sugestões únicas (mesmo valor, até 3 dias de diferença)">✓ Conciliar sugestões</button></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+      <div class="field" style="margin:0"><label>De</label><input type="date" class="input" value="${concState.de}" onchange="concState.de=this.value;concCarregar()"></div>
+      <div class="field" style="margin:0"><label>Até</label><input type="date" class="input" value="${concState.ate}" onchange="concState.ate=this.value;concCarregar()"></div>
+      <div class="field" style="margin:0"><label>Conta</label><select class="input" id="conc_conta" onchange="concState.conta=this.value;concRender()"><option value="">Todas</option>${((concState.dados&&concState.dados.conexoes)||bancosCache||[]).map(c=>`<option value="${c.id}" ${concState.conta===c.id?'selected':''}>${esc(BANCO_NOME[c.banco]||c.banco)}${c.apelido?' · '+esc(c.apelido):''} ${esc(c.conta||'')}</option>`).join('')}</select></div>
+      <div class="pill-filter" style="margin:0">${[['pend','Pendentes'],['conc','Conciliadas'],['ign','Ignoradas'],['todas','Todas']].map(([k,l])=>`<button class="${concState.filtro===k?'on':''}" onclick="concState.filtro='${k}';concRender()">${l}</button>`).join('')}</div>
+      <div class="field" style="margin:0;flex:1;min-width:160px"><label>Buscar</label><input class="input" value="${esc(concState.busca)}" placeholder="descrição, valor, documento" oninput="concState.busca=this.value;concRender()"></div>
+    </div>
+    <div id="conc_kpis" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px"></div>
+    <div id="conc_lista">${concState.dados?'':'<div class="gp-mini">Carregando o extrato…</div>'}</div>
+    <div style="font-size:11.5px;color:var(--soft);margin-top:14px;border-top:1px solid var(--line);padding-top:10px;line-height:1.55"><b>Como funciona:</b> o Flow procura, para cada linha do banco, uma parcela (Contas a Pagar/Receber) ou um lançamento à vista com o <b>mesmo valor</b> e data até <b>3 dias</b> de diferença. Vendas no cartão e no PIX são comparadas pelo total do dia por meio de recebimento. Ao conciliar uma parcela, ela é dada como paga na data do banco. <b>Lançar</b> cria o lançamento no DRE já conciliado e o Flow aprende a categoria para a próxima vez que aparecer a mesma descrição.</div>
+  </div>`;}
+async function concCarregar(){const r=await chamarFn('banco-sync',{acao:'listar',orgId:ORG.id,de:concState.de,ate:concState.ate});if(!r.data||!r.data.ok){const el=$('#conc_lista');if(el)el.innerHTML='<span style="color:var(--red)">Não foi possível carregar: '+esc((r.data&&r.data.erro)||r.status)+'</span>';return;}
+  concState.dados=r.data;bancosCache=r.data.conexoes||bancosCache;const sel=$('#conc_conta');if(sel&&sel.options.length<=1&&(r.data.conexoes||[]).length){viewFinanceiro();return;}concRender();}
+function concCandidatos(){const out=[];const used=new Set();
+  (DB.lancamentos||[]).forEach(l=>{if(l.autoTaxa)return;const rec=grupoTipo(l.grupo)==='receita';const s=rec?1:-1;const cat=(l.grupo||'')+(l.sub?' · '+l.sub:'');
+    if(Array.isArray(l.liquidacoes)&&l.liquidacoes.length){l.liquidacoes.forEach((x,idx)=>{if(!x||!x.data||x.conc)return;out.push({tipo:'liq',ref:l.id+'#'+idx,data:x.data,valor:s*(+x.valor||0),nome:(l.descricao||l.fornecedor||cat)+((l.liquidacoes.length>1)?' · '+(idx+1)+'/'+l.liquidacoes.length:''),cat,pago:!!x.pago,lanc:l,idx,rec});});}
+    else if(!l.conc){out.push({tipo:'lanc',ref:l.id,data:l.data,valor:s*(+l.valor||0),nome:l.descricao||l.fornecedor||cat,cat,pago:true,lanc:l,rec});}});
+  // vendas por meio de recebimento: o banco credita o total do dia (ou da semana) por bandeira
+  const grp=new Map();out.filter(c=>c.tipo==='liq'&&c.rec).forEach(c=>{const mr=meioDoLanc(c.lanc);if(!mr||meioRegra(mr)==='prazo')return;const k='rec|'+mr.id+'|'+c.data;let g=grp.get(k);if(!g){g={tipo:'grupo',ref:'',data:c.data,valor:0,nome:'Vendas '+mr.nome+' · '+fmtDataBR(c.data),cat:'Receita',itens:[],rec:true};grp.set(k,g);}g.valor=+(g.valor+c.valor).toFixed(2);g.itens.push(c);});
+  grp.forEach(g=>{if(g.itens.length>1){g.ref=g.itens.map(x=>x.ref).join(',');out.push(g);}});
+  return out;}
+function concSugerir(txs,cands){const usados=new Set();const sug={};
+  const d2=(a,b)=>Math.abs((new Date(a+'T12:00:00')-new Date(b+'T12:00:00'))/86400000);
+  txs.filter(t=>!t.conc_tipo).sort((a,b)=>a.data.localeCompare(b.data)).forEach(t=>{const v=+t.valor;const ops=cands.filter(c=>!usados.has(c.ref)&&Math.sign(c.valor)===Math.sign(v)&&Math.abs(Math.abs(c.valor)-Math.abs(v))<0.011&&d2(c.data,t.data)<=3).map(c=>({c,d:d2(c.data,t.data)})).sort((a,b)=>a.d-b.d||(a.c.tipo==='liq'?-1:1));
+    if(ops.length){sug[t.id]={c:ops[0].c,n:ops.length};usados.add(ops[0].c.ref);}});
+  return sug;}
+function concRegraChave(desc){return lmNorm(String(desc||'').replace(/\d+/g,' ')).split(' ').filter(Boolean).slice(0,3).join(' ');}
+function concRegra(desc){const rg=(DB.fin&&DB.fin.concRegras)||{};return rg[concRegraChave(desc)]||null;}
+function concRender(){const D=concState.dados;const el=$('#conc_lista');if(!el||!D)return;const cons=D.conexoes||[];const nomeCon=id=>{const c=cons.find(x=>x.id===id);return c?(BANCO_NOME[c.banco]||c.banco)+(c.apelido?' · '+c.apelido:''):'';};
+  let txs=(D.transacoes||[]).filter(t=>!concState.conta||t.conexao_id===concState.conta);
+  const cands=concCandidatos();const sug=concSugerir(txs,cands);concState.sug=sug;concState.cands=cands;
+  const q=lmNorm(concState.busca);const tot={n:txs.length,pend:0,conc:0,ign:0,ent:0,sai:0};txs.forEach(t=>{if(!t.conc_tipo)tot.pend++;else if(t.conc_tipo==='ignorado')tot.ign++;else tot.conc++;if(+t.valor>0)tot.ent+=+t.valor;else tot.sai+=-t.valor;});
+  const nSug=Object.keys(sug).length;
+  const saldoCon=(concState.conta?cons.filter(c=>c.id===concState.conta):cons).reduce((s,c)=>s+(+c.saldo||0),0);
+  $('#conc_kpis').innerHTML=`<div class="dash-pill"><span>Linhas do banco</span><b>${tot.n}</b></div><div class="dash-pill"><span>Pendentes</span><b style="color:${tot.pend?'var(--amber)':'var(--green)'}">${tot.pend}</b></div><div class="dash-pill"><span>Com sugestão</span><b>${nSug}</b></div><div class="dash-pill"><span>Conciliadas</span><b style="color:var(--green)">${tot.conc}</b></div><div class="dash-pill"><span>Entradas</span><b style="color:var(--green)">${fmtBRL(tot.ent)}</b></div><div class="dash-pill"><span>Saídas</span><b style="color:var(--red)">${fmtBRL(tot.sai)}</b></div>${cons.some(c=>c.saldo!=null)?`<div class="dash-pill"><span>Saldo no banco</span><b style="color:var(--navy)">${fmtBRL(saldoCon)}</b></div>`:''}`;
+  txs=txs.filter(t=>{if(concState.filtro==='pend'&&t.conc_tipo)return false;if(concState.filtro==='conc'&&(!t.conc_tipo||t.conc_tipo==='ignorado'))return false;if(concState.filtro==='ign'&&t.conc_tipo!=='ignorado')return false;
+    if(q){const s=lmNorm([t.descricao,t.complemento,t.documento,fmtBRL(Math.abs(+t.valor)),String(Math.abs(+t.valor))].join(' '));if(!s.includes(q))return false;}return true;});
+  if(!txs.length){el.innerHTML=`<div style="text-align:center;padding:26px 0;color:var(--soft)">${(D.transacoes||[]).length?'Nada nesse filtro.':'Nenhuma linha de extrato no período. Clique em <b>Puxar extrato</b> ou <b>Importar OFX</b>.'}</div>`;return;}
+  const refNome=t=>{if(t.conc_tipo==='ignorado')return '<span class="tag tag-gray">ignorada</span>';const refs=String(t.conc_ref||'').split(',');const nomes=refs.map(r=>{const [id,idx]=r.split('#');const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)return '(lançamento removido)';return (l.descricao||l.fornecedor||l.grupo)+(idx!=null&&l.liquidacoes&&l.liquidacoes.length>1?' · '+(+idx+1)+'/'+l.liquidacoes.length:'');});return `<span class="tag tag-green">✓ ${esc(nomes.length>2?nomes.length+' vendas':nomes.join(' + '))}</span>`;};
+  el.innerHTML=`<div class="conc-head"><span>Data</span><span>Banco · descrição</span><span style="text-align:right">Valor</span><span>Situação no Flow</span><span></span></div>`+txs.map(t=>{const v=+t.valor;const s=sug[t.id];const rg=!t.conc_tipo&&!s?concRegra(t.descricao):null;
+    let sit='',acoes='';
+    if(t.conc_tipo){sit=refNome(t);acoes=`<button class="btn btn-ghost btn-sm" onclick="concDesfazer('${t.id}')">Desfazer</button>`;}
+    else if(s){sit=`<div style="font-size:12.5px"><span class="tag tag-gold" style="margin-right:4px">sugestão</span>${esc(s.c.nome)}<div class="gp-mini">${esc(s.c.cat)} · ${fmtDataBR(s.c.data)}${s.c.tipo==='liq'&&!s.c.pago?' · parcela em aberto':''}${s.n>1?' · '+s.n+' opções':''}</div></div>`;
+      acoes=`<button class="btn btn-primary btn-sm" onclick="concAceitar('${t.id}')">Conciliar</button><button class="btn btn-ghost btn-sm" onclick="concEscolher('${t.id}')" title="Ver outras opções">Outra</button>`;}
+    else{sit=`<span class="gp-mini">sem correspondência no Flow${rg?' · já vi: <b>'+esc(rg.grupo+' › '+rg.sub)+'</b>':''}</span>`;
+      acoes=`<button class="btn btn-primary btn-sm" onclick="concLancar('${t.id}')">Lançar</button><button class="btn btn-ghost btn-sm" onclick="concEscolher('${t.id}')">Escolher</button><button class="btn btn-ghost btn-sm" onclick="concIgnorar('${t.id}')" title="Transferência entre contas, aplicação, estorno…">Ignorar</button>`;}
+    return `<div class="conc-row ${t.conc_tipo?'ok':''}"><div class="conc-data">${fmtDataBR(t.data)}</div><div style="min-width:0"><div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis">${esc(t.descricao||'—')}</div><div class="gp-mini">${esc(nomeCon(t.conexao_id))}${t.complemento?' · '+esc(t.complemento):''}${t.documento?' · doc '+esc(t.documento):''}${t.origem==='ofx'?' · OFX':''}</div></div><div class="num conc-valor" style="color:${v>=0?'var(--green)':'var(--red)'}">${v>=0?'+':'−'} ${fmtBRL(Math.abs(v))}</div><div>${sit}</div><div class="conc-acoes">${acoes}</div></div>`;}).join('');}
+function concTx(id){return ((concState.dados&&concState.dados.transacoes)||[]).find(t=>t.id===id);}
+function concAplicarLocal(t,c){const refs=c.tipo==='grupo'?c.itens:[c];refs.forEach(x=>{if(x.tipo==='liq'){const liq=x.lanc.liquidacoes[x.idx];if(liq){liq.pago=true;liq.pagoEm=liq.pagoEm||t.data;liq.conc={tx:t.id,data:t.data};}}else{x.lanc.conc={tx:t.id,data:t.data};}});
+  return {conc_tipo:c.tipo==='lanc'?'lanc':'liq',conc_ref:c.tipo==='grupo'?c.ref:c.ref};}
+async function concGravar(itens){const r=await chamarFn('banco-sync',{acao:'conciliar',orgId:ORG.id,itens});if(!r.data||!r.data.ok)toast('Banco: '+((r.data&&r.data.erro)||'falha ao gravar a conciliação'),7000);return r.data&&r.data.ok;}
+async function concAceitar(id,cand){const t=concTx(id);if(!t)return;const c=cand||(concState.sug[id]&&concState.sug[id].c);if(!c)return;
+  const it=concAplicarLocal(t,c);t.conc_tipo=it.conc_tipo;t.conc_ref=it.conc_ref;t.conc_em=new Date().toISOString();save();concRender();
+  await concGravar([{id,conc_tipo:it.conc_tipo,conc_ref:it.conc_ref}]);toast('Conciliado com '+c.nome);}
+async function concAuto(){const sug=concState.sug||{};const ids=Object.keys(sug).filter(id=>sug[id].n===1);if(!ids.length)return toast('Nenhuma sugestão única para aceitar');
+  if(!confirm('Conciliar '+ids.length+' linha(s) com as sugestões do Flow? Parcelas em aberto serão dadas como pagas na data do banco.'))return;
+  const itens=[];ids.forEach(id=>{const t=concTx(id);const c=sug[id].c;const it=concAplicarLocal(t,c);t.conc_tipo=it.conc_tipo;t.conc_ref=it.conc_ref;t.conc_em=new Date().toISOString();itens.push({id,...it});});
+  save();concRender();await concGravar(itens);toast(ids.length+' linha(s) conciliadas');}
+async function concIgnorar(id){const t=concTx(id);if(!t)return;t.conc_tipo='ignorado';t.conc_ref='';concRender();await concGravar([{id,conc_tipo:'ignorado',conc_ref:''}]);}
+async function concDesfazer(id){const t=concTx(id);if(!t)return;
+  if(t.conc_tipo&&t.conc_tipo!=='ignorado'){String(t.conc_ref||'').split(',').forEach(r=>{const [lid,idx]=r.split('#');const l=(DB.lancamentos||[]).find(x=>x.id===lid);if(!l)return;if(idx!=null&&l.liquidacoes&&l.liquidacoes[idx]){delete l.liquidacoes[idx].conc;}else{delete l.conc;}});save();}
+  t.conc_tipo=null;t.conc_ref=null;concRender();const r=await chamarFn('banco-sync',{acao:'desconciliar',orgId:ORG.id,ids:[id]});if(!r.data||!r.data.ok)toast('Falha ao desfazer no servidor',6000);}
+function concEscolher(id){const t=concTx(id);if(!t)return;const v=+t.valor;const d2=(a,b)=>Math.abs((new Date(a+'T12:00:00')-new Date(b+'T12:00:00'))/86400000);
+  const ops=(concState.cands||[]).filter(c=>Math.sign(c.valor)===Math.sign(v)&&d2(c.data,t.data)<=45).map(c=>({c,dv:Math.abs(Math.abs(c.valor)-Math.abs(v)),dd:d2(c.data,t.data)})).sort((a,b)=>a.dv-b.dv||a.dd-b.dd).slice(0,40);
+  window._concOps=ops;
+  modal(`<div class="modal-head"><h3>Casar com um lançamento do Flow</h3><button class="x" onclick="closeModal()">${icoX}</button></div><div class="modal-body">
+    <div style="font-size:13px;margin-bottom:8px"><b>${esc(t.descricao||'')}</b> · ${fmtDataBR(t.data)} · <b style="color:${v>=0?'var(--green)':'var(--red)'}">${fmtBRL(Math.abs(v))}</b></div>
+    <input class="input" placeholder="Filtrar por nome" oninput="concEscolherFiltra(this.value)" style="margin-bottom:8px">
+    <div id="conc_ops" style="max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:12px">${concEscolherRows(ops,'',id)}</div>
+    <div class="gp-mini" style="margin-top:8px">Lista os ${ops.length} itens do Flow com o mesmo sentido (entrada/saída) até 45 dias de distância, do valor mais próximo ao mais distante. Valores diferentes podem ser conciliados (ex.: tarifa descontada), mas confira.</div>
+  </div><div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button></div>`,true);}
+function concEscolherRows(ops,q,txId){const n=lmNorm(q);const rows=ops.filter(o=>!n||lmNorm(o.c.nome+' '+o.c.cat).includes(n));return rows.length?rows.map((o,i)=>`<div style="display:grid;grid-template-columns:1fr 110px 90px;gap:8px;align-items:center;padding:8px 12px;border-top:1px solid var(--line);font-size:12.5px"><div><div style="font-weight:600">${esc(o.c.nome)}</div><div class="gp-mini">${esc(o.c.cat)} · ${fmtDataBR(o.c.data)}${o.c.tipo==='liq'?(o.c.pago?' · parcela paga':' · parcela em aberto'):o.c.tipo==='grupo'?' · '+o.c.itens.length+' vendas':' · lançamento'}</div></div><div class="num" style="font-weight:600;color:${o.dv<0.011?'var(--green)':'var(--amber)'}">${fmtBRL(Math.abs(o.c.valor))}</div><button class="btn btn-primary btn-sm" onclick="closeModal();concAceitar('${txId}',window._concOps[${ops.indexOf(o)}].c)">Casar</button></div>`).join(''):'<div style="padding:14px;color:var(--soft);font-size:13px">Nada parecido. Use <b>Lançar</b> para criar o lançamento a partir da linha do banco.</div>';}
+function concEscolherFiltra(q){const el=$('#conc_ops');if(el)el.innerHTML=concEscolherRows(window._concOps||[],q,(concState._escId||''));}
+function concLancar(id){const t=concTx(id);if(!t)return;const v=+t.valor;const rec=v>0;const rg=concRegra(t.descricao)||{};const grupos=ordPt(Object.keys(DB.categorias||{}).filter(g=>(grupoTipo(g)==='receita')===rec));
+  const dsc=lmNorm(t.descricao);const pal=[[/tarifa|iof|anuidade|juros|cesta|pacote serv/,/tarif|banc|financ|juros/],[/energia|eletric|cemig|cpfl|rge|celesc|enel|light/,/energia/],[/agua|sanea|corsan|sabesp|copasa/,/agua/],[/gas|ultragaz|supergas|liquigas/,/gas/],[/telefon|internet|vivo|claro|tim|oi /,/telefon|internet/],[/aluguel|imobili/,/aluguel/],[/contab|contador/,/contab/],[/salario|folha|pagto func/,/salario/],[/fgts/,/fgts/],[/inss|gps|dae/,/inss/],[/das |simples|darf|imposto|tribut/,/simples|darf|imposto/],[/ifood/,/ifood/],[/pix recebido|pix receb/,/pix/],[/cartao|cielo|stone|rede |getnet|pagseguro|mercadopago/,/cart/]];
+  const acha=g=>{const subs=((DB.categorias||{})[g]||{subs:[]}).subs||[];for(const [re,rs] of pal){if(re.test(dsc)){const s=subs.find(x=>rs.test(lmNorm(x)));if(s)return s;}}return '';};
+  let g0=rg.grupo&&grupos.includes(rg.grupo)?rg.grupo:'';let s0=rg.sub||'';if(!g0){for(const g of grupos){const s=acha(g);if(s){g0=g;s0=s;break;}}}if(!g0)g0=rec?'Receita':(grupos.includes('Despesas Gerais')?'Despesas Gerais':grupos[0]);const subs=ordPt(((DB.categorias||{})[g0]||{subs:[]}).subs);
+  const formaSug=rg.forma||(/pix/i.test(t.descricao)?'PIX':/bolet|tit |titulo|cobranca/i.test(t.descricao)?'Boleto':/cart|visa|master|elo|stone|cielo|rede|getnet|pagseguro/i.test(t.descricao)?(rec?'Cartão de Crédito':'Cartão de Crédito'):'Transferência');
+  window._concLanc=id;
+  modal(`<div class="modal-head"><h3>Lançar a partir do extrato</h3><button class="x" onclick="closeModal()">${icoX}</button></div><div class="modal-body">
+    <div class="gp-mini" style="margin-bottom:10px">Linha do banco: <b>${esc(t.descricao||'')}</b> · ${fmtDataBR(t.data)} · ${fmtBRL(Math.abs(v))}</div>
+    <div class="grid-2"><div class="field"><label>Data</label><input type="date" class="input" id="cl_data" value="${t.data}"></div><div class="field"><label>Valor</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="cl_valor" inputmode="numeric" value="${fmtMoneyInput(Math.abs(v))}" oninput="moneyMask(this)"></div></div></div>
+    <div class="grid-2"><div class="field"><label>Grupo</label><select class="input" id="cl_grupo" onchange="concLancSubs()">${grupos.map(g=>`<option ${g===g0?'selected':''}>${esc(g)}</option>`).join('')}</select></div><div class="field"><label>Subcategoria</label><select class="input" id="cl_sub">${subs.map(s=>`<option ${s===s0?'selected':''}>${esc(s)}</option>`).join('')}</select></div></div>
+    <div class="field"><label>Descrição</label><input class="input" id="cl_desc" value="${esc(rg.descricao||t.descricao||'')}"></div>
+    <div class="grid-2"><div class="field"><label>${rec?'Cliente / origem':'Fornecedor'}</label><input class="input" id="cl_forn" value="${esc(rg.fornecedor||'')}" list="cl_forn_lista"><datalist id="cl_forn_lista">${((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}">`).join('')}</datalist></div><div class="field"><label>Forma</label>${formaSelect(formaSug,'').replace('<select ','<select id="cl_forma" ')}</div></div>
+    <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;cursor:pointer"><input type="checkbox" id="cl_aprender" checked style="width:15px;height:15px"> Lembrar essa categoria para "${esc(concRegraChave(t.descricao))}"</label>
+  </div><div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="concLancarSalvar()">Lançar e conciliar</button></div>`,true);}
+function concLancSubs(){const g=$('#cl_grupo').value;const subs=ordPt(((DB.categorias||{})[g]||{subs:[]}).subs);$('#cl_sub').innerHTML=subs.map(s=>`<option>${esc(s)}</option>`).join('');}
+async function concLancarSalvar(){const id=window._concLanc;const t=concTx(id);if(!t)return closeModal();const valor=moneyVal('cl_valor');if(!(valor>0))return toast('Informe o valor');
+  const novo={id:uid(),data:$('#cl_data').value||t.data,grupo:$('#cl_grupo').value,sub:$('#cl_sub').value||'',descricao:($('#cl_desc').value||'').trim(),fornecedor:($('#cl_forn').value||'').trim(),valor,forma:$('#cl_forma').value||'',fromBanco:t.id,conc:{tx:t.id,data:t.data}};
+  DB.lancamentos=DB.lancamentos||[];DB.lancamentos.push(novo);
+  if($('#cl_aprender').checked){DB.fin.concRegras=DB.fin.concRegras||{};DB.fin.concRegras[concRegraChave(t.descricao)]={grupo:novo.grupo,sub:novo.sub,forma:novo.forma,fornecedor:novo.fornecedor,descricao:novo.descricao};}
+  t.conc_tipo='lanc';t.conc_ref=novo.id;t.conc_em=new Date().toISOString();save();closeModal();concRender();await concGravar([{id,conc_tipo:'lanc',conc_ref:novo.id}]);toast('Lançado no DRE e conciliado');}
+
 /* ===== Integração Suitable (PDV) · a chave fica só no servidor (Edge Function suitable-sync) ===== */
 let suiStatus=null;
 function suitableCardHTML(){if(!(typeof sb!=='undefined'&&sb&&CLOUD&&ORG))return '';
