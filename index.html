@@ -210,6 +210,11 @@ th.num{text-align:right}
 .bell-pop .bi{padding:10px 14px;border-top:1px solid var(--line);cursor:pointer;font-size:12.5px;line-height:1.4}.bell-pop .bi.nova{background:#F5F7FC}.bell-pop .bi b{display:block;font-size:13px}.bell-pop .bi small{color:var(--soft)}
 body.dark .bell,body.dark .bell-pop{background:#0E1626}body.dark .bell-pop .bi.nova{background:#141f36}
 .pill-filter.tabs{row-gap:8px}
+/* folha de pagamento: a coluna do funcionário fica fixa ao rolar de lado */
+.folha-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.folha-scroll table th:first-child,.folha-scroll table td:first-child{position:sticky;left:0;z-index:1;background:var(--card);box-shadow:1px 0 0 var(--line)}
+.folha-scroll thead th:first-child{background:var(--bg);z-index:2}
+.folha-scroll tbody tr.folha-sub td:first-child{background:var(--bg)}
 @media (max-width:760px){.pill-filter.tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;margin-right:-16px;padding-right:40px;mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent)}.pill-filter.tabs::-webkit-scrollbar{display:none}.pill-filter.tabs button{flex:0 0 auto;white-space:nowrap}}
 .pill-filter button{padding:7px 13px;border-radius:20px;font-size:12.5px;font-weight:600;background:#fff;border:1px solid var(--line);color:var(--muted)}
 .pill-filter button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
@@ -5387,6 +5392,67 @@ function funcTogglePago(i){
     <button class="btn btn-primary" onclick="funcConfirmPago(true)">Marcar e lançar no DRE</button>
   </div>`);
 }
+/* ----- Encargos e despesas por colaborador: INSS, FGTS, férias, 13º, provisão, benefícios, vale ----- */
+function funcDespKey(f,ym,k){return 'fe_'+f.id+'|'+ym+'|'+k;}
+function funcDespLancados(f,ym){const pre='fe_'+f.id+'|'+ym+'|';return (DB.lancamentos||[]).filter(l=>(l.fromFunc||'').startsWith(pre));}
+function funcDespItens(f,ym){const m=custoFuncionario(f,ym);const bruto=+m.bruto||0;const isCLT=(f.regime||'CLT')==='CLT';
+  const pat=isCLT?bruto*((DB.fin.encINSS!=null?+DB.fin.encINSS:0)/100):0;const provPct=DB.fin.encProv!=null?+DB.fin.encProv:PROV_PADRAO;
+  const r2=v=>+(+v||0).toFixed(2);
+  return [
+    {k:'inss',nome:'INSS',g:'Encargos Sociais',s:'INSS',v:r2(m.inss+pat),on:m.inss+pat>0,hint:pat>0?'retido do funcionário + patronal':'retido do funcionário (guia do mês)'},
+    {k:'fgts',nome:'FGTS',g:'Encargos Sociais',s:'FGTS',v:r2(m.fgts),on:m.fgts>0,hint:(DB.fin.encFGTS!=null?DB.fin.encFGTS:8)+'% do bruto'},
+    {k:'prov',nome:'Provisionamento 13º + férias',g:'Encargos Sociais',s:'Provisões 13º + Férias',v:r2(m.prov),on:false,hint:provPct+'% do bruto · reserva mensal'},
+    {k:'dec',nome:'13º salário (pagamento)',g:'Encargos Sociais',s:'13º Salário',v:r2(bruto/2),on:false,hint:'sugestão: 1 parcela (metade do bruto) · ajuste pelo pago'},
+    {k:'fer',nome:'Férias + 1/3 (pagamento)',g:'Encargos Sociais',s:'Férias + 1/3',v:r2(bruto*4/3),on:false,hint:'sugestão: salário + terço · ajuste pelos dias'},
+    {k:'vt',nome:'Vale-transporte',g:'Benefícios',s:'Vale-Transporte',v:r2(f.vt),on:(+f.vt||0)>0,hint:'valor do cadastro'},
+    {k:'benef',nome:'Outros benefícios (saúde, refeição…)',g:'Benefícios',s:'Outros Benefícios',v:r2((+m.beneficios||0)-(+f.vt||0)),on:false,hint:'benefícios do cadastro sem o vale-transporte'},
+    {k:'vale',nome:'Vale / adiantamento',g:'Mão-de-Obra',s:'Vale / Adiantamento',v:r2(f.vales),on:false,hint:'adiantado no mês'},
+    {k:'outro',nome:'Outra despesa',g:'Encargos Sociais',s:'',v:0,on:false,livre:true,hint:''}
+  ];}
+function funcDespModal(i){const f=DB.fin.funcionarios[i];if(!f)return;const ym=curFolhaYM();const m=custoFuncionario(f,ym);const itens=funcDespItens(f,ym);
+  const ja={};funcDespLancados(f,ym).forEach(l=>{ja[(l.fromFunc||'').split('|')[2]]=l;});
+  const subsEnc=ordPt(((DB.categorias||{})['Encargos Sociais']||{subs:[]}).subs);
+  const h=hojeISO();const dataPad=ymOf(h)===ym?h:ym+'-'+pad2(new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate());
+  window._despFunc={i,id:f.id,ym};
+  modal(`<div class="modal-head"><h3>Encargos e despesas · ${esc(f.nome||'—')}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <div class="dash-pill"><span>${ymLabel(ym)} · bruto</span><b>${fmtBRL(m.bruto)}</b></div>
+      <div class="dash-pill"><span>Líquido</span><b>${fmtBRL(m.liquido)}</b></div>
+      <div class="dash-pill"><span>Custo total</span><b style="color:var(--navy)">${fmtBRL(m.total)}</b></div>
+    </div>
+    <div class="grid-2" style="margin-bottom:10px">
+      <div class="field"><label>Data do lançamento</label><input type="date" class="input" id="fd_data" value="${dataPad}"></div>
+      <div class="field"><label>Forma de pagamento</label>${formaSelect(f.forma||'',"window._despForma=this.value").replace('<select ','<select id="fd_forma" ')}</div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Marque o que vai lançar no DRE. Os valores vêm da folha e podem ser ajustados. Lançar de novo no mesmo mês <b>substitui</b> o lançamento anterior daquele item.</div>
+    <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden">
+      ${itens.map(it=>{const l=ja[it.k];return `<div style="display:grid;grid-template-columns:22px 1fr 138px;gap:10px;align-items:center;padding:9px 12px;border-top:1px solid var(--line)" class="fd-row">
+        <input type="checkbox" id="fd_on_${it.k}" ${it.on&&!l?'checked':''} style="width:16px;height:16px" onchange="funcDespTotal()">
+        <div style="min-width:0">
+          ${it.livre?`<input class="input" id="fd_desc_outro" placeholder="Descrição (ex.: exame admissional, uniforme)" style="padding:6px 9px;margin-bottom:5px"><select class="input" id="fd_sub_outro" style="padding:6px 9px">${subsEnc.map(x=>`<option>${esc(x)}</option>`).join('')}</select>`
+          :`<div style="font-weight:600;font-size:13px">${esc(it.nome)}</div><div style="font-size:11px;color:var(--soft)">${esc(it.g)} › ${esc(it.s)}${it.hint?' · '+esc(it.hint):''}</div>`}
+          ${l?`<div style="font-size:11px;color:var(--green);margin-top:2px">✓ lançado em ${fmtDataBR(l.data)} · ${fmtBRL(l.valor)}</div>`:''}
+        </div>
+        <div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" id="fd_v_${it.k}" value="${fmtMoneyInput(l?l.valor:it.v)}" oninput="moneyMask(this);funcDespTotal()"></div>
+      </div>`;}).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:13px"><span style="color:var(--muted)">Total selecionado</span><b id="fd_total" style="font-family:'Fraunces',serif;font-size:18px">R$ 0,00</b></div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="funcDespLancar()">Lançar no DRE</button></div>`,true);
+  funcDespTotal();}
+function funcDespTotal(){const d=window._despFunc;if(!d)return;const f=DB.fin.funcionarios[d.i];if(!f)return;let t=0;funcDespItens(f,d.ym).forEach(it=>{const on=$('#fd_on_'+it.k);if(on&&on.checked)t+=moneyVal('fd_v_'+it.k)||0;});const el=$('#fd_total');if(el)el.textContent=fmtBRL(t);}
+function funcDespLancar(){const d=window._despFunc;if(!d)return closeModal();const f=DB.fin.funcionarios[d.i];if(!f)return closeModal();
+  const data=($('#fd_data')||{}).value||hojeISO();const forma=($('#fd_forma')||{}).value||'';DB.lancamentos=DB.lancamentos||[];
+  let n=0,subst=0,tot=0;
+  funcDespItens(f,d.ym).forEach(it=>{const on=$('#fd_on_'+it.k);if(!on||!on.checked)return;const v=+(moneyVal('fd_v_'+it.k)||0).toFixed(2);if(!(v>0))return;
+    let g=it.g,sub=it.s,nome=it.nome;
+    if(it.livre){nome=(($('#fd_desc_outro')||{}).value||'').trim();sub=($('#fd_sub_outro')||{}).value||'';if(!nome)return toast('Descreva a outra despesa');}
+    const cat=DB.categorias&&DB.categorias[g];if(cat){cat.subs=cat.subs||[];if(sub&&!cat.subs.includes(sub))cat.subs.push(sub);}
+    const key=funcDespKey(f,d.ym,it.k);const antes=DB.lancamentos.length;DB.lancamentos=DB.lancamentos.filter(l=>l.fromFunc!==key);if(DB.lancamentos.length<antes)subst++;
+    DB.lancamentos.push({id:uid(),fromFunc:key,data,grupo:g,sub,descricao:nome+' · '+(f.nome||'Funcionário')+' · '+ymLabel(d.ym),valor:v,forma,fornecedor:''});n++;tot+=v;});
+  if(!n)return toast('Marque ao menos um item com valor');
+  save();closeModal();viewFolha();toast(n+' lançamento'+(n>1?'s':'')+' no DRE · '+fmtBRL(tot)+(subst?' · '+subst+' substituído'+(subst>1?'s':''):''));window._despFunc=null;}
 function funcConfirmPago(lancar){
   const d=window._payFunc;if(!d)return closeModal();
   const f=DB.fin.funcionarios[d.i];if(!f)return closeModal();
@@ -5470,7 +5536,7 @@ function finFolha(){
       <td class="num" style="color:var(--muted)">${fmtBRL(m.inss)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.fgts)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.prov)}</td>
       <td class="num"><b>${fmtBRL(m.liquido)}</b></td><td class="num"><b style="color:var(--navy);font-family:'Fraunces',serif">${fmtBRL(m.total)}</b></td>
       <td style="text-align:center">${pagoCel}</td>
-      <td><span style="display:inline-flex;gap:4px"><button class="icon-btn" title="Extras do mês (horas extras, DSR, descontos…)" onclick="funcExtrasModal(${i})" style="width:auto;padding:0 7px;font-size:10.5px;font-weight:700;${m.extrasProv||m.extrasDesc?'color:var(--navy);border-color:var(--navy)':''}">＋/−</button><button class="icon-btn" title="Editar" onclick="funcEdit(${i})">${icoEdit}</button><button class="mini-del" title="Remover" onclick="funcDel(${i})">${icoX}</button></span></td>
+      <td><span style="display:inline-flex;gap:4px"><button class="icon-btn" title="Extras do mês (horas extras, DSR, descontos…)" onclick="funcExtrasModal(${i})" style="width:auto;padding:0 7px;font-size:10.5px;font-weight:700;${m.extrasProv||m.extrasDesc?'color:var(--navy);border-color:var(--navy)':''}">＋/−</button><button class="icon-btn" title="Lançar encargos e despesas deste colaborador (INSS, FGTS, férias, 13º, provisão, benefícios)" onclick="funcDespModal(${i})" style="width:auto;padding:0 8px;font-size:10.5px;font-weight:700;${funcDespLancados(f,ym).length?'color:var(--green);border-color:var(--green)':''}">Encargos${funcDespLancados(f,ym).length?' ✓':''}</button><button class="icon-btn" title="Editar" onclick="funcEdit(${i})">${icoEdit}</button><button class="mini-del" title="Remover" onclick="funcDel(${i})">${icoX}</button></span></td>
     </tr>`;}).join('');
     return `<tr><td colspan="${13+campos.length}" style="padding:14px 10px 4px;font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;font-weight:700">${cat} <span style="color:var(--soft);margin-left:6px;font-weight:600;letter-spacing:0">${lst.length} ${lst.length===1?'pessoa':'pessoas'}</span></td></tr>
     ${rows}
@@ -5492,10 +5558,10 @@ function finFolha(){
       <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Provisões 13º+Férias</div><div style="font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-top:3px">${fmtBRL(tot.prov)}</div></div>
       <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(29,53,115,.08),transparent)"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Custo total da empresa</div><div style="font-family:'Fraunces',serif;font-size:21px;font-weight:600;color:var(--navy);margin-top:3px">${fmtBRL(tot.total)}</div></div>
     </div>
-    ${ativos.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead>${head}</thead><tbody>${rowsByCat}</tbody></table></div>`:`<div style="text-align:center;padding:36px 0;color:var(--soft)">${todos.length?`Nenhum funcionário ativo em <b>${ymLabel(ym)}</b>. Selecione outro mês ou cadastre.`:'Nenhum funcionário cadastrado.'} <a class="tag tag-gold" style="cursor:pointer" onclick="funcEdit(null)">Adicionar →</a></div>`}
+    ${ativos.length?`<div class="folha-scroll"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead>${head}</thead><tbody>${rowsByCat}</tbody></table></div>`:`<div style="text-align:center;padding:36px 0;color:var(--soft)">${todos.length?`Nenhum funcionário ativo em <b>${ymLabel(ym)}</b>. Selecione outro mês ou cadastre.`:'Nenhum funcionário cadastrado.'} <a class="tag tag-gold" style="cursor:pointer" onclick="funcEdit(null)">Adicionar →</a></div>`}
     <div style="font-size:11.5px;color:var(--soft);margin-top:14px;border-top:1px solid var(--line);padding-top:10px;line-height:1.55">
       <b>Como funciona:</b> os funcionários aparecem a partir do <b>mês de cadastro</b> (início). Marcar como pago abre a opção de também lançar no DRE. Excluir pergunta se quer remover só dos meses posteriores ou completamente.<br>
-      <b>Campos extras (＋/−):</b> horas extras, DSR, adicionais e descontos são lançados por funcionário e por mês; proventos marcados como "base de encargos" entram no cálculo de INSS, FGTS e provisões. <b>Quinzenal, semanal e diário:</b> cada pagamento é registrado com data e valor (e lançado no DRE e no Fluxo na data em que saiu); o mês fica <b>✓</b> quando a soma alcança o líquido.<br>
+      <b>Encargos:</b> em cada colaborador, lança no DRE as despesas ligadas a ele (INSS, FGTS, férias, 13º, provisionamento, vale-transporte, benefícios, vale/adiantamento) com os valores já calculados; lançar de novo no mesmo mês substitui o anterior. <b>Campos extras (＋/−):</b> horas extras, DSR, adicionais e descontos são lançados por funcionário e por mês; proventos marcados como "base de encargos" entram no cálculo de INSS, FGTS e provisões. <b>Quinzenal, semanal e diário:</b> cada pagamento é registrado com data e valor (e lançado no DRE e no Fluxo na data em que saiu); o mês fica <b>✓</b> quando a soma alcança o líquido.<br>
       <b>Como calculamos:</b> INSS pela tabela progressiva 2026 sobre o bruto (CLT). FGTS, INSS patronal e provisões de 13º/férias saem dos percentuais das <b>Configurações financeiras</b> (padrão: FGTS 8%, INSS patronal 0% e provisões 11,11% = 13º 8,33% + terço de férias 2,78%) sobre o bruto — o salário de férias já está nos 12 salários, por isso provisionamos só o adicional. <b>Por Fora</b> não entra na base de INSS/FGTS/provisões. <b>Vales</b> e <b>Consumo</b> reduzem o líquido. Freelancers/PJ não têm encargos.
     </div>
   </div>`;
