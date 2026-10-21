@@ -302,7 +302,7 @@ body.dark .bell,body.dark .bell-pop{background:#0E1626}body.dark .bell-pop .bi.n
   .comp-row.cf-row>.cf:first-child{grid-column:1/-1}
   .comp-row.cf-row>.cf>.cf-l{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700}
   .comp-row.cf-row>.cf>.input,.comp-row.cf-row>.cf>.money-wrap{width:100%}
-  .comp-row.cf-row>.mini-del{grid-column:1/-1;justify-self:end;margin-top:-4px}
+  .comp-row.cf-row>.mini-del,.comp-row.cf-row>.cf-acts{grid-column:1/-1;justify-self:end;margin-top:-4px}
   /* cartões de indicador: ícone à esquerda, número com espaço para não cortar */
   .kpi{display:grid;grid-template-columns:40px 1fr;column-gap:12px;row-gap:1px;align-items:center;padding:11px 13px}
   .kpi .ic{grid-row:1/4;width:38px;height:38px;margin:0}
@@ -4626,7 +4626,7 @@ function lmParcRender(i){const r=lmRow(i);const total=lmTotalLinha(r);
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
       <span style="font-size:11.5px;color:var(--soft)">Atalhos:</span>
-      ${[[2,'30','2x 30/60'],[3,'30','3x 30/60/90'],[3,'15','3x 15/30/45'],[4,'M','4x mensal'],[6,'M','6x mensal'],[12,'M','12x mensal']].map(([n,iv,l])=>`<button class="btn btn-ghost btn-sm" onclick="lmParcGerar(${i},${n},'${iv}')" style="padding:4px 9px;font-size:11.5px">${l}</button>`).join('')}
+      ${[[2,'30','2x 30/60'],[3,'30','3x 30/60/90'],[3,'15','3x 15/30/45'],[4,'M','4x mensal'],[6,'M','6x mensal'],[12,'M','12x mensal'],[18,'M','18x'],[24,'M','24x'],[36,'M','36x'],[48,'M','48x']].map(([n,iv,l])=>`<button class="btn btn-ghost btn-sm" onclick="lmParcGerar(${i},${n},'${iv}')" style="padding:4px 9px;font-size:11.5px">${l}</button>`).join('')}
       <button class="btn btn-ghost btn-sm" onclick="lmParcLimpar(${i})" style="padding:4px 9px;font-size:11.5px;color:var(--red)">à vista</button>
     </div>
     ${lista.length?`<div style="display:grid;grid-template-columns:34px 1fr 130px 34px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 2px 5px"><span>#</span><span>Vencimento</span><span>Valor</span><span></span></div>`:`<div style="font-size:13px;color:var(--muted);padding:8px 0">Sem parcelas: a linha entra no fluxo de caixa na data do lançamento (à vista).</div>`}
@@ -5601,7 +5601,7 @@ function finContas(key){
   const total=noMes.reduce((s,c)=>s+(c.valor||0),0);
   const aberto=noMes.filter(c=>!c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const feito=noMes.filter(c=>c[cf]).reduce((s,c)=>s+(c.valor||0),0);
-  const gC='1.5fr 1.2fr 1.2fr 142px 124px 128px 108px 30px';
+  const gC='1.5fr 1.2fr 1.2fr 142px 124px 128px 108px 64px';
   const linhas=all.map((row,i)=>{if(((row.vencimento&&!noPer(row))||!finFiltroOk(row))&&!cpMostrar.has(row.id))return '';const subs=ordPt((DB.categorias[row.grupo]||{subs:[]}).subs);return `
     <div class="comp-row cf-row" style="grid-template-columns:${gC};align-items:center">
       <div class="cf"><span class="cf-l">Descrição</span><input class="input" value="${(row.descricao||'').replace(/"/g,'&quot;')}" placeholder="Descrição" oninput="DB.fin.${key}[${i}].descricao=this.value;contaResync('${key}',${i})"></div>
@@ -5611,7 +5611,7 @@ function finContas(key){
       <div class="cf"><span class="cf-l">Valor</span><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(row.valor||0)}" oninput="DB.fin.${key}[${i}].valor=moneyMask(this);contaResync('${key}',${i})" onblur="viewFinanceiro()"></div></div>
       <div class="cf"><span class="cf-l">Forma</span>${formaSelect(row.forma,`DB.fin.${key}[${i}].forma=this.value;contaResync('${key}',${i})`)}</div>
       <div class="cf"><span class="cf-l">${fLabel}</span><button class="icon-btn" onclick="contaToggle('${key}',${i})" title="Marcar como ${fLabel.toLowerCase()}" style="white-space:nowrap;width:auto;padding:0 10px;${row[cf]?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${row[cf]?'✓ ':'○ '}${fLabel}</button></div>
-      <button class="mini-del" onclick="deleteConta('${key}',${i})">${icoX}</button>
+      <div class="cf-acts"><button class="icon-btn" title="Parcelar esta conta (qualquer quantidade de parcelas, ex.: 24x)" onclick="contaParcelarModal('${key}',${i})" style="width:auto;padding:0 6px;font-size:10px;font-weight:700;letter-spacing:.3px">${row.parcGrupo?esc(row.parcN||'')+'x':'÷'}</button><button class="mini-del" onclick="deleteConta('${key}',${i})">${icoX}</button></div>
     </div>`;}).join('');
   const parc=liqDoPeriodo(isPagar?'pagar':'receber',PR.de,PR.ate).filter(x=>finFiltroOk(x.lanc));
   const pAberto=parc.filter(x=>!x.liq.pago).reduce((s,x)=>s+(+x.liq.valor||0),0);
@@ -5640,7 +5640,7 @@ function finContas(key){
     </div>`;
   return `<div class="card card-pad" style="max-width:1220px">
     <div class="section-head" style="flex-wrap:wrap;gap:10px"><div><div class="ttl">${isPagar?'Contas a Pagar':'Contas a Receber'}</div><div class="desc">Previsão do que ainda ${isPagar?'sai':'entra'}. Dar baixa registra o dinheiro no Fluxo de Caixa, sem lançar de novo no DRE.</div></div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${isPagar?`<button class="btn btn-ghost btn-sm" onclick="cpImprimirModal()" title="Lista das contas de um dia ou período para imprimir ou salvar em PDF">🖨️ Imprimir pagamentos</button>`:''}${finPeriodoHTML()}</div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="cpImprimirModal('${isPagar?'pagar':'receber'}')" title="Lista de um dia ou período para imprimir ou salvar em PDF">🖨️ ${isPagar?'Imprimir pagamentos':'Imprimir recebimentos'}</button>${finPeriodoHTML()}</div></div>
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <div class="dash-pill"><span>Total ${rng?'do período':'do mês'}</span><b>${fmtBRL(total+pAberto+pFeito)}</b></div>
       <div class="dash-pill"><span>${isPagar?'A pagar (em aberto)':'A receber (em aberto)'}</span><b style="color:${isPagar?'var(--red)':'var(--amber)'}">${fmtBRL(aberto+pAberto)}</b></div>
@@ -5666,26 +5666,27 @@ function cpVenc(key,i,v){const row=(DB.fin[key]||[])[i];if(!row)return;row.venci
   viewFinanceiro();}
 function mesNomeYM(ym){const [y,m]=(ym||'').split('-');const N=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];return (N[(+m||1)-1]||'')+(y?'/'+y:'');}
 /* ===== Impressão dos pagamentos de um dia ou período (parcelas de lançamentos + contas avulsas) ===== */
-let cpImp={de:'',ate:'',modo:'todas'};
-function cpLinhasPeriodo(de,ate,modo){const out=[];
-  const parc=[];(DB.lancamentos||[]).forEach(l=>{if(!Array.isArray(l.liquidacoes)||!l.liquidacoes.length||grupoTipo(l.grupo)==='receita')return;
+let cpImp={de:'',ate:'',modo:'todas',tipo:'pagar'};
+function cpLinhasPeriodo(de,ate,modo,tipo){const out=[];const rec=(tipo||cpImp.tipo)==='receber';
+  const parc=[];(DB.lancamentos||[]).forEach(l=>{if(!Array.isArray(l.liquidacoes)||!l.liquidacoes.length||(grupoTipo(l.grupo)==='receita')!==rec)return;
     l.liquidacoes.forEach((x,idx)=>{if(x&&x.data&&x.data>=de&&x.data<=ate)parc.push({lanc:l,idx,liq:x});});});
   liqAgrupar(parc).forEach(g=>{const ls=g.itens.map(x=>x.lanc);const l0=ls[0];
     const descs=[...new Set(ls.map(l=>(l.descricao||'').trim()).filter(Boolean))];
+    if(g.vendas){out.push({data:g.data,forn:g.nome,desc:ls.length+' venda'+(ls.length>1?'s':'')+' lançada'+(ls.length>1?'s':'')+' · '+[...new Set(ls.map(l=>l.data))].sort().map(fmtDataBR).slice(0,4).join(', '),nf:'',parcela:'',forma:g.nome,valor:g.valor,pago:g.pago,cat:g.cat,origem:'parcela'});return;}
     out.push({data:g.data,forn:(l0.fornecedor||'').trim(),desc:ls.length>1?(ls.length+' itens da nota: '+descs.slice(0,3).join(', ')+(descs.length>3?'…':'')):(l0.descricao||''),nf:(l0.nfe||'').trim(),parcela:g.n>1?((g.idx+1)+'/'+g.n):'única',forma:(ls.map(l=>l.forma).find(Boolean)||''),valor:g.valor,pago:g.pago,cat:g.cat,origem:'parcela'});});
-  (DB.fin.contasPagar||[]).forEach(c=>{if(!c.vencimento||c.vencimento<de||c.vencimento>ate||grupoTipo(c.grupo)==='receita')return;
-    out.push({data:c.vencimento,forn:'',desc:c.descricao||'',nf:'',parcela:'',forma:c.forma||'',valor:+c.valor||0,pago:!!c.pago,cat:(c.grupo||'')+(c.sub?' · '+c.sub:''),origem:'avulsa'});});
+  (DB.fin[rec?'contasReceber':'contasPagar']||[]).forEach(c=>{if(!c.vencimento||c.vencimento<de||c.vencimento>ate||(grupoTipo(c.grupo)==='receita')!==rec)return;
+    out.push({data:c.vencimento,forn:'',desc:c.descricao||'',nf:'',parcela:'',forma:c.forma||'',valor:+c.valor||0,pago:!!(rec?c.recebido:c.pago),cat:(c.grupo||'')+(c.sub?' · '+c.sub:''),origem:'avulsa'});});
   return out.filter(x=>modo==='abertas'?!x.pago:modo==='pagas'?x.pago:true).sort((a,b)=>a.data.localeCompare(b.data)||(a.forn||a.desc).localeCompare(b.forn||b.desc,'pt'));}
-function cpImprimirModal(){const h=hojeISO();cpImp.de=cpImp.de||h;cpImp.ate=cpImp.ate||h;
-  modal(`<div class="modal-head"><h3>Imprimir pagamentos</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+function cpImprimirModal(tipo){const h=hojeISO();cpImp.tipo=tipo==='receber'?'receber':'pagar';const rec=cpImp.tipo==='receber';cpImp.de=cpImp.de||h;cpImp.ate=cpImp.ate||h;
+  modal(`<div class="modal-head"><h3>${rec?'Imprimir recebimentos':'Imprimir pagamentos'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Lista das contas com vencimento no dia ou período: fornecedor, descrição, nota, parcela, forma de pagamento e total. Para salvar em PDF, escolha "Salvar como PDF" na tela de impressão.</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Lista ${rec?'do que há a receber':'das contas com vencimento'} no dia ou período: ${rec?'origem (bandeira ou cliente)':'fornecedor'}, descrição, nota, parcela, forma e total. Para salvar em PDF, escolha "Salvar como PDF" na tela de impressão.</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${[['Hoje',0,0],['Amanhã',1,1],['Próximos 7 dias',0,6],['Este mês','M','M']].map(([l,a,b])=>`<button class="btn btn-ghost btn-sm" onclick="cpImpAtalho('${a}','${b}')">${l}</button>`).join('')}</div>
     <div class="grid-2">
       <div class="field"><label>De</label><input type="date" class="input" id="cp_de" value="${cpImp.de}"></div>
       <div class="field"><label>Até</label><input type="date" class="input" id="cp_ate" value="${cpImp.ate}"></div>
     </div>
-    <div class="field"><label>Mostrar</label><select class="input" id="cp_modo">${[['todas','Todas as contas do período'],['abertas','Só em aberto (ainda não pagas)'],['pagas','Só as já pagas']].map(([k,l])=>`<option value="${k}" ${cpImp.modo===k?'selected':''}>${l}</option>`).join('')}</select></div>
+    <div class="field"><label>Mostrar</label><select class="input" id="cp_modo">${[['todas','Todas as contas do período'],['abertas',rec?'Só em aberto (ainda não recebidas)':'Só em aberto (ainda não pagas)'],['pagas',rec?'Só as já recebidas':'Só as já pagas']].map(([k,l])=>`<option value="${k}" ${cpImp.modo===k?'selected':''}>${l}</option>`).join('')}</select></div>
     <div id="cp_prev" style="font-size:12.5px;color:var(--muted)"></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="cpImprimir()">🖨️ Imprimir / PDF</button></div>`);
@@ -5697,22 +5698,22 @@ function cpImpPrevia(){const c=cpImpLer();const ls=cpLinhasPeriodo(c.de,c.ate,c.
   const tot=ls.reduce((s,x)=>s+x.valor,0),ab=ls.filter(x=>!x.pago).reduce((s,x)=>s+x.valor,0);
   el.innerHTML=ls.length?`<b>${ls.length}</b> conta${ls.length>1?'s':''} · total <b>${fmtBRL(tot)}</b>${c.modo==='todas'?' · em aberto <b style="color:var(--red)">'+fmtBRL(ab)+'</b>':''}`:'Nenhuma conta nesse período com esse filtro.';}
 function cpImprimir(){const c=cpImpLer();const ls=cpLinhasPeriodo(c.de,c.ate,c.modo);if(!ls.length)return toast('Nenhuma conta nesse período');
-  const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';const umDia=c.de===c.ate;
-  const titulo=umDia?'Pagamentos do dia '+fmtDataBR(c.de):'Pagamentos de '+fmtDataBR(c.de)+' a '+fmtDataBR(c.ate);
+  const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';const umDia=c.de===c.ate;const rec=c.tipo==='receber';const W=rec?'Recebimentos':'Pagamentos';
+  const titulo=umDia?W+' do dia '+fmtDataBR(c.de):W+' de '+fmtDataBR(c.de)+' a '+fmtDataBR(c.ate);
   const tot=ls.reduce((s,x)=>s+x.valor,0),ab=ls.filter(x=>!x.pago).reduce((s,x)=>s+x.valor,0),pg=tot-ab;
   const td=(t,st)=>`<td style="${st||''}">${t}</td>`;let rows='',dia=null,sub=0;
   const fechaDia=()=>{if(!umDia&&dia!=null)rows+=`<tr><td colspan="6" style="text-align:right;font-weight:700;background:#eef1f7">Subtotal ${fmtDataBR(dia)}</td><td style="text-align:right;font-weight:700;background:#eef1f7">${fmtBRL(sub)}</td><td style="background:#eef1f7"></td></tr>`;sub=0;};
   ls.forEach(x=>{if(x.data!==dia){fechaDia();dia=x.data;}sub+=x.valor;
-    rows+=`<tr>${td(fmtDataBR(x.data),'white-space:nowrap')}${td(esc(x.forn)||'<span style="color:#888">—</span>')}${td(esc(x.desc)+(x.cat?'<div style="font-size:8.5px;color:#777">'+esc(x.cat)+'</div>':''))}${td(esc(x.nf)||'—','white-space:nowrap')}${td(x.parcela||'—','text-align:center;white-space:nowrap')}${td(esc(x.forma)||'—')}${td(fmtBRL(x.valor),'text-align:right;font-weight:700;white-space:nowrap')}${td(x.pago?'✓ pago':'<span style="display:inline-block;width:11px;height:11px;border:1px solid #777;border-radius:2px;vertical-align:middle"></span>','text-align:center;white-space:nowrap;font-size:9.5px')}</tr>`;});
+    rows+=`<tr>${td(fmtDataBR(x.data),'white-space:nowrap')}${td(esc(x.forn)||'<span style="color:#888">—</span>')}${td(esc(x.desc)+(x.cat?'<div style="font-size:8.5px;color:#777">'+esc(x.cat)+'</div>':''))}${td(esc(x.nf)||'—','white-space:nowrap')}${td(x.parcela||'—','text-align:center;white-space:nowrap')}${td(esc(x.forma)||'—')}${td(fmtBRL(x.valor),'text-align:right;font-weight:700;white-space:nowrap')}${td(x.pago?(rec?'✓ receb.':'✓ pago'):'<span style="display:inline-block;width:11px;height:11px;border:1px solid #777;border-radius:2px;vertical-align:middle"></span>','text-align:center;white-space:nowrap;font-size:9.5px')}</tr>`;});
   fechaDia();
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
   pa.innerHTML=`<div class="dp">
-    <div class="dp-bar"><div><div class="dp-t">${titulo}</div><div class="dp-sub">CONTAS A PAGAR${c.modo==='abertas'?' · SÓ EM ABERTO':c.modo==='pagas'?' · SÓ PAGAS':''}</div></div><div class="dp-rest">${esc(rest)}</div></div>
+    <div class="dp-bar"><div><div class="dp-t">${titulo}</div><div class="dp-sub">${rec?'CONTAS A RECEBER':'CONTAS A PAGAR'}${c.modo==='abertas'?' · SÓ EM ABERTO':c.modo==='pagas'?(rec?' · SÓ RECEBIDAS':' · SÓ PAGAS'):''}</div></div><div class="dp-rest">${esc(rest)}</div></div>
     <div class="dp-gold"></div>
-    <div class="dp-meta"><span><b>${ls.length}</b> conta${ls.length>1?'s':''}</span><span><b>Total:</b> ${fmtBRL(tot)}</span>${c.modo==='todas'?`<span><b>Em aberto:</b> ${fmtBRL(ab)}</span><span><b>Já pago:</b> ${fmtBRL(pg)}</span>`:''}<span style="margin-left:auto">Gerado em ${fmtDataBR(hojeISO())} ${new Date().toTimeString().slice(0,5)}</span></div>
-    <table class="dp-tb"><thead><tr><th style="width:62px">Vencimento</th><th style="width:18%">Fornecedor</th><th>Descrição</th><th style="width:58px">NF nº</th><th style="width:48px;text-align:center">Parcela</th><th style="width:13%">Forma</th><th style="width:78px;text-align:right">Valor</th><th style="width:40px;text-align:center">Pago</th></tr></thead>
+    <div class="dp-meta"><span><b>${ls.length}</b> conta${ls.length>1?'s':''}</span><span><b>Total:</b> ${fmtBRL(tot)}</span>${c.modo==='todas'?`<span><b>Em aberto:</b> ${fmtBRL(ab)}</span><span><b>${rec?'Já recebido':'Já pago'}:</b> ${fmtBRL(pg)}</span>`:''}<span style="margin-left:auto">Gerado em ${fmtDataBR(hojeISO())} ${new Date().toTimeString().slice(0,5)}</span></div>
+    <table class="dp-tb"><thead><tr><th style="width:62px">${rec?'Previsto':'Vencimento'}</th><th style="width:18%">${rec?'Origem':'Fornecedor'}</th><th>Descrição</th><th style="width:58px">NF nº</th><th style="width:48px;text-align:center">Parcela</th><th style="width:13%">Forma</th><th style="width:78px;text-align:right">Valor</th><th style="width:40px;text-align:center">${rec?'Receb.':'Pago'}</th></tr></thead>
     <tbody>${rows}<tr><td colspan="6" style="text-align:right;font-weight:800;background:#1D3573;color:#fff;border-color:#1D3573">TOTAL</td><td style="text-align:right;font-weight:800;background:#1D3573;color:#fff;border-color:#1D3573">${fmtBRL(tot)}</td><td style="background:#1D3573;border-color:#1D3573"></td></tr></tbody></table>
-    <div class="dp-note">Parcelas vêm das compras lançadas (já no DRE); contas avulsas são compromissos ainda não lançados. Marque a caixa ao pagar e dê baixa no Flow.</div>
+    <div class="dp-note">${rec?'Recebíveis vêm das vendas lançadas por meio de recebimento (já no DRE); contas avulsas são valores a receber ainda não lançados. Marque a caixa ao receber e dê baixa no Flow.':'Parcelas vêm das compras lançadas (já no DRE); contas avulsas são compromissos ainda não lançados. Marque a caixa ao pagar e dê baixa no Flow.'}</div>
   </div>`;
   closeModal();document.body.classList.add('print-desp');
   const fim=()=>{document.body.classList.remove('print-desp');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
@@ -5734,6 +5735,38 @@ function setRecAte(src,ate){ // encerra a recorrência de uma origem (custo fixo
   const id=src.slice(3);const arr=src.startsWith('cf_')?DB.fin.custosFixos:src.startsWith('fn_')?DB.fin.funcionarios:src.startsWith('sc_')?DB.fin.socios:null;
   if(!arr)return;const o=(arr||[]).find(x=>x.id===id);if(o)o.ate=ate;}
 function rmContaLanc(id){DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromConta!==id);}
+/* ----- Parcelar uma conta avulsa: vira N contas (1/N, 2/N…) com vencimentos mensais ou a cada X dias; sem limite de 12x ----- */
+function contaParcelarModal(key,i){const row=(DB.fin[key]||[])[i];if(!row)return;const v=+row.valor||0;if(!(v>0))return toast('Informe o valor da conta antes de parcelar');
+  if(!row.vencimento)return toast('Informe o vencimento da 1ª parcela antes de parcelar');
+  window._cpParc={key,id:row.id};const irm=row.parcGrupo?(DB.fin[key]||[]).filter(x=>x.parcGrupo===row.parcGrupo):[];
+  modal(`<div class="modal-head"><h3>Parcelar conta</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:13px;margin-bottom:10px"><b>${esc(row.descricao||'Conta')}</b> · ${fmtBRL(v)} · 1ª em ${fmtDataBR(row.vencimento)}${irm.length>1?`<div class="gp-mini" style="margin-top:3px">Já faz parte de um parcelamento de ${irm.length}x. Parcelar de novo reparte só esta parcela.</div>`:''}</div>
+    <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <input class="input" id="cpp_n" type="number" min="2" max="240" step="1" inputmode="numeric" value="${irm.length>1?'':'12'}" placeholder="Qtd" style="width:84px;padding:6px 8px;text-align:center" title="Quantas parcelas (sem limite, ex.: 24, 36, 48)">
+      <span style="font-size:12px;color:var(--soft)">x a cada</span>
+      <select class="input" id="cpp_iv" style="width:104px;padding:6px 8px">${[['M','1 mês'],[30,'30 dias'],[15,'15 dias'],[7,'7 dias'],[14,'14 dias'],[45,'45 dias'],[60,'60 dias']].map(([x,l])=>`<option value="${x}">${l}</option>`).join('')}</select>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span style="font-size:11.5px;color:var(--soft)">Atalhos:</span>${[2,3,6,12,18,24,36,48].map(n=>`<button class="btn btn-ghost btn-sm" style="padding:4px 9px;font-size:11.5px" onclick="$('#cpp_n').value=${n};$('#cpp_iv').value='M';contaParcelarPrev()">${n}x</button>`).join('')}</div>
+    <div id="cpp_prev" class="gp-mini"></div>
+    <div class="gp-mini" style="margin-top:8px">O valor é dividido em parcelas iguais (os centavos ficam na última). Cada parcela vira uma conta própria, com "k/N" na descrição, e pode ser paga, editada ou excluída separadamente.</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="contaParcelarExec()">Parcelar</button></div>`);
+  ['cpp_n','cpp_iv'].forEach(id=>{const el=$('#'+id);if(el)el.addEventListener('input',contaParcelarPrev);});contaParcelarPrev();}
+function contaParcelarPrev(){const d=window._cpParc;if(!d)return;const row=(DB.fin[d.key]||[]).find(x=>x.id===d.id);const el=$('#cpp_prev');if(!row||!el)return;
+  const n=Math.min(240,Math.max(2,parseInt(($('#cpp_n')||{}).value)||0));const iv=($('#cpp_iv')||{}).value||'M';if(!(parseInt(($('#cpp_n')||{}).value)>=2)){el.textContent='';return;}
+  const L=lmGerarLista(+row.valor||0,diasSoma(row.vencimento,iv==='M'?0:0),n,iv);const lista=L.map((p,k)=>({data:k===0?row.vencimento:(iv==='M'?mesesSoma(row.vencimento,k):diasSoma(row.vencimento,(+iv)*k)),valor:p.valor}));
+  el.innerHTML=`<b>${n}x de ${fmtBRL(lista[0].valor)}</b> · ${fmtDataBR(lista[0].data)} a ${fmtDataBR(lista[lista.length-1].data)}`;}
+function contaParcelarExec(){const d=window._cpParc;if(!d)return closeModal();const arr=DB.fin[d.key]||[];const idx=arr.findIndex(x=>x.id===d.id);const row=arr[idx];if(!row)return closeModal();
+  const n=Math.min(240,Math.max(2,parseInt(($('#cpp_n')||{}).value)||0));if(!(parseInt(($('#cpp_n')||{}).value)>=2))return toast('Informe a quantidade de parcelas (2 ou mais)');
+  const iv=($('#cpp_iv')||{}).value||'M';const total=+row.valor||0;const cada=+(total/n).toFixed(2);let acc=0;const grupo='pg'+uid();
+  const base=(row.descricao||'').replace(/\s·\s\d+\/\d+$/,'');const novos=[];
+  for(let k=0;k<n;k++){const v=k===n-1?+(total-acc).toFixed(2):cada;acc=+(acc+v).toFixed(2);
+    const c=Object.assign({},row,{id:k===0?row.id:uid(),descricao:base+' · '+(k+1)+'/'+n,vencimento:k===0?row.vencimento:(iv==='M'?mesesSoma(row.vencimento,k):diasSoma(row.vencimento,(+iv)*k)),valor:v,parcGrupo:grupo,parcN:n,parcK:k+1});
+    if(k>0){c.pago=false;c.recebido=false;delete c.fromRec;delete c.mesRef;delete c.lancId;}novos.push(c);}
+  if(row.pago||row.recebido)rmContaLanc(row.id);                     // a conta cheia deixa de existir: o DRE recebe cada parcela quando for paga
+  arr.splice(idx,1,...novos);novos.forEach(c=>{if(c.pago||c.recebido)syncContaLanc(d.key,c);});
+  novos.slice(1).forEach(c=>cpMostrar.add(c.id));save();closeModal();viewFinanceiro();toast('Conta parcelada em '+n+'x');}
 function deleteConta(key,i){
   const row=DB.fin[key][i];if(!row)return;
   if(key==='contasPagar'&&row.fromRec){delContaRecorrente(i);return;} // recorrente → pergunta escopo
