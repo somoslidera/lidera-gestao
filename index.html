@@ -952,6 +952,7 @@ body.dark .prm-chip{background:var(--card)}body.dark .prm-nav a:hover{background
 .dsh-pe-sub{font-size:12px;color:var(--soft)}.dsh-pe-sub b{color:var(--muted)}
 .dsh-pe-chip{font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:99px;margin-top:4px}
 .dsh-pe-txt{font-size:12.5px;color:var(--muted);line-height:1.45;max-width:320px}
+.fin-per{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.fin-per .input{padding:6px 8px;font-size:12.5px}
 .dia-chip{cursor:pointer;padding:7px 13px;border-radius:20px;font-size:12.5px;font-weight:600;border:1.5px solid var(--line);background:transparent;color:var(--soft);transition:.12s}.dia-chip:hover{border-color:var(--navy);color:var(--navy)}.dia-chip.on{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 2px 6px rgba(29,53,115,.25)}body.dark .dia-chip.on{background:#2B4C99;border-color:#2B4C99}
 .dsh-marcos{width:100%;max-width:340px;margin-top:2px}.dsh-marcos-bar{position:relative;height:10px;border-radius:99px;background:var(--line);overflow:visible}.dsh-marcos-bar>i{display:block;height:100%;border-radius:99px;transition:width .4s}.dsh-marcos-bar>b{position:absolute;top:-4px;width:3px;height:18px;border-radius:2px;transform:translateX(-50%)}.dsh-marcos-leg{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--soft)}.dsh-marcos-leg span{display:flex;align-items:center;gap:4px;white-space:nowrap}.dsh-marcos-leg i{width:8px;height:8px;border-radius:2px;display:inline-block}.dsh-marcos-leg b{color:var(--muted)}
 .dsh-pe-comp{display:flex;flex-direction:column;gap:7px}.dsh-pe-comp>div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;column-gap:8px;min-width:0}.dsh-pe-comp span{font-size:11.5px;font-weight:600;color:var(--muted)}.dsh-pe-comp b{font-family:'Fraunces',serif;font-size:15px;color:var(--ink)}.dsh-pe-comp small{flex-basis:100%;font-size:11px;color:var(--soft);line-height:1.35}
@@ -3841,8 +3842,32 @@ function ymOf(d){return (d||'').slice(0,7);}
 function fmtDataBR(iso){if(!iso)return '—';const p=iso.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:iso;}
 function ymLabel(ym){const p=(ym||'').split('-');return p.length===2?`${MESES_PT[(+p[1])-1]||''} / ${p[0]}`:ym;}
 let lancYM=null, lancFiltro={data:'',grupo:'',sub:'',desc:'',nf:'',fornecedor:'',forma:''};
+/* ===== período livre do Financeiro (de/até) · vale para Lançamentos, Contas a Pagar/Receber e Fluxo ===== */
+let finDe='',finAte='';
+function finRangeAtivo(){return !!(finDe&&finAte&&finAte>=finDe);}
+function finRange(){if(finRangeAtivo())return {de:finDe,ate:finAte,label:fmtDataBR(finDe)+' a '+fmtDataBR(finAte)};const ym=curYM();const [y,m]=ym.split('-').map(Number);const ld=new Date(y,m,0).getDate();return {de:ym+'-01',ate:ym+'-'+String(ld).padStart(2,'0'),label:mesNomeYM(ym)};}
+function finSetDe(v){finDe=v||'';if(finDe&&finAte&&finAte<finDe)finAte=finDe;if(finDe&&!finAte)finAte=finDe;viewFinanceiro();}
+function finSetAte(v){finAte=v||'';if(finDe&&finAte&&finAte<finDe)finDe=finAte;if(finAte&&!finDe)finDe=finAte;viewFinanceiro();}
+function finLimparPeriodo(){finDe='';finAte='';viewFinanceiro();}
+function finAtalho(k){const h=hojeISO();if(k==='hoje'){finDe=h;finAte=h;}else if(k==='semana'){const d=new Date(h+'T12:00:00');const dow=(d.getDay()+6)%7;finDe=diasSoma(h,-dow);finAte=diasSoma(finDe,6);}else if(k==='7'){finDe=diasSoma(h,-6);finAte=h;}else if(k==='30'){finDe=diasSoma(h,-29);finAte=h;}viewFinanceiro();}
+function finPeriodoHTML(modo){const rng=finRangeAtivo();const ym=curYM();
+  return `<div class="fin-per">${modo==='fluxo'?'':`<input type="month" class="input" style="max-width:150px" value="${ym}" ${rng?'disabled title="Período livre ativo; clique em voltar ao mês"':''} onchange="lancYM=this.value;if(typeof cpMostrar!=='undefined')cpMostrar.clear();viewFinanceiro()">`}
+    <span class="gp-mini">${modo==='fluxo'?'ou período':'ou de'}</span><input type="date" class="input" style="max-width:148px" value="${finDe}" title="Início do período" onchange="finSetDe(this.value)"><span class="gp-mini">até</span><input type="date" class="input" style="max-width:148px" value="${finAte}" title="Fim do período" onchange="finSetAte(this.value)">
+    ${rng?`<a class="gp-link" style="font-size:12px;white-space:nowrap" onclick="finLimparPeriodo()">✕ voltar ao mês</a>`:`<span style="display:flex;gap:4px;flex-wrap:wrap">${[['hoje','Hoje'],['semana','Esta semana'],['7','7 dias'],['30','30 dias']].map(([k,l])=>`<button type="button" class="btn btn-ghost btn-sm" style="padding:4px 9px;min-height:0;font-size:11.5px" onclick="finAtalho('${k}')">${l}</button>`).join('')}</span>`}</div>`;}
+/* filtros de texto (os mesmos dos Lançamentos) aplicados a contas e ao fluxo */
+function finFiltroAtivo(){const fl=lancFiltro;return !!(fl.grupo||fl.sub||fl.desc||fl.fornecedor||fl.forma);}
+function finFiltroOk(o){const fl=lancFiltro;o=o||{};return (!fl.grupo||o.grupo===fl.grupo)&&(!fl.sub||(o.sub||'').toLowerCase().includes(fl.sub.toLowerCase()))&&(!fl.desc||(o.descricao||'').toLowerCase().includes(fl.desc.toLowerCase()))&&(!fl.fornecedor||(o.fornecedor||'').toLowerCase().includes(fl.fornecedor.toLowerCase()))&&(!fl.forma||(o.forma||'')===fl.forma);}
+function finFiltroBarHTML(){const fl=lancFiltro;const grupos=ordPt(Object.keys(DB.categorias||{}));const formas=ordPt(DB.formasPagamento||[]);const ativo=finFiltroAtivo();
+  const txt=(k,ph,w)=>`<input class="input" data-ff="${k}" style="max-width:${w}px;padding:6px 8px;font-size:12.5px" placeholder="${ph}" value="${(fl[k]||'').replace(/"/g,'&quot;')}" oninput="clearTimeout(window._ff_${k});window._ff_${k}=setTimeout(()=>lancSetFiltro('${k}',this.value),400)">`;
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+    <select class="input" data-ff="grupo" style="max-width:180px;padding:6px 8px;font-size:12.5px" onchange="lancSetFiltro('grupo',this.value)"><option value="">Todas as categorias</option>${grupos.map(g=>`<option ${fl.grupo===g?'selected':''}>${esc(g)}</option>`).join('')}</select>
+    ${txt('sub','Subcategoria',150)}${txt('desc','Descrição',170)}${txt('fornecedor','Fornecedor',150)}
+    <select class="input" data-ff="forma" style="max-width:150px;padding:6px 8px;font-size:12.5px" onchange="lancSetFiltro('forma',this.value)"><option value="">Todas as formas</option>${formas.map(x=>`<option ${x===fl.forma?'selected':''}>${esc(x)}</option>`).join('')}</select>
+    ${ativo?`<a class="gp-link" style="font-size:12px" onclick="lancLimparFiltro()">Limpar filtros ✕</a>`:''}</div>`;}
+function liqDoPeriodo(tipo,de,ate){const out=[];(DB.lancamentos||[]).forEach(l=>{if(!Array.isArray(l.liquidacoes)||!l.liquidacoes.length)return;const ehRec=grupoTipo(l.grupo)==='receita';if((tipo==='receber')!==ehRec)return;
+  l.liquidacoes.forEach((x,idx)=>{if(!x||!x.data)return;if(x.data>=de&&x.data<=ate)out.push({lanc:l,idx,liq:x});});});return out.sort((a,b)=>(a.liq.data||'').localeCompare(b.liq.data||''));}
 function lancSetFiltro(k,v){lancFiltro[k]=v;lancRefreshTabela();}
-function lancSetFiltroData(v){lancFiltro.data=v;const nym=v?ymOf(v):null;if(nym&&nym!==curYM()){lancYM=nym;viewFinanceiro();}else{lancRefreshTabela();}}
+function lancSetFiltroData(v){lancFiltro.data=v;const nym=v?ymOf(v):null;if(!finRangeAtivo()&&nym&&nym!==curYM()){lancYM=nym;viewFinanceiro();}else{lancRefreshTabela();}}
 function lancLimparFiltro(){lancFiltro={data:'',grupo:'',sub:'',desc:'',nf:'',fornecedor:'',forma:''};viewFinanceiro();}
 /* nº da NF: compara só os dígitos, então "0001234", "1234" e "NF 1.234" são a mesma nota */
 /* Número interno de nota: quando o cliente lança uma compra sem NF (ou com cupom fiscal), o Flow gera "INT-0007",
@@ -3905,7 +3930,7 @@ function liqDoMes(tipo,ym){ // tipo: 'pagar' | 'receber'
       if(ymOf(x.data)===ym)out.push({lanc:l,idx,liq:x});});});           // só o mês escolhido
   return out.sort((a,b)=>(a.liq.data||'').localeCompare(b.liq.data||''));}
 /* quantas parcelas ficaram para tras sem baixa (aparecem no mes delas, nao aqui) */
-function liqAtrasadasAntes(tipo,ym){const ini=ym+'-01';let n=0,v=0;
+function liqAtrasadasAntes(tipo,ym){const ini=(ym||'').length>7?ym:ym+'-01';let n=0,v=0;
   (DB.lancamentos||[]).forEach(l=>{if(!Array.isArray(l.liquidacoes))return;
     const ehRec=grupoTipo(l.grupo)==='receita';if((tipo==='receber')!==ehRec)return;
     l.liquidacoes.forEach(x=>{if(x&&x.data&&!x.pago&&x.data<ini){n++;v+=+x.valor||0;}});});
@@ -4839,7 +4864,8 @@ function saveLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!
   syncTaxaLanc(l);save();closeModal();viewFinanceiro();toast('Lançamento atualizado');}
 function lancFiltrados(ym){
   const fl=lancFiltro, ativo=fl.data||fl.grupo||fl.sub||fl.desc||fl.nf||fl.fornecedor||fl.forma;
-  const ls=lancMes(ym).filter(l=>
+  const base=finRangeAtivo()?(DB.lancamentos||[]).filter(l=>l.data>=finDe&&l.data<=finAte):lancMes(ym);
+  const ls=base.filter(l=>
     (!fl.data||l.data===fl.data)&&
     (!fl.grupo||l.grupo===fl.grupo)&&
     (!fl.sub||(l.sub||'').toLowerCase().includes(fl.sub.toLowerCase()))&&
@@ -4876,7 +4902,7 @@ function lancRowsHTML(ls,ativo){return ls.length?ls.map(l=>{const rec=grupoTipo(
       <td class="num">${auto?`<span style="font-size:10.5px;color:var(--soft)" title="Taxa calculada automaticamente sobre o recebível. Ajuste o % em Parâmetros.">automático</span>`:`<div style="display:inline-flex;gap:6px"><button class="icon-btn" title="Editar" onclick="editLancamento('${l.id}')">${icoEdit}</button>${nfKey(l.nfe)?`<button class="icon-btn" title="Editar a nota inteira (todos os itens da NF ${esc(l.nfe)})" style="width:auto;padding:0 6px;font-size:10px;font-weight:700;letter-spacing:.3px" onclick="editNota('${l.id}')">NF</button>`:''}<button class="icon-btn" title="Excluir" style="color:var(--red)" onclick="delLancamento('${l.id}')">${icoX}</button></div>`}</td></tr>`;}).join(''):`<tr><td colspan="9" style="color:var(--soft);text-align:center;padding:14px">${ativo?'Nenhum lançamento com esse filtro.':'Nenhum lançamento neste mês. Use o formulário acima.'}</td></tr>`;}
 function lancFootHTML(ls,ativo,filtTot){return ativo&&ls.length?`<tr><td colspan="7" style="text-align:right;font-weight:600;border-top:2px solid var(--navy)">Total filtrado</td><td class="num" style="font-weight:700;color:${filtTot>=0?'var(--green)':'var(--red)'};border-top:2px solid var(--navy)">${fmtBRL(filtTot)}</td><td style="border-top:2px solid var(--navy)"></td></tr>`:'';}
 function lancRefreshTabela(){
-  const tb=$('#lancTbody'); if(!tb)return viewFinanceiro();
+  const tb=$('#lancTbody'); if(!tb){const ae=document.activeElement;const ff=(ae&&ae.dataset&&ae.dataset.ff)||'';viewFinanceiro();if(ff){const el=document.querySelector('[data-ff="'+ff+'"]');if(el){el.focus();try{if(el.setSelectionRange)el.setSelectionRange(el.value.length,el.value.length);}catch(e){}}}return;}
   const {ls,ativo,filtTot}=lancFiltrados(curYM());
   tb.innerHTML=lancRowsHTML(ls,ativo);
   const tm=$('#lancTbodyM'); if(tm)tm.innerHTML=lancCardsHTML(ls,ativo);
@@ -4884,8 +4910,9 @@ function lancRefreshTabela(){
   const inf=$('#lancInfo'); if(inf)inf.innerHTML=lancInfoHTML(ls,ativo);
   const ft=$('#lancFoot'); if(ft)ft.innerHTML=lancFootHTML(ls,ativo,filtTot);
 }
+function lancTotaisPeriodo(){const ls=(DB.lancamentos||[]).filter(l=>l.data>=finDe&&l.data<=finAte);let recTot=0,despTot=0;ls.forEach(l=>{if(grupoTipo(l.grupo)==='receita')recTot+=(+l.valor||0);else despTot+=(+l.valor||0);});return {recTot,despTot,resultado:recTot-despTot};}
 function finLancamentos(){
-  const ym=curYM(); const d=dreLanc(ym);
+  const ym=curYM(); const d=finRangeAtivo()?lancTotaisPeriodo():dreLanc(ym);
   const fl=lancFiltro;
   const {ls,ativo,filtTot}=lancFiltrados(ym);
   const grupos=ordPt(Object.keys(DB.categorias));
@@ -4894,7 +4921,7 @@ function finLancamentos(){
     <div class="section-head"><div><div class="ttl">Lançamentos</div><div class="desc">Receitas e despesas, alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" onclick="lancarModal()">${icoPlus} Lançar</button>
-        <input type="month" class="input" style="max-width:160px" value="${ym}" onchange="lancYM=this.value;viewFinanceiro()">
+        ${finPeriodoHTML()}
         ${ddMais(`<label class="btn btn-ghost" style="cursor:pointer" title="XML (mais preciso) ou PDF do DANFE">🧾 Importar NF-e (XML ou PDF)<input type="file" accept=".xml,.pdf" style="display:none" onchange="importarNFe(this)"></label>
         <label class="btn btn-ghost" style="cursor:pointer">⬆ Importar planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarLancamentos(this)"></label>
         <button class="btn btn-ghost" onclick="modeloLancModal()">⬇ Baixar modelo da planilha</button>`,'⋯ Importar')}
@@ -4926,13 +4953,13 @@ function finLancamentos(){
 let fluxoJanela=90;
 function fluxoSetJanela(n){fluxoJanela=parseInt(n)||90;viewFinanceiro();}
 function finFluxo(){
-  const hoje=hojeISO(), ate=diasSoma(hoje,fluxoJanela);
+  const hoje=hojeISO();const rng=finRangeAtivo();const ate=rng?finAte:diasSoma(hoje,fluxoJanela);
   const abertura=saldoContas();
   const saldoHoje=saldoEm(hoje);
-  const ym=curYM(), ini=(ym+'-01')<hoje?(ym+'-01'):hoje;
+  const ym=curYM(), ini=rng?finDe:((ym+'-01')<hoje?(ym+'-01'):hoje);
   // tudo em aberto ate a janela (inclusive vencido de antes, que ainda vai sair do caixa)
   // + o que ja teve baixa dentro do periodo exibido
-  const movs=liqTodas().filter(x=>x.data&&x.data<=ate&&(!x.pago||x.data>=ini))
+  const movs=liqTodas().filter(x=>x.data&&x.data<=ate&&(rng?x.data>=ini:(!x.pago||x.data>=ini))&&finFiltroOk(x.lanc))
     .sort((a,b)=>(a.data||'').localeCompare(b.data||'')
       || ((grupoTipo(b.lanc.grupo)==='receita')-(grupoTipo(a.lanc.grupo)==='receita')));  // entradas antes das saídas no mesmo dia
   // acumulado parte do saldo real na véspera do primeiro movimento
@@ -4987,14 +5014,15 @@ function finFluxo(){
   const furou=menor.v<0;
   return `<div class="card card-pad" style="max-width:1100px">
     <div class="section-head"><div><div class="ttl">Fluxo de Caixa</div><div class="desc">Cada entrada e saída, na data em que o dinheiro se move. Diferente do DRE, que mostra quando o fato aconteceu.</div></div>
-      <select class="input" style="max-width:180px" onchange="fluxoSetJanela(this.value)">${[[30,'Próximos 30 dias'],[60,'Próximos 60 dias'],[90,'Próximos 90 dias']].map(([v,l])=>`<option value="${v}" ${fluxoJanela===v?'selected':''}>${l}</option>`).join('')}</select></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${rng?'':`<select class="input" style="max-width:180px" onchange="fluxoSetJanela(this.value)">${[[30,'Próximos 30 dias'],[60,'Próximos 60 dias'],[90,'Próximos 90 dias']].map(([v,l])=>`<option value="${v}" ${fluxoJanela===v?'selected':''}>${l}</option>`).join('')}</select>`}${finPeriodoHTML('fluxo')}</div></div>
     ${!abertura?`<div class="alert alert-amber" style="margin-bottom:12px">${icoWarn}<div>Sem <b>saldo inicial</b> o acumulado não representa o seu caixa real. Informe o saldo das contas em <b>Financeiro › Contas Bancárias</b>.</div></div>`:''}
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
       <div class="dash-pill"><span>Saldo hoje</span><b style="color:${saldoHoje>=0?'var(--green)':'var(--red)'}">${fmtBRL(saldoHoje)}</b></div>
       <div class="dash-pill"><span>A receber</span><b style="color:var(--green)">${fmtBRL(aReceber)}</b></div>
       <div class="dash-pill"><span>A pagar</span><b style="color:var(--red)">${fmtBRL(aPagar)}</b></div>
-      <div class="dash-pill"><span>Saldo em ${fluxoJanela} dias</span><b style="color:${saldoFim>=0?'var(--green)':'var(--red)'}">${fmtBRL(saldoFim)}</b></div>
+      <div class="dash-pill"><span>${rng?'Saldo em '+fmtDataBR(finAte):'Saldo em '+fluxoJanela+' dias'}</span><b style="color:${saldoFim>=0?'var(--green)':'var(--red)'}">${fmtBRL(saldoFim)}</b></div>
     </div>
+    ${finFiltroBarHTML()}
     ${furou?`<div class="alert alert-red" style="margin-bottom:12px">${icoWarn}<div>O caixa fica <b>negativo em ${fmtDataBR(menor.d)}</b>, chegando a <b>${fmtBRL(menor.v)}</b>. Antecipe recebíveis, renegocie um vencimento ou segure uma compra.</div></div>`:''}
     ${vencidas.length?`<div class="alert alert-amber" style="margin-bottom:12px">${icoWarn}<div><b>${vencidas.length}</b> movimento(s) já venceram e continuam <b>sem baixa</b>, somando ${fmtBRL(vencidas.reduce((s,x)=>s+x.valor,0))}. Dê baixa para o saldo ficar certo.</div></div>`:''}
     ${ehMobile()
@@ -5495,12 +5523,13 @@ function finContas(key){
   const ym=curYM();
   if(isPagar&&gerarRecorrentesMes(ym))save();
   const all=DB.fin[key]||[];const grupos=ordPt(Object.keys(DB.categorias));
-  const noMes=all.filter(c=>!c.vencimento||ymOf(c.vencimento)===ym);
+  const PR=finRange(),rng=finRangeAtivo();const noPer=c=>!c.vencimento||(rng?(c.vencimento>=PR.de&&c.vencimento<=PR.ate):ymOf(c.vencimento)===ym);
+  const noMes=all.filter(c=>noPer(c)&&finFiltroOk(c));
   const total=noMes.reduce((s,c)=>s+(c.valor||0),0);
   const aberto=noMes.filter(c=>!c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const feito=noMes.filter(c=>c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const gC='1.5fr 1.2fr 1.2fr 142px 124px 128px 108px 30px';
-  const linhas=all.map((row,i)=>{if(row.vencimento&&ymOf(row.vencimento)!==ym&&!cpMostrar.has(row.id))return '';const subs=ordPt((DB.categorias[row.grupo]||{subs:[]}).subs);return `
+  const linhas=all.map((row,i)=>{if(((row.vencimento&&!noPer(row))||!finFiltroOk(row))&&!cpMostrar.has(row.id))return '';const subs=ordPt((DB.categorias[row.grupo]||{subs:[]}).subs);return `
     <div class="comp-row cf-row" style="grid-template-columns:${gC};align-items:center">
       <div class="cf"><span class="cf-l">Descrição</span><input class="input" value="${(row.descricao||'').replace(/"/g,'&quot;')}" placeholder="Descrição" oninput="DB.fin.${key}[${i}].descricao=this.value;contaResync('${key}',${i})"></div>
       <div class="cf"><span class="cf-l">Grupo</span><select class="input" onchange="contaSetGrupo('${key}',${i},this.value)">${grupos.map(g=>`<option ${g===row.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
@@ -5511,7 +5540,7 @@ function finContas(key){
       <div class="cf"><span class="cf-l">${fLabel}</span><button class="icon-btn" onclick="contaToggle('${key}',${i})" title="Marcar como ${fLabel.toLowerCase()}" style="white-space:nowrap;width:auto;padding:0 10px;${row[cf]?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${row[cf]?'✓ ':'○ '}${fLabel}</button></div>
       <button class="mini-del" onclick="deleteConta('${key}',${i})">${icoX}</button>
     </div>`;}).join('');
-  const parc=liqDoMes(isPagar?'pagar':'receber',ym);
+  const parc=liqDoPeriodo(isPagar?'pagar':'receber',PR.de,PR.ate).filter(x=>finFiltroOk(x.lanc));
   const pAberto=parc.filter(x=>!x.liq.pago).reduce((s,x)=>s+(+x.liq.valor||0),0);
   const pFeito=parc.filter(x=>x.liq.pago).reduce((s,x)=>s+(+x.liq.valor||0),0);
   const hoje=hojeISO();
@@ -5523,7 +5552,7 @@ function finContas(key){
         <span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px" title="O valor já foi contabilizado no DRE na data do fato (entrada da nota). Dar baixa aqui move só o Fluxo de Caixa.">JÁ NO DRE</span>
       </div>
       <div style="font-size:11.5px;color:var(--muted);margin-bottom:9px">Vêm das compras e vendas já lançadas. Dar baixa <b>não lança de novo no DRE</b>: apenas registra que o dinheiro entrou ou saiu.</div>
-      ${(function(){const a=liqAtrasadasAntes(isPagar?'pagar':'receber',ym);return a.n?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${a.n}</b> parcela(s) de meses anteriores seguem sem baixa, somando <b>${fmtBRL(a.v)}</b>. Volte o mês para regularizar.</div></div>`:'';})()}
+      ${(function(){const a=liqAtrasadasAntes(isPagar?'pagar':'receber',PR.de);return a.n?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${a.n}</b> parcela(s) anteriores a ${fmtDataBR(PR.de)} seguem sem baixa, somando <b>${fmtBRL(a.v)}</b>. Volte o período para regularizar.</div></div>`:'';})()}
       <div class="comp-row mob-head" style="grid-template-columns:${gP};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Origem</span><span>Vencimento</span><span>Valor</span><span>Categoria</span><span>Situação</span><span></span></div>
       ${liqAgrupar(parc).map(g=>{const atras=!g.pago&&g.data<hoje;
         const desc=g.nome+(g.n>1?' · '+(g.idx+1)+'/'+g.n:'');
@@ -5538,17 +5567,18 @@ function finContas(key){
     </div>`;
   return `<div class="card card-pad" style="max-width:1220px">
     <div class="section-head" style="flex-wrap:wrap;gap:10px"><div><div class="ttl">${isPagar?'Contas a Pagar':'Contas a Receber'}</div><div class="desc">Previsão do que ainda ${isPagar?'sai':'entra'}. Dar baixa registra o dinheiro no Fluxo de Caixa, sem lançar de novo no DRE.</div></div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${isPagar?`<button class="btn btn-ghost btn-sm" onclick="cpImprimirModal()" title="Lista das contas de um dia ou período para imprimir ou salvar em PDF">🖨️ Imprimir pagamentos</button>`:''}<input type="month" class="input" style="max-width:170px" value="${ym}" onchange="lancYM=this.value;cpMostrar.clear();viewFinanceiro()"></div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${isPagar?`<button class="btn btn-ghost btn-sm" onclick="cpImprimirModal()" title="Lista das contas de um dia ou período para imprimir ou salvar em PDF">🖨️ Imprimir pagamentos</button>`:''}${finPeriodoHTML()}</div></div>
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-      <div class="dash-pill"><span>Total do mês</span><b>${fmtBRL(total+pAberto+pFeito)}</b></div>
+      <div class="dash-pill"><span>Total ${rng?'do período':'do mês'}</span><b>${fmtBRL(total+pAberto+pFeito)}</b></div>
       <div class="dash-pill"><span>${isPagar?'A pagar (em aberto)':'A receber (em aberto)'}</span><b style="color:${isPagar?'var(--red)':'var(--amber)'}">${fmtBRL(aberto+pAberto)}</b></div>
       <div class="dash-pill"><span>${fLabel}</span><b style="color:var(--green)">${fmtBRL(feito+pFeito)}</b></div>
     </div>
+    ${finFiltroBarHTML()}
     ${blocoParcelas}
     <div style="font-size:13px;font-weight:700;margin-bottom:3px">Contas avulsas</div>
     <div style="font-size:11.5px;color:var(--muted);margin-bottom:9px">Compromissos que ainda não viraram lançamento.</div>
     <div class="comp-row mob-head" style="grid-template-columns:${gC};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Descrição</span><span>Grupo</span><span>Subcategoria</span><span>Vencimento</span><span>Valor</span><span>Forma</span><span>${fLabel}</span><span></span></div>
-    ${linhas||`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhuma conta avulsa neste mês.</div>`}
+    ${linhas||`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhuma conta avulsa ${rng?'neste período':'neste mês'}${finFiltroAtivo()?' com esses filtros':''}.</div>`}
     <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:8px">${icoPlus} Adicionar conta avulsa</button>
     <div style="font-size:11.5px;color:var(--soft);margin-top:8px">Conta avulsa é o que <b>ainda não foi lançado</b> (ex.: aluguel do mês que vem). Ao marcar <b>${fLabel}</b>, ela entra no DRE e no Fluxo. As parcelas acima já estão no DRE e só movem o Fluxo.</div>
   </div>`;
@@ -7819,6 +7849,7 @@ function imprimirTela(){const view=document.getElementById('view');if(!view)retu
   const mesEl=view.querySelector('input[type=month]');const perSel=view.querySelector('#topActions select, select[onchange*="periodo"]');
   const topMes=document.querySelector('#topActions input[type=month]');const topSel=document.querySelector('#topActions select');
   let periodo='';if(mesEl&&mesEl.value)periodo=mesNomeYM(mesEl.value);else if(topMes&&topMes.value)periodo=mesNomeYM(topMes.value);else if(topSel){const o=topSel.options[topSel.selectedIndex];periodo=o?o.textContent.trim():'';}
+  if(current==='financeiro'&&typeof finRangeAtivo==='function'&&finRangeAtivo())periodo=fmtDataBR(finDe)+' a '+fmtDataBR(finAte);
   const clone=view.cloneNode(true);
   // gráficos desenhados em canvas não sobrevivem ao clone: copia o desenho como imagem
   {const orig=view.querySelectorAll('canvas'),cl=clone.querySelectorAll('canvas');orig.forEach((c,i)=>{const d=cl[i];if(!d)return;try{const img=document.createElement('img');img.src=c.toDataURL('image/png');img.style.cssText='width:100%;max-width:100%;height:auto;display:block';d.replaceWith(img);}catch(e){}});}
