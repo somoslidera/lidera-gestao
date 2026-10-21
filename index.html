@@ -952,6 +952,7 @@ body.dark .prm-chip{background:var(--card)}body.dark .prm-nav a:hover{background
 .dsh-pe-sub{font-size:12px;color:var(--soft)}.dsh-pe-sub b{color:var(--muted)}
 .dsh-pe-chip{font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:99px;margin-top:4px}
 .dsh-pe-txt{font-size:12.5px;color:var(--muted);line-height:1.45;max-width:320px}
+.dia-chip{cursor:pointer;padding:7px 13px;border-radius:20px;font-size:12.5px;font-weight:600;border:1.5px solid var(--line);background:transparent;color:var(--soft);transition:.12s}.dia-chip:hover{border-color:var(--navy);color:var(--navy)}.dia-chip.on{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 2px 6px rgba(29,53,115,.25)}body.dark .dia-chip.on{background:#2B4C99;border-color:#2B4C99}
 .dsh-marcos{width:100%;max-width:340px;margin-top:2px}.dsh-marcos-bar{position:relative;height:10px;border-radius:99px;background:var(--line);overflow:visible}.dsh-marcos-bar>i{display:block;height:100%;border-radius:99px;transition:width .4s}.dsh-marcos-bar>b{position:absolute;top:-4px;width:3px;height:18px;border-radius:2px;transform:translateX(-50%)}.dsh-marcos-leg{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--soft)}.dsh-marcos-leg span{display:flex;align-items:center;gap:4px;white-space:nowrap}.dsh-marcos-leg i{width:8px;height:8px;border-radius:2px;display:inline-block}.dsh-marcos-leg b{color:var(--muted)}
 .dsh-pe-comp{display:flex;flex-direction:column;gap:7px}.dsh-pe-comp>div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;column-gap:8px;min-width:0}.dsh-pe-comp span{font-size:11.5px;font-weight:600;color:var(--muted)}.dsh-pe-comp b{font-family:'Fraunces',serif;font-size:15px;color:var(--ink)}.dsh-pe-comp small{flex-basis:100%;font-size:11px;color:var(--soft);line-height:1.35}
 .dsh-vazio{font-size:13px;color:var(--soft);padding:12px 0;line-height:1.5}
@@ -2376,7 +2377,7 @@ function viewDashboard(){
   </div>
   <div class="dsh-3">
     <div class="card dsh-card dsh-pe-card">
-      <div class="dsh-head"><div><div class="ttl">Meta de faturamento</div><div class="desc">${MT.realista?'Meta realista':MT.minimo?'Meta mínima':'Defina em Parâmetros › Metas'} · ${R.label.toLowerCase()}</div></div>${metaRef>0?`<span class="chip soft">${MT.diasTrab} dias de funcionamento</span>`:''}</div>
+      <div class="dsh-head"><div><div class="ttl">Meta de faturamento</div><div class="desc">${MT.realista?'Meta realista':MT.minimo?'Meta mínima':'Defina em Parâmetros › Metas de faturamento'} · ${R.label.toLowerCase()}</div></div>${metaRef>0?`<span class="chip soft">${MT.diasTrab} dias de funcionamento</span>`:''}</div>
       ${metaRef>0?`<div class="dsh-pe-body">
         ${dashArc(mPct,mCor)}
         <div class="dsh-pe-n">${fmtBRL(metaRef)}</div>
@@ -2384,8 +2385,8 @@ function viewDashboard(){
         <div class="dsh-marcos"><div class="dsh-marcos-bar"><i style="width:${clamp(t.faturamento/escala*100,0,100)}%;background:${mCor}"></i>${marcos.map(([n,v,c])=>`<b style="left:${clamp(v/escala*100,0,100)}%;background:${c}" title="${n} ${fmtBRL(v)}"></b>`).join('')}</div><div class="dsh-marcos-leg">${marcos.map(([n,v,c])=>`<span><i style="background:${c}"></i>${n} <b>${fmtBRL(v)}</b></span>`).join('')}</div></div>
         <div class="dsh-pe-txt">${mTxt}</div>
       </div>
-      <div class="dsh-foot dsh-pe-base">Faturamento = receitas lançadas no período. <a class="gp-link" onclick="prmIr('metas')">ajustar metas</a></div>`
-      :`<div class="dsh-pe-body"><div class="dsh-vazio">Nenhuma meta cadastrada para este período. Em <a class="gp-link" onclick="prmIr('metas')">Parâmetros › Metas</a> informe a inflação, os dias de funcionamento e as metas realista e desafiadora de cada mês; o mínimo sai sozinho do ano anterior.</div></div>`}
+      <div class="dsh-foot dsh-pe-base">Faturamento = receitas lançadas no período. <a class="gp-link" onclick="prmIr('metasfat')">ajustar metas</a></div>`
+      :`<div class="dsh-pe-body"><div class="dsh-vazio">Nenhuma meta cadastrada para este período. Em <a class="gp-link" onclick="prmIr('metasfat')">Parâmetros › Metas de faturamento</a> informe a inflação, os dias de funcionamento e as metas realista e desafiadora de cada mês; o mínimo sai sozinho do ano anterior.</div></div>`}
     </div>
     <div class="card dsh-card">
       <div class="dsh-head"><div><div class="ttl">Últimos 6 meses</div><div class="desc">Receita e despesas lançadas, com o resultado de cada mês</div></div><div class="dsh-legend"><span><i style="background:var(--navy)"></i>Receita</span><span><i style="background:var(--gold)"></i>Despesas</span></div></div>
@@ -4031,7 +4032,7 @@ function prmMetasFatHTML(){const ano=metasAnoSel;const cfg=metasAno(ano);const d
       <div style="display:flex;gap:8px;align-items:center"><select class="input" style="width:auto;padding:6px 10px" onchange="metasAnoSel=+this.value;viewFinanceiro()">${[ano-1,ano,ano+1].map(a=>`<option value="${a}" ${a===ano?'selected':''}>${a}</option>`).join('')}</select></div></div>
     <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
       <div class="field" style="margin:0;max-width:200px"><label>Inflação (IPCA) <span class="hint">% no ano, para o mínimo</span></label><input class="input" type="number" step="0.01" value="${cfg.ipca===''||cfg.ipca==null?'':cfg.ipca}" placeholder="Ex.: 4,5" onchange="metasFatSet(${ano},'','ipca',this.value)"></div>
-      <div class="field" style="margin:0"><label>Dias de funcionamento <span class="hint">a meta diária divide por eles</span></label><div style="display:flex;gap:6px;flex-wrap:wrap">${NOMES_D.map((n,i)=>`<button type="button" class="tag ${ds.includes(i)?'tag-navy':'tag-gray'}" style="cursor:pointer;border:0;padding:5px 11px;font-size:12px" onclick="diasTrabToggle(${i})">${n}</button>`).join('')}</div></div>
+      <div class="field" style="margin:0"><label>Dias de funcionamento <span class="hint">a meta diária divide por eles</span></label><div style="display:flex;gap:6px;flex-wrap:wrap">${NOMES_D.map((n,i)=>{const on=ds.includes(i);return `<button type="button" class="dia-chip ${on?'on':''}" onclick="diasTrabToggle(${i})" title="${on?'Funciona: clique para tirar':'Fechado: clique para marcar'}">${on?'✓ ':''}${n}</button>`;}).join('')}</div></div>
     </div>
     <div class="scroll-x"><table style="width:100%"><thead><tr><th style="text-align:left;padding:4px 0;font-size:10.5px;color:var(--soft)">Mês</th><th class="num" style="font-size:10.5px;color:var(--soft)" title="Receita lançada no mesmo mês do ano anterior. Pode digitar outro valor.">Referência ${ano-1}</th><th class="num" style="font-size:10.5px;color:var(--soft)">Mínimo</th><th class="num" style="font-size:10.5px;color:var(--soft)">Realista</th><th class="num" style="font-size:10.5px;color:var(--soft)">Desafiador</th><th class="num" style="font-size:10.5px;color:var(--soft)">Realista / dia</th></tr></thead>
       <tbody>${linhas}<tr style="font-weight:700"><td style="padding:8px 0;border-top:2px solid var(--navy)">Ano</td><td class="num" style="padding:8px 4px;border-top:2px solid var(--navy)">${tot.ref>0?fmtBRL(tot.ref):'—'}</td><td class="num" style="padding:8px 4px;border-top:2px solid var(--navy)">${tot.min>0?fmtBRL(tot.min):'—'}</td><td class="num" style="padding:8px 4px;border-top:2px solid var(--navy)">${tot.rea>0?fmtBRL(tot.rea):'—'}</td><td class="num" style="padding:8px 4px;border-top:2px solid var(--navy)">${tot.des>0?fmtBRL(tot.des):'—'}</td><td style="border-top:2px solid var(--navy)"></td></tr></tbody></table></div>
@@ -5827,6 +5828,7 @@ const PRM_ICO={
  recebimento:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg>',
  formas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M3 7l2-3h12l2 3M16 14h2"/></svg>',
  categorias:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12l-8 8-9-9V3h8l9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>',
+ metasfat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></svg>',
  metas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
  contas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 10l9-6 9 6M5 10v9M9 10v9M15 10v9M19 10v9M3 19h18"/></svg>',
  estoque:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>'};
@@ -5836,7 +5838,8 @@ const PRM_SECOES=[
  {id:'recebimento',nome:'Meios de recebimento',desc:'Bandeiras, taxas e prazo do dinheiro',chaves:'bandeira cartao credito debito pix dinheiro voucher taxa prazo recebimento maquininha receita bruta liquida'},
  {id:'formas',nome:'Formas de pagamento',desc:'Opções do menu Forma nos lançamentos',chaves:'forma pagamento lancamento pix boleto transferencia dinheiro'},
  {id:'categorias',nome:'Categorias',desc:'Grupos e subcategorias do DRE',chaves:'categoria grupo subcategoria dre receita despesa cmv utilidades pessoal'},
- {id:'metas',nome:'Metas e referências',desc:'Metas de faturamento, CMV alvo e a régua PLL',chaves:'meta faturamento minimo realista desafiador ipca inflacao dias trabalhados cmv alvo ponto de equilibrio margem referencia pll lucro compra semanal'},
+ {id:'metasfat',nome:'Metas de faturamento',desc:'Mínimo, realista e desafiador por mês',chaves:'meta faturamento minimo realista desafiador ipca inflacao dias trabalhados funcionamento compra semanal'},
+ {id:'metas',nome:'Referências',desc:'CMV alvo, ponto de equilíbrio e a régua PLL',chaves:'referencia cmv alvo ponto de equilibrio margem pll lucro regua'},
  {id:'contas',nome:'Contas bancárias',desc:'Saldos que alimentam a Visão Geral',chaves:'conta banco saldo caixa bancaria'},
  {id:'estoque',nome:'Estoque e PDV',desc:'Armazéns, automações e sistema de vendas',chaves:'estoque armazem cozinha pdv vuca automatico compras vendas desperdicio contagem'}];
 let paramSec=(function(){try{return localStorage.getItem('flow_param_sec')||'impostos';}catch(e){return 'impostos';}})(),paramBusca='';
@@ -5853,7 +5856,7 @@ function prmOnde(itens){return `<div class="prm-onde"><span>Usado em:</span>${it
 function finParamCompleto(){const sec=PRM_SECOES.find(s=>s.id===paramSec)||PRM_SECOES[0];paramSec=sec.id;const mob=ehMobile();
   const q=lmNorm(paramBusca);const hits=PRM_SECOES.filter(x=>!q||lmNorm(x.nome+' '+x.desc+' '+x.chaves).includes(q)).map(x=>x.id);   // busca continua valendo depois de trocar de seção
   const nav=`<div class="prm-nav" id="prm_nav">${PRM_SECOES.map(s=>`<a data-sec="${s.id}" class="${s.id===sec.id?'on':''}" style="${hits.includes(s.id)?'':'display:none'}" onclick="prmIr('${s.id}')">${PRM_ICO[s.id]}<span><b>${s.nome}</b>${mob?'':`<small>${s.desc}</small>`}</span></a>`).join('')}</div>`;
-  const corpo={impostos:prmImpostosHTML,canais:prmCanaisHTML,recebimento:prmRecebimentoHTML,formas:prmFormasHTML,categorias:prmCategoriasHTML,metas:prmMetasHTML,contas:prmContasHTML,estoque:prmEstoqueHTML}[sec.id]();
+  const corpo={impostos:prmImpostosHTML,canais:prmCanaisHTML,recebimento:prmRecebimentoHTML,formas:prmFormasHTML,categorias:prmCategoriasHTML,metasfat:()=>`<div class="prm-grid">${prmMetasFatHTML()}</div>`,metas:prmMetasHTML,contas:prmContasHTML,estoque:prmEstoqueHTML}[sec.id]();
   return `<div class="prm-top"><div class="gp-search" style="max-width:380px">${icoGpSearch}<input class="input" id="prm_busca" value="${esc(paramBusca)}" placeholder="Buscar configuração (ex.: iFood, FGTS, pix, CMV)" oninput="prmBuscar(this.value)" onkeydown="if(event.key==='Enter')prmBuscaEnter()"></div><span id="prm_busca_info" class="gp-mini">${q?(hits.length?hits.length+' seção(ões) com "'+esc(paramBusca)+'"':'nada encontrado'):''}</span>${q?`<a class="gp-link" style="font-size:12px" onclick="paramBusca='';viewFinanceiro()">limpar</a>`:''}</div>
   ${prmResumo()}
   <div class="prm-wrap">${nav}<div class="prm-panel"><div class="prm-head"><div class="prm-ico">${PRM_ICO[sec.id]}</div><div><div class="ttl">${sec.nome}</div><div class="desc">${sec.desc}</div></div></div>${corpo}</div></div>`;}
@@ -5899,9 +5902,8 @@ function prmMetasHTML(){const fin=DB.fin;const regua=reguaCentros();const custom
   const NOMES={cmv:'CMV',cmo:'CMO (pessoal)',fixas:'Despesas fixas e operacionais',impostos:'Impostos',taxas:'Taxas de cartão',mkt:'Marketing',manut:'Manutenção'};
   const inp=(id,campo,v)=>`<input class="input" type="number" step="0.5" min="0" max="100" value="${v==null?'':v}" style="width:74px;padding:5px 8px;text-align:right" onchange="reguaSet('${id}','${campo}',this.value)">`;
   return `<div class="prm-grid">
-    ${prmMetasFatHTML()}
     <div class="card card-pad">
-      <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Metas</div><div class="desc">O que o Flow usa para dizer se está bom ou ruim</div></div></div>
+      <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Referências</div><div class="desc">O que o Flow usa para dizer se está bom ou ruim</div></div></div>
       <div class="field"><label>CMV alvo <span class="hint">% do faturamento</span></label><input class="input" type="number" step="0.5" value="${DB.cmvAlvo||30}" onchange="DB.cmvAlvo=parseFloat(this.value)||30;save();viewFinanceiro()"></div>
       <div class="field"><label>CMV do ponto de equilíbrio <span class="hint">qual CMV usar no cálculo</span></label>
         <select class="input" onchange="DB.fin.peCmvFonte=this.value;save();viewFinanceiro()">
