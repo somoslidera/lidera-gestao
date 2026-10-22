@@ -6083,7 +6083,7 @@ function prmEstoqueHTML(){const c=estCfg();const arms=estArmazens();const auto=[
       <div class="prm-exemplo">As vendas chegam por planilha (Estoque → Baixa por vendas), pela API do Flow ou pela integração com a Suitable abaixo. O Flow casa cada item com a ficha técnica pelo <b>código no PDV</b>; o que não casar você vincula uma vez.</div>
       ${prmOnde(['Estoque (baixa por vendas)','Fichas técnicas (código no PDV)','API do Flow'])}
     </div>
-    ${suitableCardHTML()}</div>`;}
+    ${suitableCardHTML()}${takeatCardHTML()}</div>`;}
 /* ===== Bancos (Santander / Bradesco / OFX) e Conciliação bancária · as credenciais ficam só no servidor (Edge Function banco-sync) ===== */
 const BANCO_NOME={santander:'Santander',bradesco:'Bradesco',outro:'Outro banco (OFX)'};
 let bancosCache=null;
@@ -6277,6 +6277,92 @@ async function concLancarSalvar(){const id=window._concLanc;const t=concTx(id);i
   DB.lancamentos=DB.lancamentos||[];DB.lancamentos.push(novo);
   if($('#cl_aprender').checked){DB.fin.concRegras=DB.fin.concRegras||{};DB.fin.concRegras[concRegraChave(t.descricao)]={grupo:novo.grupo,sub:novo.sub,forma:novo.forma,fornecedor:novo.fornecedor,descricao:novo.descricao};}
   t.conc_tipo='lanc';t.conc_ref=novo.id;t.conc_em=new Date().toISOString();save();closeModal();concRender();await concGravar([{id,conc_tipo:'lanc',conc_ref:novo.id}]);toast('Lançado no DRE e conciliado');}
+
+/* ===== Integração Takeat (PDV) · a chave fica só no servidor (Edge Function takeat-sync) ===== */
+function takeatCardHTML(){if(!(typeof sb!=='undefined'&&sb&&CLOUD&&ORG))return '';
+  setTimeout(takeatCarregarStatus,60);
+  const formas=(DB.fin&&DB.fin.takeatFormas)||[];const mapa=(DB.fin&&DB.fin.takeatMeios)||{};const meios=meiosRec();
+  return `<div class="card card-pad" style="grid-column:1/-1">
+    <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Takeat · integração automática</div><div class="desc">Puxa as comandas fechadas do Takeat de hora em hora: receita por forma de pagamento nos Lançamentos, vendas por produto na Baixa por vendas (com a ficha técnica do Flow) e o relatório de venda por produto. As notas de compra recebidas no Takeat entram como lançamento, sem duplicar as já lançadas.</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="takeatSync()">⟳ Sincronizar agora</button><button class="btn btn-ghost btn-sm" onclick="takeatConferir()" title="Simula a importação de um período e mostra os totais, sem gravar nada">Conferir período</button><button class="btn btn-ghost btn-sm" onclick="takeatDiag()" title="Mostra o relógio das comandas e as formas de pagamento">Diagnóstico</button></div></div>
+    <div id="tka_status" class="gp-mini" style="margin-bottom:10px">Consultando…</div>
+    <div class="grid-2">
+      <div class="field"><label>Chave de API <span class="hint">gerada em ai-builders.takeat.app · começa com tk_live_</span></label><input class="input" id="tka_key" type="password" placeholder="deixe em branco para manter a atual" autocomplete="new-password"></div>
+      <div class="field"><label>Importar desde</label><input type="date" class="input" id="tka_desde" value="${(DB.fin&&DB.fin.takeatDesde)||hojeISO()}"></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div class="field" style="margin:0"><label>Ajuste de relógio (h) <span class="hint">0 = horário de Brasília</span></label><input type="number" class="input" id="tka_hajuste" step="1" value="${(DB.fin&&DB.fin.takeatHorasAjuste)||0}" style="width:110px"></div>
+      <div class="field" style="margin:0"><label>Dia vira às (h) <span class="hint">comandas até essa hora contam no dia anterior</span></label><input type="number" class="input" id="tka_diavira" min="0" max="12" step="1" value="${(DB.fin&&DB.fin.takeatDiaVira)||0}" style="width:110px"></div>
+      <button class="btn btn-primary btn-sm" onclick="takeatSalvar()">Salvar e testar</button>
+      <button class="btn btn-ghost btn-sm" onclick="takeatLigar(true)">Ligar</button>
+      <button class="btn btn-ghost btn-sm" onclick="takeatLigar(false)" style="color:var(--red)">Desligar</button>
+    </div>
+    ${formas.length?`<div style="margin-top:14px"><div style="font-size:12.5px;font-weight:600;margin-bottom:4px">Formas de pagamento do Takeat → meio de recebimento do Flow</div><div class="gp-mini" style="margin-bottom:8px">A primeira vez cria um meio com o mesmo nome (ex.: "Visa Crédito"). Troque aqui se quiser juntar em um só (ex.: tudo em Cartão de Crédito). Vale para as próximas sincronizações.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px 14px">${formas.map(f=>`<div style="display:flex;gap:8px;align-items:center;font-size:12.5px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.tipo||'')} ${esc(f.sub||'')}">${esc(f.nome)}</span><select class="input" style="flex:1;padding:5px 8px" onchange="DB.fin.takeatMeios=DB.fin.takeatMeios||{};DB.fin.takeatMeios['${esc(f.id)}']=this.value;save()">${meios.map(m=>`<option value="${m.id}" ${mapa[f.id]===m.id?'selected':''}>${esc(m.nome)}</option>`).join('')}</select></div>`).join('')}</div></div>`:''}
+    ${prmOnde(['Lançamentos (Receita por meio, "Vendas Takeat")','Estoque › Baixa por vendas','Estoque › Vendas por produto','Dashboard e DRE'])}
+  </div>`;}
+async function takeatCarregarStatus(){const el=$('#tka_status');if(!el)return;try{const r=await chamarFn('takeat-sync',{acao:'status',orgId:ORG.id});const c=r.data&&r.data.cfg;
+  if(!r.data||!r.data.ok){el.innerHTML='<span style="color:var(--red)">Não foi possível consultar: '+esc((r.data&&r.data.erro)||r.status)+'</span>';return;}
+  if(!c){el.innerHTML=(r.data.outroPdv?'Este restaurante está integrado ao PDV <b>'+esc(r.data.outroPdv)+'</b>. Salvar uma chave do Takeat substitui essa integração. ':'')+'Ainda não configurado. Cole a chave do Takeat e clique em <b>Salvar e testar</b>.';return;}
+  if($('#tka_desde')&&c.desde)$('#tka_desde').value=c.desde;if($('#tka_hajuste'))$('#tka_hajuste').value=c.horas_ajuste||0;if($('#tka_diavira'))$('#tka_diavira').value=c.dia_vira||0;
+  const ult=c.log&&c.log[0];const ch=c.chamadas&&c.chamadas.rotas?Object.entries(c.chamadas.rotas).map(([r,n])=>n+' em '+r.replace(/^\/v\d\//,'')).join(', '):'';
+  el.innerHTML=`<span class="tag ${c.ativo?'tag-green':'tag-gray'}">${c.ativo?'ligada':'desligada'}</span> loja <b>${esc(c.loja||c.client_id||'')}</b> · <b>${r.data.pedidos}</b> comanda(s) importadas · desde ${fmtDataBR(c.desde)}${c.ultimo_sync?' · última sincronização '+notifQuando(c.ultimo_sync):''}${c.pendentes?' · <span style="color:var(--amber)">ainda há comandas na fila</span>':''}${c.ultimo_erro?' · <span style="color:var(--red)">'+esc(c.ultimo_erro)+'</span>':''}${ch?'<div>chamadas hoje (limite 500 por rota): '+esc(ch)+'</div>':''}${ult?'<div>última: '+ult.novas+' comanda(s) · vendas '+fmtBRL(ult.vendas||0)+' · recebido '+fmtBRL(ult.recebido||0)+' · '+(ult.dias||[]).map(fmtDataBR).join(', ')+(ult.notas&&ult.notas.novas?' · '+ult.notas.novas+' nota(s) de compra':'')+'</div>':''}`;}catch(e){el.textContent='Falha ao consultar.';}}
+async function takeatSalvar(){const body={acao:'config',orgId:ORG.id,api_key:($('#tka_key').value||'').trim(),desde:$('#tka_desde').value,horas_ajuste:parseInt($('#tka_hajuste').value)||0,dia_vira:parseInt($('#tka_diavira').value)||0};
+  toast('Testando a chave no Takeat…');const r=await chamarFn('takeat-sync',body);if(!r.data||!r.data.ok)return toast('Takeat: '+((r.data&&r.data.erro)||'falha'),7000);
+  DB.fin.takeatDesde=body.desde;DB.fin.takeatHorasAjuste=body.horas_ajuste;DB.fin.takeatDiaVira=body.dia_vira;DB.fin.pdvNome='Takeat';DB.fin.pdvTipo='takeat';save();$('#tka_key').value='';
+  toast('Conectado à loja '+(r.data.loja||r.data.restaurant_id)+' · a integração está ligada',6000);takeatCarregarStatus();}
+async function takeatSync(){toast('Sincronizando com o Takeat…');const r=await chamarFn('takeat-sync',{acao:'sync',orgId:ORG.id});if(!r.data||!r.data.ok)return toast('Takeat: '+((r.data&&r.data.erro)||'falha'),8000);
+  if(r.data.pulado)return toast('Takeat: '+r.data.pulado,7000);
+  toast(r.data.novas+' comanda(s) importadas · vendas '+fmtBRL(r.data.vendas||0)+(r.data.notas&&r.data.notas.novas?' · '+r.data.notas.novas+' nota(s) de compra':'')+(r.data.aviso?' · '+r.data.aviso:''),9000);
+  try{const q=await sb.from('organizacoes').select('dados,atualizado_em').eq('id',ORG.id).maybeSingle();if(q.data&&q.data.dados){DB=q.data.dados;CLOUD_TS=q.data.atualizado_em;CLOUD_BASE=_cloneDB(DB);normData();}}catch(e){}
+  if(current==='financeiro')viewFinanceiro();else if(current==='estoque')viewEstoque();takeatCarregarStatus();}
+function takeatConferir(){const h=hojeISO();modal(`<div class="modal-head"><h3>Conferir período no Takeat</h3><button class="x" onclick="closeModal()">${icoX}</button></div><div class="modal-body">
+    <div class="gp-mini" style="margin-bottom:10px">Lê as comandas do período e mostra os totais por categoria e forma de pagamento, para bater com o relatório do Takeat. Não grava nada.</div>
+    <div class="grid-2"><div class="field"><label>De</label><input type="date" class="input" id="tkc_de" value="${h.slice(0,7)}-01"></div><div class="field"><label>Até</label><input type="date" class="input" id="tkc_ate" value="${h}"></div></div>
+    <div id="tkc_out" class="gp-mini"></div></div><div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fechar</button><button class="btn btn-primary" onclick="takeatConferirExec()">Conferir</button></div>`);}
+async function takeatConferirExec(){const el=$('#tkc_out');el.textContent='Lendo as comandas…';const r=await chamarFn('takeat-sync',{acao:'conferir',orgId:ORG.id,de:$('#tkc_de').value,ate:$('#tkc_ate').value});const d=r.data||{};
+  if(!d.ok){el.innerHTML='<span style="color:var(--red)">'+esc(d.erro||'falha')+'</span>';return;}
+  const cats=Object.entries(d.porCategoria||{});const meios=Object.entries(d.porMeio||{});
+  el.innerHTML=`<div style="font-size:13.5px;margin:6px 0"><b>${d.validas}</b> comandas fechadas · vendas <b>${fmtBRL(d.vendas||0)}</b> · <b>${fmtN(d.itens||0)}</b> itens · recebido <b>${fmtBRL(d.recebido||0)}</b>${d.truncado?' · <span style="color:var(--amber)">período grande: leitura parcial</span>':''}</div>
+    <table style="width:100%;font-size:12.5px"><thead><tr><th style="text-align:left">Categoria</th><th class="num">Itens</th><th class="num">Vendas</th></tr></thead><tbody>${cats.map(([c,v])=>`<tr><td>${esc(c)}</td><td class="num">${fmtN(v.qtd)}</td><td class="num">${fmtBRL(v.valor)}</td></tr>`).join('')}</tbody></table>
+    <div style="margin-top:8px"><b>Por forma de pagamento:</b> ${meios.map(([m,v])=>esc(m)+' '+fmtBRL(v)).join(' · ')}</div>`;}
+async function takeatDiag(){const r=await chamarFn('takeat-sync',{acao:'diagnostico',orgId:ORG.id});if(!r.data||!r.data.ok)return toast('Takeat: '+((r.data&&r.data.erro)||'falha'),6000);const d=r.data;
+  modal(`<div class="modal-head"><h3>Diagnóstico Takeat</h3><button class="x" onclick="closeModal()">${icoX}</button></div><div class="modal-body" style="font-size:13px">
+    <div><b>${esc(d.loja||'')}</b> · ${esc(d.fuso||'')} · ${d.pedidos} comandas nos últimos 7 dias</div>
+    <div class="gp-mini" style="margin:8px 0">Comandas por hora (horário de Brasília). Se a casa fecha depois da meia-noite, use "Dia vira às" para que as comandas da madrugada contem no dia anterior.</div>
+    <div style="display:flex;gap:3px;align-items:flex-end;height:120px;border-bottom:1px solid var(--line)">${Array.from({length:24},(_,h)=>{const k=String(h).padStart(2,'0');const v=(d.por_hora||{})[k]||0;const mx=Math.max(1,...Object.values(d.por_hora||{}));return `<div title="${k}h: ${v}" style="flex:1;background:var(--navy);height:${Math.round(v/mx*100)}%;min-height:1px"></div>`;}).join('')}</div>
+    <div style="display:flex;gap:3px;font-size:9px;color:var(--soft)">${Array.from({length:24},(_,h)=>`<div style="flex:1;text-align:center">${h%3?'':h}</div>`).join('')}</div>
+    <div style="margin-top:10px"><b>Formas de pagamento:</b> ${(d.formas||[]).map(f=>esc(f.nome)).join(' · ')}</div>
+    <div class="gp-mini" style="margin-top:8px">Chamadas hoje: ${esc(Object.entries((d.chamadas&&d.chamadas.rotas)||{}).map(([r,n])=>n+' '+r).join(' · ')||'0')}</div>
+  </div><div class="modal-foot"><button class="btn btn-primary" onclick="closeModal()">Fechar</button></div>`);}
+async function takeatLigar(on){const r=await chamarFn('takeat-sync',{acao:on?'ligar':'desligar',orgId:ORG.id});toast(r.data&&r.data.ok?(on?'Integração ligada':'Integração desligada'):'Falha');takeatCarregarStatus();}
+/* ----- Relatório de venda por produto (vem do PDV; tabela pdv_vendas_produto) ----- */
+let vpState={de:'',ate:'',dados:null,por:'produto',busca:''};
+function estVendasProdutoHTML(){const h=hojeISO();if(!vpState.de){vpState.de=h.slice(0,7)+'-01';vpState.ate=h;}
+  if(!(typeof sb!=='undefined'&&sb&&CLOUD&&ORG))return `${estTabsHTML()}<div class="card card-pad"><div class="ttl">Vendas por produto</div><div class="desc">Disponível quando o restaurante está logado na nuvem e integrado a um PDV.</div></div>`;
+  setTimeout(vpState.dados?vpRender:vpCarregar,30);
+  return `${estTabsHTML()}<div class="card card-pad">
+    <div class="section-head"><div><div class="ttl">Vendas por produto</div><div class="desc">Quantidade vendida e faturamento de cada produto, como veio do ${esc((DB.fin&&DB.fin.pdvNome)||'PDV')}. Os nomes são os do PDV; a ficha do Flow entra pela Baixa por vendas.</div></div>
+      <div class="pill-filter" style="margin:0">${[['produto','Por produto'],['categoria','Por categoria'],['dia','Por dia']].map(([k,l])=>`<button class="${vpState.por===k?'on':''}" onclick="vpState.por='${k}';vpRender()">${l}</button>`).join('')}</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+      <div class="field" style="margin:0"><label>De</label><input type="date" class="input" value="${vpState.de}" onchange="vpState.de=this.value;vpCarregar()"></div>
+      <div class="field" style="margin:0"><label>Até</label><input type="date" class="input" value="${vpState.ate}" onchange="vpState.ate=this.value;vpCarregar()"></div>
+      <div class="pill-filter" style="margin:0">${[['Hoje',0,0],['7 dias',-6,0],['Este mês','M','M'],['Mês passado','P','P']].map(([l,a,b])=>`<button onclick="vpAtalho('${a}','${b}')">${l}</button>`).join('')}</div>
+      <div class="field" style="margin:0;flex:1;min-width:160px"><label>Buscar</label><input class="input" value="${esc(vpState.busca)}" placeholder="produto ou categoria" oninput="vpState.busca=this.value;vpRender()"></div>
+    </div>
+    <div id="vp_kpis" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px"></div>
+    <div id="vp_lista">${vpState.dados?'':'<div class="gp-mini">Carregando…</div>'}</div>
+  </div>`;}
+function vpAtalho(a,b){const h=hojeISO();if(a==='M'){vpState.de=h.slice(0,7)+'-01';vpState.ate=h;}else if(a==='P'){const d=new Date(+h.slice(0,4),+h.slice(5,7)-1,0);const ym=d.toISOString().slice(0,7);vpState.de=ym+'-01';vpState.ate=d.toISOString().slice(0,10);}else{vpState.de=diasSoma(h,+a);vpState.ate=diasSoma(h,+b);}viewEstoque();}
+async function vpCarregar(){const fn=(DB.fin&&DB.fin.pdvTipo)==='suitable'?'suitable-sync':'takeat-sync';const r=await chamarFn(fn,{acao:'relatorio',orgId:ORG.id,de:vpState.de,ate:vpState.ate});const el=$('#vp_lista');if(!r.data||!r.data.ok){if(el)el.innerHTML='<span style="color:var(--red)">'+esc((r.data&&r.data.erro)||('sem relatório para o PDV '+fn))+'</span>';return;}vpState.dados=r.data.linhas||[];vpRender();}
+function vpRender(){const el=$('#vp_lista');if(!el||!vpState.dados)return;const q=lmNorm(vpState.busca);const L=vpState.dados.filter(x=>!q||lmNorm(x.nome+' '+x.categoria).includes(q));
+  const totQ=L.reduce((s,x)=>s+(+x.qtd||0),0),totV=L.reduce((s,x)=>s+(+x.valor||0),0);const dias=new Set(L.map(x=>x.data)).size;
+  $('#vp_kpis').innerHTML=`<div class="dash-pill"><span>Itens vendidos</span><b>${fmtN(totQ)}</b></div><div class="dash-pill"><span>Faturamento</span><b style="color:var(--green)">${fmtBRL(totV)}</b></div><div class="dash-pill"><span>Dias com venda</span><b>${dias}</b></div><div class="dash-pill"><span>Ticket por item</span><b>${fmtBRL(totQ?totV/totQ:0)}</b></div>`;
+  if(!L.length){el.innerHTML='<div style="text-align:center;padding:24px 0;color:var(--soft)">Nenhuma venda no período. Sincronize o PDV em Parâmetros › Estoque e PDV.</div>';return;}
+  const g=new Map();L.forEach(x=>{const k=vpState.por==='dia'?x.data:vpState.por==='categoria'?(x.categoria||'Sem categoria'):(x.produto_id||x.nome);const c=g.get(k)||{nome:vpState.por==='dia'?fmtDataBR(x.data):vpState.por==='categoria'?(x.categoria||'Sem categoria'):x.nome,cat:x.categoria||'',qtd:0,valor:0,n:new Set()};c.qtd+=+x.qtd||0;c.valor+=+x.valor||0;c.n.add(x.produto_id);g.set(k,c);});
+  const rows=[...g.values()].sort((a,b)=>vpState.por==='dia'?a.nome.split('/').reverse().join('').localeCompare(b.nome.split('/').reverse().join('')):b.valor-a.valor);
+  const f=DB.fichas||{};const fichaDe=nome=>{const ff=pdvAcharFicha('',nome);return ff?ff.nome:'';};
+  el.innerHTML=`<div class="scroll-x"><table><thead><tr><th>${vpState.por==='dia'?'Dia':vpState.por==='categoria'?'Categoria':'Produto'}</th>${vpState.por==='produto'?'<th>Categoria</th><th>Ficha no Flow</th>':'<th class="num">Produtos</th>'}<th class="num">Qtd</th><th class="num">Faturamento</th><th class="num">% do total</th><th class="num">Preço médio</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.nome)}</b></td>${vpState.por==='produto'?`<td style="color:var(--muted)">${esc(r.cat)}</td><td style="font-size:12px;color:${fichaDe(r.nome)?'var(--green)':'var(--amber)'}">${esc(fichaDe(r.nome)||'sem ficha vinculada')}</td>`:`<td class="num">${r.n.size}</td>`}<td class="num">${fmtN(r.qtd)}</td><td class="num"><b>${fmtBRL(r.valor)}</b></td><td class="num">${totV?fmtPct(r.valor/totV*100):'—'}</td><td class="num">${fmtBRL(r.qtd?r.valor/r.qtd:0)}</td></tr>`).join('')}</tbody><tfoot><tr><td style="font-weight:700;border-top:2px solid var(--navy)">Total</td>${vpState.por==='produto'?'<td style="border-top:2px solid var(--navy)"></td><td style="border-top:2px solid var(--navy)"></td>':'<td style="border-top:2px solid var(--navy)"></td>'}<td class="num" style="font-weight:700;border-top:2px solid var(--navy)">${fmtN(totQ)}</td><td class="num" style="font-weight:700;border-top:2px solid var(--navy)">${fmtBRL(totV)}</td><td style="border-top:2px solid var(--navy)"></td><td style="border-top:2px solid var(--navy)"></td></tr></tfoot></table></div>`;}
 
 /* ===== Integração Suitable (PDV) · a chave fica só no servidor (Edge Function suitable-sync) ===== */
 let suiStatus=null;
@@ -7110,6 +7196,7 @@ function viewEstoque(){
     : estoqueTab==='historico' ? `<button class="btn btn-gold no-print" onclick="imprimirTela()">🖨️ Imprimir / PDF</button>`
     : estoqueTab==='contar' ? (pode('contagem')?`<button class="btn btn-primary no-print" onclick="estContagemNova()">${icoPlus} Nova contagem</button>`:'')
     : estoqueTab==='mov' ? (souDoPrincipal()?`<button class="btn btn-primary no-print" onclick="estMovModal('saida')">${icoPlus} Nova movimentação</button>`:'')
+    : estoqueTab==='vendaspdv' ? `<button class="btn btn-gold no-print" onclick="imprimirTela()">🖨️ Imprimir / PDF</button>`
     : estoqueTab==='vendas' ? ''
     : estoqueTab==='producao' ? (estSubprodutos().length?`<button class="btn btn-primary no-print" onclick="estProducaoModal()">${icoPlus} Registrar produção</button>`:'')
     : estoqueTab==='requisicoes' ? (estMultiArm()&&!estReqSel&&pode('req_criar')?`<button class="btn btn-primary no-print" onclick="estReqNova()">${icoPlus} Nova requisição</button>`:'')
@@ -7122,6 +7209,7 @@ function viewEstoque(){
   if(estoqueTab==='mov'){$('#view').innerHTML=estMovHTML();return;}
   if(estoqueTab==='contar'){$('#view').innerHTML=estContarHTML();return;}
   if(estoqueTab==='vendas'){$('#view').innerHTML=estVendasHTML();return;}
+  if(estoqueTab==='vendaspdv'){$('#view').innerHTML=estVendasProdutoHTML();return;}
 
   if(estoqueTab==='contagem'){
     const cats=['Todos',...new Set(items.map(x=>x.cat))];
@@ -7390,7 +7478,7 @@ function pdvProcessarPendentes(silencioso){const pend=pdvPendentes();if(!pend.le
   return baixas;}
 
 /* ----- UI: abas ----- */
-const EST_ABAS=[['contagem','Posição'],['mov','Movimentações'],['contar','Contagem física'],['producao','Produção'],['requisicoes','Requisições'],['vendas','Baixa por vendas'],['compras','Lista de Compras'],['historico','Histórico de compras']];
+const EST_ABAS=[['contagem','Posição'],['mov','Movimentações'],['contar','Contagem física'],['producao','Produção'],['requisicoes','Requisições'],['vendas','Baixa por vendas'],['vendaspdv','Vendas por produto'],['compras','Lista de Compras'],['historico','Histórico de compras']];
 /* ===== Histórico de compras por produto e fornecedor (vem dos lançamentos vinculados a produto) ===== */
 let estHist={de:'',ate:'',prod:'',forn:'',por:'produto'};
 function estHistPeriodo(){const ate=estHist.ate||hojeISO();const de=estHist.de||diasSoma(hojeISO(),-90);return {de,ate};}
@@ -7452,8 +7540,8 @@ function estHistHTML(){const {de,ate}=estHistPeriodo();const rows=estHistLinhas(
     </div>
     ${tabela(g)}
   </div>`).join(''):`<div class="card">${emptyState('Nenhuma compra no período','As compras aparecem aqui quando o lançamento tem um produto vinculado (leitor de notas ou lançamento manual com produto).','lancarModal()')}</div>`}`;}
-const EST_ABA_PERM={contagem:['posicao'],mov:['mov'],contar:['contagem'],producao:['producao'],requisicoes:['req_criar','req_separar'],vendas:['vendas'],compras:['compras'],historico:['historico']};
-function estAbasPermitidas(){return EST_ABAS.filter(([k])=>(EST_ABA_PERM[k]||[]).some(p=>pode(p)));}
+const EST_ABA_PERM={contagem:['posicao'],mov:['mov'],contar:['contagem'],producao:['producao'],requisicoes:['req_criar','req_separar'],vendas:['vendas'],vendaspdv:['vendas'],compras:['compras'],historico:['historico']};
+function estAbasPermitidas(){return EST_ABAS.filter(([k])=>(k!=='vendaspdv'||(DB.fin&&(DB.fin.pdvTipo==='takeat'||DB.fin.pdvTipo==='suitable')))&&(EST_ABA_PERM[k]||[]).some(p=>pode(p)));}
 function estTabsHTML(){return `<div class="pill-filter tabs no-print" style="margin-bottom:16px">${estAbasPermitidas().map(([k,l])=>`<button class="${estoqueTab===k?'on':''}" onclick="estoqueTab='${k}';viewEstoque()">${l}</button>`).join('')}</div>`;}
 function estTipoTag(t){const T=EST_TIPOS[t]||['?','tag-gray'];return `<span class="tag ${T[1]}">${T[0]}</span>`;}
 function estProdDatalist(id){return `<datalist id="${id}">${Object.values(DB.insumos).filter(estEstocavel).sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>`<option value="${esc(i.nome)}"></option>`).join('')}</datalist>`;}
@@ -8081,7 +8169,7 @@ function estVendasHTML(){pdvProcessarPendentes(false);const bs=estBaixas().slice
   <div class="card card-pad no-print" style="margin-bottom:16px">
     ${(function(){const ss=fichasSemSetorVenda();return ss.length?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${ss.length} prato(s) sem setor de venda</b> e as vendas não saem do principal. Abra a ficha e escolha o setor: ${ss.slice(0,6).map(f=>`<a onclick="editFicha('${f.id}')" style="color:var(--navy);cursor:pointer;font-weight:600">${esc(f.nome)}</a>`).join(', ')}${ss.length>6?' e mais '+(ss.length-6):''}. <a onclick="fichasArmLoteModal()" style="color:var(--navy);cursor:pointer;font-weight:700">Definir em lote</a></div></div>`:'';})()}
     <div class="section-head"><div><div class="ttl">Baixa por vendas</div><div class="desc">Informe quantos pratos vendeu e a ficha técnica dá baixa nos ingredientes${estMultiArm()?' no <b>setor que vende cada prato</b> (padrão: '+esc(estArmNome(cfg.armVendas))+')':''} (subprodutos saem como porcionado; preparados descem até o bruto).</div></div>
-      ${(DB.fin&&DB.fin.pdvTipo==='suitable'&&typeof sb!=='undefined'&&sb&&CLOUD)?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="suitableSync()">⟳ Sincronizar Suitable</button></div>`:''}
+      ${(DB.fin&&DB.fin.pdvTipo==='suitable'&&typeof sb!=='undefined'&&sb&&CLOUD)?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="suitableSync()">⟳ Sincronizar Suitable</button></div>`:(DB.fin&&DB.fin.pdvTipo==='takeat'&&typeof sb!=='undefined'&&sb&&CLOUD)?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="takeatSync()">⟳ Sincronizar Takeat</button><button class="btn btn-ghost btn-sm" onclick="estoqueTab='vendaspdv';viewEstoque()">📊 Vendas por produto</button></div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Planilha exportada do PDV: colunas com código ou nome do prato e a quantidade vendida (CSV, ; ou tabulação)">⬆ Relatório do ${esc(pdv)} (CSV)<input type="file" accept=".csv,.txt,.tsv" style="display:none" onchange="estVendasCSV(this)"></label></div></div>
     ${!cfg.vendas?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div>A baixa automática por vendas está <b>desligada</b> em <a onclick="estCfgModal()" style="color:var(--navy);cursor:pointer;font-weight:600">configurar</a>. Você ainda pode baixar manualmente aqui.</div></div>`:''}
     ${fichas.length?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><input type="date" class="input" style="max-width:150px" value="${data}" onchange="estVendaDraft.data=this.value"><input class="input" style="max-width:240px" placeholder="🔎 Filtrar prato" oninput="filtrarLinhas(this,'#ev_rows')"></div>
