@@ -8665,7 +8665,7 @@ function renderAdmin(){
   renderAdminSide();renderAdminMain();}
 function renderAdminSide(){const el=$('#admin_side');if(!el)return;
   const arqd=o=>!!(o.dados&&o.dados._arquivado), dem=o=>!!(o.dados&&o.dados._demo);
-  const ativos=ADMIN_ORGS.filter(o=>!arqd(o)&&!dem(o)&&!grupoDe(o)), arq=ADMIN_ORGS.filter(o=>arqd(o)&&!dem(o)), demos=ADMIN_ORGS.filter(dem);
+  const ativos=ADMIN_ORGS.filter(o=>!arqd(o)&&!dem(o)&&!grupoDe(o)), arq=ADMIN_ORGS.filter(o=>arqd(o)&&!dem(o)&&!(grupoDe(o)&&arqd(grupoDe(o)))), demos=ADMIN_ORGS.filter(dem);
   el.innerHTML=`
    ${IS_SUPER&&CONSULTORES.length?`<select class="input" style="margin-bottom:10px" onchange="adminConsFiltro=this.value;adminSel=null;renderAdminList();renderAdminMain()"><option value="" ${adminConsFiltro===''?'selected':''}>Todos os consultores</option><option value="__lidera__" ${adminConsFiltro==='__lidera__'?'selected':''}>Lidera (meus clientes)</option>${CONSULTORES.map(c=>`<option value="${c.id}" ${adminConsFiltro===c.id?'selected':''}>${esc(c.nome||c.email||'Consultor')}</option>`).join('')}</select>`:''}
    <div class="pill-filter" style="margin-bottom:10px;flex-wrap:nowrap;gap:6px"><button class="${adminTab==='ativos'?'on':''}" style="flex:1;padding:7px 4px;font-size:12px;white-space:nowrap" onclick="adminTab='ativos';renderAdminSide();renderAdminMain()">Ativos (${ativos.length})</button><button class="${adminTab==='arquivados'?'on':''}" style="flex:1;padding:7px 4px;font-size:12px;white-space:nowrap" onclick="adminTab='arquivados';renderAdminSide();renderAdminMain()">Arquiv. (${arq.length})</button>${IS_SUPER?`<button class="${adminTab==='demo'?'on':''}" style="flex:1;padding:7px 4px;font-size:12px;white-space:nowrap" onclick="adminTab='demo';adminSel=null;renderAdminSide();renderAdminMain()">Demo (${demos.length})</button>`:''}</div>
@@ -8679,6 +8679,7 @@ function renderAdminList(){const el=$('#admin_listc');if(!el)return;
   let lista=adminTab==='demo'?ADMIN_ORGS.filter(dem):adminTab==='arquivados'?ADMIN_ORGS.filter(o=>arqd(o)&&!dem(o)):ADMIN_ORGS.filter(o=>!arqd(o)&&!dem(o));
   if(IS_SUPER&&adminConsFiltro){if(adminConsFiltro==='__lidera__')lista=lista.filter(o=>!orgDeConsultor(o));else lista=lista.filter(o=>o.consultor_id===adminConsFiltro);}
   if(adminTab==='ativos')lista=lista.filter(o=>!grupoDe(o));   // unidades de um cliente-grupo ficam dentro do grupo
+  if(adminTab==='arquivados')lista=lista.filter(o=>{const g=grupoDe(o);return !(g&&arqd(g));});   // arquivadas junto com o grupo aparecem dentro dele
   const q=adminBusca.trim().toLowerCase();
   if(q)lista=lista.filter(o=>(o.nome||'').toLowerCase().includes(q)||(cadDe(o).segmento||'').toLowerCase().includes(q)||(cadDe(o).socios||'').toLowerCase().includes(q));
   lista=lista.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));
@@ -8764,9 +8765,9 @@ const CAD_CAMPOS=[
  ['google','Google Perfil de Empresas','Link do perfil (ou nome como aparece no Google)','input'],
  ['perfil','Perfil Comportamental','Ex.: João: Dominância (D) · Maria: Influência (I) · link do relatório','textarea']];
 function cadDe(o){return (o&&o.dados&&o.dados._cadastro)||{};}
-function grupoUnidadesHTML(g){const us=grupoUnidades(g);const dono=DONOS[g.consultor_id];
-  return `<div class="card card-pad"><div class="section-head"><div><div class="ttl">Unidades do cliente</div><div class="desc">${dono?'Dono: '+esc(dono.nome||dono.email||'')+'. ':''}Reuniões, plano de guerra e demandas ficam aqui no cliente; os números abaixo são de cada unidade.</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="grupoVincularModal('${g.id}')">🔗 Vincular unidade existente</button><button class="btn btn-ghost btn-sm" onclick="grupoNovaUnidade('${g.id}')">${icoPlus} Nova unidade</button></div></div>
-  ${us.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px">${us.map(u=>{const k=kpisDe(u.dados);const susp=u.status==='suspenso';return `<div class="gp-card" style="cursor:default"><div class="h"><div style="min-width:0"><div class="nm">${esc(u.nome||'')}</div><div class="gp-mini">${esc(orgNomeExib(u))}${susp?' · <span style="color:var(--red)">suspenso</span>':''}</div></div></div>
+function grupoUnidadesHTML(g){const us=grupoUnidades(g);const dono=DONOS[g.consultor_id];const gArq=!!(g.dados&&g.dados._arquivado);const nm=(g.nome||'').replace(/'/g,'');
+  return `<div class="card card-pad"><div class="section-head"><div><div class="ttl">Unidades do cliente</div><div class="desc">${dono?'Dono: '+esc(dono.nome||dono.email||'')+'. ':''}${gArq?'Cliente arquivado: as unidades foram arquivadas junto e voltam ao restaurar.':'Reuniões, plano de guerra e demandas ficam aqui no cliente; os números abaixo são de cada unidade. Arquivar o cliente arquiva todas as unidades.'}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${gArq?`<button class="btn btn-primary btn-sm" onclick="arquivarCliente('${g.id}',false)">↩ Restaurar com as unidades</button><button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirCliente('${g.id}','${nm}')">${icoTrash} Excluir</button>`:`<button class="btn btn-ghost btn-sm" onclick="grupoVincularModal('${g.id}')">🔗 Vincular unidade existente</button><button class="btn btn-ghost btn-sm" onclick="grupoNovaUnidade('${g.id}')">${icoPlus} Nova unidade</button><button class="btn btn-ghost btn-sm" title="Arquiva o cliente e todas as unidades" onclick="arquivarCliente('${g.id}',true)">Arquivar cliente e unidades</button>`}</div></div>
+  ${us.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px">${us.map(u=>{const k=kpisDe(u.dados);const susp=u.status==='suspenso';return `<div class="gp-card" style="cursor:default"><div class="h"><div style="min-width:0"><div class="nm">${esc(u.nome||'')}</div><div class="gp-mini">${esc(orgNomeExib(u))}${susp?' · <span style="color:var(--red)">suspenso</span>':''}${u.dados&&u.dados._arquivado?' · <span class="tag tag-gray" style="font-size:10px">arquivada</span>':''}</div></div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0"><div><div class="k-lbl">Faturamento</div><div style="font-weight:700;font-size:14px">${fmtBRL(k.fat)}</div></div><div><div class="k-lbl">CMV</div><div style="font-weight:700;font-size:14px">${k.real!=null?fmtPct(k.real):fmtPct(k.cmv)}</div></div><div><div class="k-lbl">Lucro</div><div style="font-weight:700;font-size:14px;color:${k.lucro>=0?'var(--green)':'var(--red)'}">${fmtBRL(k.lucro)}</div></div></div>
     <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="adminSelOrg('${u.id}')">Dados da unidade</button><button class="btn btn-primary btn-sm" style="flex:1;justify-content:center" onclick="abrirCliente('${u.id}')">Abrir app</button>${unidadeVinculadaPorId(u)?`<button class="icon-btn" title="Tirar esta unidade do grupo" onclick="grupoDesvincular('${u.id}')">${icoX}</button>`:''}</div></div>`;}).join('')}</div>`
   :`<div class="gp-mini">Nenhuma unidade ainda. Use "Vincular unidade existente" ou "Nova unidade"${dono?'; unidades com o dono '+esc(dono.email||'')+' entram sozinhas':''}.</div>`}</div>`;}
@@ -8986,7 +8987,7 @@ function ehGrupo(o){return !!(o&&o.dados&&o.dados._grupo);}
 function grupoDe(o){if(!o||ehGrupo(o))return null;
   const gid=o.dados&&o.dados._grupoId;if(gid){const g=ADMIN_ORGS.find(x=>x.id===gid&&ehGrupo(x));if(g)return g;}   // vínculo explícito (não depende de login)
   const d=orgDonoId(o);if(!d)return null;return ADMIN_ORGS.find(g=>ehGrupo(g)&&g.consultor_id===d&&!(g.dados&&g.dados._demo))||null;}
-function grupoUnidades(g){if(!g)return [];return ADMIN_ORGS.filter(x=>!ehGrupo(x)&&((g.consultor_id&&x.consultor_id===g.consultor_id)||(x.dados&&x.dados._grupoId===g.id))&&!(x.dados&&(x.dados._arquivado||x.dados._demo))).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));}
+function grupoUnidades(g){if(!g)return [];const gArq=!!(g.dados&&g.dados._arquivado);return ADMIN_ORGS.filter(x=>!ehGrupo(x)&&((g.consultor_id&&x.consultor_id===g.consultor_id)||(x.dados&&x.dados._grupoId===g.id))&&!(x.dados&&(x.dados._demo||(x.dados._arquivado&&!gArq)))).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt',{sensitivity:'base'}));}
 function unidadeVinculadaPorId(u){return !!(u&&u.dados&&u.dados._grupoId);}
 function orgNomeExib(o){return (o&&o.dados&&o.dados.conta&&o.dados.conta.restaurante)||(o&&o.nome)||'';}
 function gpGrupo(o){const g=ehGrupo(o)?o:grupoDe(o);if(g)return [g].concat(grupoUnidades(g));const d=orgDonoId(o);if(!d)return [o];return ADMIN_ORGS.filter(x=>!ehGrupo(x)&&orgDonoId(x)===d&&!(x.dados&&(x.dados._arquivado||x.dados._demo)));}
@@ -9839,10 +9840,21 @@ function formMatField(mi,vi,ki,f,val){FORM_ADMIN.modulos[mi].videos[vi].materiai
 function formMatDel(mi,vi,ki){FORM_ADMIN.modulos[mi].videos[vi].materiais.splice(ki,1);renderFormAdmin();formSaveSoon();}
 function formSaveSoon(){const s=$('#form_status');if(s){s.textContent='Salvando…';s.style.color='var(--amber)';}clearTimeout(_formSaveT);_formSaveT=setTimeout(formSaveNow,700);}
 async function formSaveNow(){if(!FORM_ADMIN)return;if(typeof sb==='undefined'||!sb)return;try{const r=await sb.from('formacao').update({dados:FORM_ADMIN}).eq('id',1);const s=$('#form_status');if(r&&r.error){if(s){s.textContent='Erro ao salvar — confira se o SQL foi rodado.';s.style.color='var(--red)';}return;}FORMACAO=JSON.parse(JSON.stringify(FORM_ADMIN));if(s){s.textContent='Tudo salvo ✓';s.style.color='var(--green)';}}catch(e){const s=$('#form_status');if(s){s.textContent='Erro ao salvar.';s.style.color='var(--red)';}}}
+async function arquivarOrgDados(orgId,fn){const o=(await sb.from('organizacoes').select('dados').eq('id',orgId).single()).data;const dados=(o&&o.dados)||{};fn(dados);
+  const r=await sb.from('organizacoes').update({dados}).eq('id',orgId);if(r&&r.error)throw r.error;}
 async function arquivarCliente(orgId,arq){
-  try{const o=(await sb.from('organizacoes').select('dados').eq('id',orgId).single()).data;const dados=(o&&o.dados)||{};dados._arquivado=!!arq;
-    await sb.from('organizacoes').update({dados}).eq('id',orgId);}catch(e){return toast('Erro ao '+(arq?'arquivar':'restaurar'));}
-  toast(arq?'Cliente arquivado':'Cliente restaurado');showAdmin();}
+  const org=ADMIN_ORGS.find(x=>x.id===orgId);
+  // Cliente-grupo (dono): arquiva as unidades junto; ao restaurar, só voltam as que foram arquivadas com o grupo
+  let unidades=[];
+  if(org&&ehGrupo(org)){
+    if(arq){unidades=grupoUnidades(org).filter(u=>!(u.dados&&u.dados._arquivado));
+      if(!confirm('Arquivar "'+(org.nome||'')+'"'+(unidades.length?' e suas '+unidades.length+' unidade'+(unidades.length===1?'':'s')+':\n\n• '+unidades.map(u=>u.nome||'').join('\n• '):'')+'\n\nO dono e as unidades somem da lista de ativos e não contam na carteira. Pode restaurar depois.'))return;}
+    else unidades=grupoUnidades(org).filter(u=>u.dados&&u.dados._arquivado&&u.dados._arquivadoPeloGrupo);}
+  try{
+    await arquivarOrgDados(orgId,d=>{d._arquivado=!!arq;delete d._arquivadoPeloGrupo;});
+    for(const u of unidades)await arquivarOrgDados(u.id,d=>{d._arquivado=!!arq;if(arq)d._arquivadoPeloGrupo=true;else delete d._arquivadoPeloGrupo;});
+  }catch(e){return toast('Erro ao '+(arq?'arquivar':'restaurar'));}
+  toast((arq?'Cliente arquivado':'Cliente restaurado')+(unidades.length?' com '+unidades.length+' unidade'+(unidades.length===1?'':'s'):''));showAdmin();}
 async function excluirCliente(orgId,nome){
   if(!confirm('EXCLUIR definitivamente "'+nome+'"?\n\nIsso remove o restaurante, todos os dados e os acessos vinculados. NÃO pode ser desfeito.\n\nDica: se só quer parar de usar, use Arquivar.'))return;
   if(!confirm('Tem certeza? Esta ação é irreversível.'))return;
