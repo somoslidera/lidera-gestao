@@ -9025,7 +9025,7 @@ function projModeloSet(v){const o=projCur();if(!o)return;const p=projEnsure(o);v
   p.modelo=v;let n=0;
   if(v==='completo'&&!projFasesLista(p).some(f=>projFaseN(p,f)>=5)&&p._tpl){const op=p.tplOpts||{};PLANO_TPL.filter(x=>x[0]>=5&&(!x[4]||op[x[4]])).forEach((x,i)=>{p.tarefas.push(projTplTarefa(x,i));n++;});
     PLANO_REC_TPL.filter(x=>x[2]>=5&&(!x[4]||op[x[4]])).forEach(x=>{if(!projRecs(p).some(r=>r.titulo===x[0]))projRecs(p).push(projTplRec(x));});}
-  renderAdminMain();renderAdminList();projSaveOrg(o);toast(v==='completo'?('Modelo Completo: Etapas 5 e 6 '+(n?'criadas, ':'')+'visíveis e bloqueadas até a vez delas'):'Modelo Essencial: Etapas 5 e 6 ficam fora do plano e do percentual');}
+  renderAdminMain();renderAdminList();projSaveOrg(o);toast(v==='completo'?('PLL Scale: Etapas 5 e 6 '+(n?'criadas, ':'')+'visíveis e bloqueadas até a vez delas'):'PLL Evolution: Etapas 5 e 6 ficam fora do plano e do percentual');}
 function projEtapaAtualSet(v){const o=projCur();if(!o)return;const p=projEnsure(o);
   if(!v){delete p.etapaAtual;renderAdminMain();renderAdminList();projSaveOrg(o);return toast('Bloqueio de etapas desligado');}
   if(!projFasesLista(p).includes(v))return;projAbrirFase(p,v,'manual');renderAdminMain();renderAdminList();projSaveOrg(o);toast('Etapa atual: '+v+'. As etapas seguintes ficam bloqueadas.');}
@@ -9056,7 +9056,7 @@ function projTplModal(){const o=projCur();if(!o)return;const p=projEnsure(o);con
   const chk=(id,rot,on,sub)=>`<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line);cursor:pointer"><input type="checkbox" id="${id}" ${on?'checked':''} style="width:18px;height:18px;margin-top:1px"><div><div style="font-weight:600;font-size:13.5px">${rot}</div><div class="gp-mini">${sub}</div></div></label>`;
   modal(`<div class="modal-head"><h3>Criar Plano de Guerra</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div class="field"><label>Modelo</label><div class="gp-seg" id="tpl_modelo"><button class="on" data-v="essencial" onclick="projTplSeg(this)">Essencial · Etapas 1 a 4</button><button data-v="completo" onclick="projTplSeg(this)">Completo · Etapas 1 a 6</button></div></div>
+    <div class="field"><label>Programa</label><div class="gp-seg" id="tpl_modelo"><button class="on" data-v="essencial" onclick="projTplSeg(this)">PLL Evolution · Etapas 1 a 4</button><button data-v="completo" onclick="projTplSeg(this)">PLL Scale · Etapas 1 a 6</button></div></div>
     ${chk('tpl_buffet','É buffet?',/buffet|quilo|self/.test(seg),'Entra o CMV do buffet pelo dia mapeado (Etapa 1)')}
     ${chk('tpl_ifood','Tem iFood ou marketplace?',true,'Entram a primeira alteração no iFood (Etapa 1), o Bloco B (Etapa 4) e a conciliação do repasse')}
     ${chk('tpl_delivery','Tem delivery próprio?',false,'Entram o Bloco A e o cardápio digital (Etapa 4)')}
@@ -9123,12 +9123,12 @@ function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=pro
   let html=`<datalist id="proj_resp_opts">${respOpts.map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>
   <div class="card card-pad" style="padding:${mob?'14px':'16px 22px'}">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-      <div style="font-weight:700">Progresso do projeto <span class="gp-mini">(só tarefas pontuais${modelo==='essencial'?' das Etapas 1 a 4':''}; Onboarding e recorrentes não contam)</span></div>
+      <div style="font-weight:700">Progresso do projeto <span class="gp-mini">(só tarefas pontuais${modelo==='essencial'?' das Etapas 1 a 4, PLL Evolution':''}; Onboarding e recorrentes não contam)</span></div>
       <div style="font-size:12.5px;color:var(--soft)">${feitas}/${cont.length} tarefas${atr?` · <span style="color:var(--red);font-weight:600">${atr} atrasada${atr>1?'s':''}</span>`:''}</div>
     </div>
     <div style="display:flex;align-items:center;gap:12px"><div class="gp-prog ${pct>=100?'done':''}" style="height:10px"><i style="width:${pct}%"></i></div><div style="font-weight:700;font-size:18px;font-family:'Fraunces',serif;color:${pct>=100?'var(--green)':'var(--navy)'}">${pct}%</div></div>
     <div class="pt-ctl">
-      <label class="pt-ctl-f"><span>Modelo</span><select class="input" onchange="projModeloSet(this.value)" title="Essencial = Etapas 1 a 4 · Completo = Etapas 1 a 6"><option value="essencial" ${modelo==='essencial'?'selected':''}>Essencial · 1 a 4</option><option value="completo" ${modelo==='completo'?'selected':''}>Completo · 1 a 6</option></select></label>
+      <label class="pt-ctl-f"><span>Programa</span><select class="input" onchange="projModeloSet(this.value)" title="PLL Evolution = Etapas 1 a 4 · PLL Scale = Etapas 1 a 6"><option value="essencial" ${modelo==='essencial'?'selected':''}>PLL Evolution · 1 a 4</option><option value="completo" ${modelo==='completo'?'selected':''}>PLL Scale · 1 a 6</option></select></label>
       <label class="pt-ctl-f"><span>Etapa atual</span><select class="input" onchange="projEtapaAtualSet(this.value)" title="Define a etapa que aceita marcar tarefas. As seguintes ficam bloqueadas até o portão fechar ou alguém liberar."><option value="">${bloq?'Desligar bloqueio (todas abertas)':'Sem bloqueio · automática'+(info.etapa?' ('+esc(info.etapa)+')':'')}</option>${fases.map(f=>`<option value="${esc(f.nome)}" ${bloq&&p.etapaAtual===f.nome?'selected':''}>${esc(f.nome)}</option>`).join('')}</select></label>
       ${bloq?(proxFase?`<button class="btn btn-ghost btn-sm" onclick="projLiberar()" title="Abre a ${esc(proxFase)} sem fechar o portão. Pede motivo e registra quem liberou.">🔓 Liberar ${esc(proxFase)}</button>`:`<span class="gp-mini">última etapa do modelo</span>`):''}
       ${trav?`<span class="tag tag-red" title="${esc(p.travado.motivo||'')}">🔒 Travado há ${projTravadoDias(p)} dia${projTravadoDias(p)===1?'':'s'}</span><button class="btn btn-ghost btn-sm" onclick="projTravarModal()" title="Editar o motivo">Motivo</button><button class="btn btn-primary btn-sm" onclick="projDestravar()">Destravar</button>`
@@ -9137,7 +9137,7 @@ function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=pro
     </div>
     ${trav?`<div class="alert alert-red" style="margin:10px 0 0">${icoWarn}<div><b>Travado desde ${fmtDataBR(p.travado.desde)}.</b> ${esc(p.travado.motivo||'')}<div class="gp-mini" style="margin-top:2px">Lançamentos e recorrentes seguem normais; a próxima etapa só abre depois de destravar.</div></div></div>`:''}
     ${bloq?'':`<div class="gp-mini" style="margin-top:8px">Bloqueio de etapas desligado: qualquer tarefa pode ser marcada. Para ligar, escolha a etapa atual acima.</div>`}
-    ${ocultas?`<div class="gp-mini" style="margin-top:4px">${ocultas} etapa${ocultas>1?'s':''} fora do modelo Essencial (5 e 6) ${ocultas>1?'ficam':'fica'} oculta${ocultas>1?'s':''} e fora do percentual. Troque para Completo para ver.</div>`:''}
+    ${ocultas?`<div class="gp-mini" style="margin-top:4px">${ocultas} etapa${ocultas>1?'s':''} fora do PLL Evolution (5 e 6) ${ocultas>1?'ficam':'fica'} oculta${ocultas>1?'s':''} e fora do percentual. Troque para PLL Scale para ver.</div>`:''}
     ${(p.liberacoes||[]).length?`<details style="margin-top:8px"><summary class="gp-mini" style="cursor:pointer">${p.liberacoes.length} liberação(ões) de etapa registrada(s)</summary><div class="gp-mini" style="margin-top:4px">${p.liberacoes.slice().reverse().map(l=>`• ${esc(l.fase)} liberada em ${fmtDataBR(l.em)} por ${esc(l.quem||'')}: ${esc(l.motivo||'')}`).join('<br>')}</div></details>`:''}
     ${(p.travadoHist||[]).length?`<details style="margin-top:4px"><summary class="gp-mini" style="cursor:pointer">${p.travadoHist.length} período(s) travado(s) no histórico</summary><div class="gp-mini" style="margin-top:4px">${p.travadoHist.slice().reverse().map(x=>`• ${fmtDataBR(x.inicio)} a ${fmtDataBR(x.fim)} (${gpDias(x.inicio,x.fim)} dias): ${esc(x.motivo||'')}`).join('<br>')}</div></details>`:''}
     ${p.tarefas.length?'':`<div class="alert alert-amber" style="margin:12px 0 0">${icoWarn}<div>Este cliente ainda não tem plano de projeto. Use "Criar Plano de Guerra", crie a primeira etapa abaixo ou importe um PDF.</div></div>`}
