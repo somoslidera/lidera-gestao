@@ -819,7 +819,20 @@ thead th{letter-spacing:.7px}
 .pt-fase .body{padding:0 14px 12px}
 .pt-fase.cur{border-color:var(--gold)}
 .pt-fase.cur>summary .ttl{color:var(--navy)}
-.pt-row{display:grid;grid-template-columns:16px 20px minmax(0,1fr) 150px 148px 30px;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)}
+.pt-row{display:grid;grid-template-columns:16px 20px minmax(0,1fr) 112px 150px 148px 26px 30px;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)}
+.pt-row .tt{display:flex;align-items:center;gap:6px;min-width:0}.pt-row .tt .inp.t{flex:1}
+.pt-gate{font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--gold);background:var(--amber-bg);border-radius:6px;padding:2px 6px;white-space:nowrap;flex:0 0 auto}
+.pt-gate-btn{width:26px;height:26px;border-radius:7px;color:var(--soft);display:flex;align-items:center;justify-content:center;font-size:13px}.pt-gate-btn:hover{background:var(--amber-bg);color:var(--gold)}.pt-gate-btn.on{color:var(--gold);background:var(--amber-bg)}
+.pt-gate-cnt{font-size:11.5px;font-weight:700;color:var(--gold);background:var(--amber-bg);border-radius:8px;padding:2px 8px;white-space:nowrap}.pt-gate-cnt.ok{color:var(--green);background:var(--green-bg)}
+.pt-fase.lock{opacity:.72;background:var(--bg)}.pt-fase.lock>summary .ttl{color:var(--muted)}.pt-fase.lock .pt-row .inp.t{color:var(--muted)}
+.pt-lockmsg{font-size:12.5px;color:var(--muted);background:var(--bg);border:1px dashed var(--line);border-radius:9px;padding:7px 10px;margin:2px 0 8px}
+.pt-tema{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;border:1.5px solid transparent;cursor:pointer}.pt-tema.on{border-color:currentColor}
+.pt-temas{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.pt-row .inp.tema{padding:5px 4px;font-size:11.5px;font-weight:700}
+.pt-ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}.pt-ctl-f{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--soft);font-weight:700;text-transform:uppercase;letter-spacing:.3px}.pt-ctl-f .input{padding:6px 9px;font-size:13px;min-width:170px}
+.pt-rec{display:grid;grid-template-columns:24px minmax(0,1fr) 128px 150px 140px 148px 34px 30px;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}.pt-rec:first-of-type{border-top:0}
+.pt-rec .inp{border:1px solid transparent;background:transparent;padding:6px 8px;border-radius:8px;font-size:13px;color:var(--ink);min-width:0;width:100%}.pt-rec .inp:hover{border-color:var(--line);background:var(--bg)}.pt-rec .inp.sel{font-size:12px}.pt-rec .inp.late{background:var(--red-bg);color:var(--red);font-weight:600}
+.pt-rec.off{opacity:.6}.pt-rec .gp-check.dis{cursor:not-allowed;opacity:.5}.pt-rec .del{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--soft)}.pt-rec .del:hover{background:var(--red-bg);color:var(--red)}.pt-rec .del svg{width:14px;height:14px}
 .pt-row:first-child{border-top:0}
 .pt-row .drag{color:var(--soft);cursor:grab;user-select:none;text-align:center;font-size:14px}
 .pt-row input[type=checkbox]{width:18px;height:18px;cursor:pointer;margin:0}
@@ -889,7 +902,9 @@ body.dark .gp-kb-col,body.dark .gp-note-box{background:#121B30}
   .gp-seg{width:100%;display:flex}.gp-seg button{flex:1;justify-content:center;min-height:34px;padding:6px 4px;font-size:12px}
   .gp-stat.on .l{padding-right:22px}
   .pt-row{grid-template-columns:16px 20px minmax(0,1fr) 30px;row-gap:4px}
-  .pt-row .r2{grid-column:3/5;display:flex;gap:8px;align-items:center}
+  .pt-row .r2{grid-column:3/5;display:flex;gap:6px;align-items:center;flex-wrap:wrap}.pt-row .r2 .inp.tema{flex:0 0 96px}.pt-row .r2 .pt-gate-btn{flex:0 0 30px}
+  .pt-rec{grid-template-columns:24px minmax(0,1fr) 30px;row-gap:4px}.pt-rec .r2{grid-column:2/4;display:flex;gap:6px;align-items:center;flex-wrap:wrap}.pt-rec .r2 .inp{flex:1 1 120px}
+  .pt-ctl-f .input{min-width:140px}
   .pt-row .r2 .inp{flex:1;min-height:36px;font-size:14px}
   .pt-row .inp.t{font-size:15px;min-height:38px}
   .pt-fase>summary{padding:11px 12px}.pt-fase .body{padding:0 10px 10px}.pt-fase>summary .cnt .gp-prog{display:none}
@@ -6547,7 +6562,8 @@ async function removerMembro(id){const m=DB.equipe.find(x=>x.id===id);if(!m)retu
 function ringSVG(pct){const r=34,c=2*Math.PI*r,off=c*(1-clamp(pct,0,100)/100);
   return `<svg width="92" height="92" viewBox="0 0 92 92"><circle cx="46" cy="46" r="34" fill="none" stroke="var(--line)" stroke-width="9"/><circle cx="46" cy="46" r="34" fill="none" stroke="var(--green)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 46 46)"/></svg>`;}
 function pgTarefas(){const p=DB._projeto;const arr=(p&&Array.isArray(p.tarefas))?p.tarefas:[];
-  return arr.filter(t=>t&&t.fase!=='Onboarding');}
+  return arr.filter(t=>t&&t.fase!=='Onboarding'&&projFaseNoModelo(p,t.fase));}
+function pgProj(){return (DB._projeto&&Array.isArray(DB._projeto.tarefas))?DB._projeto:{tarefas:[]};}
 function pgFases(ts){const fases=[];ts.forEach(t=>{const nome=t.fase||'Outras';let f=fases.find(x=>x.nome===nome);
   if(!f){f={nome,itens:[]};fases.push(f);}f.itens.push(t);});return fases;}
 function pgRefEtapa(fase,fases){const o={dados:DB,criado_em:(typeof ORG!=='undefined'&&ORG&&ORG.criado_em)||''};return projRefEtapa(o,fase,fases);}
@@ -6558,7 +6574,7 @@ function pgResp(t){return t.resp?esc(t.resp):'<span style="color:var(--soft)">a 
 function pgLinha(t,hoje){const atrasada=!t.feito&&t.prazo&&t.prazo<hoje;
   return `<div style="display:grid;grid-template-columns:${PG_COLS};gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)">
     <div style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;${t.feito?'background:var(--green);color:#fff':'background:var(--bg);color:var(--soft);border:1px solid var(--line)'}">${t.feito?'✓':'○'}</div>
-    <div style="min-width:0;font-size:13.5px;${t.feito?'color:var(--soft);text-decoration:line-through':'font-weight:500'}">${esc(t.titulo||'')}</div>
+    <div style="min-width:0;font-size:13.5px;${t.feito?'color:var(--soft);text-decoration:line-through':'font-weight:500'}">${esc(t.titulo||'')}${t.tema?' '+projTemaTag(t.tema):''}</div>
     <div style="min-width:0;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.resp?esc(t.resp):'Responsável a definir'}">${pgResp(t)}</div>
     <div style="font-size:11.5px;text-align:right;white-space:nowrap;${atrasada?'color:var(--red);font-weight:600':'color:var(--soft)'}">${t.prazo?(atrasada?'⚠ ':'')+fmtDataBR(t.prazo):'—'}</div>
   </div>`;}
@@ -6571,7 +6587,7 @@ function viewMapa(){
   const feitas=ts.filter(t=>t.feito).length, pct=Math.round(feitas/ts.length*100);
   const atrasadas=ts.filter(t=>!t.feito&&t.prazo&&t.prazo<hoje).length;
   // próximas etapas: pendentes, com prazo primeiro (mais perto na frente), depois a ordem do plano
-  const pend=ts.filter(t=>!t.feito);
+  const pendAb=ts.filter(t=>!t.feito&&projFaseAberta(pgProj(),t.fase));const pend=pendAb.length?pendAb:ts.filter(t=>!t.feito);
   const proximas=[...pend].sort((a,b)=>{const pa=a.prazo||'9999-99-99',pb=b.prazo||'9999-99-99';
     return pa!==pb?pa.localeCompare(pb):ts.indexOf(a)-ts.indexOf(b);}).slice(0,5);
   const fases=pgFases(ts);
@@ -6601,10 +6617,10 @@ function viewMapa(){
       </div>`).join('')}</div></div>
     </div>`:`<div class="card card-pad" style="margin-bottom:16px;border-color:var(--green)">
       <div style="font-size:13.5px">🎉 Todas as tarefas do plano estão concluídas. Fale com seu consultor sobre os próximos passos.</div></div>`}
-    ${fases.map(f=>{const d=f.itens.filter(x=>x.feito).length,p2=Math.round(d/f.itens.length*100);
-      return `<div class="card card-pad" style="margin-bottom:12px">
+    ${fases.map(f=>{const d=f.itens.filter(x=>x.feito).length,p2=Math.round(d/f.itens.length*100);const ab=projFaseAberta(pgProj(),f.nome);
+      return `<div class="card card-pad" style="margin-bottom:12px;${ab?'':'opacity:.7;background:var(--bg)'}">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
-          <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600">${esc(f.nome)}</div>
+          <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600;${ab?'':'color:var(--muted)'}">${esc(f.nome)}${ab?'':` <span class="tag tag-gray" style="font-family:inherit;font-size:11px;vertical-align:middle">🔒 ${esc(projBloqueioMsg(pgProj(),f.nome))}</span>`}</div>
           <div style="font-size:12px;color:var(--soft);display:flex;gap:8px;align-items:center">${(function(){const r=pgRefEtapa(f.nome,fases.map(x=>x.nome));return r?projRefTag(r,d<f.itens.length,hoje):'';})()}<span>${d}/${f.itens.length} · ${p2}%</span></div>
         </div>
         <div style="height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin-bottom:6px"><div style="height:6px;width:${p2}%;background:${p2>=100?'var(--green)':'var(--gold)'}"></div></div>
@@ -8615,25 +8631,25 @@ function kpisDe(dados){return withDB((dados&&dados.insumos)?dados:emptyDB(),()=>
 /* ---- ADMIN · estado e projetos ---- */
 let adminSel=null, adminBusca='', adminProjTab='dados';
 let ADMIN_ORGS=[], ADMIN_PEND=[];
-const PROJETO_FASES=[
- {nome:'Onboarding',tarefas:['Solicitar ao Financeiro Criar Cobranças de Pagamento','Solicitar Dados de Contrato','Criar Contrato','Enviar Contrato Para Assinatura','Contrato Assinado','Criar Drive do Cliente','Enviar Link de Perfil Comportamental','Salvar Link do Perfil Comportamental no Drive','Reunião de Onboarding','Informações Restantes Onboarding','Reunião de Diagnóstico Inicial com Consultor','Apresentar Plano de Guerra']},
- {nome:'Etapa 01 · Gestão Financeira',tarefas:['Controle de estoque inicial, feito manualmente','Cadastro dos itens e insumos no Flow a partir da contagem inicial','Controle de estoque ativo','Controle de compras e recebimento padronizado','Apuração do CMV real (incluindo bebida e embalagem)','Fichas técnicas dos principais produtos no Flow (porções e campeões de venda)','Definição da Curva ABC de compras','Lançamentos financeiros em rotina (receitas, despesas, folha, resultado)','Início do controle de desperdício de insumo (perdas, vencimento e quebra)']},
- {nome:'Etapa 02 · Engenharia de Cardápio',tarefas:['Cadastro da ficha técnica do restante dos produtos no Flow','Levantamento da Curva ABC de vendas','Conferência da margem e ajuste de porções e precificação com base no custo','Instrução do método de engenharia de menu (a decisão por item é sua)','Análise do desperdício iniciado na Etapa 1 e ações para reduzir a sobra','Definição do carro-chefe','Separação de contas PF e PJ e definição do pró-labore','Fluxo de caixa e análise do primeiro DRE']},
- {nome:'Etapa 03 · Gestão de Equipes',tarefas:['Como fazer reuniões (ritual de gestão)','Rotinas de treinamento da equipe','Posicionamento do líder (perfil comportamental)','Definição da rotina e do papel do dono','Descrição de cargos de cada função, assinada','Processo de contratação e onboarding']},
- {nome:'Etapa 04 · Processos e Rotinas',tarefas:['Checklist operacional (abertura, briefing de pré-turno, fechamento)','Checklist estratégico do dono','Rotinas operacionais da equipe por turno','POPs do "como fazer"','Padrão de montagem e exposição']},
- {nome:'Etapa 05 · Delivery',tarefas:['Análise de mercado e concorrência no canal','Revisão do cardápio do delivery','Análise e ajuste das descrições e das fotos dos produtos','Combos e precificação de canal','Treinamento e instruções','Gestão de avaliações','Acompanhamento de performance']},
- {nome:'Etapa 06 · Marketing e Vendas',tarefas:['Análise e otimização do Google Perfil da Empresa','Instagram: rotina de postagem','Direcionamento para tráfego pago','Análise e plano de crescimento do ticket médio','Estratégia de remarketing e base de relacionamento']}
+/* Anexo C · Onboarding [tarefa, responsável] */
+const PROJ_ONB_TPL=[
+ ['Contrato assinado','Cliente'],['Pagamento da entrada confirmado','Financeiro'],['Reunião de onboarding','Jamur'],['Pasta do cliente criada no Drive','Lidera'],
+ ['Acessos ao Flow criados para o dono e o braço direito','Lidera'],['Cadastro da empresa no Flow (unidades, segmento, carteira Lidera)','Lidera'],
+ ['Enviar o link do perfil comportamental','Lidera'],['Salvar o resultado do perfil comportamental no Drive','Lidera'],['Resumo consolidado para o Charles','Jamur'],
+ ['Reunião de diagnóstico inicial com o consultor','Charles'],['Plano de Guerra montado e validado internamente','Jamur e Charles'],
+ ['Apresentar o Plano de Guerra, com a regra da porta combinada','Jamur'],['Tarefas do plano subidas no Controle de projeto','Jamur']
 ];
+const PROJETO_FASES=[{nome:'Onboarding',tarefas:PROJ_ONB_TPL.map(x=>x[0])},{nome:'Etapa 1',tarefas:[]},{nome:'Etapa 2',tarefas:[]},{nome:'Etapa 3',tarefas:[]},{nome:'Etapa 4',tarefas:[]},{nome:'Etapa 5',tarefas:[]},{nome:'Etapa 6',tarefas:[]}];
 function projSeed(){const arr=[];PROJETO_FASES.forEach((f,fi)=>f.tarefas.forEach((t,ti)=>arr.push({id:'f'+fi+'t'+ti,titulo:t,fase:f.nome,feito:false,prazo:''})));return arr;}
-function projOnboardingSeed(){return PROJETO_FASES[0].tarefas.map((t,ti)=>({id:'f0t'+ti,titulo:t,fase:'Onboarding',feito:false,prazo:''}));}
+function projOnboardingSeed(){return projOnbTplSeed();}
 function projEnsure(o){if(!o)return{tarefas:[]};o.dados=o.dados||{};
   const deConsultor=orgDeConsultor(o); // cliente de consultor: projeto vazio (metodologia própria). Dono multi-unidade é cliente da Lidera e recebe o plano padrão.
-  if(!o.dados._projeto||!Array.isArray(o.dados._projeto.tarefas)){o.dados._projeto=deConsultor?{tarefas:[],criadoEm:hojeISO(),_obV2:true}:{tarefas:projOnboardingSeed(),criadoEm:hojeISO(),_obV2:true};}  // cliente novo começa só com o Onboarding; as etapas do Plano de Guerra entram pelo PDF depois da reunião
+  if(!o.dados._projeto||!Array.isArray(o.dados._projeto.tarefas)){o.dados._projeto=deConsultor?{tarefas:[],criadoEm:hojeISO(),_obV2:true}:{tarefas:projOnboardingSeed(),criadoEm:hojeISO(),_obV2:true,etapaAtual:'Onboarding',aberturas:{Onboarding:hojeISO()}};}  // cliente novo começa só com o Onboarding; as etapas do Plano de Guerra entram pelo PDF depois da reunião
   const p=o.dados._projeto;
   if(!p._obV2){if(!deConsultor){const ob=p.tarefas.filter(t=>t.fase==='Onboarding');if(!ob.length||ob.every(t=>!t.feito&&!t.prazo)){const resto=p.tarefas.filter(t=>t.fase!=='Onboarding');p.tarefas=projOnboardingSeed().concat(resto);}}p._obV2=true;}
   return p;}
-function projPct(p){const t=((p&&p.tarefas)||[]).filter(x=>x.fase!=='Onboarding');if(!t.length)return 0;return Math.round(t.filter(x=>x.feito).length/t.length*100);}
-function projAtrasadas(p){const h=hojeISO();return ((p&&p.tarefas)||[]).filter(x=>!x.feito&&x.prazo&&x.prazo<h).length;}
+function projPct(p){const t=projTarefasContam(p);if(!t.length)return 0;return Math.round(t.filter(x=>x.feito).length/t.length*100);}
+function projAtrasadas(p){const h=hojeISO();return ((p&&p.tarefas)||[]).filter(x=>!x.feito&&x.prazo&&x.prazo<h&&projFaseNoModelo(p,x.fase)).length;}
 function projCur(){return ADMIN_ORGS.find(o=>o.id===adminSel);}
 async function projSaveOrg(o){if(!o)return;try{const cur=(await sb.from('organizacoes').select('dados').eq('id',o.id).single()).data;const dados=(cur&&cur.dados)||{};dados._projeto=o.dados._projeto;await sb.from('organizacoes').update({dados}).eq('id',o.id);o.dados=dados;}catch(e){toast('Erro ao salvar projeto');}}
 
@@ -8895,53 +8911,277 @@ function dadosHTML(o,k,nm,arq){return `<div id="ia_uso_box" data-org="${o.id}"><
      <button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" onclick="excluirCliente('${o.id}','${nm}')">${icoTrash} Excluir</button>`
      :`<button class="btn btn-ghost btn-sm" onclick="arquivarCliente('${o.id}',true)">Arquivar</button>`}
   </div></div>`;}
+/* ===================== CONTROLE DE PROJETO v2 · portões, modelo, travado, temas, recorrentes =====================
+   Tudo opcional no dado: projeto antigo (sem modelo, sem etapaAtual, sem portão, sem tema) se comporta como antes.
+   p.modelo 'essencial'|'completo' (ausente = completo) · p.etapaAtual (ausente = bloqueio desligado) · p.travado {desde,motivo}
+   p.travadoHist [] · p.liberacoes [] · p.aberturas {fase:data} · p.recorrentes [] (fora de p.tarefas: não entram no %)
+   tarefa: portao (sim/não) · tema (PROJ_TEMAS) · etapaN (1..6; antigas inferem pela ordem das fases) */
+const PROJ_TEMAS=[['Sistema','#3E4C7A'],['Financeiro','#1E7F4F'],['Cardápio','#A48A57'],['Estoque','#8A5A2B'],['Buffet','#D2691E'],['Segmento','#6B4FA0'],['Delivery','#C0392B'],['Marketing','#C2185B'],['Equipe','#0E7C86'],['Processos','#5B6B8C']];
+function projTemaCor(t){const x=PROJ_TEMAS.find(a=>a[0]===t);return x?x[1]:'#5B6B8C';}
+function projTemaTag(t){return t?`<span class="pt-tema" style="background:${projTemaCor(t)}1a;color:${projTemaCor(t)}">${esc(t)}</span>`:'';}
+const PROJ_FREQS=[['semanal','Semanal'],['quinzenal','Quinzenal'],['mensal','Mensal'],['trimestral','Trimestral'],['quando','Quando houver'],['reuniao','A cada reunião']];
+function projFreqRot(f){const x=PROJ_FREQS.find(a=>a[0]===f);return x?x[1]:(f||'');}
+/* Anexo A · [etapa, tema, tarefa, modelo ('a' ambos | 'c' completo), condição ('' | buffet | ifood | delivery)] */
+const PLANO_TPL=[
+ [1,'Sistema','Integração do PDV do cliente com o Flow','a',''],
+ [1,'Financeiro','Implantação dos lançamentos financeiros (receitas, despesas, folha)','a',''],
+ [1,'Financeiro','Cadastro da folha e dos custos fixos no Flow','a',''],
+ [1,'Financeiro','Taxas de cartão e operadoras cadastradas em Parâmetros','a',''],
+ [1,'Cardápio','Cadastro do cardápio no Flow (produtos, categorias e preço de venda)','a',''],
+ [1,'Cardápio','Fichas técnicas dos campeões de venda no Flow','a',''],
+ [1,'Cardápio','CMV teórico dos campeões, pelas fichas','a',''],
+ [1,'Delivery','Primeira alteração no iFood a partir das fichas dos campeões (preço, combos e destaque)','a','ifood'],
+ [1,'Buffet','CMV do buffet pelo dia mapeado (peso das cubas, reposições e sobra)','a','buffet'],
+ [1,'Marketing','Google Perfil da Empresa revisado (fotos, horário, cardápio, avaliações)','a',''],
+ [1,'Marketing','Instagram com rotina de postagem definida e calendário montado','a',''],
+ [2,'Estoque','Contagem de estoque inicial, feita manualmente','a',''],
+ [2,'Estoque','Implantação do controle de estoque ativo','a',''],
+ [2,'Estoque','Controle de compras e recebimento padronizado','a',''],
+ [2,'Estoque','Cadastro dos fornecedores com prazo e condição de pagamento','a',''],
+ [2,'Estoque','Estoque mínimo definido e lista de compras pelo Flow','a',''],
+ [2,'Estoque','Início do controle de desperdício (perdas, vencimento, quebra)','a',''],
+ [2,'Financeiro','Apuração do CMV real (com bebida e embalagem)','a',''],
+ [2,'Financeiro','Curva ABC de compras','a',''],
+ [2,'Financeiro','Primeiro DRE fechado e analisado','a',''],
+ [2,'Cardápio','Fichas técnicas do restante do cardápio','a',''],
+ [3,'Cardápio','Curva ABC de vendas','a',''],
+ [3,'Cardápio','Fichas dos preparados de base (molhos, massas, blends, porcionados)','a',''],
+ [3,'Cardápio','Conferência de margem e ajuste de porções e preço','a',''],
+ [3,'Cardápio','Engenharia de menu e definição do carro-chefe','a',''],
+ [3,'Segmento','Bloco de segmento (mapa do buffet e 80/20, ficha modular, fator de correção)','a',''],
+ [3,'Estoque','Plano de redução do desperdício','a',''],
+ [3,'Financeiro','Separação de contas PF e PJ e definição do pró-labore','a',''],
+ [3,'Financeiro','Ponto de equilíbrio e meta de faturamento mensal','a',''],
+ [4,'Delivery','Mapeamento dos canais e receita separada por canal (Bloco 0)','a',''],
+ [4,'Delivery','Comissão e taxa em Parâmetros, embalagem na ficha, preço e margem por canal (Bloco 0)','a',''],
+ [4,'Delivery','Delivery próprio: custo por entrega, raio e taxa (Bloco A)','a','delivery'],
+ [4,'Delivery','Cardápio digital com fotos e descrições','a','delivery'],
+ [4,'Delivery','iFood e marketplaces (Bloco B)','a','ifood'],
+ [4,'Marketing','Lista de WhatsApp e oferta semanal','a',''],
+ [4,'Marketing','Gestão de avaliações no Google e no iFood','a',''],
+ [4,'Marketing','Venda casada no balcão','a',''],
+ [4,'Marketing','Tráfego pago','a',''],
+ [5,'Equipe','Descrição de cargo e rotina do dono','c',''],
+ [5,'Equipe','Reunião semanal com a equipe, com número','c',''],
+ [5,'Equipe','Metas por função com acompanhamento mensal','c',''],
+ [5,'Equipe','Trilha de treinamentos','c',''],
+ [5,'Equipe','Perfil do líder, contratação e integração','c',''],
+ [6,'Processos','Checklists de abertura e fechamento','c',''],
+ [6,'Processos','Fichas operacionais dos campeões','c',''],
+ [6,'Processos','Padrão de recebimento e de produção do segmento','c',''],
+ [6,'Processos','Plano de produção diário por item, pela venda e pela sobra','c',''],
+ [6,'Processos','POPs de boas práticas e segurança dos alimentos','c',''],
+ [6,'Processos','Checklist estratégico do dono, semanal','c','']
+];
+/* Anexo B · [rotina, frequência, etapa em que começa, responsável, condição] */
+const PLANO_REC_TPL=[
+ ['Reunião de acompanhamento','reuniao',1,'Jamur',''],
+ ['Reunião estratégica','mensal',1,'Charles',''],
+ ['Registro da reunião, ata e cobrança dos temas de casa','reuniao',1,'Jamur',''],
+ ['Conferência do Plano de Guerra','semanal',1,'Jamur',''],
+ ['Conferência dos lançamentos do cliente','semanal',1,'Lidera',''],
+ ['CMV real do mês','mensal',2,'Lidera',''],
+ ['DRE do mês fechado e analisado','mensal',2,'Lidera',''],
+ ['Ficha técnica de produto novo ou alterado','quando',2,'Lidera',''],
+ ['Revisão de margem e preço pela curva ABC','trimestral',3,'Lidera',''],
+ ['Conciliação do repasse do iFood','mensal',4,'Lidera','ifood'],
+ ['Acompanhamento do tráfego pago','mensal',4,'Lidera',''],
+ ['Acompanhamento das metas por função','mensal',5,'Jamur',''],
+ ['Conferência dos checklists no Flow','semanal',6,'Lidera','']
+];
+function projModelo(p){return (p&&p.modelo==='essencial')?'essencial':'completo';}
+function projNNoModelo(p,n){return projModelo(p)==='completo'||(+n||0)<=4;}
+function projFasesLista(p){const out=[];((p&&p.tarefas)||[]).forEach(t=>{if(t&&t.fase&&!out.includes(t.fase))out.push(t.fase);});return out;}
+function projFaseN(p,fase){if(!fase||fase==='Onboarding')return 0;const ts=((p&&p.tarefas)||[]).filter(t=>t.fase===fase);const c=ts.find(t=>+t.etapaN>0);if(c)return +c.etapaN;
+  const m=String(fase).match(/^\s*etapa\s*0?(\d{1,2})\b/i);if(m)return +m[1];const l=projFasesLista(p).filter(f=>f!=='Onboarding');return l.indexOf(fase)+1;}
+function projFaseNoModelo(p,fase){return fase==='Onboarding'||projNNoModelo(p,projFaseN(p,fase));}
+function projFasesVisiveis(p){return projFasesLista(p).filter(f=>projFaseNoModelo(p,f));}
+function projTarefasContam(p){return ((p&&p.tarefas)||[]).filter(x=>x&&x.fase!=='Onboarding'&&projFaseNoModelo(p,x.fase));}
+function projBloqueio(p){return !!(p&&p.etapaAtual&&projFasesLista(p).includes(p.etapaAtual));}
+function projFaseAberta(p,fase){if(!projBloqueio(p)||fase==='Onboarding')return true;const l=projFasesVisiveis(p);let a=l.indexOf(p.etapaAtual);if(a<0)a=l.length-1;const f=l.indexOf(fase);return f>=0&&f<=a;}   // etapa atual fora do modelo (ex.: Essencial com etapa 5): tudo que é visível já passou
+function projFaseAnterior(p,fase){const l=projFasesVisiveis(p);const k=l.indexOf(fase);return k>0?l[k-1]:'';}
+function projProxFase(p,fase){const l=projFasesVisiveis(p);const k=l.indexOf(fase);return (k>=0&&k<l.length-1)?l[k+1]:'';}
+function projPortao(p,fase){const ts=((p&&p.tarefas)||[]).filter(t=>t.fase===fase);const g=ts.filter(t=>t.portao);const lista=g.length?g:ts;return {tot:lista.length,feitas:lista.filter(t=>t.feito).length,explicito:g.length>0};}
+function projPortaoFechado(p,fase){const g=projPortao(p,fase);return g.tot>0&&g.feitas===g.tot;}
+function projTravado(p){return !!(p&&p.travado&&p.travado.desde);}
+function projTravadoDias(p){return projTravado(p)?Math.max(0,gpDias(p.travado.desde,hojeISO())||0):0;}
+function projQuem(){return (PERFIL&&(PERFIL.nome||PERFIL.email))||'Lidera';}
+function projRecs(p){if(!p)return [];if(!Array.isArray(p.recorrentes))p.recorrentes=[];return p.recorrentes;}
+function projRecProxPrazo(freq,base){base=base||hojeISO();return freq==='semanal'?diasSoma(base,7):freq==='quinzenal'?diasSoma(base,14):freq==='mensal'?mesesSoma(base,1):freq==='trimestral'?mesesSoma(base,3):'';}
+function projRecVisivel(p,r){return projNNoModelo(p,r.inicioN||1);}
+function projRecAtiva(p,r){return !!r.ativa||!projBloqueio(p);}   // sem bloqueio (projeto antigo) todas as recorrentes do modelo já rodam
+function projRecAtivar(p){if(!projBloqueio(p))return;const n=projFaseN(p,p.etapaAtual);projRecs(p).forEach(r=>{if(!r.ativa&&(+r.inicioN||1)<=n&&projRecVisivel(p,r)){r.ativa=true;r.ativaEm=hojeISO();if(!r.prazo)r.prazo=projRecProxPrazo(r.freq,hojeISO());}});}
+function projAbrirFase(p,fase,modo,extra){p.etapaAtual=fase;p.aberturas=p.aberturas||{};if(!p.aberturas[fase])p.aberturas[fase]=hojeISO();
+  if(modo==='liberada'){p.liberacoes=p.liberacoes||[];p.liberacoes.push(Object.assign({fase,em:hojeISO(),quem:projQuem()},extra||{}));}projRecAtivar(p);}
+function projAvancarSePortao(p){if(!projBloqueio(p)||projTravado(p))return '';let aberta='',guard=0;
+  while(guard++<12){const cur=p.etapaAtual;if(!projPortaoFechado(p,cur))break;const prox=projProxFase(p,cur);if(!prox)break;projAbrirFase(p,prox,'auto');aberta=prox;}return aberta;}
+function projPodeMarcar(p,t){return !!t&&(t.feito||projFaseAberta(p,t.fase));}
+function projBloqueioMsg(p,fase){const ant=projFaseAnterior(p,fase)||p.etapaAtual||'';return 'Abre quando a '+(ant==='Onboarding'?'etapa Onboarding':ant)+' for concluída';}
+let _ptTema='';
+function projTemaFiltro(v){_ptTema=v||'';renderAdminMain();}
+function projTema(id,v){const o=projCur();if(!o)return;const t=projEnsure(o).tarefas.find(x=>x.id===id);if(!t)return;t.tema=v||'';renderAdminMain();projSaveOrg(o);}
+function projPortaoToggle(id){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;t.portao=!t.portao;const av=projAvancarSePortao(p);renderAdminMain();renderAdminList();projSaveOrg(o);if(av)toast('Portão fechado: '+av+' aberta');}
+function projModeloSet(v){const o=projCur();if(!o)return;const p=projEnsure(o);v=v==='essencial'?'essencial':'completo';if(projModelo(p)===v){p.modelo=v;return;}
+  p.modelo=v;let n=0;
+  if(v==='completo'&&!projFasesLista(p).some(f=>projFaseN(p,f)>=5)&&p._tpl){const op=p.tplOpts||{};PLANO_TPL.filter(x=>x[0]>=5&&(!x[4]||op[x[4]])).forEach((x,i)=>{p.tarefas.push(projTplTarefa(x,i));n++;});
+    PLANO_REC_TPL.filter(x=>x[2]>=5&&(!x[4]||op[x[4]])).forEach(x=>{if(!projRecs(p).some(r=>r.titulo===x[0]))projRecs(p).push(projTplRec(x));});}
+  renderAdminMain();renderAdminList();projSaveOrg(o);toast(v==='completo'?('Modelo Completo: Etapas 5 e 6 '+(n?'criadas, ':'')+'visíveis e bloqueadas até a vez delas'):'Modelo Essencial: Etapas 5 e 6 ficam fora do plano e do percentual');}
+function projEtapaAtualSet(v){const o=projCur();if(!o)return;const p=projEnsure(o);
+  if(!v){delete p.etapaAtual;renderAdminMain();renderAdminList();projSaveOrg(o);return toast('Bloqueio de etapas desligado');}
+  if(!projFasesLista(p).includes(v))return;projAbrirFase(p,v,'manual');renderAdminMain();renderAdminList();projSaveOrg(o);toast('Etapa atual: '+v+'. As etapas seguintes ficam bloqueadas.');}
+function projLiberar(){const o=projCur();if(!o)return;const p=projEnsure(o);if(!projBloqueio(p))return;const prox=projProxFase(p,p.etapaAtual);if(!prox)return toast('Não há próxima etapa para liberar');
+  const g=projPortao(p,p.etapaAtual);
+  modal(`<div class="modal-head"><h3>Liberar ${esc(prox)}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body"><div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div>O portão da ${esc(p.etapaAtual)} ainda não fechou (${g.feitas} de ${g.tot}). Liberar abre a ${esc(prox)} mesmo assim e fica registrado quem liberou, quando e por quê.</div></div>
+    <div class="field"><label>Motivo (obrigatório)</label><textarea class="input" id="pl_motivo" rows="3" placeholder="Ex.: cliente entregou fora do Flow, combinado na reunião de 20/10"></textarea></div></div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="projLiberarExec('${esc(prox)}')">Liberar etapa</button></div>`);setTimeout(()=>{const e=$('#pl_motivo');if(e)e.focus();},40);}
+function projLiberarExec(prox){const o=projCur();if(!o)return;const p=projEnsure(o);const m=(($('#pl_motivo')||{}).value||'').trim();if(!m)return toast('Informe o motivo da liberação');
+  projAbrirFase(p,prox,'liberada',{motivo:m,de:p.liberacoes&&p.liberacoes.length?undefined:undefined});const av=projAvancarSePortao(p);closeModal();renderAdminMain();renderAdminList();projSaveOrg(o);toast(prox+' liberada por '+projQuem()+(av?' · '+av+' também abriu (portão já fechado)':''));}
+function projTravarModal(){const o=projCur();if(!o)return;const p=projEnsure(o);
+  modal(`<div class="modal-head"><h3>Travar projeto</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body"><div class="gp-mini" style="margin-bottom:10px">Travado = o cliente não entregou o que o portão pede. O projeto continua aceitando lançamentos e as tarefas recorrentes; só o avanço de etapa para.</div>
+    <div class="field"><label>Motivo: o que falta e de quem (obrigatório)</label><textarea class="input" id="pt_motivo" rows="3" placeholder="Ex.: faltam as fichas dos campeões, com o dono">${esc((p.travado&&p.travado.motivo)||'')}</textarea></div></div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" style="background:var(--red);border-color:var(--red)" onclick="projTravarExec()">Travar</button></div>`);setTimeout(()=>{const e=$('#pt_motivo');if(e)e.focus();},40);}
+function projTravarExec(){const o=projCur();if(!o)return;const p=projEnsure(o);const m=(($('#pt_motivo')||{}).value||'').trim();if(!m)return toast('Informe o motivo');
+  if(projTravado(p))p.travado.motivo=m;else p.travado={desde:hojeISO(),motivo:m,quem:projQuem()};closeModal();renderAdminMain();renderAdminList();projSaveOrg(o);toast('Projeto travado');}
+function projDestravar(){const o=projCur();if(!o)return;const p=projEnsure(o);if(!projTravado(p))return;if(!confirm('Destravar o projeto de "'+(o.nome||'')+'"?\n\nO período travado fica guardado no histórico.'))return;
+  p.travadoHist=p.travadoHist||[];p.travadoHist.push({inicio:p.travado.desde,fim:hojeISO(),motivo:p.travado.motivo||'',quem:p.travado.quem||'',destravouPor:projQuem()});delete p.travado;
+  const av=projAvancarSePortao(p);renderAdminMain();renderAdminList();projSaveOrg(o);toast('Projeto destravado'+(av?' · '+av+' aberta (portão já estava fechado)':''));}
+/* template (Anexos A, B e C) */
+function projTplTarefa(x,i){return {id:'t'+Date.now().toString(36)+x[0]+'_'+i+Math.random().toString(36).slice(2,5),titulo:x[2],fase:'Etapa '+x[0],etapaN:x[0],tema:x[1],portao:!x[4],feito:false,prazo:'',resp:''};}
+function projTplRec(x){return {id:'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),titulo:x[0],freq:x[1],inicioN:x[2],resp:x[3],ativa:false,prazo:'',hist:[]};}
+function projOnbTplSeed(){return PROJ_ONB_TPL.map((x,ti)=>({id:'ob'+ti+'_'+Date.now().toString(36),titulo:x[0],fase:'Onboarding',feito:false,prazo:'',resp:x[1]}));}
+function projTplModal(){const o=projCur();if(!o)return;const p=projEnsure(o);const cad=cadDe(o);const seg=lmNorm(cad.segmento||'');
+  const ja=p.tarefas.filter(t=>t.fase!=='Onboarding').length;
+  const chk=(id,rot,on,sub)=>`<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line);cursor:pointer"><input type="checkbox" id="${id}" ${on?'checked':''} style="width:18px;height:18px;margin-top:1px"><div><div style="font-weight:600;font-size:13.5px">${rot}</div><div class="gp-mini">${sub}</div></div></label>`;
+  modal(`<div class="modal-head"><h3>Criar Plano de Guerra</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div class="field"><label>Modelo</label><div class="gp-seg" id="tpl_modelo"><button class="on" data-v="essencial" onclick="projTplSeg(this)">Essencial · Etapas 1 a 4</button><button data-v="completo" onclick="projTplSeg(this)">Completo · Etapas 1 a 6</button></div></div>
+    ${chk('tpl_buffet','É buffet?',/buffet|quilo|self/.test(seg),'Entra o CMV do buffet pelo dia mapeado (Etapa 1)')}
+    ${chk('tpl_ifood','Tem iFood ou marketplace?',true,'Entram a primeira alteração no iFood (Etapa 1), o Bloco B (Etapa 4) e a conciliação do repasse')}
+    ${chk('tpl_delivery','Tem delivery próprio?',false,'Entram o Bloco A e o cardápio digital (Etapa 4)')}
+    <div class="gp-mini" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">Cria as tarefas pontuais com etapa, tema, portão e ordem, as rotinas recorrentes da Lidera e o onboarding padrão${p.tarefas.some(t=>t.fase==='Onboarding'&&(t.feito||t.prazo))?' (o onboarding atual já tem andamento e será mantido)':''}. Depois dá para incluir, editar e excluir tarefas normalmente.${ja?`<br><b style="color:var(--amber)">Este projeto já tem ${ja} tarefa(s) fora do Onboarding; elas serão mantidas e as novas entram junto.</b>`:''}</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="projTplAplicar()">Criar plano</button></div>`);}
+function projTplSeg(b){[...b.parentElement.querySelectorAll('button')].forEach(x=>x.classList.toggle('on',x===b));}
+function projTplAplicar(){const o=projCur();if(!o)return;const p=projEnsure(o);
+  const modelo=((document.querySelector('#tpl_modelo button.on')||{}).dataset||{}).v||'essencial';const op={buffet:!!($('#tpl_buffet')||{}).checked,ifood:!!($('#tpl_ifood')||{}).checked,delivery:!!($('#tpl_delivery')||{}).checked};
+  const ob=p.tarefas.filter(t=>t.fase==='Onboarding');const resto=p.tarefas.filter(t=>t.fase!=='Onboarding');
+  const novoOb=(!ob.length||ob.every(t=>!t.feito&&!t.prazo))?projOnbTplSeed():ob;
+  const novas=PLANO_TPL.filter(x=>(modelo==='completo'||x[3]==='a')&&(!x[4]||op[x[4]])).map((x,i)=>projTplTarefa(x,i));
+  p.tarefas=novoOb.concat(resto,novas);p.modelo=modelo;p.tplOpts=op;p._tpl=true;p._obV2=true;
+  const recs=projRecs(p);PLANO_REC_TPL.filter(x=>(modelo==='completo'||x[2]<=4)&&(!x[4]||op[x[4]])).forEach(x=>{if(!recs.some(r=>r.titulo===x[0]))recs.push(projTplRec(x));});
+  if(!p.etapaAtual){projAbrirFase(p,'Onboarding','auto');}
+  const av=projAvancarSePortao(p);
+  closeModal();renderAdminMain();renderAdminList();projSaveOrg(o);toast('Plano criado: '+novas.length+' tarefas, '+recs.length+' rotinas recorrentes'+(av?' · '+av+' já aberta':''));}
+/* recorrentes */
+function projRecConcluir(id){const o=projCur();if(!o)return;const p=projEnsure(o);const r=projRecs(p).find(x=>x.id===id);if(!r)return;const h=hojeISO();
+  r.hist=r.hist||[];r.hist.push({prazo:r.prazo||'',feitoEm:h,quem:projQuem()});r.ultimo=h;r.prazo=projRecProxPrazo(r.freq,r.prazo&&r.prazo>h?r.prazo:h);r.ativa=true;
+  renderAdminMain();projSaveOrg(o);toast('Ocorrência concluída'+(r.prazo?' · próxima até '+fmtDataBR(r.prazo):''));}
+function projRecPrazo(id,v){const o=projCur();if(!o)return;const r=projRecs(projEnsure(o)).find(x=>x.id===id);if(!r)return;r.prazo=v||'';projSaveOrg(o);}
+function projRecCampo(id,k,v){const o=projCur();if(!o)return;const r=projRecs(projEnsure(o)).find(x=>x.id===id);if(!r)return;r[k]=(k==='inicioN')?(+v||1):(v||'');if(k==='freq'&&r.ativa&&!r.prazo)r.prazo=projRecProxPrazo(r.freq,hojeISO());renderAdminMain();projSaveOrg(o);}
+function projRecDel(id){const o=projCur();if(!o)return;const p=projEnsure(o);const r=projRecs(p).find(x=>x.id===id);if(!r)return;if(!confirm('Excluir a rotina "'+r.titulo+'"?'))return;p.recorrentes=projRecs(p).filter(x=>x.id!==id);renderAdminMain();projSaveOrg(o);}
+function projRecAdd(){modal(`<div class="modal-head"><h3>Nova tarefa recorrente</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+   <div class="field"><label>Rotina</label><input class="input" id="pr_tit" placeholder="Ex.: Conferência dos lançamentos do cliente"></div>
+   <div class="grid-2"><div class="field"><label>Frequência</label><select class="input" id="pr_freq">${PROJ_FREQS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></div>
+   <div class="field"><label>Começa na</label><select class="input" id="pr_ini">${[1,2,3,4,5,6].map(n=>`<option value="${n}">Etapa ${n}</option>`).join('')}</select></div></div>
+   <div class="field"><label>Responsável</label><input class="input" id="pr_resp" list="proj_resp_opts" placeholder="Ex.: Jamur, Charles, Lidera"></div>
+   <div class="gp-mini">Recorrentes não contam no percentual e não travam etapa. A primeira ocorrência nasce quando a etapa de início abre.</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="projRecAddSave()">Adicionar</button></div>`);setTimeout(()=>{const e=$('#pr_tit');if(e)e.focus();},40);}
+function projRecAddSave(){const o=projCur();if(!o)return;const p=projEnsure(o);const tit=(($('#pr_tit')||{}).value||'').trim();if(!tit)return toast('Informe a rotina');
+  projRecs(p).push({id:'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),titulo:tit,freq:($('#pr_freq')||{}).value||'mensal',inicioN:+(($('#pr_ini')||{}).value||1),resp:(($('#pr_resp')||{}).value||'').trim(),ativa:false,prazo:'',hist:[]});
+  projRecAtivar(p);closeModal();renderAdminMain();projSaveOrg(o);}
+function projRecorrentesHTML(o,p){const h=hojeISO();const mob=ehMobile();const recs=projRecs(p).filter(r=>projRecVisivel(p,r));
+  const rows=recs.slice().sort((a,b)=>((a.inicioN||1)-(b.inicioN||1))||(a.titulo||'').localeCompare(b.titulo||'','pt')).map(r=>{const ativa=projRecAtiva(p,r);const atras=ativa&&r.prazo&&r.prazo<h;const n=(r.hist||[]).length;
+    return `<div class="pt-rec ${ativa?'':'off'}">
+      <button class="gp-check ${ativa?'':'dis'}" title="${ativa?'Concluir esta ocorrência e gerar a próxima':'Ainda não começou: nasce quando a Etapa '+(r.inicioN||1)+' abrir'}" ${ativa?`onclick="projRecConcluir('${r.id}')"`:'disabled'}>${icoGpCheck}</button>
+      <input class="inp t" value="${esc(r.titulo||'')}" onchange="projRecCampo('${r.id}','titulo',this.value)" title="Clique para editar">
+      ${mob?'<div class="r2">':''}
+      <select class="inp sel" onchange="projRecCampo('${r.id}','freq',this.value)" title="Frequência">${PROJ_FREQS.map(([v,l])=>`<option value="${v}" ${r.freq===v?'selected':''}>${l}</option>`).join('')}</select>
+      <select class="inp sel" onchange="projRecCampo('${r.id}','inicioN',this.value)" title="Etapa em que começa">${[1,2,3,4,5,6].filter(n=>projNNoModelo(p,n)).map(n=>`<option value="${n}" ${(r.inicioN||1)===n?'selected':''}>desde a Etapa ${n}</option>`).join('')}</select>
+      <input class="inp" list="proj_resp_opts" value="${esc(r.resp||'')}" placeholder="Responsável" onchange="projRecCampo('${r.id}','resp',this.value)">
+      ${ativa?(r.freq==='quando'||r.freq==='reuniao')?`<span class="gp-mini" style="white-space:nowrap">${r.freq==='reuniao'?'na próxima reunião':'quando houver'}${r.ultimo?' · última '+fmtDataBR(r.ultimo).slice(0,5):''}</span>`
+        :`<input type="date" class="inp ${atras?'late':''}" value="${r.prazo||''}" onchange="projRecPrazo('${r.id}',this.value)" title="${atras?'Atrasada '+gpHa(r.prazo):'Prazo desta ocorrência'}${r.ultimo?' · última '+fmtDataBR(r.ultimo):''}">`
+        :`<span class="gp-mini" style="white-space:nowrap">começa na Etapa ${r.inicioN||1}</span>`}
+      <span class="gp-mini" style="white-space:nowrap" title="Ocorrências concluídas">${n?n+'×':''}</span>
+      ${mob?'</div>':''}<button class="del" title="Excluir rotina" onclick="projRecDel('${r.id}')">${icoTrash}</button></div>`;}).join('');
+  return `<div class="card card-pad" style="margin-top:14px;padding:${mob?'12px 14px':'14px 20px'}">
+    <div class="section-head" style="margin-bottom:6px"><div><div class="ttl">Tarefas recorrentes da Lidera</div><div class="desc">Rodam o projeto inteiro. Não contam no percentual e não travam etapa. Concluir uma ocorrência gera a próxima com prazo.</div></div><button class="btn btn-ghost btn-sm" onclick="projRecAdd()">${icoPlus} Nova recorrente</button></div>
+    ${rows||`<div class="gp-mini">Nenhuma rotina recorrente. Use "Criar Plano de Guerra" ou "Nova recorrente".</div>`}</div>`;}
 let _ptOpen={};
-function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=projAtrasadas(p);const h=hojeISO();const cont=p.tarefas.filter(x=>x.fase!=='Onboarding');const feitas=cont.filter(x=>x.feito).length;
-  const info=gpInfo(o);const mob=ehMobile();
-  const fases=[];p.tarefas.forEach(t=>{let g=fases.find(f=>f.nome===t.fase);if(!g){g={nome:t.fase,itens:[]};fases.push(g);}g.itens.push(t);});
+function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=projAtrasadas(p);const h=hojeISO();const cont=projTarefasContam(p);const feitas=cont.filter(x=>x.feito).length;
+  const info=gpInfo(o);const mob=ehMobile();const bloq=projBloqueio(p);const trav=projTravado(p);const modelo=projModelo(p);
+  const fasesTodas=[];p.tarefas.forEach(t=>{let g=fasesTodas.find(f=>f.nome===t.fase);if(!g){g={nome:t.fase,itens:[]};fasesTodas.push(g);}g.itens.push(t);});
+  const fases=fasesTodas.filter(f=>projFaseNoModelo(p,f.nome));const ocultas=fasesTodas.length-fases.length;
+  const etapaRef=bloq?p.etapaAtual:info.etapa;
+  const proxFase=bloq?projProxFase(p,p.etapaAtual):'';
   // sugestões de responsável: a Lidera, o dono e quem está na Equipe do restaurante
-  const respOpts=[...new Set(['Lidera','Cliente'].concat((((o.dados||{}).equipe)||[]).map(m=>(m&&m.nome||'').trim()).filter(Boolean)))];
+  const respOpts=[...new Set(['Lidera','Cliente','Jamur','Charles'].concat((((o.dados||{}).equipe)||[]).map(m=>(m&&m.nome||'').trim()).filter(Boolean)))];
+  const temasUsados=[...new Set(p.tarefas.map(t=>t.tema).filter(Boolean))];
   let html=`<datalist id="proj_resp_opts">${respOpts.map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>
   <div class="card card-pad" style="padding:${mob?'14px':'16px 22px'}">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-      <div style="font-weight:700">Progresso do projeto <span class="gp-mini">(Onboarding não conta)</span></div>
+      <div style="font-weight:700">Progresso do projeto <span class="gp-mini">(só tarefas pontuais${modelo==='essencial'?' das Etapas 1 a 4':''}; Onboarding e recorrentes não contam)</span></div>
       <div style="font-size:12.5px;color:var(--soft)">${feitas}/${cont.length} tarefas${atr?` · <span style="color:var(--red);font-weight:600">${atr} atrasada${atr>1?'s':''}</span>`:''}</div>
     </div>
     <div style="display:flex;align-items:center;gap:12px"><div class="gp-prog ${pct>=100?'done':''}" style="height:10px"><i style="width:${pct}%"></i></div><div style="font-weight:700;font-size:18px;font-family:'Fraunces',serif;color:${pct>=100?'var(--green)':'var(--navy)'}">${pct}%</div></div>
-    ${p.tarefas.length?'':`<div class="alert alert-amber" style="margin:12px 0 0">${icoWarn}<div>Este cliente ainda não tem plano de projeto. Crie a primeira etapa abaixo ou importe um PDF do Plano de Guerra.</div></div>`}
-    ${info.soOnb?`<div class="alert alert-amber" style="margin:12px 0 0;align-items:center">${icoWarn}<div style="flex:1">${info.etapa===GP_AGUARDA?'Onboarding concluído. ':'Por enquanto só o Onboarding está no plano. '}Depois da reunião com o cliente, importe o PDF do Plano de Guerra para trazer as etapas.</div><label class="btn btn-primary btn-sm" style="cursor:pointer;flex:0 0 auto">${icoGpDoc} Importar PDF<input type="file" accept="application/pdf,.pdf" style="display:none" onchange="projImportarPdf(this)"></label></div>`:''}
+    <div class="pt-ctl">
+      <label class="pt-ctl-f"><span>Modelo</span><select class="input" onchange="projModeloSet(this.value)" title="Essencial = Etapas 1 a 4 · Completo = Etapas 1 a 6"><option value="essencial" ${modelo==='essencial'?'selected':''}>Essencial · 1 a 4</option><option value="completo" ${modelo==='completo'?'selected':''}>Completo · 1 a 6</option></select></label>
+      <label class="pt-ctl-f"><span>Etapa atual</span><select class="input" onchange="projEtapaAtualSet(this.value)" title="Define a etapa que aceita marcar tarefas. As seguintes ficam bloqueadas até o portão fechar ou alguém liberar."><option value="">${bloq?'Desligar bloqueio (todas abertas)':'Sem bloqueio · automática'+(info.etapa?' ('+esc(info.etapa)+')':'')}</option>${fases.map(f=>`<option value="${esc(f.nome)}" ${bloq&&p.etapaAtual===f.nome?'selected':''}>${esc(f.nome)}</option>`).join('')}</select></label>
+      ${bloq?(proxFase?`<button class="btn btn-ghost btn-sm" onclick="projLiberar()" title="Abre a ${esc(proxFase)} sem fechar o portão. Pede motivo e registra quem liberou.">🔓 Liberar ${esc(proxFase)}</button>`:`<span class="gp-mini">última etapa do modelo</span>`):''}
+      ${trav?`<span class="tag tag-red" title="${esc(p.travado.motivo||'')}">🔒 Travado há ${projTravadoDias(p)} dia${projTravadoDias(p)===1?'':'s'}</span><button class="btn btn-ghost btn-sm" onclick="projTravarModal()" title="Editar o motivo">Motivo</button><button class="btn btn-primary btn-sm" onclick="projDestravar()">Destravar</button>`
+        :`<button class="btn btn-ghost btn-sm" onclick="projTravarModal()" title="Marca que o cliente não entregou o que o portão pede. Só o avanço de etapa para.">Travar projeto</button>`}
+      ${(info.soOnb||!p.tarefas.length)?`<button class="btn btn-primary btn-sm" onclick="projTplModal()" title="Cria as tarefas do modelo Lidera (etapas, temas, portões, rotinas e onboarding)">${icoPlus} Criar Plano de Guerra</button>`:''}
+    </div>
+    ${trav?`<div class="alert alert-red" style="margin:10px 0 0">${icoWarn}<div><b>Travado desde ${fmtDataBR(p.travado.desde)}.</b> ${esc(p.travado.motivo||'')}<div class="gp-mini" style="margin-top:2px">Lançamentos e recorrentes seguem normais; a próxima etapa só abre depois de destravar.</div></div></div>`:''}
+    ${bloq?'':`<div class="gp-mini" style="margin-top:8px">Bloqueio de etapas desligado: qualquer tarefa pode ser marcada. Para ligar, escolha a etapa atual acima.</div>`}
+    ${ocultas?`<div class="gp-mini" style="margin-top:4px">${ocultas} etapa${ocultas>1?'s':''} fora do modelo Essencial (5 e 6) ${ocultas>1?'ficam':'fica'} oculta${ocultas>1?'s':''} e fora do percentual. Troque para Completo para ver.</div>`:''}
+    ${(p.liberacoes||[]).length?`<details style="margin-top:8px"><summary class="gp-mini" style="cursor:pointer">${p.liberacoes.length} liberação(ões) de etapa registrada(s)</summary><div class="gp-mini" style="margin-top:4px">${p.liberacoes.slice().reverse().map(l=>`• ${esc(l.fase)} liberada em ${fmtDataBR(l.em)} por ${esc(l.quem||'')}: ${esc(l.motivo||'')}`).join('<br>')}</div></details>`:''}
+    ${(p.travadoHist||[]).length?`<details style="margin-top:4px"><summary class="gp-mini" style="cursor:pointer">${p.travadoHist.length} período(s) travado(s) no histórico</summary><div class="gp-mini" style="margin-top:4px">${p.travadoHist.slice().reverse().map(x=>`• ${fmtDataBR(x.inicio)} a ${fmtDataBR(x.fim)} (${gpDias(x.inicio,x.fim)} dias): ${esc(x.motivo||'')}`).join('<br>')}</div></details>`:''}
+    ${p.tarefas.length?'':`<div class="alert alert-amber" style="margin:12px 0 0">${icoWarn}<div>Este cliente ainda não tem plano de projeto. Use "Criar Plano de Guerra", crie a primeira etapa abaixo ou importe um PDF.</div></div>`}
+    ${info.soOnb?`<div class="alert alert-amber" style="margin:12px 0 0;align-items:center">${icoWarn}<div style="flex:1">${info.etapa===GP_AGUARDA?'Onboarding concluído. ':'Por enquanto só o Onboarding está no plano. '}Crie o Plano de Guerra pelo modelo da Lidera ou importe o PDF.</div><label class="btn btn-ghost btn-sm" style="cursor:pointer;flex:0 0 auto">${icoGpDoc} Importar PDF<input type="file" accept="application/pdf,.pdf" style="display:none" onchange="projImportarPdf(this)"></label></div>`:''}
+    ${temasUsados.length?`<div class="pt-temas"><span class="gp-mini">Tema:</span><button class="pt-tema ${_ptTema?'':'on'}" style="background:#EEF0F4;color:var(--muted)" onclick="projTemaFiltro('')">Todos</button>${PROJ_TEMAS.filter(([t])=>temasUsados.includes(t)).map(([t,c])=>`<button class="pt-tema ${_ptTema===t?'on':''}" style="background:${c}1a;color:${c}" onclick="projTemaFiltro('${t}')">${t}</button>`).join('')}</div>`:''}
   </div>`;
-  fases.forEach(f=>{const done=f.itens.filter(x=>x.feito).length;const pend=f.itens.length-done;const fa=esc(f.nome);const faseArg=f.nome.replace(/['"\\]/g,'');const cur=f.nome===info.etapa;
-    const late=f.itens.filter(t=>!t.feito&&t.prazo&&t.prazo<h).length;const key=o.id+'|'+f.nome;const aberta=(key in _ptOpen)?_ptOpen[key]:(pend>0);
-    const w=f.itens.length?Math.round(done/f.itens.length*100):0;
-    html+=`<details class="pt-fase ${cur?'cur':''}" ${aberta?'open':''} ontoggle="_ptOpen['${esc(key)}']=this.open" ondragover="projDragOver(event)" ondragleave="projDragLeave(event)" ondrop="projDropFase(event,'${fa}')">
+  const temaSel=t=>`<select class="inp tema" style="color:${t.tema?projTemaCor(t.tema):'var(--soft)'}" onchange="projTema('${t.id}',this.value)" title="Tema da tarefa"><option value="">tema</option>${PROJ_TEMAS.map(([x])=>`<option value="${x}" ${t.tema===x?'selected':''}>${x}</option>`).join('')}</select>`;
+  fases.forEach(f=>{const done=f.itens.filter(x=>x.feito).length;const pend=f.itens.length-done;const fa=esc(f.nome);const faseArg=f.nome.replace(/['"\\]/g,'');const cur=f.nome===etapaRef;
+    const aberta=projFaseAberta(p,f.nome);const g=projPortao(p,f.nome);const n=projFaseN(p,f.nome);
+    const late=f.itens.filter(t=>!t.feito&&t.prazo&&t.prazo<h).length;const key=o.id+'|'+f.nome;const abertaUI=(key in _ptOpen)?_ptOpen[key]:(pend>0&&(aberta||!bloq));
+    const w=f.itens.length?Math.round(done/f.itens.length*100):0;const itens=_ptTema?f.itens.filter(t=>t.tema===_ptTema):f.itens;
+    html+=`<details class="pt-fase ${cur?'cur':''} ${aberta?'':'lock'}" ${abertaUI?'open':''} ontoggle="_ptOpen['${esc(key)}']=this.open" ondragover="projDragOver(event)" ondragleave="projDragLeave(event)" ondrop="projDropFase(event,'${fa}')">
       <summary draggable="true" ondragstart="projDragStart(event,'fase','${fa}')" ondragend="projDragEnd(event)" title="Clique para abrir ou recolher a etapa. Arraste para reordenar.">
         <span class="car">${icoGpChev}</span>
         <input class="ttl" value="${fa}" onclick="event.preventDefault();event.stopPropagation()" onkeydown="if(event.key==='Enter')this.blur()" onchange="projRenameFase('${fa}',this.value)" title="Clique para renomear a etapa">
-        ${cur?`<span class="tag tag-gold">etapa atual</span>`:''}${f.nome==='Onboarding'?`<span class="tag tag-gray">não conta no %</span>`:''}${late?`<span class="tag tag-red">${late} atrasada${late>1?'s':''}</span>`:''}${(pend===0&&f.itens.length)?`<span class="tag tag-green">concluída</span>`:''}
+        ${cur?`<span class="tag tag-gold">etapa atual</span>`:''}${aberta?'':`<span class="tag tag-gray" title="${esc(projBloqueioMsg(p,f.nome))}">🔒 bloqueada</span>`}${f.nome==='Onboarding'?`<span class="tag tag-gray">não conta no %</span>`:''}${late?`<span class="tag tag-red">${late} atrasada${late>1?'s':''}</span>`:''}${(pend===0&&f.itens.length)?`<span class="tag tag-green">concluída</span>`:''}
+        ${f.nome!=='Onboarding'?`<span class="pt-gate-cnt ${g.tot&&g.feitas===g.tot?'ok':''}" title="${g.explicito?'Tarefas de portão concluídas. Quando todas fecham, a próxima etapa abre sozinha.':'Nenhuma tarefa marcada como portão: todas as tarefas da etapa contam como portão.'}">Portão: ${g.feitas} de ${g.tot}</span>`:''}
         <span class="pt-ref" onclick="event.preventDefault();event.stopPropagation()" title="Data de referência para concluir a etapa: cerca de 1 mês por etapa, contada da entrada do cliente (${fmtDataBR(projRefBase(o))}). Clique na data para ajustar."><span class="${(pend>0&&projRefEtapa(o,f.nome,fases.map(x=>x.nome))<h)?'late':''}">ref.</span><input type="date" class="inp" value="${projRefEtapa(o,f.nome,fases.map(x=>x.nome))}" onchange="projRefSet('${fa}',this.value)"></span>
         <span class="cnt"><span class="gp-prog ${w>=100?'done':''}"><i style="width:${w}%"></i></span>${done}/${f.itens.length}</span>
         ${mob?'':`<button class="icon-btn" title="Definir o responsável de todas as tarefas desta etapa de uma vez" onclick="event.preventDefault();event.stopPropagation();projRespFase('${fa}')">${icoGpUsers}</button>
         <button class="icon-btn" title="Excluir a etapa inteira e as tarefas dela" style="color:var(--red)" onclick="event.preventDefault();event.stopPropagation();projDelFase('${fa}')">${icoTrash}</button>`}
       </summary>
-      <div class="body">`;
-    f.itens.forEach(t=>{const over=!t.feito&&t.prazo&&t.prazo<h;
+      <div class="body">${aberta?'':`<div class="pt-lockmsg">🔒 ${esc(projBloqueioMsg(p,f.nome))}. Tarefas já concluídas aqui continuam concluídas.</div>`}${(_ptTema&&!itens.length)?`<div class="gp-mini" style="padding:6px 0">Nenhuma tarefa do tema ${esc(_ptTema)} nesta etapa.</div>`:''}`;
+    itens.forEach(t=>{const over=!t.feito&&t.prazo&&t.prazo<h;const pode=projPodeMarcar(p,t);
       html+=`<div class="pt-row ${t.feito?'done':''}" data-id="${t.id}" ondragover="projDragOver(event)" ondragleave="projDragLeave(event)" ondrop="projDropTask(event,'${t.id}')">
         <span class="drag" draggable="true" ondragstart="projDragStart(event,'task','${t.id}')" ondragend="projDragEnd(event)" title="Arrastar tarefa">⠿</span>
-        <input type="checkbox" ${t.feito?'checked':''} onchange="projToggle('${t.id}')" title="${t.feito?'Concluída'+(t.feitoEm?' em '+fmtDataBR(t.feitoEm):''):'Marcar como concluída'}">
-        <input class="inp t" value="${esc(t.titulo)}" onchange="projRename('${t.id}',this.value)" title="Clique para editar a descrição">
+        <input type="checkbox" ${t.feito?'checked':''} ${pode?'':'disabled'} onchange="projToggle('${t.id}')" title="${t.feito?'Concluída'+(t.feitoEm?' em '+fmtDataBR(t.feitoEm):''):pode?'Marcar como concluída':esc(projBloqueioMsg(p,t.fase))}">
+        <div class="tt"><input class="inp t" value="${esc(t.titulo)}" onchange="projRename('${t.id}',this.value)" title="Clique para editar a descrição">${t.portao?`<span class="pt-gate" title="Tarefa de portão: precisa estar concluída para a próxima etapa abrir">portão</span>`:''}</div>
         ${mob?`<button class="del" title="Excluir tarefa" onclick="projDel('${t.id}')">${icoTrash}</button><div class="r2">`:''}
+        ${temaSel(t)}
         <input class="inp" list="proj_resp_opts" value="${esc(t.resp||'')}" placeholder="Responsável" title="Quem é responsável por esta tarefa" onchange="projResp('${t.id}',this.value)">
         ${t.feito?`<span class="pt-done" title="Dia em que a atividade foi encerrada${t.prazo?' · prazo era '+fmtDataBR(t.prazo):''}">✓ em<input type="date" class="inp" value="${t.feitoEm||''}" onchange="projFeitoEm('${t.id}',this.value)"></span>`
         :`<input type="date" class="inp ${over?'late':''}" value="${t.prazo||''}" onchange="projPrazo('${t.id}',this.value)" title="${over?'Atrasada '+gpHa(t.prazo):'Prazo'}">`}
+        ${f.nome==='Onboarding'?'<span></span>':`<button class="pt-gate-btn ${t.portao?'on':''}" title="${t.portao?'Tirar do portão':'Marcar como tarefa de portão'}" onclick="projPortaoToggle('${t.id}')">⚑</button>`}
         ${mob?`${over?`<span class="pt-late">atrasada</span>`:''}</div>`:`<button class="del" title="Excluir tarefa" onclick="projDel('${t.id}')">${icoTrash}</button>`}
       </div>`;});
     html+=`<div style="display:flex;gap:8px;flex-wrap:nowrap;margin-top:8px;align-items:center"><button class="btn btn-ghost btn-sm" onclick="projAdd('${faseArg}')">${icoPlus} Nova tarefa</button>${mob?`<button class="btn btn-ghost btn-sm" onclick="projRespFase('${fa}')">${icoGpUsers} Responsável</button><button class="icon-btn" title="Excluir a etapa inteira" style="color:var(--red);margin-left:auto" onclick="projDelFase('${fa}')">${icoTrash}</button>`:''}</div></div></details>`;});
   html+=`<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn btn-ghost btn-sm" onclick="projAdd('')">${icoPlus} Nova etapa / tarefa avulsa</button>
     <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Ler um plano feito em outro app e trazer as etapas e tarefas">${icoGpDoc} Importar PDF<input type="file" accept="application/pdf,.pdf" style="display:none" onchange="projImportarPdf(this)"></label>
-    <span class="gp-mini">${mob?'Toque no nome da etapa ou da tarefa para editar.':'Arraste o ícone ⠿ para reordenar. Clique nos textos para editar. Etapas concluídas ficam recolhidas.'}</span></div>`;
+    <span class="gp-mini">${mob?'Toque no nome da etapa ou da tarefa para editar.':'Arraste o ícone ⠿ para reordenar. Clique nos textos para editar. ⚑ marca tarefa de portão.'}</span></div>`;
+  html+=projRecorrentesHTML(o,p);
   return html;
 }
+
 function adminOverviewHTML(){const arqd=o=>!!(o.dados&&o.dados._arquivado);
   let ativosArr=ADMIN_ORGS.filter(o=>!arqd(o)&&!(o.dados&&o.dados._demo));
   const filtroAtivo=!!(IS_SUPER&&adminConsFiltro);
@@ -9230,7 +9470,7 @@ async function gpAcaoTarefa(orgId,rid,idx,quem){const o=ADMIN_ORGS.find(x=>x.id=
 async function gpAplicarPlanoPadrao(){const alvo=ADMIN_ORGS.filter(o=>!(o.dados&&(o.dados._arquivado||o.dados._demo))&&!orgDeConsultor(o)&&!(((o.dados||{})._projeto||{}).tarefas||[]).length);
   if(!alvo.length)return toast('Nenhuma unidade sem plano');
   if(!confirm('Aplicar o Onboarding padrão da Lidera em '+alvo.length+' unidade(s) sem plano? As etapas do Plano de Guerra entram depois, pelo PDF, após a reunião.\n\n'+alvo.map(o=>'• '+o.nome).join('\n')))return;
-  let n=0;for(const o of alvo){o.dados=o.dados||{};o.dados._projeto={tarefas:projOnboardingSeed(),criadoEm:hojeISO(),_obV2:true};if(await adminSaveOrgKeys(o,['_projeto']))n++;}
+  let n=0;for(const o of alvo){o.dados=o.dados||{};o.dados._projeto={tarefas:projOnboardingSeed(),criadoEm:hojeISO(),_obV2:true,etapaAtual:'Onboarding',aberturas:{Onboarding:hojeISO()}};if(await adminSaveOrgKeys(o,['_projeto']))n++;}
   gpRefresh();toast('Onboarding aplicado em '+n+' unidade(s)');}
 
 /* retrato de gestão de um cliente: etapa, próxima tarefa, reuniões, saúde */
@@ -9243,6 +9483,7 @@ function gpInfo(o){const h=hojeISO();const d=o.dados||{};const p=(d._projeto&&Ar
   if(!ts.length)etapa='Sem plano';
   else if(soOnb&&!ts.some(t=>!t.feito))etapa=GP_AGUARDA;
   else if(!ts.some(t=>!t.feito))etapa='Concluído';
+  else if(p&&projBloqueio(p)){etapa=p.etapaAtual;auto=false;}
   else if(crm.etapaManual&&fases.includes(crm.etapaManual)&&pendDe(crm.etapaManual).length){etapa=crm.etapaManual;auto=false;}
   else{const comPend=naoOnb.filter(f=>pendDe(f).length);
     const progrediu=naoOnb.some(f=>feitoDe(f).length)||!pendDe('Onboarding').length;
@@ -9276,13 +9517,14 @@ function gpInfo(o){const h=hojeISO();const d=o.dados||{};const p=(d._projeto&&Ar
     if(pendConf.length)add(1,'reunião de '+fmtDataBR(pendConf[pendConf.length-1].data).slice(0,5)+' a confirmar');
     if(!proxR)add(1,'sem próxima reunião agendada');
     if(opAtrL.length)add((opMax>14||opAtrL.length>=3)?2:1,opAtrL.length+' demanda'+(opAtrL.length>1?'s':'')+' atrasada'+(opAtrL.length>1?'s':'')+(opAtrL.some(t=>t.quem==='cliente')?' ('+opAtrL.filter(t=>t.quem==='cliente').length+' do cliente)':''));
+    if(p&&projTravado(p))add(2,'travado há '+projTravadoDias(p)+' dia'+(projTravadoDias(p)===1?'':'s')+(p.travado.motivo?': '+p.travado.motivo:''));
     if(etapa==='Sem plano')add(1,'sem plano de projeto');
     else if(etapa===GP_AGUARDA)add(1,'Onboarding concluído, Plano de Guerra ainda não importado');
     else if(soOnb)add(0,'só o Onboarding no plano');
     else if(prox&&!prox.prazo)add(0,'próxima tarefa sem prazo');
     sit=nivel===2?'critico':nivel===1?'atencao':'ok';}
   return {o,id:o.id,p,ts,fases,etapa,etapaAuto:auto,etapaTot:naEtapa.length,etapaFeitas,etapaRef,pct:p?projPct(p):0,atr,maxAtraso,prox,ultR,proxR,pendConf,diasSem,ultAtiv,
-    seg:(cad.segmento||'').trim(),socios:cadSociosLinha(cad),sit,nivel,motivos,soOnb,opAb:opAbL.length,opAtr:opAtrL.length,opLid:opAbL.filter(t=>t.quem==='lidera').length,opCli:opAbL.filter(t=>t.quem==='cliente').length,nReun:feitas.length,grupoN:gpGrupo(o).length,donoId:orgDonoId(o)};}
+    seg:(cad.segmento||'').trim(),socios:cadSociosLinha(cad),sit,nivel,motivos,soOnb,opAb:opAbL.length,opAtr:opAtrL.length,opLid:opAbL.filter(t=>t.quem==='lidera').length,opCli:opAbL.filter(t=>t.quem==='cliente').length,nReun:feitas.length,grupoN:gpGrupo(o).length,donoId:orgDonoId(o),travado:!!(p&&projTravado(p)),travDias:p?projTravadoDias(p):0,travMotivo:(p&&p.travado&&p.travado.motivo)||'',bloqueio:!!(p&&projBloqueio(p)),modelo:projModelo(p)};}
 const GP_SIT={critico:['Crítico','tag-red','var(--red)'],atencao:['Atenção','tag-amber','var(--amber)'],ok:['Em dia','tag-green','var(--green)'],concluido:['Concluído','tag-gray','var(--navy)'],suspenso:['Suspenso','tag-gray','var(--soft)']};
 function gpCarteira(){return ADMIN_ORGS.filter(o=>!(o.dados&&(o.dados._arquivado||o.dados._demo))&&!grupoDe(o)).map(gpInfo);}
 function gpFiltrar(infos){const q=lmNorm(GP.q);const h=hojeISO(),em7=diasSoma(h,7);
@@ -9301,6 +9543,7 @@ function gpFiltrar(infos){const q=lmNorm(GP.q);const h=hojeISO(),em7=diasSoma(h,
     if(GP.reun==='semana'&&!(i.proxR&&i.proxR.data<=em7))return false;
     if(GP.reun==='confirmar'&&!i.pendConf.length)return false;
     if(GP.reun==='atrasadas'&&!i.atr.length)return false;
+    if(GP.reun==='travados'&&!i.travado)return false;
     return true;});
   const nome=(a,b)=>(a.o.nome||'').localeCompare(b.o.nome||'','pt',{sensitivity:'base'});
   const ord={critico:(a,b)=>(b.nivel-a.nivel)||(b.motivos.length-a.motivos.length)||((b.diasSem==null?999:b.diasSem)-(a.diasSem==null?999:a.diasSem))||nome(a,b),
@@ -9327,6 +9570,7 @@ function gpStatsHTML(infos){const h=hojeISO(),em7=diasSoma(h,7);const vivos=info
     ${k('Reuniões em 7 dias',n(i=>i.proxR&&i.proxR.data<=em7),'já agendadas','var(--navy)','reun','semana')}
     ${k('Sem contato',vivos.filter(i=>i.diasSem==null||i.diasSem>GP_DIAS_ATENCAO).length,'+'+GP_DIAS_ATENCAO+' dias sem reunião','var(--amber)','reun','sem15')}
     ${k('Tarefas atrasadas',infos.reduce((s,i)=>s+i.atr.length,0),n(i=>i.atr.length)+' cliente(s)','var(--red)','reun','atrasadas')}
+    ${k('Travados',n(i=>i.travado),'avanço de etapa parado','var(--red)','reun','travados')}
     ${(function(){const ab=infos.reduce((s,i)=>s+i.opAb,0),at=infos.reduce((s,i)=>s+i.opAtr,0);const on=GP.view==='tarefas';return `<button class="gp-stat ${on?'on':''}" onclick="GP.view='tarefas';GP.tst='abertas';gpPersist();renderGestao()" title="Abre a visão Tarefas com as demandas em aberto"><span class="l">Demandas abertas</span><span class="v" style="color:${at?'var(--red)':'var(--navy)'}">${ab}</span><span class="s">${at?at+' atrasada'+(at>1?'s':''):'nossas e do cliente'}</span></button>`;})()}
   </div>`;}
 function renderGestao(){const el=$('#admin_main');if(!el)return;const infos=gpCarteira();const mob=ehMobile();
@@ -9377,11 +9621,11 @@ function gpRenderResultados(){const infos=gpCarteira();const list=gpFiltrar(info
   el.innerHTML=GP.view==='kanban'?gpKanbanHTML(list):GP.view==='agenda'?gpAgendaHTML(list):GP.view==='tarefas'?gpTarefasHTML(list):gpTabelaHTML(list);}
 
 /* blocos reutilizados pela lista, kanban, agenda e cabeçalho do cliente */
-function gpSitTag(i){const s=GP_SIT[i.sit]||GP_SIT.ok;return `<span class="tag ${s[1]}" style="white-space:nowrap"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${s[2]}"></span>${s[0]}</span>`;}
+function gpSitTag(i){const s=GP_SIT[i.sit]||GP_SIT.ok;return `<span class="tag ${s[1]}" style="white-space:nowrap"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${s[2]}"></span>${s[0]}</span>${i.travado?` <span class="tag tag-red" style="white-space:nowrap" title="${esc(i.travMotivo||'')}">🔒 Travado há ${i.travDias} dia${i.travDias===1?'':'s'}</span>`:''}`;}
 function gpMotivosHTML(i,max){const ms=i.motivos.slice().sort((a,b)=>b.n-a.n);const vis=ms.slice(0,max||3);const resto=ms.length-vis.length;
   return vis.map(m=>`<div class="gp-motivo n${m.n}">${esc(m.t)}</div>`).join('')+(resto>0?`<div class="gp-motivo n0" title="${esc(ms.slice(vis.length).map(m=>m.t).join(' · '))}">+${resto} ponto${resto>1?'s':''}</div>`:'');}
 function gpEtapaHTML(i){const w=i.etapaTot?Math.round(i.etapaFeitas/i.etapaTot*100):(i.etapa==='Concluído'?100:0);
-  return `<div style="font-weight:600;font-size:13px;line-height:1.3">${esc(i.etapa||'—')}${i.etapaAuto?'':' <span class="gp-mini" title="Etapa definida manualmente na aba Reuniões">· manual</span>'}</div>
+  return `<div style="font-weight:600;font-size:13px;line-height:1.3">${esc(i.etapa||'—')}${i.etapaAuto?'':' <span class="gp-mini" title="Etapa definida pela Lidera (bloqueio de etapas ligado ou ajuste manual)">· definida</span>'}</div>
     ${i.etapaTot?`<div style="display:flex;align-items:center;gap:6px;margin-top:5px"><div class="gp-prog ${w>=100?'done':''}"><i style="width:${w}%"></i></div><span class="gp-mini" style="white-space:nowrap">${i.etapaFeitas}/${i.etapaTot}</span></div>`:''}
     ${i.soOnb?`<div class="gp-mini" style="margin-top:3px">só o Onboarding por enquanto</div>`:i.ts.length?`<div class="gp-mini" style="margin-top:3px">${i.pct}% do projeto${i.etapaRef?' · '+projRefTag(i.etapaRef,i.etapaFeitas<i.etapaTot):''}</div>`:''}`;}
 function gpTarefaHTML(i){const t=i.prox;if(!t)return `<span class="gp-mini" style="font-size:12.5px">${i.etapa==='Sem plano'?'sem tarefas cadastradas':i.etapa==='Concluído'?'projeto concluído':i.etapa===GP_AGUARDA?'importe o PDF do Plano de Guerra':'nada pendente'}</span>`;
@@ -9464,7 +9708,8 @@ function gpAgendaHTML(list){const h=hojeISO(),em7=diasSoma(h,7),em30=diasSoma(h,
 /* ações rápidas */
 function gpRefresh(){renderAdminMain();renderAdminList();}
 async function gpConcluir(orgId,taskId){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===taskId);if(!t)return;
-  t.feito=true;t.feitoEm=hojeISO();gpRefresh();toast('Tarefa concluída: '+esc(t.titulo.slice(0,50))+`<a onclick="gpDesfazer('${orgId}','${taskId}')" style="color:var(--gold-soft);font-weight:700;margin-left:10px;cursor:pointer">Desfazer</a>`,5000);await adminSaveKeys(o,['_projeto']);}
+  if(!projPodeMarcar(p,t))return toast('Etapa bloqueada: '+projBloqueioMsg(p,t.fase).toLowerCase());
+  t.feito=true;t.feitoEm=hojeISO();const av=projAvancarSePortao(p);if(av)toast('Portão fechado: '+av+' aberta');gpRefresh();toast('Tarefa concluída: '+esc(t.titulo.slice(0,50))+`<a onclick="gpDesfazer('${orgId}','${taskId}')" style="color:var(--gold-soft);font-weight:700;margin-left:10px;cursor:pointer">Desfazer</a>`,5000);await adminSaveKeys(o,['_projeto']);}
 async function gpDesfazer(orgId,taskId){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const t=projEnsure(o).tarefas.find(x=>x.id===taskId);if(!t)return;t.feito=false;t.feitoEm='';gpRefresh();toast('Tarefa reaberta');await adminSaveKeys(o,['_projeto']);}
 async function gpConfirmarReuniao(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const r=gpCrm(o).reunioes.find(x=>x.id===rid);if(!r)return;
   r.realizada=true;r.editado=true;gpRefresh();toast('Reunião confirmada. Registre o resumo quando puder.');await adminSaveKeys(o,['_crm']);gpReuniaoModal(orgId,rid);}
@@ -9729,7 +9974,9 @@ function projImportAplicar(){const o=projCur();if(!o||!PROJ_IMP)return closeModa
   else p.tarefas=p.tarefas.concat(novas);
   PROJ_IMP=null;closeModal();renderAdminMain();renderAdminList();projSaveOrg(o);
   toast(novas.length+' tarefa(s) importada(s)');}
-function projToggle(id){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;t.feito=!t.feito;t.feitoEm=t.feito?hojeISO():'';renderAdminMain();renderAdminList();projSaveOrg(o);}
+function projToggle(id){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;
+  if(!t.feito&&!projPodeMarcar(p,t)){renderAdminMain();return toast('Etapa bloqueada: '+projBloqueioMsg(p,t.fase).toLowerCase());}
+  t.feito=!t.feito;t.feitoEm=t.feito?hojeISO():'';const av=t.feito?projAvancarSePortao(p):'';renderAdminMain();renderAdminList();projSaveOrg(o);if(av)toast('Portão fechado: '+av+' aberta');}
 function projRespFase(fase){const o=projCur();if(!o)return;const p=projEnsure(o);
   const alvo=p.tarefas.filter(t=>t.fase===fase);if(!alvo.length)return;
   const atual=(alvo.find(t=>t.resp)||{}).resp||'';
@@ -9741,7 +9988,7 @@ function projResp(id,v){const o=projCur();if(!o)return;const p=projEnsure(o);con
 function projPrazo(id,v){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;t.prazo=v||'';renderAdminMain();renderAdminList();projSaveOrg(o);}
 function projFeitoEm(id,v){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t||!t.feito)return;t.feitoEm=v||hojeISO();renderAdminMain();renderAdminList();projSaveOrg(o);}
 function projRename(id,val){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;const v=(val||'').trim();if(!v){renderAdminMain();return;}if(v===t.titulo)return;t.titulo=v;projSaveOrg(o);}
-function projRenameFase(oldName,val){const o=projCur();if(!o)return;const p=projEnsure(o);let v=(val||'').trim().replace(/['"\\]/g,'');if(!v||v===oldName){renderAdminMain();return;}p.tarefas.forEach(t=>{if(t.fase===oldName)t.fase=v;});if(p.etapasRef&&p.etapasRef[oldName]){p.etapasRef[v]=p.etapasRef[oldName];delete p.etapasRef[oldName];}renderAdminMain();renderAdminList();projSaveOrg(o);}
+function projRenameFase(oldName,val){const o=projCur();if(!o)return;const p=projEnsure(o);let v=(val||'').trim().replace(/['"\\]/g,'');if(!v||v===oldName){renderAdminMain();return;}p.tarefas.forEach(t=>{if(t.fase===oldName)t.fase=v;});if(p.etapasRef&&p.etapasRef[oldName]){p.etapasRef[v]=p.etapasRef[oldName];delete p.etapasRef[oldName];}if(p.etapaAtual===oldName)p.etapaAtual=v;if(p.aberturas&&p.aberturas[oldName]){p.aberturas[v]=p.aberturas[oldName];delete p.aberturas[oldName];}renderAdminMain();renderAdminList();projSaveOrg(o);}
 let dragKind=null, dragVal=null;
 function projDragStart(e,kind,val){dragKind=kind;dragVal=val;try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',val);}catch(_){}}
 function projDragEnd(e){dragKind=null;dragVal=null;}
@@ -9762,18 +10009,20 @@ function projDelFase(fase){const o=projCur();if(!o)return;const p=projEnsure(o);
   if(!confirm('Excluir a etapa "'+fase+'" e as '+itens.length+' tarefa(s) dela?'
     +(feitas?'\n\n'+feitas+' já está(ão) concluída(s) e sairá(ão) do histórico.':'')
     +'\n\nEssa ação não tem desfazer.'))return;
-  p.tarefas=p.tarefas.filter(t=>t.fase!==fase);
+  const ant=projFaseAnterior(p,fase);p.tarefas=p.tarefas.filter(t=>t.fase!==fase);if(p.etapaAtual===fase){if(ant)p.etapaAtual=ant;else delete p.etapaAtual;}
   renderAdminMain();renderAdminList();projSaveOrg(o);toast('Etapa "'+fase+'" excluída');}
 function projDel(id){const o=projCur();if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===id);if(!t)return;if(!confirm('Excluir a tarefa "'+t.titulo+'"?'))return;p.tarefas=p.tarefas.filter(x=>x.id!==id);renderAdminMain();renderAdminList();projSaveOrg(o);}
 function projAdd(fase){modal(`<div class="modal-head"><h3>Nova tarefa</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-   <div class="field"><label>Etapa</label><input class="input" id="pa_fase" value="${esc(fase||'')}" placeholder="Ex.: Etapa 01 · Gestão Financeira"></div>
+   <div class="field"><label>Etapa</label><input class="input" id="pa_fase" list="pa_fases" value="${esc(fase||'')}" placeholder="Ex.: Etapa 1"><datalist id="pa_fases">${projFasesLista(projEnsure(projCur())||{}).map(f=>`<option value="${esc(f)}"></option>`).join('')}</datalist></div>
    <div class="field"><label>Tarefa</label><input class="input" id="pa_tit" placeholder="Descrição da tarefa"></div>
+   <div class="grid-2"><div class="field"><label>Tema</label><select class="input" id="pa_tema"><option value="">—</option>${PROJ_TEMAS.map(([x])=>`<option value="${x}">${x}</option>`).join('')}</select></div>
+   <div class="field"><label>Portão</label><label style="display:flex;gap:8px;align-items:center;font-size:13px;padding:9px 0;cursor:pointer"><input type="checkbox" id="pa_portao" style="width:18px;height:18px"> precisa fechar para a próxima etapa abrir</label></div></div>
    <div class="field"><label>Responsável (opcional)</label><input class="input" id="pa_resp" list="proj_resp_opts" placeholder="Ex.: Lidera, ou o nome de quem vai executar"></div>
    <div class="field"><label>Data de finalização (opcional)</label><input class="input" type="date" id="pa_prazo"></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="projAddSave()">Adicionar</button></div>`);setTimeout(()=>{const e=$('#pa_tit');if(e)e.focus();},40);}
-function projAddSave(){const o=projCur();if(!o)return;const fase=(($('#pa_fase').value||'').trim().replace(/['"\\]/g,''))||'Outras';const tit=($('#pa_tit').value||'').trim();const prazo=$('#pa_prazo').value||'';const resp=(($('#pa_resp')&&$('#pa_resp').value)||'').trim();if(!tit)return toast('Informe a tarefa');const p=projEnsure(o);p.tarefas.push({id:'c'+Date.now()+Math.floor(Math.random()*1000),titulo:tit,fase,feito:false,prazo,resp});closeModal();renderAdminMain();renderAdminList();projSaveOrg(o);}
+function projAddSave(){const o=projCur();if(!o)return;const fase=(($('#pa_fase').value||'').trim().replace(/['"\\]/g,''))||'Outras';const tit=($('#pa_tit').value||'').trim();const prazo=$('#pa_prazo').value||'';const resp=(($('#pa_resp')&&$('#pa_resp').value)||'').trim();if(!tit)return toast('Informe a tarefa');const p=projEnsure(o);p.tarefas.push({id:'c'+Date.now()+Math.floor(Math.random()*1000),titulo:tit,fase,feito:false,prazo,resp,tema:(($('#pa_tema')||{}).value||''),portao:!!(($('#pa_portao')||{}).checked)});closeModal();renderAdminMain();renderAdminList();projSaveOrg(o);}
 
 /* ---- ADMIN · editor da Formação em Gestão ---- */
 let FORM_ADMIN=null, _formSaveT=null;
