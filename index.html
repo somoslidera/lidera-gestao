@@ -829,6 +829,11 @@ thead th{letter-spacing:.7px}
 .pt-tema{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;border:1.5px solid transparent;cursor:pointer}.pt-tema.on{border-color:currentColor}
 .pt-temas{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 .pt-row .inp.tema{padding:5px 4px;font-size:11.5px;font-weight:700}
+.cat-btn{display:flex;align-items:center;gap:6px;min-width:0;text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden}.cat-btn .cg{font-weight:600;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}.cat-btn .cs{color:var(--muted);flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;font-size:12px}.cat-btn i{color:var(--soft);font-style:normal}.cat-btn::after{content:'▾';margin-left:auto;color:var(--soft);font-size:11px;flex:0 0 auto}
+.catpick{position:fixed;z-index:700;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 40px rgba(16,32,63,.22);display:grid;grid-template-columns:220px 260px;max-height:min(440px,80vh);overflow:hidden}
+.catpick .cp-col{overflow:auto;padding:6px;max-height:inherit}.catpick .cp-g{border-right:1px solid var(--line);background:var(--bg)}.catpick .cp-h{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:6px 10px 4px;position:sticky;top:0;background:inherit}
+.catpick button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:8px 10px;border-radius:9px;font-size:13px;color:var(--ink);background:transparent;border:0;cursor:pointer}.catpick .cp-g button.on,.catpick .cp-g button:hover{background:var(--navy);color:#fff}.catpick .cp-s button:hover{background:var(--amber-bg);color:var(--navy)}.catpick .cp-n{margin-left:auto;font-size:10.5px;opacity:.6}.catpick .cp-g button.on .cp-n{opacity:.8}.catpick .cp-empty{font-size:12.5px;color:var(--soft);padding:10px}.catpick .cp-only{margin-top:6px;border-top:1px solid var(--line)!important;border-radius:0 0 9px 9px;color:var(--muted);font-size:12px}.catpick .cp-rec{font-size:9.5px;font-weight:800;letter-spacing:.3px;color:var(--green);background:var(--green-bg);border-radius:5px;padding:1px 5px}.catpick .cp-g button.on .cp-rec{background:rgba(255,255,255,.2);color:#fff}
+@media(max-width:640px){.catpick{inset:auto 0 0 0;border-radius:16px 16px 0 0;grid-template-columns:1fr;max-height:78vh;box-shadow:0 -10px 40px rgba(16,32,63,.3)}.catpick .cp-col{max-height:78vh}.catpick .cp-g{border-right:0}.catpick button{padding:12px 14px;font-size:15px}.catpick .cp-back{color:var(--navy);font-weight:700}}
 .nav-badge{margin-left:auto;background:var(--gold);color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:1px 7px;min-width:18px;text-align:center;line-height:16px}
 .pc-row{display:grid;grid-template-columns:28px 1fr 118px 96px 96px 96px 118px 30px;gap:6px;align-items:center;margin-bottom:6px}.pc-row .input{padding:6px 8px}.pc-row .money-inp{padding-left:34px}.pc-cob{font-weight:700;font-size:13px;color:var(--navy);text-align:right;white-space:nowrap}
 @media(max-width:640px){.pc-row{grid-template-columns:28px 1fr 1fr 30px;row-gap:4px;padding-bottom:8px;border-bottom:1px solid var(--line)}.pc-row .pc-x{grid-column:1/5;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.pc-row .pc-x .input{font-size:13px;padding-left:28px}.pc-row .pc-x .money-pre{font-size:10px;left:8px}.pc-row .pc-x .pc-cob{grid-column:1/4;text-align:right;font-size:14px;padding-top:2px}.pc-row .pc-x .pc-cob::before{content:'Cobrança ';font-weight:400;color:var(--soft);font-size:11px}}
@@ -4319,7 +4324,28 @@ function addLancamento(){const valor=moneyVal('lc_valor');if(!valor)return toast
 let lancDraft=[];
 let lmEdit=null; // {nf,forn,ids:[...]} quando o modal está editando uma nota já lançada
 const LM_GC='112px 116px 132px minmax(130px,1fr) 92px 124px 112px 104px 74px 110px 102px 86px 30px';
-function lmBlank(){return {data:hojeISO(),grupo:'',sub:'',desc:'',nf:'',fornecedor:'',parcelas:1,parcelasLista:[],vencimento:'',vunStr:'',vun:0,qtd:1,forma:'',insumoId:'',insSugerido:'',uni:'',descOrig:'',fromIA:false};}
+/* ===== Seletor de categoria › subcategoria (popover de duas colunas; no celular, folha em dois passos) =====
+   Substitui os dois selects nos lançamentos: o cliente vê as subcategorias de cada categoria antes de escolher. */
+let _cp=null;
+function catBtn(grupo,sub,cbCode,style){return `<button type="button" class="input cat-btn" style="${style||''}" data-g="${esc(grupo||'')}" data-s="${esc(sub||'')}" title="Categoria › subcategoria. Clique para escolher." onclick="catPickerOpen(this,(g,s)=>{${cbCode}})"><span class="cg">${grupo?esc(grupo):'<i>Categoria…</i>'}</span>${sub?`<span class="cs">› ${esc(sub)}</span>`:''}</button>`;}
+function catBtnSet(btn,g,s){if(!btn)return;btn.dataset.g=g||'';btn.dataset.s=s||'';btn.innerHTML=`<span class="cg">${g?esc(g):'<i>Categoria…</i>'}</span>${s?`<span class="cs">› ${esc(s)}</span>`:''}`;}
+function catPickerOpen(btn,cb){catPickerClose();const grupos=ordPt(Object.keys(DB.categorias||{}));const g0=btn.dataset.g||'';
+  _cp={cb,btn,grupo:grupos.includes(g0)?g0:'',passo:(ehMobile()&&!g0)?1:2};
+  const el=document.createElement('div');el.className='catpick';el.id='catpick';document.body.appendChild(el);catPickerRender();
+  if(!ehMobile()){const r=btn.getBoundingClientRect();el.style.left=Math.max(8,Math.min(r.left,window.innerWidth-el.offsetWidth-8))+'px';const abaixo=r.bottom+4+el.offsetHeight<=window.innerHeight-8;el.style.top=(abaixo?r.bottom+4:Math.max(8,r.top-el.offsetHeight-4))+'px';}
+  setTimeout(()=>{document.addEventListener('mousedown',catPickerOut,true);document.addEventListener('keydown',catPickerKey,true);},0);}
+function catPickerRender(){const el=$('#catpick');if(!el||!_cp)return;const grupos=ordPt(Object.keys(DB.categorias||{}));const g=_cp.grupo;const subs=ordPt((((DB.categorias||{})[g]||{}).subs)||[]);const mob=ehMobile();
+  const colG=`<div class="cp-col cp-g"><div class="cp-h">Categoria</div>${grupos.map(x=>{const c=DB.categorias[x]||{};return `<button class="${x===g?'on':''}" data-g="${esc(x)}" onmouseenter="if(!ehMobile())catPickerGrupo(this.dataset.g,true)" onclick="catPickerGrupo(this.dataset.g)">${esc(x)}${c.tipo==='receita'?'<span class="cp-rec">+</span>':''}<span class="cp-n">${(c.subs||[]).length}</span></button>`;}).join('')}</div>`;
+  const colS=`<div class="cp-col cp-s"><div class="cp-h">${mob?`<button class="cp-back" onclick="_cp.passo=1;catPickerRender()" style="padding:4px 0">‹ Categorias</button> `:''}${g?esc(g)+' › subcategoria':'Subcategoria'}</div>${subs.length?subs.map(x=>`<button data-s="${esc(x)}" onclick="catPickerPick(this.dataset.s)">${esc(x)}</button>`).join(''):`<div class="cp-empty">${g?'Esta categoria não tem subcategorias.':'Passe o mouse por uma categoria para ver as subcategorias.'}</div>`}${g?`<button class="cp-only" onclick="catPickerPick('')">Só "${esc(g)}", sem subcategoria</button>`:''}</div>`;
+  el.innerHTML=mob?(_cp.passo===1?colG:colS):colG+colS;}
+function catPickerGrupo(g,hover){if(!_cp)return;_cp.grupo=g;if(!hover&&ehMobile())_cp.passo=2;catPickerRender();}
+function catPickerPick(s){if(!_cp)return;const g=_cp.grupo;const cb=_cp.cb,btn=_cp.btn;catPickerClose();catBtnSet(btn,g,s);try{cb.call(btn,g,s);}catch(e){console.error(e);}}
+function catPickerOut(e){const el=$('#catpick');if(el&&!el.contains(e.target))catPickerClose();}
+function catPickerKey(e){if(e.key==='Escape'){catPickerClose();e.stopPropagation();}}
+function catPickerClose(){const el=$('#catpick');if(el)el.remove();_cp=null;document.removeEventListener('mousedown',catPickerOut,true);document.removeEventListener('keydown',catPickerKey,true);}
+/* embalagem válida só para esta nota: r.embLanc={nome,qtd} (gravada no lançamento como embNome/embQtd), sem mexer no produto */
+function insEmbDe(r,ins){if(r&&r.embLanc&&+r.embLanc.qtd>0)return {nome:r.embLanc.nome||'',qtd:+r.embLanc.qtd,soNota:true};return insEmb(ins);}
+function lmBlank(){return {embLanc:null,data:hojeISO(),grupo:'',sub:'',desc:'',nf:'',fornecedor:'',parcelas:1,parcelasLista:[],vencimento:'',vunStr:'',vun:0,qtd:1,forma:'',insumoId:'',insSugerido:'',uni:'',descOrig:'',fromIA:false};}
 function lmTotalLinha(r){const q=+r.qtd||0,v=+r.vun||0;return Math.round(q*v*100)/100;}
 function lmAgrupar(rows){const map=new Map();
   rows.forEach(r=>{const key=lmNorm(r.descOrig||r.desc)+'|'+Math.round((+r.vun||0)*100);
@@ -4351,8 +4377,7 @@ function lancarModal(manterRascunho){if(!manterRascunho){lmEdit=null;lmObs='';lm
       <summary style="font-size:13px;font-weight:700;color:var(--navy);cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">Aplicar a todos os itens <span style="font-weight:400;color:var(--soft);font-size:11.5px">data, categoria, NF, fornecedor…</span></summary>
       <div style="display:grid;gap:8px;margin-top:10px">
         ${LB('Data',`<input type="date" class="input" onchange="lmAplicarTodas('data',this.value)">`)}
-        ${LB('Categoria',`<select class="input" id="lm_bulkm_grupo" onchange="lmAplicarTodas('grupo',this.value)"><option value="">Categoria…</option>${grupoOpts}</select>`)}
-        ${LB('Subcat.',`<select class="input" id="lm_bulkm_sub" onchange="lmAplicarTodas('sub',this.value)"><option value="">Subcategoria…</option></select>`)}
+        ${LB('Categoria',catBtn('','',`lmAplicarTodas('grupo',g);if(s)lmAplicarTodas('sub',s)`))}
         ${LB('NF nº',`<input class="input" placeholder="NF ou cupom (vazio gera nº interno)" onchange="lmAplicarTodas('nf',this.value)">`)}
         ${LB('Fornecedor',`<input class="input" list="lm_forn" placeholder="fornecedor" onchange="lmAplicarTodas('fornecedor',this.value)">`)}
         ${LB('Forma',`<select class="input" onchange="lmAplicarTodas('forma',this.value)"><option value="">Forma…</option>${formaOpts}</select>`)}
@@ -4374,15 +4399,14 @@ function lancarModal(manterRascunho){if(!manterRascunho){lmEdit=null;lmObs='';lm
     <div class="${ehMobile()?'mob-hide':''}" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <span style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700">Aplicar a todas</span>
       <input type="date" class="input" style="width:138px;padding:7px 9px" id="lm_bulk_data" title="Mesma data em todas as linhas" onchange="lmAplicarTodas('data',this.value)">
-      <select class="input" style="width:150px;padding:7px 9px" id="lm_bulk_grupo" title="Mesma categoria em todas" onchange="lmAplicarTodas('grupo',this.value)"><option value="">Categoria…</option>${ordPt(Object.keys(DB.categorias||{})).map(g=>`<option>${esc(g)}</option>`).join('')}</select>
-      <select class="input" style="width:150px;padding:7px 9px" id="lm_bulk_sub" title="Mesma subcategoria em todas" onchange="lmAplicarTodas('sub',this.value)"><option value="">Subcategoria…</option></select>
+      ${catBtn('','',`lmAplicarTodas('grupo',g);if(s)lmAplicarTodas('sub',s)`,'width:260px;padding:7px 9px')}
       <input class="input" style="width:118px;padding:7px 9px" id="lm_bulk_nf" placeholder="NF nº…" title="Mesmo número de nota (ou cupom fiscal) em todas as linhas. Se ficar vazio, o Flow gera um número interno (INT-0001) para agrupar a compra." onchange="lmAplicarTodas('nf',this.value)">
       <input class="input" style="width:150px;padding:7px 9px" list="lm_forn" id="lm_bulk_forn" placeholder="Fornecedor…" title="Mesmo fornecedor em todas" onchange="lmAplicarTodas('fornecedor',this.value)">
       <select class="input" style="width:130px;padding:7px 9px" id="lm_bulk_forma" title="Mesma forma em todas" onchange="lmAplicarTodas('forma',this.value)"><option value="">Forma…</option>${formaOpts}</select>
     </div>
     ${bulkMob}
     <div style="${ehMobile()?'':'overflow-x:auto'}"><div style="${ehMobile()?'':'min-width:1420px'}">
-      <div class="mob-hide" style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span>Categoria</span><span>Subcategoria</span><span>Descrição</span><span>NF nº</span><span>Produto</span><span>Fornecedor</span><span>Valor</span><span>Qtd</span><span style="text-align:right">Total</span><span>Forma</span><span>Parcelas</span><span></span></div>
+      <div class="mob-hide" style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span style="grid-column:span 2">Categoria › Subcategoria</span><span>Descrição</span><span>NF nº</span><span>Produto</span><span>Fornecedor</span><span>Valor</span><span>Qtd</span><span style="text-align:right">Total</span><span>Forma</span><span>Parcelas</span><span></span></div>
       <div id="lm_rows"></div>
     </div></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px">
@@ -4408,8 +4432,7 @@ function renderLmRowsMobile(el){const grupos=ordPt(Object.keys(DB.categorias));c
      <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">Item ${i+1}</b>
        <button class="btn btn-ghost btn-sm" style="color:var(--red);padding:6px 10px;${lancDraft.length>1?'':'visibility:hidden'}" onclick="lmRemoveRow(${i})">${icoX} remover</button></div>
      ${L('Data',`<input type="date" class="input" value="${r.data||''}" onchange="lancDraft[${i}].data=this.value">`)}
-     ${L('Categoria',`<select class="input" onchange="lancDraft[${i}].grupo=this.value;lancDraft[${i}].sub='';lmSubRefresh(${i})"><option value="" ${!r.grupo?'selected':''}>—</option>${grupos.map(g=>`<option ${g===r.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>`)}
-     ${L('Subcat.',`<select class="input" id="lm_sub_${i}" onchange="lancDraft[${i}].sub=this.value">${subOptions(r.grupo,r.sub)}</select>`)}
+     ${L('Categoria',catBtn(r.grupo,r.sub,`lancDraft[${i}].grupo=g;lancDraft[${i}].sub=s;renderLmRows()`))}
      ${L('Descrição',lmDescCel(r,i))}
      ${L('NF nº',`<input class="input" value="${esc(r.nf||'')}" placeholder="número da nota" oninput="lancDraft[${i}].nf=this.value">`)}
      ${L('Produto',lmProdutoCel(r,i))}
@@ -4427,8 +4450,7 @@ function renderLmRows(){const el=$('#lm_rows');if(!el)return;
   el.innerHTML=lancDraft.map((r,i)=>`
    <div style="display:grid;grid-template-columns:${LM_GC};gap:8px;align-items:center;margin-bottom:6px">
      <input type="date" class="input" style="min-width:0" value="${r.data||''}" onchange="lancDraft[${i}].data=this.value">
-     <select class="input" style="min-width:0" onchange="lancDraft[${i}].grupo=this.value;lancDraft[${i}].sub='';lmSubRefresh(${i})"><option value="" ${!r.grupo?'selected':''}>—</option>${grupos.map(g=>`<option ${g===r.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select>
-     <select class="input" style="min-width:0" id="lm_sub_${i}" onchange="lancDraft[${i}].sub=this.value">${subOptions(r.grupo,r.sub)}</select>
+     ${catBtn(r.grupo,r.sub,`lancDraft[${i}].grupo=g;lancDraft[${i}].sub=s;renderLmRows()`,'min-width:0;grid-column:span 2')}
      ${lmDescCel(r,i)}
      <input class="input" style="min-width:0" value="${esc(r.nf||'')}" placeholder="nº" title="Número da nota fiscal" oninput="lancDraft[${i}].nf=this.value">
      ${lmProdutoCel(r,i)}
@@ -4489,11 +4511,11 @@ function lmAcharInsumo(desc,fornecedor){
   return {id:cands[0].id,mesmoForn:false};                    // existe, mas de outro fornecedor
 }
 function lmProdutoCel(r,i){const ins=r.insumoId&&DB.insumos[r.insumoId];
-  if(ins){const qi=lmQtdNaUnidade(r,ins);const emb=insEmb(ins);const ru=r.uni||'';
+  if(ins){const qi=lmQtdNaUnidade(r,ins);const emb=insEmbDe(r,ins);const ru=r.uni||'';
     if(qi==null&&+r.qtd>0)return `<button title="A nota veio em '${esc(ru||'?')}' e o produto é em ${uSym(ins.uni)}. Clique para dizer quanto cada embalagem contém (padrão de compra)." style="display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;color:var(--amber);border:1px solid var(--amber);background:var(--amber-bg);border-radius:9px;padding:7px 8px;width:100%;text-align:left" onclick="lmPadraoCompraModal(${i})"><span style="flex:0 0 auto">⚠</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)} · ${esc(ru)} ≠ ${uSym(ins.uni)}</span></button>`;
     const conv=(qi!=null&&(emb||(ru&&ru!==ins.uni)))?` = ${fmtN(qi,qi%1?2:0)} ${uSym(ins.uni)}`:'';
     const entra=estMultiArm()?estArmEntradaDe(ins):'';
-    return `<div title="Vinculado ao produto: ${esc(ins.nome)}${emb?' · comprado em '+esc(emb.nome)+' com '+emb.qtd+' '+uSym(ins.uni):''}${conv}${entra?' · entra em '+esc(estArmNome(entra)):''}" style="display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;color:var(--green);background:var(--green-bg);border-radius:9px;padding:7px 8px"><span style="flex:0 0 auto">✓</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)}${conv?`<span style="color:var(--muted)">${conv}</span>`:''}${entra&&entra!==EST_ARM_PRINCIPAL?`<span style="color:var(--navy);font-weight:600"> → ${esc(estArmNome(entra))}</span>`:''}</span><button title="Desvincular" onclick="lmDesvincular(${i})" style="flex:0 0 auto;margin-left:auto;color:var(--soft);font-size:14px;line-height:1">×</button></div>`;}
+    return `<div title="Vinculado ao produto: ${esc(ins.nome)}${emb?' · comprado em '+esc(emb.nome)+' com '+emb.qtd+' '+uSym(ins.uni)+(emb.soNota?' (só nesta nota)':''):''}${conv}${entra?' · entra em '+esc(estArmNome(entra)):''}" style="display:flex;align-items:center;gap:5px;min-width:0;font-size:12px;color:var(--green);background:var(--green-bg);border-radius:9px;padding:7px 8px"><span style="flex:0 0 auto">✓</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)}${conv?`<span style="color:var(--muted)">${conv}</span>`:''}${entra&&entra!==EST_ARM_PRINCIPAL?`<span style="color:var(--navy);font-weight:600"> → ${esc(estArmNome(entra))}</span>`:''}</span><button title="Desvincular" onclick="lmDesvincular(${i})" style="flex:0 0 auto;margin-left:auto;color:var(--soft);font-size:14px;line-height:1">×</button></div>`;}
   if(!r.fromIA)return `<button class="btn btn-ghost btn-sm" title="Vincular a um produto do catálogo (opcional)" style="min-width:0;color:var(--soft);padding:7px 8px;font-size:11.5px;white-space:nowrap" onclick="lmVincularModal(${i})">＋ produto</button>`;
   const sug=r.insSugerido&&DB.insumos[r.insSugerido];
   if(sug)return `<button class="btn btn-ghost btn-sm" title="Existe '${esc(sug.nome)}', mas de outro fornecedor. Clique para vincular ou cadastrar novo." style="min-width:0;color:var(--amber);border-color:var(--amber);background:var(--amber-bg);padding:7px 8px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="lmVincularModal(${i})">⚠ outro fornec.</button>`;
@@ -4504,16 +4526,22 @@ function lmPadraoCompraModal(i){const r=lancDraft[i];const ins=r&&DB.insumos[r.i
     ${embDatalist()}
     <div style="font-size:13px;color:var(--muted);margin-bottom:12px">A nota traz <b>${fmtN(+r.qtd||0,(+r.qtd)%1?3:0)} ${esc(r.uni||'un')}</b>, mas o produto é medido em <b>${uSym(ins.uni)}</b> (a unidade da ficha técnica). Diga quanto cada embalagem contém e o Flow converte, sem mudar a unidade do produto.</div>
     <div class="grid-2">
-      <div class="field"><label>Você compra em</label><input class="input" id="pc_emb_nome" list="emb_dl" value="${esc(ins.embNome||'')}" placeholder="pé, pacote, caixa…"></div>
-      <div class="field"><label>Cada uma tem <span class="hint">${uSym(ins.uni)}</span></label><input class="input" id="pc_emb_qtd" type="number" step="0.001" min="0" value="${ins.embQtd||''}" placeholder="Ex.: 400"></div>
+      <div class="field"><label>Você compra em</label><input class="input" id="pc_emb_nome" list="emb_dl" value="${esc((r.embLanc&&r.embLanc.nome)||ins.embNome||'')}" placeholder="pé, pacote, caixa…"></div>
+      <div class="field"><label>Cada uma tem <span class="hint">${uSym(ins.uni)}</span></label><input class="input" id="pc_emb_qtd" type="number" step="0.001" min="0" value="${(r.embLanc&&r.embLanc.qtd)||ins.embQtd||''}" placeholder="Ex.: 400"></div>
     </div>
+    <div class="field" style="margin-top:4px"><label>Vale para</label>
+      <div style="display:grid;gap:8px">
+        <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:9px 11px"><input type="radio" name="pc_modo" value="lanc" ${(r.embLanc||!ins.embNome)?'checked':''} style="margin-top:3px;accent-color:var(--navy)"><div><div style="font-weight:600;font-size:13.5px">Só esta nota</div><div class="gp-mini">Converte este lançamento e grava a embalagem nele. O cadastro do produto fica como está${ins.embNome?' ('+esc(ins.embNome)+' com '+ins.embQtd+' '+uSym(ins.uni)+')':''}.</div></div></label>
+        <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:9px 11px"><input type="radio" name="pc_modo" value="prod" ${(r.embLanc||!ins.embNome)?'':'checked'} style="margin-top:3px;accent-color:var(--navy)"><div><div style="font-weight:600;font-size:13.5px">Salvar no produto</div><div class="gp-mini">Vira o padrão de compra de ${esc(ins.nome)}: as próximas notas nessa embalagem convertem sozinhas.</div></div></label>
+      </div></div>
     <div style="font-size:11.5px;color:var(--soft)">Se o produto deveria ser em outra unidade, edite-o em <b>Produtos</b>. O lançamento nunca troca a unidade sozinho.</div>
   </div>
-  <div class="modal-foot"><button class="btn btn-ghost" onclick="lmVoltarLanc()">Cancelar</button><button class="btn btn-primary" onclick="lmPadraoCompraSalvar(${i})">Salvar padrão</button></div>`);}
-function lmPadraoCompraSalvar(i){const r=lancDraft[i];const ins=r&&DB.insumos[r.insumoId];if(!ins)return lmVoltarLanc();
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="lmVoltarLanc()">Cancelar</button><button class="btn btn-primary" onclick="lmPadraoCompraSalvar(${i},(document.querySelector('input[name=pc_modo]:checked')||{}).value)">Aplicar</button></div>`);}
+function lmPadraoCompraSalvar(i,modo){const r=lancDraft[i];const ins=r&&DB.insumos[r.insumoId];if(!ins)return lmVoltarLanc();
   const nome=($('#pc_emb_nome').value||'').trim(),per=parseFloat($('#pc_emb_qtd').value)||0;if(!nome||!(per>0))return toast('Informe a embalagem e quanto ela contém');
-  ins.embNome=nome;ins.embQtd=per;lancDraft.forEach(x=>{if(x.insumoId===ins.id&&(!x.uni||x.uni==='un'))x.uni=nome;});
-  save();lancarModal(true);toast('Padrão de compra salvo: '+nome+' com '+per+' '+uSym(ins.uni));}
+  if(modo==='prod'){ins.embNome=nome;ins.embQtd=per;lancDraft.forEach(x=>{if(x.insumoId===ins.id){x.embLanc=null;if(!x.uni||x.uni==='un')x.uni=nome;}});save();lancarModal(true);toast('Padrão de compra salvo no produto: '+nome+' com '+per+' '+uSym(ins.uni));return;}
+  lancDraft.forEach(x=>{if(x.insumoId===ins.id){x.embLanc={nome,qtd:per};if(!x.uni||x.uni==='un')x.uni=nome;}});
+  lancarModal(true);toast('Só nesta nota: '+nome+' com '+per+' '+uSym(ins.uni)+'. O produto não mudou.');}
 function lmDesvincular(i){const r=lancDraft[i];if(!r)return;r.insumoId='';if(r.descOrig)r.desc=r.descOrig;renderLmRows();}
 function lmVoltarLanc(){lancarModal(true);}
 function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
@@ -4836,7 +4864,7 @@ function editNota(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)retu
   const itens=notaItens(l.nfe,l.fornecedor);if(!itens.length)return editLancamento(id);
   lancDraft=itens.map(x=>{const q=(x.qtd!=null&&+x.qtd>0)?+x.qtd:1;const vun=q?(x.valor||0)/q:(x.valor||0);
     return Object.assign(lmBlank(),{_id:x.id,data:x.data,grupo:x.grupo,sub:x.sub||'',desc:x.descricao||'',descOrig:x.descricao||'',nf:x.nfe||'',fornecedor:x.fornecedor||'',vun,vunStr:fmtUnitInput(vun),qtd:q,uni:x.uni||'',forma:x.forma||'',insumoId:x.insumoId||'',fromIA:!!x.insumoId,
-      obsPagto:x.obsPagto||'',parcelasLista:(x.liquidacoes||[]).map(p=>Object.assign({data:p.data,valor:+p.valor||0,pago:!!p.pago},liqExtrasDe(p)))});});
+      embLanc:(x.embNome&&+x.embQtd>0)?{nome:x.embNome,qtd:+x.embQtd}:null,obsPagto:x.obsPagto||'',parcelasLista:(x.liquidacoes||[]).map(p=>Object.assign({data:p.data,valor:+p.valor||0,pago:!!p.pago},liqExtrasDe(p)))});});
   lmEdit={nf:l.nfe||'',forn:l.fornecedor||'',ids:itens.map(x=>x.id)};lmObs=l.obs||'';lmPagtoModo='agora';
   lancarModal(true);}
 function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
@@ -4853,6 +4881,7 @@ function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
     if(!nv){nv={id:uid()};DB.lancamentos.push(nv);novos++;}
     Object.assign(nv,{data:r.data||hojeISO(),grupo:r.grupo,sub:r.sub||'',descricao:(r.desc||'').trim(),nfe:(r.nf||'').trim(),fornecedor:(r.fornecedor||'').trim(),valor,forma:r.forma||''});
     if((+r.qtd||1)!==1){nv.qtd=+r.qtd;if(r.uni)nv.uni=r.uni;}else{delete nv.qtd;}
+    if(r.embLanc&&+r.embLanc.qtd>0){nv.embNome=r.embLanc.nome;nv.embQtd=+r.embLanc.qtd;}else{delete nv.embNome;delete nv.embQtd;}
     const ins=r.insumoId&&DB.insumos[r.insumoId];
     if(ins){nv.insumoId=r.insumoId;if(valor>0&&r.qtd>0){const qi=lmQtdNaUnidade(r,ins);if(qi>0){estEntradaDeLanc(nv,ins,qi,valor);ins.preco=valor;ins.qtd=qi;prodAtu++;}else semConv.push(ins.nome);}if(nv.fornecedor)ins.fornecedor=nv.fornecedor;}else delete nv.insumoId;
     if(nv.fornecedor)ensureFornecedor(nv.fornecedor);
@@ -4883,6 +4912,7 @@ function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
     const nv={id:uid(),data:r.data||hojeISO(),grupo:r.grupo,sub:r.sub||'',descricao:(r.desc||'').trim(),nfe:(r.nf||'').trim(),fornecedor:(r.fornecedor||'').trim(),valor,forma:r.forma||''};
     if(obsNota)nv.obs=obsNota;if(r.obsPagto)nv.obsPagto=(''+r.obsPagto).trim();
     if((+r.qtd||1)!==1){nv.qtd=+r.qtd;if(r.uni)nv.uni=r.uni;}
+    if(r.embLanc&&+r.embLanc.qtd>0){nv.embNome=r.embLanc.nome;nv.embQtd=+r.embLanc.qtd;}
     const ins=r.insumoId&&DB.insumos[r.insumoId];
     if(ins){nv.insumoId=r.insumoId;
       // atualiza o custo real pago: preço, qtd e unidade sempre juntos (trio coerente = custo/unidade correto)
@@ -4943,8 +4973,7 @@ function editLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!
       <div class="field"><label>Valor</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="el_valor" inputmode="numeric" value="${fmtMoneyInput(l.valor||0)}" oninput="moneyMask(this)"></div></div>
     </div>
     <div class="grid-2">
-      <div class="field"><label>Categoria</label><select class="input" id="el_grupo" onchange="elSubRefresh()">${grupos.map(g=>`<option ${g===l.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
-      <div class="field"><label>Subcategoria</label><select class="input" id="el_sub">${ordPt(DB.categorias[l.grupo]?DB.categorias[l.grupo].subs:[]).map(x=>`<option ${x===l.sub?'selected':''}>${esc(x)}</option>`).join('')||`<option value="">—</option>`}</select></div>
+      <div class="field" style="grid-column:1/-1"><label>Categoria › Subcategoria</label><input type="hidden" id="el_grupo" value="${esc(l.grupo||'')}"><input type="hidden" id="el_sub" value="${esc(l.sub||'')}">${catBtn(l.grupo,l.sub,`$('#el_grupo').value=g;$('#el_sub').value=s`)}</div>
     </div>
     <div class="field"><label>Descrição</label><input class="input" id="el_desc" value="${(l.descricao||'').replace(/"/g,'&quot;')}" placeholder="Referência, histórico..."></div>
     <div class="grid-2">
@@ -7219,7 +7248,7 @@ function custoUnitCompra(ins){return ins.qtd?ins.preco/ins.qtd:0;} // custo por 
 const EMB_SUGESTOES=['pacote','pé','caixa','fardo','saco','garrafa','lata','bandeja','dúzia','maço','balde','galão','pote','engradado'];
 function insEmb(ins){return (ins&&ins.embNome&&+ins.embQtd>0)?{nome:ins.embNome,qtd:+ins.embQtd}:null;}
 function uniCompat(a,b){return !!(BASE[a]&&BASE[a]===BASE[b]);}
-function lmQtdNaUnidade(r,ins){const q=+r.qtd||0;if(!(q>0)||!ins)return null;const ru=r.uni||'';const emb=insEmb(ins);
+function lmQtdNaUnidade(r,ins){const q=+r.qtd||0;if(!(q>0)||!ins)return null;const ru=r.uni||'';const emb=insEmbDe(r,ins);
   if(emb&&(!ru||ru==='un'||!BASE[ru]))return q*emb.qtd;                  // 2 pacotes → 800 g / 2 pés → 24 folhas
   if(ru&&uniCompat(ru,ins.uni))return q*TO_BASE[ru]/TO_BASE[ins.uni];  // 2 kg → 2000 g
   if(emb)return q*emb.qtd;
