@@ -6710,7 +6710,7 @@ function viewMapa(){
   const feitas=ts.filter(t=>t.feito).length, pct=Math.round(feitas/ts.length*100);
   const atrasadas=ts.filter(t=>!t.feito&&t.prazo&&t.prazo<hoje).length;
   // próximas etapas: pendentes, com prazo primeiro (mais perto na frente), depois a ordem do plano
-  const pendAb=ts.filter(t=>!t.feito&&projFaseAberta(pgProj(),t.fase));const pend=pendAb.length?pendAb:ts.filter(t=>!t.feito);
+  const pendAb=ts.filter(t=>!t.feito&&pgFaseAbertaCliente(pgProj(),t.fase));const pend=pendAb.length?pendAb:ts.filter(t=>!t.feito);
   const proximas=[...pend].sort((a,b)=>{const pa=a.prazo||'9999-99-99',pb=b.prazo||'9999-99-99';
     return pa!==pb?pa.localeCompare(pb):ts.indexOf(a)-ts.indexOf(b);}).slice(0,5);
   const fases=pgFases(ts);
@@ -6740,15 +6740,23 @@ function viewMapa(){
       </div>`).join('')}</div></div>
     </div>`:`<div class="card card-pad" style="margin-bottom:16px;border-color:var(--green)">
       <div style="font-size:13.5px">🎉 Todas as tarefas do plano estão concluídas. Fale com seu consultor sobre os próximos passos.</div></div>`}
-    ${fases.map(f=>{const d=f.itens.filter(x=>x.feito).length,p2=Math.round(d/f.itens.length*100);const ab=projFaseAberta(pgProj(),f.nome);
-      return `<div class="card card-pad" style="margin-bottom:12px;${ab?'':'opacity:.7;background:var(--bg)'}">
+    ${(function(){const P=pgProj();const atual=projEtapaEfetiva(P);const ia=fases.findIndex(f=>f.nome===atual);
+      const anteriores=ia>0?fases.slice(0,ia):[];const abertas=fases.filter((f,i)=>ia<0?pgFaseAbertaCliente(P,f.nome):i===ia);const depois=ia>=0?fases.length-ia-1:fases.filter(f=>!pgFaseAbertaCliente(P,f.nome)).length;
+      const card=f=>{const d=f.itens.filter(x=>x.feito).length,p2=Math.round(d/f.itens.length*100);
+        return `<div class="card card-pad" style="margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
-          <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600;${ab?'':'color:var(--muted)'}">${esc(f.nome)}${ab?'':` <span class="tag tag-gray" style="font-family:inherit;font-size:11px;vertical-align:middle">🔒 ${esc(projBloqueioMsg(pgProj(),f.nome))}</span>`}</div>
+          <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600">${esc(f.nome)} <span class="tag tag-gold" style="font-family:inherit;font-size:10.5px;vertical-align:middle">etapa atual</span></div>
           <div style="font-size:12px;color:var(--soft);display:flex;gap:8px;align-items:center">${(function(){const r=pgRefEtapa(f.nome,fases.map(x=>x.nome));return r?projRefTag(r,d<f.itens.length,hoje):'';})()}<span>${d}/${f.itens.length} · ${p2}%</span></div>
         </div>
         <div style="height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin-bottom:6px"><div style="height:6px;width:${p2}%;background:${p2>=100?'var(--green)':'var(--gold)'}"></div></div>
         <div class="scroll-x"><div style="min-width:470px">${pgCabecalho()}${f.itens.map(t=>pgLinha(t,hoje)).join('')}</div></div>
-      </div>`;}).join('')}
+      </div>`;};
+      const resumo=anteriores.length?`<div class="card card-pad" style="margin-bottom:12px;background:var(--bg)">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);margin-bottom:6px">Etapas anteriores</div>
+        ${anteriores.map(f=>{const d=f.itens.filter(x=>x.feito).length;const ok=d===f.itens.length;return `<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"><span style="${ok?'color:var(--muted)':''}">${ok?'✓':'○'} ${esc(f.nome)}</span><span style="font-size:12px;color:${ok?'var(--green)':'var(--amber)'};white-space:nowrap">${d}/${f.itens.length}${ok?' · concluída':' · '+(f.itens.length-d)+' pendente(s)'}</span></div>`;}).join('')}
+      </div>`:'';
+      const aviso=depois>0?`<div class="card card-pad" style="margin-bottom:12px;background:var(--bg);color:var(--muted);font-size:13px">🔒 ${depois===1?'A próxima etapa é liberada':'As próximas '+depois+' etapas são liberadas'} pela Lidera quando a etapa atual for concluída.</div>`:'';
+      return resumo+abertas.map(card).join('')+aviso;})()}
     <div style="font-size:11.5px;color:var(--soft);margin-top:6px">Este plano é conduzido pela Lidera junto com você. Para incluir ou mudar alguma etapa, fale com seu consultor.</div>
   </div>`;
 }
@@ -9122,6 +9130,16 @@ function projFaseNoModelo(p,fase){return fase==='Onboarding'||projNNoModelo(p,pr
 function projFasesVisiveis(p){return projFasesLista(p).filter(f=>projFaseNoModelo(p,f));}
 function projTarefasContam(p){return ((p&&p.tarefas)||[]).filter(x=>x&&x.fase!=='Onboarding'&&projFaseNoModelo(p,x.fase));}
 function projBloqueio(p){return !!(p&&p.etapaAtual&&projFasesLista(p).includes(p.etapaAtual));}
+/* etapa "viva" de um plano sem etapaAtual: a que teve a conclusão mais recente; se já fechou, a próxima com pendência (mesma regra do cockpit) */
+function projEtapaInferida(p){const ts=((p&&p.tarefas)||[]).filter(t=>t&&t.fase);if(!ts.length)return '';const fases=[];ts.forEach(t=>{if(!fases.includes(t.fase))fases.push(t.fase);});
+  const pendDe=f=>ts.filter(t=>t.fase===f&&!t.feito),feitoDe=f=>ts.filter(t=>t.fase===f&&t.feito);const naoOnb=fases.filter(f=>f!=='Onboarding');
+  if(!ts.some(t=>!t.feito))return naoOnb[naoOnb.length-1]||fases[fases.length-1]||'';
+  const comPend=naoOnb.filter(f=>pendDe(f).length);const progrediu=naoOnb.some(f=>feitoDe(f).length)||!pendDe('Onboarding').length;
+  if(progrediu&&comPend.length){let viva='',ult='';naoOnb.forEach(f=>feitoDe(f).forEach(t=>{if((t.feitoEm||'')>ult){ult=t.feitoEm;viva=f;}}));
+    if(viva&&pendDe(viva).length)return viva;if(viva){const depois=naoOnb.slice(naoOnb.indexOf(viva)+1).find(f=>pendDe(f).length);return depois||comPend[0];}return comPend[0];}
+  return pendDe('Onboarding').length?'Onboarding':(comPend[0]||fases.find(f=>pendDe(f).length)||'');}
+function projEtapaEfetiva(p){return projBloqueio(p)?p.etapaAtual:projEtapaInferida(p);}   // definida pelo consultor ou inferida (planos antigos)
+function pgFaseAbertaCliente(p,fase){if(fase==='Onboarding')return true;const l=projFasesVisiveis(p);const a=l.indexOf(projEtapaEfetiva(p));if(a<0)return projFaseAberta(p,fase);const f=l.indexOf(fase);return f>=0&&f<=a;}   // cliente: nunca vê além da etapa em aberto, mesmo em plano antigo
 function projFaseAberta(p,fase){if(!projBloqueio(p)||fase==='Onboarding')return true;const l=projFasesVisiveis(p);let a=l.indexOf(p.etapaAtual);if(a<0)a=l.length-1;const f=l.indexOf(fase);return f>=0&&f<=a;}   // etapa atual fora do modelo (ex.: Essencial com etapa 5): tudo que é visível já passou
 function projFaseAnterior(p,fase){const l=projFasesVisiveis(p);const k=l.indexOf(fase);return k>0?l[k-1]:'';}
 function projProxFase(p,fase){const l=projFasesVisiveis(p);const k=l.indexOf(fase);return (k>=0&&k<l.length-1)?l[k+1]:'';}
@@ -9609,15 +9627,7 @@ function gpInfo(o){const h=hojeISO();const d=o.dados||{};const p=(d._projeto&&Ar
   else if(!ts.some(t=>!t.feito))etapa='Concluído';
   else if(p&&projBloqueio(p)){etapa=p.etapaAtual;auto=false;}
   else if(crm.etapaManual&&fases.includes(crm.etapaManual)&&pendDe(crm.etapaManual).length){etapa=crm.etapaManual;auto=false;}
-  else{const comPend=naoOnb.filter(f=>pendDe(f).length);
-    const progrediu=naoOnb.some(f=>feitoDe(f).length)||!pendDe('Onboarding').length;
-    if(progrediu&&comPend.length){
-      // a etapa "viva" é a que teve a conclusão mais recente; se ela já fechou, vale a próxima com pendência
-      let viva='',ult='';naoOnb.forEach(f=>feitoDe(f).forEach(t=>{if((t.feitoEm||'')>ult){ult=t.feitoEm;viva=f;}}));
-      if(viva&&pendDe(viva).length)etapa=viva;
-      else if(viva){const depois=naoOnb.slice(naoOnb.indexOf(viva)+1).find(f=>pendDe(f).length);etapa=depois||comPend[0];}
-      else etapa=comPend[0];}
-    else etapa=pendDe('Onboarding').length?'Onboarding':(comPend[0]||fases.find(f=>pendDe(f).length)||'');}
+  else etapa=projEtapaInferida(p);
   const naEtapa=ts.filter(t=>t.fase===etapa);const etapaFeitas=naEtapa.filter(t=>t.feito).length;
   const etapaRef=(etapa&&fases.includes(etapa))?projRefEtapa(o,etapa,fases):'';
   const atr=ts.filter(t=>!t.feito&&t.prazo&&t.prazo<h).sort((a,b)=>a.prazo.localeCompare(b.prazo));
