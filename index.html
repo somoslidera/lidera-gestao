@@ -829,6 +829,7 @@ thead th{letter-spacing:.7px}
 .pt-tema{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;border:1.5px solid transparent;cursor:pointer}.pt-tema.on{border-color:currentColor}
 .pt-temas{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 .pt-row .inp.tema{padding:5px 4px;font-size:11.5px;font-weight:700}
+.pg-chk{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;background:var(--bg);color:var(--soft);border:1px solid var(--line);cursor:pointer;padding:0}.pg-chk.on{background:var(--green);color:#fff;border-color:var(--green)}.pg-chk:not([disabled]):hover{border-color:var(--navy);color:var(--navy);transform:scale(1.08)}.pg-chk.on:not([disabled]):hover{color:#fff}.pg-chk[disabled]{cursor:default;opacity:.6}
 .cat-btn{display:flex;align-items:center;gap:6px;min-width:0;text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden}.cat-btn .cg{font-weight:600;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}.cat-btn .cs{color:var(--muted);flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;font-size:12px}.cat-btn i{color:var(--soft);font-style:normal}.cat-btn::after{content:'▾';margin-left:auto;color:var(--soft);font-size:11px;flex:0 0 auto}
 .catpick{position:fixed;z-index:700;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 40px rgba(16,32,63,.22);display:grid;grid-template-columns:220px 260px;max-height:min(440px,80vh);overflow:hidden}
 .catpick .cp-col{overflow:auto;padding:6px;max-height:inherit}.catpick .cp-g{border-right:1px solid var(--line);background:var(--bg)}.catpick .cp-h{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:6px 10px 4px;position:sticky;top:0;background:inherit}
@@ -6694,9 +6695,11 @@ const PG_COLS='22px minmax(160px,1fr) 150px 104px';   // status · tarefa · res
 function pgCabecalho(){return `<div style="display:grid;grid-template-columns:${PG_COLS};gap:10px;padding:0 0 6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;border-bottom:1px solid var(--line)">
     <span></span><span>Tarefa</span><span>Responsável</span><span style="text-align:right">Prazo</span></div>`;}
 function pgResp(t){return t.resp?esc(t.resp):'<span style="color:var(--soft)">a definir</span>';}
+function pgCheck(t){const P=pgProj();const idx=(P.tarefas||[]).indexOf(t);const pode=idx>=0&&pgPodeMarcar()&&(t.feito||pgFaseAbertaCliente(P,t.fase));
+  return `<button type="button" class="pg-chk${t.feito?' on':''}" ${pode?`onclick="pgToggle(${idx})" title="${t.feito?'Clique para reabrir':'Clique para marcar como concluída'}"`:'disabled'}>${t.feito?'✓':'○'}</button>`;}
 function pgLinha(t,hoje){const atrasada=!t.feito&&t.prazo&&t.prazo<hoje;
   return `<div style="display:grid;grid-template-columns:${PG_COLS};gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)">
-    <div style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;${t.feito?'background:var(--green);color:#fff':'background:var(--bg);color:var(--soft);border:1px solid var(--line)'}">${t.feito?'✓':'○'}</div>
+    ${pgCheck(t)}
     <div style="min-width:0;font-size:13.5px;${t.feito?'color:var(--soft);text-decoration:line-through':'font-weight:500'}">${esc(t.titulo||'')}${t.tema?' '+projTemaTag(t.tema):''}</div>
     <div style="min-width:0;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.resp?esc(t.resp):'Responsável a definir'}">${pgResp(t)}</div>
     <div style="font-size:11.5px;text-align:right;white-space:nowrap;${atrasada?'color:var(--red);font-weight:600':'color:var(--soft)'}">${t.prazo?(atrasada?'⚠ ':'')+fmtDataBR(t.prazo):'—'}</div>
@@ -6730,7 +6733,7 @@ function viewMapa(){
       <div class="desc" style="margin-bottom:6px">O que vem agora no seu plano</div>
       <div class="scroll-x"><div style="min-width:470px">${pgCabecalho()}
       ${proximas.map(t=>`<div style="display:grid;grid-template-columns:${PG_COLS};gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)">
-        <div style="display:flex;justify-content:center"><span style="width:7px;height:7px;border-radius:50%;background:var(--gold)"></span></div>
+        ${pgCheck(t)}
         <div style="min-width:0">
           <div style="font-size:13.5px;font-weight:500">${esc(t.titulo||'')}</div>
           <div style="font-size:11px;color:var(--soft);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.fase||'')}</div>
@@ -6740,12 +6743,12 @@ function viewMapa(){
       </div>`).join('')}</div></div>
     </div>`:`<div class="card card-pad" style="margin-bottom:16px;border-color:var(--green)">
       <div style="font-size:13.5px">🎉 Todas as tarefas do plano estão concluídas. Fale com seu consultor sobre os próximos passos.</div></div>`}
-    ${(function(){const P=pgProj();const atual=projEtapaEfetiva(P);const ia=fases.findIndex(f=>f.nome===atual);
-      const anteriores=ia>0?fases.slice(0,ia):[];const abertas=fases.filter((f,i)=>ia<0?pgFaseAbertaCliente(P,f.nome):i===ia);const depois=ia>=0?fases.length-ia-1:fases.filter(f=>!pgFaseAbertaCliente(P,f.nome)).length;
+    ${(function(){const P=pgProj();const atual=pgEtapaCliente(P);const ia=fases.findIndex(f=>f.nome===atual);
+      const anteriores=ia>0?fases.slice(0,ia).filter(f=>f.itens.every(t=>t.feito)):[];const abertas=fases.filter((f,i)=>ia<0?pgFaseAbertaCliente(P,f.nome):(i===ia||(i<ia&&f.itens.some(t=>!t.feito))));const depois=ia>=0?fases.length-ia-1:fases.filter(f=>!pgFaseAbertaCliente(P,f.nome)).length;
       const card=f=>{const d=f.itens.filter(x=>x.feito).length,p2=Math.round(d/f.itens.length*100);
         return `<div class="card card-pad" style="margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
-          <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600">${esc(f.nome)} <span class="tag tag-gold" style="font-family:inherit;font-size:10.5px;vertical-align:middle">etapa atual</span></div>
+          <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:600">${esc(f.nome)} <span class="tag ${f.nome===atual?'tag-gold':'tag-amber'}" style="font-family:inherit;font-size:10.5px;vertical-align:middle">${f.nome===atual?'etapa atual':'pendências'}</span></div>
           <div style="font-size:12px;color:var(--soft);display:flex;gap:8px;align-items:center">${(function(){const r=pgRefEtapa(f.nome,fases.map(x=>x.nome));return r?projRefTag(r,d<f.itens.length,hoje):'';})()}<span>${d}/${f.itens.length} · ${p2}%</span></div>
         </div>
         <div style="height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin-bottom:6px"><div style="height:6px;width:${p2}%;background:${p2>=100?'var(--green)':'var(--gold)'}"></div></div>
@@ -6753,11 +6756,11 @@ function viewMapa(){
       </div>`;};
       const resumo=anteriores.length?`<div class="card card-pad" style="margin-bottom:12px;background:var(--bg)">
         <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);margin-bottom:6px">Etapas anteriores</div>
-        ${anteriores.map(f=>{const d=f.itens.filter(x=>x.feito).length;const ok=d===f.itens.length;return `<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"><span style="${ok?'color:var(--muted)':''}">${ok?'✓':'○'} ${esc(f.nome)}</span><span style="font-size:12px;color:${ok?'var(--green)':'var(--amber)'};white-space:nowrap">${d}/${f.itens.length}${ok?' · concluída':' · '+(f.itens.length-d)+' pendente(s)'}</span></div>`;}).join('')}
+        ${anteriores.map(f=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"><span style="color:var(--muted)">✓ ${esc(f.nome)}</span><span style="font-size:12px;color:var(--green);white-space:nowrap">${f.itens.length}/${f.itens.length} · concluída</span></div>`).join('')}
       </div>`:'';
       const aviso=depois>0?`<div class="card card-pad" style="margin-bottom:12px;background:var(--bg);color:var(--muted);font-size:13px">🔒 ${depois===1?'A próxima etapa é liberada':'As próximas '+depois+' etapas são liberadas'} pela Lidera quando a etapa atual for concluída.</div>`:'';
       return resumo+abertas.map(card).join('')+aviso;})()}
-    <div style="font-size:11.5px;color:var(--soft);margin-top:6px">Este plano é conduzido pela Lidera junto com você. Para incluir ou mudar alguma etapa, fale com seu consultor.</div>
+    <div style="font-size:11.5px;color:var(--soft);margin-top:6px">${pgPodeMarcar()?'Toque no círculo de uma tarefa para marcar como concluída. ':''}Este plano é conduzido pela Lidera junto com você. Para incluir ou mudar alguma etapa, fale com seu consultor.</div>
   </div>`;
 }
 
@@ -9130,16 +9133,20 @@ function projFaseNoModelo(p,fase){return fase==='Onboarding'||projNNoModelo(p,pr
 function projFasesVisiveis(p){return projFasesLista(p).filter(f=>projFaseNoModelo(p,f));}
 function projTarefasContam(p){return ((p&&p.tarefas)||[]).filter(x=>x&&x.fase!=='Onboarding'&&projFaseNoModelo(p,x.fase));}
 function projBloqueio(p){return !!(p&&p.etapaAtual&&projFasesLista(p).includes(p.etapaAtual));}
-/* etapa "viva" de um plano sem etapaAtual: a que teve a conclusão mais recente; se já fechou, a próxima com pendência (mesma regra do cockpit) */
+/* etapa de um plano sem etapaAtual: sempre na ORDEM do plano, a primeira etapa com tarefa pendente (tarefa feita numa etapa adiante não puxa a etapa) */
 function projEtapaInferida(p){const ts=((p&&p.tarefas)||[]).filter(t=>t&&t.fase);if(!ts.length)return '';const fases=[];ts.forEach(t=>{if(!fases.includes(t.fase))fases.push(t.fase);});
   const pendDe=f=>ts.filter(t=>t.fase===f&&!t.feito),feitoDe=f=>ts.filter(t=>t.fase===f&&t.feito);const naoOnb=fases.filter(f=>f!=='Onboarding');
   if(!ts.some(t=>!t.feito))return naoOnb[naoOnb.length-1]||fases[fases.length-1]||'';
-  const comPend=naoOnb.filter(f=>pendDe(f).length);const progrediu=naoOnb.some(f=>feitoDe(f).length)||!pendDe('Onboarding').length;
-  if(progrediu&&comPend.length){let viva='',ult='';naoOnb.forEach(f=>feitoDe(f).forEach(t=>{if((t.feitoEm||'')>ult){ult=t.feitoEm;viva=f;}}));
-    if(viva&&pendDe(viva).length)return viva;if(viva){const depois=naoOnb.slice(naoOnb.indexOf(viva)+1).find(f=>pendDe(f).length);return depois||comPend[0];}return comPend[0];}
-  return pendDe('Onboarding').length?'Onboarding':(comPend[0]||fases.find(f=>pendDe(f).length)||'');}
+  if(pendDe('Onboarding').length&&!naoOnb.some(f=>feitoDe(f).length))return 'Onboarding';
+  return naoOnb.find(f=>pendDe(f).length)||fases.find(f=>pendDe(f).length)||'';}
 function projEtapaEfetiva(p){return projBloqueio(p)?p.etapaAtual:projEtapaInferida(p);}   // definida pelo consultor ou inferida (planos antigos)
-function pgFaseAbertaCliente(p,fase){if(fase==='Onboarding')return true;const l=projFasesVisiveis(p);const a=l.indexOf(projEtapaEfetiva(p));if(a<0)return projFaseAberta(p,fase);const f=l.indexOf(fase);return f>=0&&f<=a;}   // cliente: nunca vê além da etapa em aberto, mesmo em plano antigo
+function pgEtapaCliente(p){const l=projFasesVisiveis(p).filter(f=>f!=='Onboarding');if(!l.length)return '';const e=projEtapaEfetiva(p);if(l.includes(e))return e;const ts=(p&&p.tarefas)||[];return l.find(f=>ts.some(t=>t.fase===f&&!t.feito))||l[l.length-1];}   // etapa que o cliente vê aberta (Onboarding não aparece para ele)
+function pgFaseAbertaCliente(p,fase){if(fase==='Onboarding')return true;const l=projFasesVisiveis(p);const a=l.indexOf(pgEtapaCliente(p));if(a<0)return projFaseAberta(p,fase);const f=l.indexOf(fase);return f>=0&&f<=a;}   // cliente: nunca vê além da etapa em aberto, mesmo em plano antigo
+function pgPodeMarcar(){return !projTravado(pgProj());}
+function pgToggle(idx){const P=DB._projeto;const t=P&&Array.isArray(P.tarefas)?P.tarefas[idx]:null;if(!t)return;if(projTravado(P))return toast('Plano travado pela Lidera. Fale com seu consultor.');
+  if(!t.feito&&!pgFaseAbertaCliente(P,t.fase))return toast('Esta etapa ainda não foi liberada.');
+  t.feito=!t.feito;t.feitoEm=t.feito?hojeISO():'';if(t.feito)t.feitoPor=MEMBRO_NOME||'cliente';else delete t.feitoPor;
+  const av=t.feito?projAvancarSePortao(P):'';save();viewMapa();toast(t.feito?'Tarefa concluída'+(av?' · '+av+' liberada':''):'Tarefa reaberta');}
 function projFaseAberta(p,fase){if(!projBloqueio(p)||fase==='Onboarding')return true;const l=projFasesVisiveis(p);let a=l.indexOf(p.etapaAtual);if(a<0)a=l.length-1;const f=l.indexOf(fase);return f>=0&&f<=a;}   // etapa atual fora do modelo (ex.: Essencial com etapa 5): tudo que é visível já passou
 function projFaseAnterior(p,fase){const l=projFasesVisiveis(p);const k=l.indexOf(fase);return k>0?l[k-1]:'';}
 function projProxFase(p,fase){const l=projFasesVisiveis(p);const k=l.indexOf(fase);return (k>=0&&k<l.length-1)?l[k+1]:'';}
