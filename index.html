@@ -3960,6 +3960,9 @@ function liqValor(l,v){if(grupoTipo(l.grupo)!=='receita')return v;
 function sepAtivo(){return !!(DB&&DB.fin&&DB.fin.sepFiscalFin);}
 function podeFinPagto(){return pode('fin_pagto');}
 function podeFinNota(){return pode('fin_nota');}
+function finSoLanc(){return !!MEMBRO_PERMS&&!pode('fin_completo');}   // membro restrito: Financeiro mostra só a aba Lançamentos (e o DRE, se a área DRE estiver liberada)
+function finTabsPermitidas(tabs){if(!finSoLanc())return tabs;const ok=['lanc'];if(MEMBRO_PERMS.includes('dre'))ok.push('dre');return tabs.filter(t=>ok.includes(t[0]));}
+function finTabAjustar(){if(!finSoLanc())return;const ok=finTabsPermitidas([['lanc'],['dre']]).map(t=>t[0]);if(!ok.includes(finTab))finTab='lanc';}
 function liqCobr(x){return +((+x.valor||0)+(+x.juros||0)+(+x.multa||0)-(+x.desconto||0)).toFixed(2);}
 function liqExtras(x){return !!(x&&((+x.juros||0)||(+x.multa||0)||(+x.desconto||0)));}
 function liqExtrasDe(x){const o={};if(+x.juros)o.juros=+(+x.juros).toFixed(2);if(+x.multa)o.multa=+(+x.multa).toFixed(2);if(+x.desconto)o.desconto=+(+x.desconto).toFixed(2);if(x.obs)o.obs=(''+x.obs).trim();return o;}
@@ -3970,7 +3973,7 @@ function pagtoPendentes(){const map=new Map();(DB.lancamentos||[]).forEach(l=>{i
     g.valor=+(g.valor+(+l.valor||0)).toFixed(2);g.ids.push(l.id);g.itens.push(l);if(l.data&&l.data<g.data)g.data=l.data;g.cats.add(l.grupo||'');if(!g.obs&&l.obs)g.obs=l.obs;});
   return Array.from(map.values()).map(g=>{g.cat=[...g.cats].filter(Boolean).join(', ');g.dias=Math.max(0,Math.round((new Date(hojeISO()+'T12:00:00')-new Date(g.data+'T12:00:00'))/86400000)||0);return g;}).sort((a,b)=>(a.data||'').localeCompare(b.data||''));}
 function pagtoNavBadge(){const a=document.querySelector('#nav a[data-route=financeiro]');if(!a)return;let b=a.querySelector('.nav-badge');
-  const n=(MEMBRO_PERMS&&!MEMBRO_PERMS.includes('financeiro'))?0:pagtoPendentes().length;
+  const n=(MEMBRO_PERMS&&(!MEMBRO_PERMS.includes('financeiro')||finSoLanc()))?0:pagtoPendentes().length;
   if(!n){if(b)b.remove();return;}if(!b){b=document.createElement('span');b.className='nav-badge';a.appendChild(b);}b.textContent=n;b.title=n+' nota(s) aguardando definição de pagamento';}
 function pagtoPendHTML(compacto){const pend=pagtoPendentes();if(!pend.length)return '';const tot=pend.reduce((s,g)=>s+g.valor,0);const podeDef=podeFinPagto();
   if(compacto)return `<div class="card card-pad" style="border-color:var(--amber);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
@@ -5307,9 +5310,10 @@ function finList(key,cols){
     <button class="mini-del" onclick="DB.fin['${key}'].splice(${i},1);save();viewFinanceiro()">${icoX}</button></div>`).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhum registro.</div>`}
   <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:6px">${icoPlus} Adicionar</button>`;
 }
-function finTabsHTML(tabs){tabs=tabs||[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['conc','Conciliação'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
+function finTabsHTML(tabs){tabs=finTabsPermitidas(tabs||[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['conc','Conciliação'],['custosfixos','Custos Fixos'],['param','Parâmetros']]);
+  if(tabs.length<2)return '';
   return `<div class="pill-filter tabs" style="margin-bottom:18px">${tabs.map(([k,l])=>`<button class="${finTab===k?'on':''}" onclick="finTab='${k}';viewFinanceiro()">${l}</button>`).join('')}</div>`;}
-function viewFinanceiro(){
+function viewFinanceiro(){finTabAjustar();
   const t=totaisGerais(finTab==='visao'?periodoRange():undefined);
   const tabs=[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['conc','Conciliação'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
   const legado={categorias:'categorias',formas:'formas',meios:'recebimento'};if(legado[finTab]){paramSec=legado[finTab];finTab='param';}   // abas antigas viraram seções de Parâmetros
@@ -6545,7 +6549,7 @@ async function suitableLigar(on){const r=await chamarFn('suitable-sync',{acao:on
 /* ===================== EQUIPE ===================== */
 const ACESSOS=[['dashboard','Dashboard'],['insumos','Produtos'],['fichas','Fichas Técnicas'],['estoque','Estoque & Compras'],['checklists','Checklists'],['pops','POPs · Procedimentos'],['cargos','Descrições de Cargos'],['engenharia','Engenharia de Menu'],['cmv','Controle de CMV'],['desperdicio','Desperdícios'],['buffet','Mapa do Buffet'],['dre','DRE (no Financeiro)'],['financeiro','Financeiro'],['folha','Folha de Pagamento'],['formacao','Formação em Gestão'],['mapa','Plano de Guerra'],['equipe','Equipe'],['conta','Configurações']];
 /* Subpermissões dentro de Estoque & Compras (e a nota do Financeiro). Membro antigo sem `sub` gravado = tudo liberado dentro das áreas dele. */
-const ESTOQUE_SUBS=[['posicao','Posição de estoque (ver)'],['mov','Movimentações (ver e registrar)'],['contagem','Contagem física (lançar)'],['req_criar','Requisição: criar para o seu setor'],['req_separar','Requisição: separar e concluir (estoquista)'],['retorno_aceitar','Aceitar retorno ao principal'],['producao','Registrar produção'],['vendas','Baixa por venda'],['cmv','Registro de CMV'],['compras','Lista de compras'],['historico','Histórico de compras'],['nota','Lançamento de nota'],['valores','Ver valores em R$ (custo, estoque, compras)'],['fin_nota','Financeiro: lançar notas e despesas (fiscal)'],['fin_pagto','Financeiro: definir pagamentos, boletos e baixas (financeiro)']];
+const ESTOQUE_SUBS=[['posicao','Posição de estoque (ver)'],['mov','Movimentações (ver e registrar)'],['contagem','Contagem física (lançar)'],['req_criar','Requisição: criar para o seu setor'],['req_separar','Requisição: separar e concluir (estoquista)'],['retorno_aceitar','Aceitar retorno ao principal'],['producao','Registrar produção'],['vendas','Baixa por venda'],['cmv','Registro de CMV'],['compras','Lista de compras'],['historico','Histórico de compras'],['nota','Lançamento de nota'],['valores','Ver valores em R$ (custo, estoque, compras)'],['fin_nota','Financeiro: lançar notas e despesas (fiscal)'],['fin_pagto','Financeiro: definir pagamentos, boletos e baixas (financeiro)'],['fin_completo','Financeiro: todas as abas (desmarcado = só Lançamentos)']];
 const SUB_TUDO=Object.fromEntries(ESTOQUE_SUBS.map(([k])=>[k,true]));
 const subDe=keys=>Object.fromEntries(ESTOQUE_SUBS.map(([k])=>[k,keys.includes(k)]));
 const NIVEIS={
@@ -6553,11 +6557,12 @@ const NIVEIS={
   gerente:{label:'Gerente',desc:'Operação + indicadores (sem equipe/config)',perms:['dashboard','insumos','estoque','checklists','cmv','desperdicio','buffet','faturamento','dre','mapa'],sub:SUB_TUDO},
   operador:{label:'Operador',desc:'Só operação do dia a dia',perms:['insumos','estoque','checklists','cmv','desperdicio','buffet'],sub:SUB_TUDO},
   estoquista:{label:'Estoquista',desc:'Estoque principal: recebe, separa requisições, aceita retornos, conta e registra CMV',perms:['insumos','estoque','cmv'],sub:subDe(['posicao','mov','contagem','req_separar','retorno_aceitar','cmv']),setorPrincipal:true},
+  estoquista_compras:{label:'Estoquista + compras',desc:'Estoquista que também lança notas e cuida das compras; no Financeiro vê só os Lançamentos',perms:['insumos','estoque','cmv','financeiro'],sub:subDe(['posicao','mov','contagem','req_separar','retorno_aceitar','cmv','compras','historico','nota','valores','fin_nota']),setorPrincipal:true},
   chefe:{label:'Chefe de setor',desc:'Requisita para o próprio setor, conta e vê o saldo dele',perms:['estoque'],sub:subDe(['posicao','contagem','req_criar'])},
   producao:{label:'Chefe da produção',desc:'Chefe de setor + registra produção e devolve preparados ao principal',perms:['estoque'],sub:subDe(['posicao','mov','contagem','req_criar','producao'])},
-  compras:{label:'Compras',desc:'Lança nota, lista e histórico de compras, cadastro de produto',perms:['insumos','estoque','financeiro'],sub:subDe(['posicao','mov','compras','historico','nota','valores','fin_nota'])},
-  fiscal:{label:'Fiscal',desc:'Lança notas e despesas; forma, boletos e baixas ficam com o financeiro',perms:['insumos','estoque','financeiro'],sub:subDe(['posicao','mov','compras','historico','nota','valores','fin_nota'])},
-  financeiro:{label:'Financeiro',desc:'Módulo financeiro completo: notas, pagamentos, boletos e baixas',perms:['dashboard','financeiro','dre','folha'],sub:subDe(['fin_nota','fin_pagto'])},
+  compras:{label:'Compras',desc:'Lança nota, lista e histórico de compras, cadastro de produto; no Financeiro vê só os Lançamentos',perms:['insumos','estoque','financeiro'],sub:subDe(['posicao','mov','compras','historico','nota','valores','fin_nota'])},
+  fiscal:{label:'Fiscal',desc:'Lança notas e despesas (só a aba Lançamentos); forma, boletos e baixas ficam com o financeiro',perms:['insumos','estoque','financeiro'],sub:subDe(['posicao','mov','compras','historico','nota','valores','fin_nota'])},
+  financeiro:{label:'Financeiro',desc:'Módulo financeiro completo: notas, pagamentos, boletos e baixas',perms:['dashboard','financeiro','dre','folha'],sub:subDe(['fin_nota','fin_pagto','fin_completo'])},
   personalizado:{label:'Personalizado',desc:'Você escolhe cada acesso',perms:[],sub:null}
 };
 function normMembro(m){if(!m.nivel||!NIVEIS[m.nivel])m.nivel=m.nivel||'gerente';if(!NIVEIS[m.nivel])m.nivel='personalizado';if(!Array.isArray(m.permissoes))m.permissoes=(NIVEIS[m.nivel]||NIVEIS.gerente).perms.slice();if(!Array.isArray(m.setores))m.setores=[];if(m.sub&&typeof m.sub!=='object')delete m.sub;return m;}
@@ -6603,7 +6608,7 @@ function editMembro(id){editMembroId=id;const m=normMembro(DB.equipe.find(x=>x.i
     </div>
     <div id="mb_sub_box" style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px">
       <div style="font-size:12px;font-weight:600;color:var(--muted)">Dentro de Estoque & Compras e do Financeiro, o que pode fazer</div>
-      <div style="font-size:11.5px;color:var(--soft);margin:2px 0 8px">Vale quando a área está marcada acima. "Lançamento de nota" libera o botão de lançar nota também para quem não tem o Financeiro. Os dois itens "Financeiro:" separam quem lança a nota (fiscal) de quem define boletos e dá baixa (financeiro).</div>
+      <div style="font-size:11.5px;color:var(--soft);margin:2px 0 8px">Vale quando a área está marcada acima. "Lançamento de nota" libera o botão de lançar nota também para quem não tem o Financeiro. Os itens "Financeiro:" separam quem lança a nota (fiscal) de quem define boletos e dá baixa (financeiro); desmarque "todas as abas" para o membro ver no Financeiro apenas a aba Lançamentos (sem visão geral, contas, fluxo, DRE, conciliação e parâmetros).</div>
       <div id="mb_sub" style="display:grid;grid-template-columns:1fr 1fr;gap:7px 16px">${ESTOQUE_SUBS.map(([k,l])=>`<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer"><input type="checkbox" data-sub="${k}" ${(m.sub?!!m.sub[k]:true)?'checked':''} onchange="membroTogglePerm()" style="width:15px;height:15px;accent-color:var(--navy)"> ${l}</label>`).join('')}</div>
     </div>
   </div>
@@ -7251,7 +7256,7 @@ function custoUnitCompra(ins){return ins.qtd?ins.preco/ins.qtd:0;} // custo por 
 /* Padrão de compra: o produto tem a unidade de USO (g/ml/un, a mesma da ficha técnica) e, opcionalmente,
    uma embalagem de compra (pé com 12 folhas, pacote com 400 g). A nota traz "2 UN" = 2 embalagens;
    o Flow converte para a unidade do produto e NUNCA troca a unidade do produto a partir de um lançamento. */
-const EMB_SUGESTOES=['pacote','pé','caixa','fardo','saco','garrafa','lata','bandeja','dúzia','maço','balde','galão','pote','engradado'];
+const EMB_SUGESTOES=['pacote','pé','caixa','fardo','saco','garrafa','lata','bandeja','dúzia','maço','balde','galão','bisnaga','bombona','pote','engradado'];
 function insEmb(ins){return (ins&&ins.embNome&&+ins.embQtd>0)?{nome:ins.embNome,qtd:+ins.embQtd}:null;}
 function uniCompat(a,b){return !!(BASE[a]&&BASE[a]===BASE[b]);}
 function lmQtdNaUnidade(r,ins){const q=+r.qtd||0;if(!(q>0)||!ins)return null;const ru=r.uni||'';const emb=insEmbDe(r,ins);
@@ -7333,7 +7338,7 @@ function viewEstoque(){
     : estoqueTab==='producao' ? (estSubprodutos().length?`<button class="btn btn-primary no-print" onclick="estProducaoModal()">${icoPlus} Registrar produção</button>`:'')
     : estoqueTab==='requisicoes' ? (estMultiArm()&&!estReqSel&&pode('req_criar')?`<button class="btn btn-primary no-print" onclick="estReqNova()">${icoPlus} Nova requisição</button>`:'')
     : `${pode('mov')&&souDoPrincipal()?`<button class="btn btn-primary no-print" onclick="estMovModal('saida')">${icoPlus} Movimentação</button>${(estMultiArm()||estTransfEntreUnidades())?`<button class="btn btn-ghost no-print" onclick="estTransfModal('',{})">⇄ Transferir</button>`:''}`:''}${pode('contagem')?`<button class="btn btn-ghost no-print" onclick="estContagemNova()">📋 Contar</button>`:''}${pode('cmv')&&souDoPrincipal()?`<button class="btn btn-ghost no-print" onclick="lancarCmvDoEstoque()">↗ Registrar no CMV</button>`:''}`;
-  if(pode('nota')&&MEMBRO_PERMS&&!MEMBRO_PERMS.includes('financeiro')&&['compras','historico','contagem'].includes(estoqueTab))$('#topActions').innerHTML+=`<button class="btn btn-ghost no-print" onclick="lancarModal()">📄 Lançar nota</button>`;
+  if(pode('nota')&&MEMBRO_PERMS&&(!MEMBRO_PERMS.includes('financeiro')||finSoLanc())&&['compras','historico','contagem'].includes(estoqueTab))$('#topActions').innerHTML+=`<button class="btn btn-ghost no-print" onclick="lancarModal()">📄 Lançar nota</button>`;
   if(MEMBRO_PERMS&&podeDevolverDe().length&&estoqueTab==='contagem')$('#topActions').innerHTML+=`<button class="btn btn-ghost no-print" onclick="estRetornoModal()">↩ Devolver ao principal</button>`;
   if(estoqueTab==='historico'){$('#view').innerHTML=estHistHTML();return;}
   if(estoqueTab==='producao'){$('#view').innerHTML=estProducaoHTML();return;}
@@ -7676,8 +7681,8 @@ const EST_ABA_PERM={contagem:['posicao'],mov:['mov'],contar:['contagem'],produca
 function estAbasPermitidas(){return EST_ABAS.filter(([k])=>(k!=='vendaspdv'||(DB.fin&&(DB.fin.pdvTipo==='takeat'||DB.fin.pdvTipo==='suitable')))&&(EST_ABA_PERM[k]||[]).some(p=>pode(p)));}
 function estTabsHTML(){return `<div class="pill-filter tabs no-print" style="margin-bottom:16px">${estAbasPermitidas().map(([k,l])=>`<button class="${estoqueTab===k?'on':''}" onclick="estoqueTab='${k}';viewEstoque()">${l}</button>`).join('')}</div>`;}
 function estTipoTag(t){const T=EST_TIPOS[t]||['?','tag-gray'];return `<span class="tag ${T[1]}">${T[0]}</span>`;}
-function estProdDatalist(id){return `<datalist id="${id}">${Object.values(DB.insumos).filter(estEstocavel).sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>`<option value="${esc(i.nome)}"></option>`).join('')}</datalist>`;}
-function estProdPorNome(nome){const n=lmNorm(nome);if(!n)return null;const L=Object.values(DB.insumos).filter(estEstocavel);return L.find(i=>lmNorm(i.nome)===n)||L.find(i=>lmNorm(i.nome).startsWith(n))||null;}
+function estProdDatalist(id,soPrimarios){return `<datalist id="${id}">${Object.values(DB.insumos).filter(estEstocavel).filter(i=>!soPrimarios||i.tipo!=='preparado').sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>`<option value="${esc(i.nome)}"></option>`).join('')}</datalist>`;}
+function estProdPorNome(nome,soPrimarios){const n=lmNorm(nome);if(!n)return null;const L=Object.values(DB.insumos).filter(estEstocavel).filter(i=>!soPrimarios||i.tipo!=='preparado');return L.find(i=>lmNorm(i.nome)===n)||L.find(i=>lmNorm(i.nome).startsWith(n))||null;}
 function estQ(v,u){return fmtN(+v||0,3).replace(/,?0+$/,'')+(u?' '+u:'');}
 function estArmChip(arm){return estMultiArm()?`<span class="tag tag-gray" style="font-size:10.5px;padding:1px 7px">${esc(estArmNome(arm))}</span>`:'';}
 function estAlertasHTML(items){const h=hojeISO();const abaixo=items.filter(x=>x.comprar).length;let rupt=0,parados=0;
@@ -7754,7 +7759,8 @@ function estMovModal(tipo,insId,manter){tipo=tipo||'saida';const multi=estMultiA
   const motivos=tipo==='saida'?EST_MOTIVOS_SAIDA:tipo==='perda'?DESP_MOTIVOS:null;
   modal(`<div class="modal-head"><h3>Nova movimentação</h3><button class="x" onclick="estMovDraft=null;closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    ${estProdDatalist('est_prod_dl')}
+    ${estProdDatalist('est_prod_dl',tipo==='entrada')}
+    ${tipo==='entrada'?`<div style="font-size:11.5px;color:var(--soft);margin:-4px 0 10px">Entrada é só de produtos primários (compra). Preparados e subprodutos entram pela <b>Produção</b>.</div>`:''}
     <div class="pill-filter" style="margin-bottom:14px">${EST_MOV_TIPOS.map(([k,l])=>`<button class="${tipo===k?'on':''}" onclick="estMovModal('${k}','',true)">${l}</button>`).join('')}${(multi||estTransfEntreUnidades())?`<button onclick="estMovLer();estTransfModal((estMovDraft.itens.find(x=>x.insumoId)||{}).insumoId||'')">⇄ Transferir</button>`:''}</div>
     <div class="grid-2">
       <div class="field"><label>Data</label><input type="date" class="input" id="em_data" value="${d.data}" onchange="estMovDraft.data=this.value"></div>
@@ -7786,7 +7792,7 @@ function estMovLinhas(foco){const box=$('#em_linhas');if(!box)return;const d=est
       <button class="icon-btn" style="width:28px;height:28px" onclick="estMovLer();estMovDraft.itens.splice(${i},1);if(!estMovDraft.itens.length)estMovDraft.itens.push({insumoId:'',q:'',custo:0});estMovLinhas()">${icoX}</button></div>`;}).join('');
   estMovResumo();
   if(foco){const els=box.querySelectorAll('.em-n');const el=els[els.length-1];if(el&&!el.value&&!ehMobile())el.focus();}}
-function estMovProd(i,v){estMovLer();const ins=estProdPorNome(v);const it=estMovDraft.itens[i];it.insumoId=ins?ins.id:'';it.nome=v;
+function estMovProd(i,v){estMovLer();const ins=estProdPorNome(v,estMovDraft.tipo==='entrada');const it=estMovDraft.itens[i];it.insumoId=ins?ins.id:'';it.nome=v;
   if(ins){it.custo=estCustoAtual(ins);if(!estMovDraft.armManual&&i===0&&estMovDraft.tipo==='entrada'){estMovDraft.arm=estMovArmDef('entrada',ins);const a=$('#em_arm');if(a)a.value=estMovDraft.arm;}
     estMovLinhas();const q=$('#em_linhas').querySelectorAll('.em-q')[i];if(q)q.focus();}}
 function estMovValidos(){return (estMovDraft?estMovDraft.itens:[]).filter(x=>x.insumoId&&DB.insumos[x.insumoId]&&x.q!==''&&(parseFloat(x.q)>0||(estMovDraft.tipo==='ajuste'&&parseFloat(x.q)>=0)));}
@@ -7797,7 +7803,7 @@ function estMovResumo(){const el=$('#em_resumo');if(!el||!estMovDraft)return;con
 /* lista com busca e quantidade por linha: digitar a quantidade já coloca o produto na movimentação */
 function estMovBulkToggle(){const b=$('#em_bulk');if(!b)return;const aberto=b.style.display!=='none';b.style.display=aberto?'none':'';if(!aberto){estMovLer();estMovBulkRender();const i=$('#em_bulk_busca');if(i&&!ehMobile())i.focus();}}
 function estMovBulkRender(){const b=$('#em_bulk');if(!b)return;const d=estMovDraft;const q=lmNorm(estMovBulkQ);
-  const L=Object.values(DB.insumos).filter(estEstocavel).filter(i=>!q||lmNorm(i.nome+' '+(i.cat||'')+' '+(i.sub||'')).includes(q)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt',{sensitivity:'base'})).slice(0,300);
+  const L=Object.values(DB.insumos).filter(estEstocavel).filter(i=>d.tipo!=='entrada'||i.tipo!=='preparado').filter(i=>!q||lmNorm(i.nome+' '+(i.cat||'')+' '+(i.sub||'')).includes(q)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt',{sensitivity:'base'})).slice(0,300);
   const qDe=id=>{const it=d.itens.find(x=>x.insumoId===id);return it?it.q:'';};
   b.innerHTML=`<input class="input" id="em_bulk_busca" value="${esc(estMovBulkQ)}" placeholder="🔎 Filtrar por produto ou categoria…" style="margin-bottom:8px" oninput="estMovBulkQ=this.value;estMovBulkRender();$('#em_bulk_busca').focus()">
     <div style="max-height:260px;overflow:auto">${L.map(i=>{const u=uSym(i.uni);const s=estMultiArm()?estSaldoArm(i,d.arm):(+i.estoqueAtual||0);const v=qDe(i.id);return `<div style="display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)"><div style="min-width:0"><div style="font-size:13px;font-weight:${v?700:500};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.nome)}</div><div style="font-size:11px;color:${s<-0.0005?'var(--red)':'var(--soft)'}">saldo ${estQ(s,u)}${i.sub||i.cat?' · '+esc(i.sub||i.cat):''}</div></div><input class="input" type="number" step="0.001" min="0" inputmode="decimal" value="${v||''}" placeholder="${d.tipo==='ajuste'?'saldo':u||'qtd'}" style="text-align:right;padding:6px 8px" oninput="estMovBulkSet('${i.id}',this.value)"></div>`;}).join('')||'<div class="gp-mini">Nenhum produto com esse filtro.</div>'}</div>
