@@ -4367,8 +4367,8 @@ function lmAgrupar(rows){const map=new Map();
   return Array.from(map.values()).map(g=>{const q=+g.qtd||0;
     g.vun=q>0?(g._tot/q):g._tot;g.vunStr=fmtUnitInput(g.vun);delete g._tot;return g;});}
 function subOptions(grupo,sel){const subs=ordPt((DB.categorias[grupo]||{subs:[]}).subs);return `<option value="">—</option>`+subs.map(s=>`<option ${s===sel?'selected':''}>${esc(s)}</option>`).join('');}
-let lmPagtoModo='agora', lmObs='';
-function lancarModal(manterRascunho){if(!manterRascunho){lmEdit=null;lmObs='';lmPagtoModo=podeFinPagto()?'agora':'depois';}if(!manterRascunho||!lancDraft.length)lancDraft=[lmBlank()];
+let lmPagtoModo='agora', lmObs='', lmNfe=null;   // lmNfe = {chave,cnpj,forn,nNF} quando o rascunho veio da caixa de entrada da Sefaz
+function lancarModal(manterRascunho){if(!manterRascunho){lmEdit=null;lmObs='';lmNfe=null;lmPagtoModo=podeFinPagto()?'agora':'depois';}if(!manterRascunho||!lancDraft.length)lancDraft=[lmBlank()];
   const fornList=((DB.fin&&DB.fin.fornecedores)||[]).map(f=>`<option value="${esc(f.nome)}"></option>`).join('');
   const temIA=(typeof CLOUD!=='undefined'&&CLOUD&&sb);
   const svgCam=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
@@ -4869,6 +4869,110 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
   }catch(e){lmIaStatus('Erro ao processar a nota: '+((e&&e.message)||e)+'.','erro');}
   finally{lmLoading(false);btns.forEach(b=>{b.disabled=false;b.style.opacity='';});}
 }
+/* ===== NF-e recebidas da Sefaz (caixa de entrada · nada vira lançamento sem revisão) ===== */
+let NFE_CACHE=null;
+function nfeAtivo(){return !!(DB.fin&&DB.fin.nfeSefaz&&typeof sb!=='undefined'&&sb&&CLOUD&&ORG&&podeFinNota());}
+function nfeChaveLancada(chave){return !!chave&&(DB.lancamentos||[]).some(l=>l.nfeChave===chave);}
+function normUniNfe(u){const s=(u||'').toString().trim().toLowerCase().replace(/[^a-z]/g,'');const m={un:'un',und:'un',unid:'un',unidade:'un',pc:'un',pç:'un',pca:'un',pec:'un',peca:'un',kg:'kg',kilo:'kg',quilo:'kg',g:'g',gr:'g',l:'L',lt:'L',litro:'L',ml:'ml'};return m[s]||'';}   // '' = embalagem (cx, fd, dz, pct, sc, bd…)
+function embDaUnidade(u,desc){const s=(u||'').toString().trim();let m=s.match(/(\d+)/);if(m&&+m[1]>1)return +m[1];if(/^dz/i.test(s))return 12;const d=(desc||'');m=d.match(/\b(?:c\/|com|cx|caixa|fd|fardo|pct|pacote)\s*(\d{1,3})\b/i)||d.match(/\b(\d{1,3})\s*(?:un|unid|und|pcs?)\b/i);return m&&+m[1]>1?+m[1]:0;}
+function nfeInboxHTML(){if(!nfeAtivo())return '';setTimeout(nfeInboxCarregar,30);
+  return `<div id="nfeInbox" class="card card-pad" style="margin-bottom:14px;border-color:var(--gold)"><div class="gp-mini">Consultando as notas recebidas da Sefaz…</div></div>`;}
+async function nfeInboxCarregar(){const el=$('#nfeInbox');if(!el)return;
+  try{const r=await chamarFn('nfe-sync',{acao:'lista',orgId:ORG.id,limite:120});if(!r.data||!r.data.ok)throw new Error((r.data&&r.data.erro)||r.status);NFE_CACHE=r.data.notas||[];}
+  catch(e){el.innerHTML='<div class="gp-mini" style="color:var(--red)">Não foi possível consultar as notas da Sefaz: '+esc((e&&e.message)||e)+'</div>';return;}
+  nfeInboxRender();nfeNavBadge();}
+function nfeInboxRender(){const el=$('#nfeInbox');if(!el||!NFE_CACHE)return;const h=hojeISO();
+  const ab=NFE_CACHE.filter(n=>['nova','resumo','cancelada'].includes(n.status));
+  const novas=ab.filter(n=>n.status==='nova'),resumos=ab.filter(n=>n.status==='resumo'),canc=ab.filter(n=>n.status==='cancelada');
+  const feitas=NFE_CACHE.filter(n=>n.status==='lancada'||n.status==='ignorada').slice(0,8);
+  if(!ab.length&&!feitas.length){el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div style="font-weight:700">📨 Notas recebidas da Sefaz</div><div class="gp-mini">Nenhuma nota nova. A Sefaz é consultada de hora em hora.</div></div><button class="btn btn-ghost btn-sm" onclick="nfeSync()">⟳ Consultar agora</button></div>`;return;}
+  const linha=n=>{const dup=n.status==='nova'&&(nfeChaveLancada(n.chave)||nfJaLancada(n.nnf,n.fornecedor));const dias=n.dhEmi?Math.max(0,Math.round((new Date(h+'T12:00:00')-new Date(String(n.dhEmi).slice(0,10)+'T12:00:00'))/86400000)):0;
+    const st=n.status==='resumo'?'<span class="tag tag-gray" title="A Sefaz ainda não liberou o XML completo. A ciência da operação é registrada automaticamente e o XML chega na próxima hora.">aguardando XML</span>':n.status==='cancelada'?'<span class="tag tag-red">cancelada pelo fornecedor</span>':dup?'<span class="tag tag-amber" title="Já existe lançamento com este número de NF e fornecedor">já lançada?</span>':(dias>3?'<span class="tag tag-amber">há '+dias+' dias</span>':'');
+    const acts=n.status==='nova'?`<button class="btn btn-primary btn-sm" onclick="nfeRevisar('${n.chave}')">Revisar e lançar</button>${dup?`<button class="btn btn-ghost btn-sm" title="Marca como lançada sem criar lançamento (a nota já está no Flow)" onclick="nfeMarcarLancada('${n.chave}')">Já está lançada</button>`:''}<button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="nfeIgnorar('${n.chave}')">Ignorar</button>`
+      :n.status==='cancelada'?`<button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="nfeIgnorar('${n.chave}','cancelada pelo fornecedor')">Dispensar</button>`:'';
+    const mob=ehMobile();
+    return `<div style="display:grid;grid-template-columns:${mob?'1fr':'minmax(220px,1.6fr) 150px auto'};gap:6px 14px;align-items:center;padding:9px 0;border-top:1px solid var(--line)">
+      <div style="min-width:0"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(n.fornecedor||'')}">${esc(n.fornecedor||'(sem XML)')}</div><div class="gp-mini">${n.dhEmi?fmtDataBR(String(n.dhEmi).slice(0,10)):'—'} · ${n.nnf?'NF '+esc(n.nnf)+(n.serie?'/'+esc(n.serie):''):'chave …'+n.chave.slice(-8)}${n.nItens?' · '+n.nItens+' item(ns)':''}${n.eventos&&n.eventos.length?' · '+n.eventos.length+' evento(s)':''} ${st}</div></div>
+      <div style="font-size:14px;font-weight:700;${mob?'':'text-align:right'}">${fmtBRL(n.valor||0)}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;${mob?'':'justify-content:flex-end'}">${acts}</div></div>`;};
+  const tot=novas.reduce((s,n)=>s+(+n.valor||0),0);
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+      <div><div style="font-weight:700">📨 Notas recebidas da Sefaz <span class="tag tag-gold" style="font-size:9px;letter-spacing:.3px">${novas.length} para revisar · ${fmtBRL(tot)}</span></div><div class="gp-mini">Chegam sozinhas de hora em hora. Nada entra nos lançamentos sem alguém revisar itens, quantidades e o vínculo com o cadastro.${resumos.length?' <b>'+resumos.length+'</b> aguardando o XML completo.':''}</div></div>
+      <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="nfeSync()">⟳ Consultar agora</button>${feitas.length?`<button class="btn btn-ghost btn-sm" onclick="nfeHistoricoModal()">Histórico</button>`:''}</div></div>
+    ${ab.length?ab.sort((a,b)=>String(b.dhEmi||'').localeCompare(String(a.dhEmi||''))).map(linha).join(''):'<div class="gp-mini" style="padding:6px 0">Nenhuma nota nova para revisar.</div>'}`;}
+function nfeNavBadge(){const a=document.querySelector('#nav a[data-route=financeiro]');if(!a)return;let b=a.querySelector('.nav-badge.nfe');const n=(NFE_CACHE||[]).filter(x=>x.status==='nova').length;
+  if(!n){if(b)b.remove();return;}if(!b){b=document.createElement('span');b.className='nav-badge nfe';b.style.background='var(--gold)';a.appendChild(b);}b.textContent=n;b.title=n+' nota(s) da Sefaz para revisar';}
+async function nfeSync(){toast('Consultando a Sefaz…');const r=await chamarFn('nfe-sync',{acao:'sync',orgId:ORG.id});const d=r.data||{};
+  if(!d.ok)return toast('Sefaz: '+(d.erro||'falha'),8000);if(d.pulado)toast(d.pulado,7000);else toast('Sefaz '+d.cStat+' · '+(d.novas||0)+' nota(s) nova(s)'+(d.resumos?' · '+d.resumos+' resumo(s)':'')+(d.canceladas?' · '+d.canceladas+' cancelada(s)':''),8000);
+  nfeInboxCarregar();const st=$('#nfe_status');if(st)nfeCarregarStatus();}
+async function nfeIgnorar(chave,motivoFixo){const motivo=motivoFixo||prompt('Motivo para ignorar esta nota (ex.: equipamento, nota de terceiro, devolução):');if(motivo==null)return;
+  const r=await chamarFn('nfe-sync',{acao:'ignorar',orgId:ORG.id,chave,motivo});if(!r.data||!r.data.ok)return toast('Não foi possível: '+((r.data&&r.data.erro)||'falha'));toast('Nota ignorada');nfeInboxCarregar();}
+async function nfeMarcarLancada(chave){if(!confirm('Marcar esta nota como já lançada, sem criar lançamento?'))return;const r=await chamarFn('nfe-sync',{acao:'lancada',orgId:ORG.id,chave,ids:[]});if(!r.data||!r.data.ok)return toast('Não foi possível: '+((r.data&&r.data.erro)||'falha'));toast('Nota marcada como lançada');nfeInboxCarregar();}
+async function nfeReabrir(chave){const r=await chamarFn('nfe-sync',{acao:'reabrir',orgId:ORG.id,chave});if(!r.data||!r.data.ok)return toast('Não foi possível: '+((r.data&&r.data.erro)||'falha'));toast('Nota de volta à caixa de entrada');closeModal();nfeInboxCarregar();}
+function nfeHistoricoModal(){const L=(NFE_CACHE||[]).filter(n=>n.status==='lancada'||n.status==='ignorada').slice(0,60);
+  modal(`<div class="modal-head"><h3>Notas da Sefaz · histórico</h3><button class="x" onclick="closeModal()">${icoX}</button></div><div class="modal-body">
+    ${L.length?L.map(n=>`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px"><div style="min-width:0"><b>${esc(n.fornecedor||'')}</b> · NF ${esc(n.nnf||'')} · ${fmtBRL(n.valor||0)}<div class="gp-mini">${n.status==='lancada'?'lançada':'ignorada'}${n.lancadoPor?' por '+esc(n.lancadoPor):''}${n.lancadoEm?' em '+fmtDataBR(String(n.lancadoEm).slice(0,10)):''}${n.motivo?' · '+esc(n.motivo):''}</div></div><button class="btn btn-ghost btn-sm" onclick="nfeReabrir('${n.chave}')">Reabrir</button></div>`).join(''):'<div class="gp-mini">Nada ainda.</div>'}
+  </div><div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fechar</button></div>`);}
+/* abre a tela de lançamento preenchida pelo XML (mesma tela da foto, sem erro de leitura) */
+async function nfeRevisar(chave){lancarModal();lmLoading(true,'Abrindo a nota da Sefaz…');
+  try{const r=await chamarFn('nfe-sync',{acao:'nota',orgId:ORG.id,chave});const n=r.data&&r.data.nota;if(!n)throw new Error((r.data&&r.data.erro)||'a nota ainda não tem o XML completo');
+    if(typeof normData==='function')normData();
+    const forn=(n.emit&&n.emit.nome||'').trim(),cnpj=(n.emit&&n.emit.cnpj)||'',dataNota=(n.dhEmi||'').slice(0,10)||hojeISO();
+    const hist=(DB.lancamentos||[]).filter(l=>l.grupo&&l.fornecedor&&lmNorm(l.fornecedor)===lmNorm(forn)).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+    const gDef=hist.length?hist[0].grupo:'CMV',sDef=hist.length?(hist[0].sub||''):'';const cods=(DB.fin&&DB.fin.nfeCodigos)||{};
+    let nEmb=0,nCod=0,nExtra=0;
+    const lidas=(n.itens||[]).map(it=>{const raw=(it.xProd||'').trim();let insId=cods[cnpj+'|'+it.cProd]||'';if(insId&&!DB.insumos[insId])insId='';if(insId)nCod++;
+      const m=insId?null:lmAcharInsumo(raw,forn);const ins=insId?DB.insumos[insId]:((m&&m.mesmoForn)?DB.insumos[m.id]:null);
+      const extras=+((it.vFrete||0)+(it.vSeg||0)+(it.vOutro||0)+(it.ipi||0)+(it.icmsST||0)-(it.vDesc||0)).toFixed(2);if(Math.abs(extras)>0.004)nExtra++;
+      const tot=+((it.vProd||0)+extras).toFixed(2);const qtd=+it.qCom||1;const u=(it.uCom||'').trim();const uBase=normUniNfe(u);
+      let embLanc=null;const ne=embDaUnidade(u,raw);if(ins&&!uBase&&ne>1&&!insEmb(ins)&&ins.uni==='un'){embLanc={nome:u,qtd:ne};nEmb++;}
+      const hi=ins?hist.find(l=>l.insumoId===ins.id):null;const vun=qtd>0?tot/qtd:tot;
+      return Object.assign(lmBlank(),{data:dataNota,grupo:hi?hi.grupo:gDef,sub:hi?(hi.sub||''):sDef,desc:ins?ins.nome:raw,descOrig:raw,nf:n.nNF||'',fromIA:true,fornecedor:forn,vun,vunStr:fmtUnitInput(vun),qtd,forma:'',insumoId:ins?ins.id:'',insSugerido:(m&&!m.mesmoForn)?m.id:'',uni:uBase||u,embLanc,_cProd:it.cProd||'',_ean:it.ean||''});});
+    if(!lidas.length)throw new Error('a nota não tem itens');
+    lancDraft=lmAgrupar(lidas);lmNfe={chave,cnpj,forn,nNF:n.nNF||''};
+    const obsP=['NF-e '+chave];if(n.infCpl)obsP.push(String(n.infCpl).slice(0,240));lmObs=obsP.join(' · ');const ob=$('#lm_obs');if(ob)ob.value=lmObs;
+    renderLmRows();const _bm=$('#lm_bulk_m');if(_bm&&lancDraft.length>1)_bm.open=true;const bn=$('#lm_bulk_nf');if(bn&&n.nNF)bn.value=n.nNF;
+    const dups=(n.duplicatas||[]).filter(d=>d.venc&&+d.valor>0);if(dups.length){lmNotaAplicarParcelas(dups.map(d=>({data:d.venc,valor:+d.valor})));renderLmRows();}else lmNotaAutoCond();
+    const semProd=lancDraft.filter(r=>!r.insumoId&&!r.insSugerido).length,outroF=lancDraft.filter(r=>!r.insumoId&&r.insSugerido).length,reconh=lancDraft.filter(r=>r.insumoId).length;
+    const T=n.totais||{};const imp=[];if(+T.vST)imp.push('ICMS-ST '+fmtBRL(+T.vST));if(+T.vIPI)imp.push('IPI '+fmtBRL(+T.vIPI));if(+T.vFrete)imp.push('frete '+fmtBRL(+T.vFrete));if(+T.vOutro)imp.push('outras '+fmtBRL(+T.vOutro));if(+T.vDesc)imp.push('desconto −'+fmtBRL(+T.vDesc));
+    const av=[];av.push(reconh+' de '+lancDraft.length+' item(ns) reconhecido(s) no cadastro'+(nCod?' ('+nCod+' pelo código do fornecedor)':''));if(semProd)av.push(semProd+' não cadastrado(s): vincule ou cadastre');if(outroF)av.push(outroF+' existe(m) com outro fornecedor');if(nEmb)av.push(nEmb+' com embalagem da nota (ex.: caixa com 12) convertida para unidade');if(imp.length)av.push(imp.join(' + ')+' já no custo dos itens · total da nota '+fmtBRL(+T.vNF||0));if(dups.length)av.push(dups.length+' parcela(s) do boleto aplicada(s)');
+    if(nfeChaveLancada(chave)||nfJaLancada(n.nNF,forn))av.push('⚠ esta NF já consta nos lançamentos');
+    lmIaStatus('XML oficial da Sefaz · NF '+esc(n.nNF||'')+' de '+esc(forn)+'. '+av.join(' · ')+'. Revise e clique em Lançar.',(semProd||outroF)?'info':'ok');
+  }catch(e){lmIaStatus('Não foi possível abrir a nota: '+esc((e&&e.message)||e),'erro');}
+  finally{lmLoading(false);}}
+/* card em Parâmetros › Estoque e PDV */
+function nfeCardHTML(){if(!(typeof sb!=='undefined'&&sb&&CLOUD&&ORG))return '';setTimeout(nfeCarregarStatus,60);
+  return `<div class="card card-pad" style="grid-column:1/-1">
+    <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Notas fiscais da Sefaz · caixa de entrada</div><div class="desc">Com o certificado digital (e-CNPJ A1) o Flow consulta a Sefaz de hora em hora e recebe as notas emitidas contra o restaurante. Elas aparecem em Financeiro › Lançamentos para alguém do fiscal revisar e lançar. Nada entra sozinho.</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="nfeSync()">⟳ Consultar agora</button></div></div>
+    <div id="nfe_status" class="gp-mini" style="margin-bottom:10px">Consultando…</div>
+    <div class="grid-2">
+      <div class="field"><label>CNPJ do restaurante</label><input class="input" id="nfe_cnpj" placeholder="00.000.000/0000-00" value="${esc((DB.conta&&DB.conta.cnpj)||'')}"></div>
+      <div class="field"><label>UF da empresa <span class="hint">código IBGE</span></label><select class="input" id="nfe_uf">${[['11','RO'],['12','AC'],['13','AM'],['14','RR'],['15','PA'],['16','AP'],['17','TO'],['21','MA'],['22','PI'],['23','CE'],['24','RN'],['25','PB'],['26','PE'],['27','AL'],['28','SE'],['29','BA'],['31','MG'],['32','ES'],['33','RJ'],['35','SP'],['41','PR'],['42','SC'],['43','RS'],['50','MS'],['51','MT'],['52','GO'],['53','DF']].map(([c,u])=>`<option value="${c}">${u}</option>`).join('')}</select></div>
+      <div class="field"><label>Certificado (.pem/.crt) <span class="hint">vai só para o servidor</span></label><input class="input" type="file" id="nfe_cert" accept=".pem,.crt,.cer,.txt"></div>
+      <div class="field"><label>Chave privada (.key/.pem, sem senha)</label><input class="input" type="file" id="nfe_key" accept=".key,.pem,.txt"></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px"><input type="checkbox" id="nfe_ciencia" checked style="width:15px;height:15px;accent-color:var(--navy)"> Registrar "ciência da operação" automaticamente para receber o XML completo</label>
+      <button class="btn btn-primary btn-sm" onclick="nfeSalvar()">Salvar e testar</button>
+      <button class="btn btn-ghost btn-sm" onclick="nfeLigar(true)">Ligar</button>
+      <button class="btn btn-ghost btn-sm" onclick="nfeLigar(false)" style="color:var(--red)">Desligar</button>
+    </div>
+    ${prmOnde(['Financeiro › Lançamentos (caixa "Notas recebidas da Sefaz")','Lançamento de nota (tela preenchida pelo XML)'])}
+  </div>`;}
+async function nfeCarregarStatus(){const el=$('#nfe_status');if(!el)return;try{const r=await chamarFn('nfe-sync',{acao:'status',orgId:ORG.id});const c=r.data&&r.data.cfg;
+  if(!r.data||!r.data.ok){el.innerHTML='<span style="color:var(--red)">Não foi possível consultar: '+esc((r.data&&r.data.erro)||r.status)+'</span>';return;}
+  if(!c){el.innerHTML='Ainda não configurado. Informe CNPJ, UF, certificado e chave e clique em <b>Salvar e testar</b>.';return;}
+  if($('#nfe_cnpj')&&c.cnpj)$('#nfe_cnpj').value=c.cnpj;if($('#nfe_uf'))$('#nfe_uf').value=String(c.cuf_autor||26);if($('#nfe_ciencia'))$('#nfe_ciencia').checked=c.ciencia_auto!==false;
+  const k=r.data.contagem||{};const ult=c.log&&c.log[0];
+  el.innerHTML=`<span class="tag ${c.ativo?'tag-green':'tag-gray'}">${c.ativo?'ligada':'desligada'}</span> CNPJ <b>${esc(c.cnpj)}</b>${c.cert_validade?' · certificado válido até '+fmtDataBR(c.cert_validade):''} · ponteiro NSU ${esc(String(+c.ult_nsu||0))}${c.ultimo_sync?' · última consulta '+notifQuando(c.ultimo_sync):''}${c.proxima_em&&new Date(c.proxima_em)>new Date()?' · próxima '+notifQuando(c.proxima_em):''}<br>${k.nova||0} para revisar · ${k.resumo||0} aguardando XML · ${k.lancada||0} lançada(s) · ${k.ignorada||0} ignorada(s) · ${k.cancelada||0} cancelada(s)${ult?' · última resposta: '+esc(ult.cStat+' '+(ult.xMotivo||''))+(ult.novas?' ('+ult.novas+' nova(s))':''):''}${c.ultimo_erro?' · <span style="color:var(--red)">'+esc(c.ultimo_erro)+'</span>':''}`;
+  }catch(e){el.textContent='Falha ao consultar.';}}
+function nfeLerArquivo(inp){return new Promise(res=>{const f=inp&&inp.files&&inp.files[0];if(!f)return res('');const rd=new FileReader();rd.onload=()=>res(String(rd.result||''));rd.onerror=()=>res('');rd.readAsText(f);});}
+async function nfeSalvar(){const body={acao:'config',orgId:ORG.id,cnpj:($('#nfe_cnpj').value||'').replace(/\D/g,''),cuf_autor:parseInt($('#nfe_uf').value)||26,ciencia_auto:!!$('#nfe_ciencia').checked};
+  const cert=await nfeLerArquivo($('#nfe_cert')),key=await nfeLerArquivo($('#nfe_key'));if(cert)body.cert_pem=cert;if(key)body.key_pem=key;
+  toast('Salvando…');const r=await chamarFn('nfe-sync',body);if(!r.data||!r.data.ok)return toast('Sefaz: '+((r.data&&r.data.erro)||'falha'),8000);
+  DB.fin.nfeSefaz=true;save();if($('#nfe_cert'))$('#nfe_cert').value='';if($('#nfe_key'))$('#nfe_key').value='';toast('Integração salva. Clique em "Consultar agora" para a primeira leitura.',6000);nfeCarregarStatus();}
+async function nfeLigar(on){const r=await chamarFn('nfe-sync',{acao:on?'ligar':'desligar',orgId:ORG.id});if(!r.data||!r.data.ok)return toast('Sefaz: '+((r.data&&r.data.erro)||'falha'),7000);DB.fin.nfeSefaz=!!on;save();toast(on?'Consulta à Sefaz ligada':'Consulta à Sefaz desligada');nfeCarregarStatus();}
 /* ----- Editar a nota inteira (todos os lançamentos da mesma NF + fornecedor) ----- */
 function notaItens(nfe,fornecedor){const k=nfKey(nfe);if(!k)return [];const f=(fornecedor||'').trim().toLowerCase();
   return (DB.lancamentos||[]).filter(l=>!l.autoTaxa&&nfKey(l.nfe)===k&&(!f||!(l.fornecedor||'').trim()||(l.fornecedor||'').trim().toLowerCase()===f));}
@@ -4919,9 +5023,10 @@ function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
   // avisa se alguma NF do rascunho já foi lançada antes (mesma nota + mesmo fornecedor)
   const jaLancadas=[...new Set(lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo&&nfKey(r.nf)&&nfJaLancada(r.nf,r.fornecedor)).map(r=>(r.nf||'').trim()))];
   if(jaLancadas.length && !confirm('A NF '+jaLancadas.join(', ')+(jaLancadas.length===1?' já foi lançada':' já foram lançadas')+' para esse fornecedor.\n\nDeseja lançar mesmo assim?')) return;
-  let n=0,lastYM=null,prodAtu=0;const semConv=[];const obsNota=(lmObs||'').trim();const pendPagto=sepAtivo()&&(lmPagtoModo==='depois'||!podeFinPagto());const pendNomes=[];let pendTot=0;
+  let n=0,lastYM=null,prodAtu=0;const semConv=[];const idsNfe=[];const obsNota=(lmObs||'').trim();const pendPagto=sepAtivo()&&(lmPagtoModo==='depois'||!podeFinPagto());const pendNomes=[];let pendTot=0;
   lancDraft.forEach(r=>{const valor=lmTotalLinha(r);if(!valor||!r.grupo)return;
     const nv={id:uid(),data:r.data||hojeISO(),grupo:r.grupo,sub:r.sub||'',descricao:(r.desc||'').trim(),nfe:(r.nf||'').trim(),fornecedor:(r.fornecedor||'').trim(),valor,forma:r.forma||''};
+    if(lmNfe){nv.nfeChave=lmNfe.chave;idsNfe.push(nv.id);if(r.insumoId&&DB.insumos[r.insumoId]&&r._cProd){DB.fin.nfeCodigos=DB.fin.nfeCodigos||{};DB.fin.nfeCodigos[lmNfe.cnpj+'|'+r._cProd]=r.insumoId;}}   // Sefaz: guarda a chave e memoriza o código do item no fornecedor
     if(obsNota)nv.obs=obsNota;if(r.obsPagto)nv.obsPagto=(''+r.obsPagto).trim();
     if((+r.qtd||1)!==1){nv.qtd=+r.qtd;if(r.uni)nv.uni=r.uni;}
     if(r.embLanc&&+r.embLanc.qtd>0){nv.embNome=r.embLanc.nome;nv.embQtd=+r.embLanc.qtd;}
@@ -4940,6 +5045,7 @@ function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
   if(!n)return toast('Preencha ao menos um item com categoria e valor');
   if(pendNomes.length){try{notificar({perm:'fin_pagto'},'Nota aguardando definição de pagamento',pendNomes.join(' · ')+' · '+fmtBRL(pendTot));}catch(e){}setTimeout(()=>{try{pagtoNavBadge();renderBell();}catch(e){}},50);}
   if(lastYM&&lastYM!==curYM())lancYM=lastYM;
+  if(lmNfe){const c=lmNfe;lmNfe=null;chamarFn('nfe-sync',{acao:'lancada',orgId:ORG.id,chave:c.chave,ids:idsNfe}).then(()=>{nfeInboxCarregar();}).catch(()=>{});}
   save();closeModal();viewFinanceiro();
   toast((n===1?'Lançamento registrado':n+' lançamentos registrados')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':'')+(nfGeradas.length?' · sem NF: nº interno '+nfGeradas.join(', ')+' gerado para agrupar a nota':'')+lmSemConvMsg(semConv));}
 function lmSemConvMsg(arr){return arr.length?' · custo NÃO atualizado em '+arr.join(', ')+': a nota veio em outra unidade. Defina o padrão de compra no produto.':'';}
@@ -5074,6 +5180,7 @@ function finLancamentos(){
       <div class="dash-pill"><span>Despesas</span><b style="color:var(--red)">${fmtBRL(d.despTot)}</b></div>
       <div class="dash-pill"><span>Resultado</span><b style="color:${d.resultado>=0?'var(--green)':'var(--red)'}">${fmtBRL(d.resultado)}</b></div>
     </div>
+    ${nfeInboxHTML()}
     <div id="lancInfo" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">${lancInfoHTML(ls,ativo)}</div>
     ${ehMobile()?lancMobileHTML(ls,ativo,filtTot,fl,grupos):''}
     <div class="scroll-x mob-hide"><table><thead>
@@ -6217,7 +6324,7 @@ function prmEstoqueHTML(){const c=estCfg();const arms=estArmazens();const auto=[
       <div class="prm-exemplo">As vendas chegam por planilha (Estoque → Baixa por vendas), pela API do Flow ou pela integração com a Suitable abaixo. O Flow casa cada item com a ficha técnica pelo <b>código no PDV</b>; o que não casar você vincula uma vez.</div>
       ${prmOnde(['Estoque (baixa por vendas)','Fichas técnicas (código no PDV)','API do Flow'])}
     </div>
-    ${suitableCardHTML()}${takeatCardHTML()}${instadeliveryCardHTML()}</div>`;}
+    ${suitableCardHTML()}${takeatCardHTML()}${instadeliveryCardHTML()}${nfeCardHTML()}</div>`;}
 /* ===== Bancos (Santander / Bradesco / OFX) e Conciliação bancária · as credenciais ficam só no servidor (Edge Function banco-sync) ===== */
 const BANCO_NOME={santander:'Santander',bradesco:'Bradesco',outro:'Outro banco (OFX)'};
 let bancosCache=null;
