@@ -8597,6 +8597,8 @@ let CLOUD_TS=null, SAVE_STATE='idle', SAVE_RETRY=0, CLOUD_CONFLICT=false, CLOUD_
 let IS_SUPER=false, MY_UID=null, MY_LIMITE=5, CONSULTORES=[], adminConsFiltro='';
 let DONO_MODE=false, DONO_UNIDADES=[], DONO_EMAIL='', DONO_UID=null; // cliente que administra várias unidades (usa organizacoes.consultor_id, sem ser consultor)
 function emptyDB(){return {insumos:{},fichas:{},fin:{regime:'simples',aliquota:6,impostoFixo:75,comissaoIfood:27,canais:[{id:'ifood',nome:'iFood',taxa:27,mix:0}],taxaCartao:2.5,custosFixos:[],provisoes:[],funcionarios:[],socios:[],meiosPagamento:[],fornecedores:[],contasBancarias:[],contasPagar:[],contasReceber:[]},fat:{lancado:0,mixIfood:0},cmvAlvo:30,equipe:[],conta:{restaurante:'',nome:'',email:'',telefone:'',cpf:'',nascimento:''},buffet:{precoVendaKg:'',cubas:[]},cmvRegistros:[]};}
+// Dados de uma organização ao abrir. Antes, qualquer banco sem a chave `insumos` virava emptyDB() e o primeiro salvamento apagava o que integrações (Takeat, Suitable, Sefaz…) ou o admin (_projeto, _cadastro) já tinham gravado (Shekynah, 04/11/2026). Agora completa o padrão SEM perder nada do que existe.
+function dbDaOrg(org){const d=org&&org.dados;if(!d||typeof d!=='object'||Array.isArray(d))return emptyDB();if(d.insumos)return d;const e=emptyDB();for(const k in d){if(k==='fin'&&d.fin&&typeof d.fin==='object'&&!Array.isArray(d.fin)){e.fin=Object.assign({},e.fin,d.fin);}else e[k]=d[k];}return e;}
 function localBackupKey(){return 'flow_bkp_'+((ORG&&ORG.id)||'x');}
 function setSaveStatus(state){
   SAVE_STATE=state;const el=document.getElementById('saveStatus');if(!el)return;
@@ -8762,7 +8764,7 @@ async function entrarComoCliente(orgId,email){
   if(!org){telaMensagem('Acesso indisponível','Não foi possível carregar seu restaurante. Tente novamente mais tarde.');return;}
   ORG=org;CLOUD_TS=org.atualizado_em||null;CLOUD_CONFLICT=false;SAVE_RETRY=0;CLOUD_BASE=_cloneDB(org.dados||{});
   if(org.status==='suspenso'){telaMensagem('Acesso suspenso','Seu acesso está temporariamente suspenso. Fale com a Lidera para reativar.');return;}
-  DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();
+  DB=dbDaOrg(org);
   CLOUD=true;ADMIN_MODE=false;hideAdmin();
   // O ADMINISTRADOR da conta tem SEMPRE acesso total a todos os módulos, mesmo que o e-mail dele também esteja na Equipe.
   // Admin = e-mail cadastrado em Configurações (conta.email); se ainda não houver, quem NÃO está na Equipe é o dono.
@@ -10523,7 +10525,7 @@ async function apiRevogar(id,orgId){
 }
 async function toggleStatus(orgId,status){const novo=status==='suspenso'?'ativo':'suspenso';await sb.from('organizacoes').update({status:novo}).eq('id',orgId);toast(novo==='ativo'?'Acesso reativado':'Acesso suspenso');showAdmin();}
 async function abrirCliente(orgId){let org=null;try{org=(await sb.from('organizacoes').select('*').eq('id',orgId).single()).data;}catch(e){}if(!org)return toast('Erro ao abrir');if(org.dados&&org.dados._grupo)return toast('Este é o cliente-grupo: abra o app por uma das unidades.');
-  ORG=org;CLOUD_TS=org.atualizado_em||null;CLOUD_CONFLICT=false;SAVE_RETRY=0;CLOUD_BASE=_cloneDB(org.dados||{});DB=(org.dados&&org.dados.insumos)?org.dados:emptyDB();CLOUD=true;ADMIN_MODE=true;MEMBRO_PERMS=null;hideAdmin();bannerCloud();renderFoot();setSaveStatus('saved');
+  ORG=org;CLOUD_TS=org.atualizado_em||null;CLOUD_CONFLICT=false;SAVE_RETRY=0;CLOUD_BASE=_cloneDB(org.dados||{});DB=dbDaOrg(org);CLOUD=true;ADMIN_MODE=true;MEMBRO_PERMS=null;hideAdmin();bannerCloud();renderFoot();setSaveStatus('saved');
   document.querySelectorAll('#nav a[data-route]').forEach(a=>a.style.display='');go('dashboard');}
 function voltarAdmin(){CLOUD=false;ADMIN_MODE=false;ORG=null;CLOUD_TS=null;CLOUD_CONFLICT=false;const ss=document.getElementById('saveStatus');if(ss)ss.style.display='none';const bn=document.getElementById('cloudBanner');if(bn)bn.style.display='none';showAdmin();}
 
