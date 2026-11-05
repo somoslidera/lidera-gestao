@@ -9599,7 +9599,7 @@ function gpGcalLink(o,r){const d=(r.data||'').replace(/-/g,'');if(!d)return '';c
    (gravar, transcrever, anotações do Gemini), acesso, visibilidade, permissões e lembrete. O modelo padrão fica em localStorage. */
 const N8N_AGENDA_URL='https://automacoes_n8n-webhook.8rp28i.easypanel.host/webhook/flow-agenda';   // serviço de webhooks do n8n (modo fila)
 const GCAL_PADRAO_ID='c_eec62a002414677eeb914facd3ad7704cd401c04384862090f64e4ffae741eea@group.calendar.google.com';
-const GCAL_MODELO_DEF={cal:GCAL_PADRAO_ID,duracao:60,meet:true,gravar:true,transcrever:true,notas:true,acesso:'OPEN',visib:'default',pMod:false,pConv:true,pVer:true,lembrete:'padrao',convidar:true};
+const GCAL_MODELO_DEF={cal:GCAL_PADRAO_ID,duracao:60,meet:true,gravar:true,transcrever:true,notas:true,moderacao:true,acesso:'OPEN',visib:'default',pMod:false,pConv:true,pVer:true,lembrete:'padrao',convidar:true};
 function gcalModelo(){try{return Object.assign({},GCAL_MODELO_DEF,JSON.parse(localStorage.getItem('flow_gcal_modelo')||'{}'));}catch(e){return Object.assign({},GCAL_MODELO_DEF);}}
 function gcalAgendas(){try{const a=JSON.parse(localStorage.getItem('flow_gcal_agendas')||'[]');if(Array.isArray(a)&&a.length)return a;}catch(e){}return [{id:GCAL_PADRAO_ID,nome:'PLL | Acelerados',cor:'#A48A57'}];}
 async function gpN8n(payload){
@@ -9625,9 +9625,9 @@ function gcalDuracao(){const i=gcalMin($('#gr_hora').value),f=gcalMin(($('#gr_ho
 function gcalLerForm(){const m=gcalModelo();const g=id=>$('#'+id);const chk=id=>!!(g(id)&&g(id).checked);const val=id=>(g(id)||{}).value;
   const ini=gcalMin(val('gr_hora')),fim=gcalMin(val('gr_hora_fim'));
   return {calendarId:val('gr_cal')||m.cal,titulo:(val('gr_titulo')||'').trim(),horaFim:(ini!=null&&fim!=null&&fim>ini)?val('gr_hora_fim'):'',duracaoMin:(ini!=null&&fim!=null&&fim>ini)?(fim-ini):(m.duracao||60),
-    convidados:gcalEmails(val('gr_conv')),convidar:chk('gr_convidar'),meet:chk('gr_meet'),registros:{gravar:chk('gr_gravar'),transcrever:chk('gr_transcrever'),notas:chk('gr_notas')},acesso:val('gr_acesso')||'OPEN',
+    convidados:gcalEmails(val('gr_conv')),convidar:chk('gr_convidar'),meet:chk('gr_meet'),registros:{gravar:chk('gr_gravar'),transcrever:chk('gr_transcrever'),notas:chk('gr_notas')},moderacao:chk('gr_moderacao'),acesso:val('gr_acesso')||'OPEN',
     visibilidade:val('gr_visib')||'default',guestsCanModify:chk('gr_p_mod'),guestsCanInviteOthers:chk('gr_p_conv'),guestsCanSeeOtherGuests:chk('gr_p_ver'),lembreteMin:val('gr_lembrete')==='padrao'?'':val('gr_lembrete')};}
-function gcalSalvarModelo(){const f=gcalLerForm();const m={cal:f.calendarId,duracao:f.duracaoMin,meet:f.meet,gravar:f.registros.gravar,transcrever:f.registros.transcrever,notas:f.registros.notas,acesso:f.acesso,visib:f.visibilidade,pMod:f.guestsCanModify,pConv:f.guestsCanInviteOthers,pVer:f.guestsCanSeeOtherGuests,lembrete:f.lembreteMin===''?'padrao':String(f.lembreteMin),convidar:f.convidar};
+function gcalSalvarModelo(){const f=gcalLerForm();const m={cal:f.calendarId,duracao:f.duracaoMin,meet:f.meet,gravar:f.registros.gravar,transcrever:f.registros.transcrever,notas:f.registros.notas,moderacao:f.moderacao,acesso:f.acesso,visib:f.visibilidade,pMod:f.guestsCanModify,pConv:f.guestsCanInviteOthers,pVer:f.guestsCanSeeOtherGuests,lembrete:f.lembreteMin===''?'padrao':String(f.lembreteMin),convidar:f.convidar};
   try{localStorage.setItem('flow_gcal_modelo',JSON.stringify(m));toast('Modelo salvo. As próximas reuniões já abrem assim.');}catch(e){toast('Não consegui salvar o modelo neste navegador');}}
 function gcalFormHTML(o,r){const m=gcalModelo();const ags=gcalAgendas();const calSel=(r&&r.gcalCal)||m.cal;const cal=ags.some(a=>a.id===calSel)?calSel:ags[0].id;
   const emails=((o.dados&&o.dados.equipe)||[]).map(x=>x&&x.email).filter(Boolean);const conv=(r&&Array.isArray(r.gcalConv)&&r.gcalConv.length)?r.gcalConv:emails;
@@ -9644,6 +9644,8 @@ function gcalFormHTML(o,r){const m=gcalModelo();const ags=gcalAgendas();const ca
     <div id="gr_meet_box" style="margin-left:24px">
       <div class="gp-mini" style="margin:2px 0 4px">Registros da reunião (começam sozinhos quando a reunião inicia)</div>
       ${cb('gr_gravar','Gravar a reunião',m.gravar)}${cb('gr_transcrever','Transcrever a reunião',m.transcrever)}${cb('gr_notas','Fazer anotações com o Gemini',m.notas,'é o que volta para o Flow')}
+      ${cb('gr_moderacao','Gerenciamento de organizadores',m.moderacao!==false,'só o organizador controla gravação, entrada e silenciar')}
+      <div class="gp-mini" style="margin:2px 0 4px">Coorganizadores: o Google ainda não abre isso pela API. Quem for conduzir a reunião precisa ser promovido na tela do Meet (Pessoas › Adicionar como coorganizador) ou no evento da Agenda.</div>
       <div class="field" style="margin:8px 0 0"><label>Acesso à reunião</label><select class="input" id="gr_acesso">${[['OPEN','Aberto: quem tiver o link entra sem pedir'],['TRUSTED','Confiável: convidados e pessoas da organização entram direto'],['RESTRICTED','Restrito: só convidados']].map(([v,l])=>`<option value="${v}" ${m.acesso===v?'selected':''}>${l}</option>`).join('')}</select></div>
     </div>
     ${sec('Opções do evento')}
@@ -10100,9 +10102,10 @@ async function gpReuniaoSalvar(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===orgI
   closeModal();gpRefresh();toast((feita?'Reunião registrada':'Reunião agendada')+(criadas?' · '+criadas+' subtarefa(s) na demanda da reunião':'')+(querGoogle?' · criando no Google Agenda…':''));
   await adminSaveKeys(o,keys);
   if(querGoogle){const g=await gpAgendaGoogle(o,r,r.gcalId?'atualizar':'criar',gOpts);
-    if(g&&g.ok){if(g.eventId)r.gcalId=g.eventId;if(g.calendarId)r.gcalCal=g.calendarId;r.links=Object.assign({},r.links||{},g.link?{evento:g.link}:{},g.meet?{meet:g.meet}:{});gpRefresh();await adminSaveKeys(o,['_crm']);
+    if(g&&g.ok){if(g.eventId)r.gcalId=g.eventId;if(g.calendarId)r.gcalCal=g.calendarId;r.links=Object.assign({},r.links||{},g.link?{evento:g.link}:{},g.meet?{meet:g.meet}:{});if(g.registros)r.meetCfg=g.registros;gpRefresh();await adminSaveKeys(o,['_crm']);
       const ag=gcalAgendas().find(a=>a.id===r.gcalCal);toast('No Google Agenda'+(ag?' ('+esc(ag.nome)+')':'')+(g.meet?' com Meet':'')+(gOpts.convidar&&(gOpts.convidados||[]).length?' · convite enviado':''),3500);
-      if(g.registros&&g.registros.ok===false)toast('Evento criado, mas os registros do Meet (gravar, transcrever, anotações) não foram aplicados: '+esc(g.registros.motivo||'erro'),7000);}
+      if(g.registros&&g.registros.ok===false)toast('Evento criado, mas a sala do Meet NÃO ficou como pedido: '+esc(g.registros.motivo||'erro')+'. Abra o evento no Google Agenda e confira as opções do Meet.',9000);
+      else if(g.registros&&g.registros.ok){const liga=[g.registros.gravar&&'gravação',g.registros.transcrever&&'transcrição',g.registros.notas&&'anotações do Gemini',g.registros.moderacao&&'gerenciamento de organizadores'].filter(Boolean);toast('Sala do Meet conferida: '+(liga.length?liga.join(', ')+' ligados':'sem registros automáticos')+'.',6000);}}
     else toast('Ficou só no Flow: '+((g&&g.motivo)||'erro')+'. Use o botão "Criar no Google Agenda" na linha do tempo.');}}
 async function gpReuniaoDel(orgId,rid){if(!confirm('Excluir esta reunião do histórico?'))return;const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const crm=gpCrm(o);
   {const rr=crm.reunioes.find(x=>x.id===rid);if(rr&&rr.gcalId&&!rr.realizada&&rr.data>=hojeISO()&&confirm('Excluir também o evento do Google Agenda? O cliente convidado recebe o aviso de cancelamento.')){const g=await gpAgendaGoogle(o,rr,'excluir',{convidar:true});if(!(g&&g.ok))toast('Não consegui excluir no Google: '+((g&&g.motivo)||'erro'));}}crm.reunioes=crm.reunioes.filter(x=>x.id!==rid);(_crmDel[o.id]=_crmDel[o.id]||new Set()).add(rid);closeModal();gpRefresh();await adminSaveKeys(o,['_crm']);}
