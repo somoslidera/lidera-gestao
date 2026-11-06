@@ -2413,7 +2413,7 @@ function viewDashboard(){
     <div class="dsh-kpi">
       <div class="dsh-kpi-top"><span class="lbl">Compra da semana</span><span class="chip soft">CMV alvo ${fmtPct(CS.alvo)}</span></div>
       <div class="dsh-kpi-val">${CS.meta>0?fmtBRL(CS.meta):'—'}</div>
-      <div class="dsh-kpi-foot">${CS.meta>0?`comprado <b style="color:${CS.cSem>CS.meta?'var(--red)':'var(--green)'}">${fmtBRL(CS.cSem)}</b> · ${fmtPct(CS.cSem/CS.meta*100)} · ${CS.fonte}`:'lance as vendas da semana para o Flow calcular quanto comprar'}</div>
+      <div class="dsh-kpi-foot">${CS.meta>0?`comprado <b style="color:${CS.cSem>CS.meta?'var(--red)':'var(--green)'}">${fmtBRL(CS.cSem)}</b> · ${fmtPct(CS.cSem/CS.meta*100)} · ${CS.fonte}${CS.ferTxt?' · feriado: '+esc(CS.ferTxt):''}`:'lance as vendas da semana para o Flow calcular quanto comprar'+(CS.ferTxt?' · feriado: '+esc(CS.ferTxt):'')}</div>
       <div class="dsh-kpi-vis">${CS.meta>0?dashBullet(CS.cSem,CS.meta,CS.cSem>CS.meta?'var(--red)':'var(--gold)'):''}</div>
     </div>
   </div>
@@ -4127,12 +4127,40 @@ function reguaPLL(){return (DB.fin&&DB.fin.reguaPLL)||{};}
    As três metas são digitadas (27/10/2026: mínimo deixou de ser ano anterior × IPCA). A receita do mesmo mês do ano anterior aparece só como referência de consulta. */
 const DIAS_TRAB_PADRAO=[1,2,3,4,5,6];
 function diasTrabalho(){DB.fin=DB.fin||{};const d=DB.fin.diasTrabalho;return (Array.isArray(d)&&d.length)?d.map(Number):DIAS_TRAB_PADRAO.slice();}
+/* ===== FERIADOS (Parâmetros › Metas de faturamento, 06/11/2026) =====
+   fin.feriados = { abre:false, extras:[{data,nome}], excecoes:{'AAAA-MM-DD':true|false}, ocultos:['AAAA-MM-DD'] }
+   Feriado FECHADO não conta como dia de funcionamento: meta do dia, dias que restam e compra da semana descontam. Cada cliente decide. */
+function feriadosCfg(){DB.fin=DB.fin||{};let f=DB.fin.feriados;if(!f||typeof f!=='object'||Array.isArray(f)){f=DB.fin.feriados={abre:false,extras:[],excecoes:{},ocultos:[]};}if(!Array.isArray(f.extras))f.extras=[];if(!f.excecoes||typeof f.excecoes!=='object')f.excecoes={};if(!Array.isArray(f.ocultos))f.ocultos=[];return f;}
+function pascoa(ano){const a=ano%19,b=Math.floor(ano/100),c=ano%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mes=Math.floor((h+l-7*m+114)/31),dia=((h+l-7*m+114)%31)+1;return new Date(ano,mes-1,dia,12);}
+function feriadosNacionais(ano){const iso=d=>d.toISOString().slice(0,10);const P=pascoa(ano);const mv=(n,nome)=>{const d=new Date(P);d.setDate(P.getDate()+n);return {data:iso(d),nome};};
+  const fixos=[['01-01','Confraternização Universal'],['04-21','Tiradentes'],['05-01','Dia do Trabalho'],['09-07','Independência'],['10-12','Nossa Senhora Aparecida'],['11-02','Finados'],['11-15','Proclamação da República'],['11-20','Consciência Negra'],['12-25','Natal']].map(([md,nome])=>({data:ano+'-'+md,nome}));
+  return fixos.concat([mv(-48,'Carnaval (segunda)'),mv(-47,'Carnaval (terça)'),mv(-2,'Sexta-feira Santa'),mv(60,'Corpus Christi')]).sort((a,b)=>a.data.localeCompare(b.data));}
+function feriadosDoAno(ano){const f=feriadosCfg();ano=+ano;const base=feriadosNacionais(ano).filter(x=>!f.ocultos.includes(x.data)).map(x=>Object.assign({fonte:'nacional'},x));
+  const extras=f.extras.filter(x=>x&&/^\d{4}-\d{2}-\d{2}$/.test(x.data||'')&&+x.data.slice(0,4)===ano).map(x=>({data:x.data,nome:x.nome||'Feriado',fonte:'extra'}));
+  const todos=base.concat(extras.filter(e=>!base.some(b=>b.data===e.data))).sort((a,b)=>a.data.localeCompare(b.data));
+  return todos.map(x=>Object.assign(x,{abre:(x.data in f.excecoes)?!!f.excecoes[x.data]:!!f.abre}));}
+let _ferCache={};
+function feriadosFechados(ano){const f=feriadosCfg();const k=ano+'|'+JSON.stringify([f.abre,f.extras,f.excecoes,f.ocultos]);if(_ferCache.k!==k){_ferCache={k,set:new Set(feriadosDoAno(ano).filter(x=>!x.abre).map(x=>x.data))};}return _ferCache.set;}
+function feriadoFechado(iso){return feriadosFechados(+iso.slice(0,4)).has(iso);}
+function feriadosEntre(de,ate){if(!de||!ate||ate<de)return [];const out=[];for(let a=+de.slice(0,4);a<=+ate.slice(0,4);a++)feriadosDoAno(a).forEach(x=>{if(x.data>=de&&x.data<=ate)out.push(x);});return out;}
+function feriadosPadraoSet(abre){feriadosCfg().abre=!!abre;save();viewFinanceiro();}
+function feriadoAbreToggle(data){const f=feriadosCfg();const atual=feriadosDoAno(+data.slice(0,4)).find(x=>x.data===data);if(!atual)return;const novo=!atual.abre;if(novo===!!f.abre)delete f.excecoes[data];else f.excecoes[data]=novo;save();viewFinanceiro();}
+function feriadoAdd(){const d=($('#fer_data')||{}).value||'';const nome=(($('#fer_nome')||{}).value||'').trim();if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return toast('Informe a data do feriado');const f=feriadosCfg();if(feriadosDoAno(+d.slice(0,4)).some(x=>x.data===d))return toast('Essa data já está na lista');f.extras.push({data:d,nome:nome||'Feriado'});if(+d.slice(0,4)!==metasAnoSel)metasAnoSel=+d.slice(0,4);save();viewFinanceiro();}
+function feriadoDel(data){const f=feriadosCfg();const n=f.extras.length;f.extras=f.extras.filter(x=>x.data!==data);if(f.extras.length===n&&!f.ocultos.includes(data))f.ocultos.push(data);delete f.excecoes[data];save();viewFinanceiro();}
+function feriadoRestaurar(){feriadosCfg().ocultos=[];save();viewFinanceiro();}
+function prmFeriadosHTML(ano){const f=feriadosCfg();const lista=feriadosDoAno(ano);const dm=iso=>iso.slice(8,10)+'/'+iso.slice(5,7);const DOW=['dom','seg','ter','qua','qui','sex','sáb'];const ds=diasTrabalho();
+  const chips=lista.map(x=>{const dow=new Date(x.data+'T12:00:00').getDay();const foraDia=!ds.includes(dow);return `<button type="button" class="dia-chip ${x.abre?'on':''}" style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px${foraDia?';opacity:.55':''}" onclick="feriadoAbreToggle('${x.data}')" title="${x.abre?'Abre neste feriado: clique para marcar fechado':'Fechado neste feriado: clique para marcar que abre'}${foraDia?' · cai num dia em que a casa já não funciona':''}">${x.abre?'✓ ':''}${dm(x.data)} <span style="font-weight:500">${esc(x.nome)}</span><span class="gp-mini" style="color:inherit;opacity:.7">${DOW[dow]}</span><span onclick="event.stopPropagation();feriadoDel('${x.data}')" title="Tirar da lista" style="opacity:.6;margin-left:2px">×</span></button>`;}).join('');
+  return `<div class="field" style="margin:0;flex:1;min-width:280px"><label>Feriados de ${ano} <span class="hint">feriado fechado não conta como dia de funcionamento</span></label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><span class="gp-mini">Por padrão a casa</span><button type="button" class="dia-chip ${f.abre?'on':''}" onclick="feriadosPadraoSet(true)">${f.abre?'✓ ':''}abre nos feriados</button><button type="button" class="dia-chip ${!f.abre?'on':''}" onclick="feriadosPadraoSet(false)">${!f.abre?'✓ ':''}fecha nos feriados</button><span class="gp-mini">· ajuste um a um abaixo (✓ = abre)</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${chips||'<span class="gp-mini">Nenhum feriado na lista.</span>'}</div>
+      <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap"><input type="date" class="input" id="fer_data" style="width:auto;padding:5px 8px"><input class="input" id="fer_nome" placeholder="Feriado municipal, ponto facultativo…" style="width:230px;padding:5px 8px"><button type="button" class="btn btn-ghost btn-sm" onclick="feriadoAdd()">+ Adicionar</button>${f.ocultos.length?`<a class="gp-link" onclick="feriadoRestaurar()">restaurar feriados nacionais removidos</a>`:''}</div>
+    </div>`;}
 function metasAno(ano){DB.fin=DB.fin||{};if(!DB.fin.metasFat||typeof DB.fin.metasFat!=='object')DB.fin.metasFat={};const k=String(ano);if(!DB.fin.metasFat[k])DB.fin.metasFat[k]={ipca:'',meses:{}};const m=DB.fin.metasFat[k];if(!m.meses||typeof m.meses!=='object')m.meses={};return m;}
 function metaRefLancada(ym){const p=ym.split('-');const ymAnt=(+p[0]-1)+'-'+p[1];return lancMes(ymAnt).filter(l=>grupoTipo(l.grupo)==='receita').reduce((s,l)=>s+(+l.valor||0),0);}
 function metasDoMes(ym){const ano=ym.slice(0,4);const cfg=metasAno(ano);const m=cfg.meses[ym]||{};const refL=metaRefLancada(ym);const refManual=m.ref!=null&&m.ref!==''&&+m.ref>0;const ref=refManual?+m.ref:refL;
   const minimo=+m.minimo||0;const realista=+m.realista||0;const desafiador=+m.desafiador||0;
   return {ym,ref,refManual,refLancada:refL,minimo,realista,desafiador,tem:!!(minimo||realista||desafiador)};}
-function diasTrabEntre(de,ate){if(!de||!ate||ate<de)return 0;const ds=diasTrabalho();let n=0;const a=new Date(de+'T12:00:00'),b=new Date(ate+'T12:00:00');for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1)){if(ds.includes(d.getDay()))n++;}return n;}
+function diasTrabEntre(de,ate){if(!de||!ate||ate<de)return 0;const ds=diasTrabalho();let n=0;const a=new Date(de+'T12:00:00'),b=new Date(ate+'T12:00:00');for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1)){if(ds.includes(d.getDay())&&!feriadoFechado(d.toISOString().slice(0,10)))n++;}return n;}
 function diasTrabMes(ym){const [y,m]=ym.split('-').map(Number);const ld=new Date(y,m,0).getDate();return diasTrabEntre(ym+'-01',ym+'-'+String(ld).padStart(2,'0'));}
 /* metas somadas num período (mês atual, últimos 3, ano…) */
 function metaPeriodo(R){const out={minimo:0,realista:0,desafiador:0,meses:0,tem:false};let d=new Date(R.de.slice(0,7)+'-01T12:00:00');const fim=R.ate.slice(0,7);
@@ -4151,10 +4179,11 @@ function prmMetasFatHTML(){const ano=metasAnoSel;const cfg=metasAno(ano);const d
       <td class="num" style="padding:6px 4px;border-top:1px solid var(--line)"><input class="input" inputmode="numeric" value="${money(m.desafiador)}" placeholder="—" style="width:104px;padding:5px 8px;text-align:right" onchange="metasFatSet(${ano},'${ym}','desafiador',this.value)"></td>
       <td class="num" style="padding:6px 0 6px 6px;border-top:1px solid var(--line);color:var(--muted);white-space:nowrap">${m.realista>0&&dt?fmtBRL(m.realista/dt):'—'}</td></tr>`;}).join('');
   return `<div class="card card-pad" style="grid-column:1/-1">
-    <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Metas de faturamento</div><div class="desc">Três metas por mês, digitadas com o cliente: mínimo, realista e desafiador. A receita do mesmo mês do ano anterior fica ao lado só para consulta. A meta do dia é a do mês dividida pelos dias de funcionamento.</div></div>
+    <div class="section-head" style="margin-bottom:8px"><div><div class="ttl">Metas de faturamento</div><div class="desc">Três metas por mês, digitadas com o cliente: mínimo, realista e desafiador. A receita do mesmo mês do ano anterior fica ao lado só para consulta. A meta do dia é a do mês dividida pelos dias de funcionamento, já descontando os feriados em que a casa fecha.</div></div>
       <div style="display:flex;gap:8px;align-items:center"><select class="input" style="width:auto;padding:6px 10px" onchange="metasAnoSel=+this.value;viewFinanceiro()">${[ano-1,ano,ano+1].map(a=>`<option value="${a}" ${a===ano?'selected':''}>${a}</option>`).join('')}</select></div></div>
     <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
       <div class="field" style="margin:0"><label>Dias de funcionamento <span class="hint">a meta diária divide por eles</span></label><div style="display:flex;gap:6px;flex-wrap:wrap">${NOMES_D.map((n,i)=>{const on=ds.includes(i);return `<button type="button" class="dia-chip ${on?'on':''}" onclick="diasTrabToggle(${i})" title="${on?'Funciona: clique para tirar':'Fechado: clique para marcar'}">${on?'✓ ':''}${n}</button>`;}).join('')}</div></div>
+      ${prmFeriadosHTML(ano)}
     </div>
     <div class="scroll-x"><table style="width:100%"><thead><tr><th style="text-align:left;padding:4px 0;font-size:10.5px;color:var(--soft)">Mês</th><th class="num" style="font-size:10.5px;color:var(--soft)" title="Receita lançada no mesmo mês do ano anterior, só para consulta">Receita ${ano-1}</th><th class="num" style="font-size:10.5px;color:var(--soft)">Mínimo</th><th class="num" style="font-size:10.5px;color:var(--soft)">Realista</th><th class="num" style="font-size:10.5px;color:var(--soft)">Desafiador</th><th class="num" style="font-size:10.5px;color:var(--soft)">Realista / dia</th></tr></thead>
       <tbody>${linhas}<tr style="font-weight:700"><td style="padding:8px 0;border-top:2px solid var(--navy)">Ano</td><td class="num" style="padding:8px 4px;border-top:2px solid var(--navy)">${tot.ref>0?fmtBRL(tot.ref):'—'}</td><td class="num" style="padding:8px 4px;border-top:2px solid var(--navy)">${tot.min>0?fmtBRL(tot.min):'—'}</td><td class="num" style="padding:8px 4px;border-top:2px solid var(--navy)">${tot.rea>0?fmtBRL(tot.rea):'—'}</td><td class="num" style="padding:8px 4px;border-top:2px solid var(--navy)">${tot.des>0?fmtBRL(tot.des):'—'}</td><td style="border-top:2px solid var(--navy)"></td></tr></tbody></table></div>
@@ -4167,8 +4196,13 @@ function metaCompraSemana(){const S=semanaAtual();const ls=DB.lancamentos||[];co
   const comp=de=>ls.filter(l=>l.data>=de.de&&l.data<=de.ate&&l.grupo==='CMV').reduce((s,l)=>s+(+l.valor||0),0);
   const ant={de:diasSoma(S.de,-7),ate:diasSoma(S.de,-1)};const vSem=vend(S),vAnt=vend(ant),cSem=comp(S);
   const regs=(DB.cmvRegistros||[]).map(cmvRegCalc).filter(r=>r.data).sort((a,b)=>b.data.localeCompare(a.data));const ult=regs[0]||null;
-  const alvo=cmvAlvoRef();const base=vSem>0?vSem:vAnt;const fonte=vSem>0?'vendido nesta semana':vAnt>0?'vendido na semana passada':'';
-  return {S,vSem,vAnt,cSem,alvo,base,meta:base*alvo/100,fonte,ult};}
+  const alvo=cmvAlvoRef();
+  // feriados: a semana com feriado fechado tem menos dias de venda; quando a base é a semana passada, ajusta pela proporção de dias de funcionamento
+  const dSem=diasTrabEntre(S.de,S.ate),dAnt=diasTrabEntre(ant.de,ant.ate);const fer=feriadosEntre(S.de,S.ate);
+  let base=vSem>0?vSem:vAnt;let fonte=vSem>0?'vendido nesta semana':vAnt>0?'vendido na semana passada':'';
+  if(!(vSem>0)&&vAnt>0&&dAnt>0&&dSem!==dAnt){base=vAnt*dSem/dAnt;fonte+=' ajustado para '+dSem+(dSem===1?' dia':' dias')+' de funcionamento';}
+  const ferTxt=fer.map(x=>x.nome+(x.abre?' (abre)':' (fechado)')).join(', ');
+  return {S,vSem,vAnt,cSem,alvo,base,meta:base*alvo/100,fonte,ult,dSem,dAnt,fer,ferTxt};}
 function reguaCentros(){const o=reguaPLL();return DRE_CENTROS.map(c=>{const x=Object.assign({},c,o[c.id]||{});
   if(x.min!=null&&!(x.min>=0))delete x.min;if(!(x.max>0))x.max=c.max;
   x.ref=x.min!=null?fmtN(x.min,x.min%1?1:0)+'% a '+fmtN(x.max,x.max%1?1:0)+'%':'≤ '+fmtN(x.max,x.max%1?1:0)+'%';return x;});}
