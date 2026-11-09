@@ -2525,6 +2525,21 @@ function viewInsumos(){
 let editingInsId=null, draftInsTipo='pronto', draftInsComps=[];
 let catGrupoIns='CMV';let estoqueArmF='';
 /* Lista de compras: agrupamento escolhido na hora (fornecedor ou categoria) + filtro de quais grupos puxar. Estrutura aberta para outros agrupamentos. */
+/* ===== FORNECEDOR DERIVADO DAS COMPRAS (09/11/2026) =====
+   O produto não tem mais um fornecedor digitado: `ins.fornecedor` é só a memória do ÚLTIMO que vendeu (as notas continuam
+   atualizando). `insFornecedores(id)` lista todos os que já venderam o produto, com última data e último preço, a partir dos
+   lançamentos com insumoId. `ins.fornecedorCompra` é a escolha feita na Lista de Compras para a PRÓXIMA compra; a próxima nota apaga. */
+function insFornecedores(insId){const m={};(DB.lancamentos||[]).forEach(l=>{if(l.insumoId!==insId||!l.data||grupoTipo(l.grupo)==='receita'||l.autoTaxa)return;const forn=(l.fornecedor||'').trim();if(!forn)return;const k=lmNorm(forn);const qtd=+l.qtd>0?+l.qtd:1;const vun=(+l.valor||0)/qtd;
+    const ins=DB.insumos[insId];const uniOk=(u)=>UNIDADES.includes(u)?u:((ins&&ins.uni)||'un');const cur=m[k]||{nome:forn,n:0,ultima:'',vun:0,uni:uniOk(l.uni)};cur.n++;if(l.data>cur.ultima){cur.ultima=l.data;cur.vun=vun;cur.uni=uniOk(l.uni);cur.nome=forn;}m[k]=cur;});
+  return Object.values(m).sort((a,b)=>b.ultima.localeCompare(a.ultima));}
+function insFornAtual(ins){return ((ins&&(ins.fornecedorCompra||ins.fornecedor))||'').trim()||'Sem fornecedor';}
+function insFornResumoHTML(ins){const lista=ins&&ins.id?insFornecedores(ins.id):[];const uni=u=>uSym(u||(ins&&ins.uni)||'un');
+  if(!lista.length)return `<div style="font-size:12.5px;color:var(--muted)">${ins&&ins.fornecedor?'Último fornecedor: <b>'+esc(ins.fornecedor)+'</b> (cadastro antigo). ':''}O fornecedor vem das notas lançadas: a primeira compra já aparece aqui. Na <b>Lista de Compras</b> você escolhe para quem pedir.</div>`;
+  return `<div style="display:flex;flex-direction:column;gap:3px">${lista.slice(0,5).map((f,i)=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px"><span><b>${esc(f.nome)}</b>${i===0?' <span class="tag tag-navy" style="font-size:9px;padding:0 6px">último</span>':''}</span><span style="color:var(--muted);white-space:nowrap">${fmtDataBR(f.ultima)}${podeVerValores()?' · '+estHistPreco(f.vun)+'/'+uni(f.uni):''} · ${f.n}x</span></div>`).join('')}${lista.length>5?`<div class="gp-mini">e mais ${lista.length-5}</div>`:''}</div>`;}
+function lcFornSelectHTML(ins){const lista=insFornecedores(ins.id);const atual=insFornAtual(ins);const nomes=[...new Set(lista.map(f=>f.nome).concat(atual!=='Sem fornecedor'?[atual]:[]))];
+  return `<select class="input no-print" style="width:auto;max-width:230px;padding:3px 6px;font-size:11.5px;margin-top:3px" title="Para quem pedir desta vez. Vale só para esta compra: a nota lançada depois registra quem vendeu." onchange="lcFornSet('${ins.id}',this.value)">${nomes.map(n=>{const f=lista.find(x=>x.nome===n);return `<option value="${esc(n)}" ${n===atual?'selected':''}>${esc(n)}${f&&podeVerValores()?' · '+estHistPreco(f.vun)+'/'+uSym(f.uni||ins.uni):''}${f?' · '+fmtDataBR(f.ultima):''}</option>`;}).join('')}<option value="__sem__" ${atual==='Sem fornecedor'?'selected':''}>Sem fornecedor</option><option value="__outro__">Outro fornecedor…</option></select>`;}
+function lcFornSet(insId,v){const ins=DB.insumos[insId];if(!ins)return;if(v==='__outro__'){const n=prompt('Nome do fornecedor para esta compra:');if(!n||!n.trim()){viewEstoque();return;}v=n.trim();ensureFornecedor(v);}
+  if(v==='__sem__')ins.fornecedorCompra='';else ins.fornecedorCompra=v;if(v==='__sem__')ins.fornecedorCompra=' ';save();viewEstoque();}
 const LC_AGRUP={fornecedor:{rot:'fornecedor',de:x=>x.fornecedor||'Sem fornecedor'},categoria:{rot:'categoria',de:x=>x.sub||x.cat||'Sem categoria'}};
 let LC=Object.assign({agrup:'fornecedor',sel:[]},(function(){try{return JSON.parse(localStorage.getItem('flow_lc')||'{}');}catch(e){return {};}})());
 function lcSet(k,v){LC[k]=v;if(k==='agrup')LC.sel=[];try{localStorage.setItem('flow_lc',JSON.stringify(LC));}catch(e){}viewEstoque();}
@@ -2549,7 +2564,7 @@ function editInsumo(id){
     <div style="font-size:11.5px;color:var(--muted);margin:-6px 0 12px">Só produtos na categoria <b>CMV</b> entram na apuração do CMV. Limpeza, escritório e afins ficam em <b>Materiais</b>: continuam no controle de estoque, mas fora da conta.</div>
     <div class="grid-2">
       <div class="field"><label>Unidade</label><select class="input" id="i_uni" onchange="updUniLabels();updInsPreview()">${UNIDADES.map(u=>`<option value="${u}" ${u===i.uni?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
-      <div class="field"><label>Fornecedor <span class="hint">opcional · digite para cadastrar um novo</span>${i.id&&DB.insumos[i.id]?` <a onclick="estHistAbrir('${i.id}')" style="float:right;font-size:11px;color:var(--navy);cursor:pointer;font-weight:600" title="Todas as compras deste produto, de todos os fornecedores">histórico de compras ›</a>`:''}</label><input class="input" id="i_forn" list="forn_dl" value="${esc(i.fornecedor||'')}" placeholder="Nome do fornecedor">${fornDatalist()}</div>
+      <div class="field"><label>Fornecedores <span class="hint">pelas compras lançadas</span>${i.id&&DB.insumos[i.id]?` <a onclick="estHistAbrir('${i.id}')" style="float:right;font-size:11px;color:var(--navy);cursor:pointer;font-weight:600" title="Todas as compras deste produto, de todos os fornecedores">histórico de compras ›</a>`:''}</label><div style="padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)">${insFornResumoHTML(i)}</div></div>
     </div>
     ${setoresSemPrincipal().length?`<div class="field"><label>Disponível nos setores <span class="hint">exceção deste produto · vazio = segue a subcategoria${podeEditarSetoresProduto()?'':' · só administrador e gerente alteram'}</span></label><div style="display:flex;gap:8px 14px;flex-wrap:wrap;padding:4px 0;${podeEditarSetoresProduto()?'':'opacity:.6'}">${setoresSemPrincipal().map(a=>`<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:${podeEditarSetoresProduto()?'pointer':'not-allowed'}"><input type="checkbox" class="i_setor" value="${esc(a.id)}" ${(i.setores||[]).includes(a.id)?'checked':''} ${podeEditarSetoresProduto()?'':'disabled'} style="width:15px;height:15px;accent-color:var(--navy)"> ${esc(a.nome)}</label>`).join('')}</div></div>`:''}
     <div id="pronto_block">
@@ -2646,7 +2661,7 @@ function saveInsumo(id){const nome=$('#i_nome').value.trim();if(!nome)return toa
   const grupo=$('#i_grupo')?$('#i_grupo').value.trim():'';
   let sub=$('#i_sub')?$('#i_sub').value.trim():''; if(sub==='__new__')sub='';
   const cat=sub||grupo||'Mercearia';
-  const forn=($('#i_forn')?$('#i_forn').value:'').trim();
+  const forn=($('#i_forn')?$('#i_forn').value:((id&&DB.insumos[id]&&DB.insumos[id].fornecedor)||'')).trim();  // sem campo no cadastro: mantém o último fornecedor das notas
   ensureFornecedor(forn);
   let obj;
   if(draftInsTipo==='preparado'){const comps=draftInsComps.filter(c=>c[0]&&c[1]>0);
@@ -3031,7 +3046,7 @@ function nfeAplicar(){
   let cri=0,upd=0;const linkIds=[];
   d.itens.forEach((it,idx)=>{const sel=$('#nfe_map_'+idx);const target=sel?sel.value:'novo';
     if(target==='ignorar'){linkIds[idx]=null;return;}
-    if(target&&target!=='novo'&&DB.insumos[target]){const ins=DB.insumos[target];if(it._vUnCusto>0)ins.preco=it._vUnCusto;if(d.fornecedor)ins.fornecedor=d.fornecedor;upd++;linkIds[idx]=ins.id;}
+    if(target&&target!=='novo'&&DB.insumos[target]){const ins=DB.insumos[target];if(it._vUnCusto>0)ins.preco=it._vUnCusto;if(d.fornecedor){ins.fornecedor=d.fornecedor;delete ins.fornecedorCompra;}upd++;linkIds[idx]=ins.id;}
     else{const nid=uid();DB.insumos[nid]={id:nid,nome:it.desc||'Item NF',cat:(it._sub||it._grupo||'Mercearia'),grupo:it._grupo||'CMV',sub:it._sub||'',tipo:'pronto',uni:normUni(it.uCom),qtd:1,preco:it._vUnCusto||0,fornecedor:d.fornecedor||''};cri++;linkIds[idx]=nid;}
   });
   if($('#nfe_lanc')&&$('#nfe_lanc').checked){DB.lancamentos=DB.lancamentos||[];
@@ -5092,7 +5107,7 @@ function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
     if((+r.qtd||1)!==1){nv.qtd=+r.qtd;if(r.uni)nv.uni=r.uni;}else{delete nv.qtd;}
     if(r.embLanc&&+r.embLanc.qtd>0){nv.embNome=r.embLanc.nome;nv.embQtd=+r.embLanc.qtd;}else{delete nv.embNome;delete nv.embQtd;}
     const ins=r.insumoId&&DB.insumos[r.insumoId];
-    if(ins){nv.insumoId=r.insumoId;if(valor>0&&r.qtd>0){const qi=lmQtdNaUnidade(r,ins);if(qi>0){estEntradaDeLanc(nv,ins,qi,valor);ins.preco=valor;ins.qtd=qi;prodAtu++;}else semConv.push(ins.nome);}if(nv.fornecedor)ins.fornecedor=nv.fornecedor;}else delete nv.insumoId;
+    if(ins){nv.insumoId=r.insumoId;if(valor>0&&r.qtd>0){const qi=lmQtdNaUnidade(r,ins);if(qi>0){estEntradaDeLanc(nv,ins,qi,valor);ins.preco=valor;ins.qtd=qi;prodAtu++;}else semConv.push(ins.nome);}if(nv.fornecedor){ins.fornecedor=nv.fornecedor;delete ins.fornecedorCompra;}}else delete nv.insumoId;
     if(nv.fornecedor)ensureFornecedor(nv.fornecedor);
     const _m=meioDoLanc(nv);if(_m)nv.meioId=_m.id;else delete nv.meioId;
     {const ob=(lmObs||'').trim();if(ob)nv.obs=ob;else delete nv.obs;}if(r.obsPagto)nv.obsPagto=(''+r.obsPagto).trim();
@@ -5127,7 +5142,7 @@ function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
     if(ins){nv.insumoId=r.insumoId;
       // atualiza o custo real pago: preço, qtd e unidade sempre juntos (trio coerente = custo/unidade correto)
       if(valor>0&&r.qtd>0){const qi=lmQtdNaUnidade(r,ins);if(qi>0){estEntradaDeLanc(nv,ins,qi,valor);ins.preco=valor;ins.qtd=qi;prodAtu++;}else semConv.push(ins.nome);}
-      if(nv.fornecedor)ins.fornecedor=nv.fornecedor;}
+      if(nv.fornecedor){ins.fornecedor=nv.fornecedor;delete ins.fornecedorCompra;}}
     if(nv.fornecedor)ensureFornecedor(nv.fornecedor);
     const _m=meioDoLanc(nv);if(_m)nv.meioId=_m.id;
     if(pendPagto&&grupoTipo(nv.grupo)!=='receita'){nv.pagtoPendente=true;nv.forma='';delete nv.liquidacoes;pendTot+=valor;if(!pendNomes.includes(liqNome(nv)))pendNomes.push(liqNome(nv));}
@@ -7574,7 +7589,7 @@ function estoqueItens(){
     const sugerido=estCompraArredonda(necessidade,i);
     const qtdPedir=(i.qtdPedir!=null&&i.qtdPedir!=='')?(+i.qtdPedir||0):sugerido;
     const totalPrevisto=custo*qtdPedir;
-    return {ins:i,nome:i.nome,cat:i.cat,grupo:i.grupo||'',sub:i.sub||i.cat||'',uni:i.uni,fornecedor:i.fornecedor||'Sem fornecedor',custo,min,crit,atual,necessidade,sugerido,valorEstoque,qtdPedir,totalPrevisto,comprar,prazoRep:+i.prazoRep||0};
+    return {ins:i,nome:i.nome,cat:i.cat,grupo:i.grupo||'',sub:i.sub||i.cat||'',uni:i.uni,fornecedor:insFornAtual(i),custo,min,crit,atual,necessidade,sugerido,valorEstoque,qtdPedir,totalPrevisto,comprar,prazoRep:+i.prazoRep||0};
   });
 }
 function estoqueValorTotal(){return estoqueItens().reduce((s,x)=>s+x.valorEstoque,0);}
@@ -7676,7 +7691,7 @@ function viewEstoque(){
           <td class="num">${(function(){const i=estInfoProduto(x.ins);return i.cob==null?'<span style="color:var(--soft)" title="Sem consumo registrado nos últimos 30 dias">—</span>':`<span style="font-weight:600;color:${i.ruptura?'var(--red)':i.cob<15?'var(--amber)':'var(--green)'}" title="${fmtN(i.cons.diario,2)} ${uSym(x.uni)}/dia">${Math.round(i.cob)} d</span>`;})()}</td>
           <td>${ehInsumoCMV(x.ins)?`<span class="tag tag-gray">CMV</span>`:`<span class="tag tag-amber" title="Não entra na apuração do CMV">${esc(x.grupo)}</span>`}</td>
           <td>${(x.sub||x.cat)?`<span style="font-size:12.5px">${esc(x.sub||x.cat)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
-          <td>${souDoPrincipal()?`<input class="input" style="min-width:130px" value="${esc(x.ins.fornecedor)}" placeholder="Fornecedor" oninput="DB.insumos['${x.ins.id}'].fornecedor=this.value;finTouch()">`:`<span style="font-size:12.5px;color:var(--muted)">${esc(x.ins.fornecedor||'—')}</span>`}</td>
+          <td><span style="font-size:12.5px;color:var(--muted)" title="Último fornecedor pelas notas. Para escolher outro, use a Lista de Compras.">${esc(insFornAtual(x.ins)==='Sem fornecedor'?'—':insFornAtual(x.ins))}</span></td>
           ${podeVerValores()?`<td class="num">${fmtBRL(x.custo)}</td>`:''}
           <td class="num">${uSym(x.uni)}</td>
         </tr>`).join('')}</tbody>
@@ -7715,7 +7730,7 @@ function viewEstoque(){
         <thead><tr><th>Produto</th><th class="num">Un.</th><th class="num" title="Estoque ideal (quanto ter depois da compra)">Ideal</th><th class="num" title="Ponto de pedido">Crítico</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Qtd a pedir</th>${podeVerValores()?'<th class="num">Custo un.</th><th class="num">Total previsto</th>':''}</tr></thead>
         <tbody>${arr.sort((a,b)=>a.nome.localeCompare(b.nome)).map(x=>`
           <tr>
-            <td><b>${x.nome}</b>${x.prazoRep?`<div class="gp-mini" title="Prazo de reposição cadastrado no produto">fornecedor entrega em ${x.prazoRep} dia${x.prazoRep>1?'s':''}</div>`:''}</td><td class="num">${uSym(x.uni)}</td><td class="num">${fmtN(x.min,x.min%1?2:0)}</td><td class="num" style="${x.crit>0?'color:var(--red);font-weight:600':'color:var(--soft)'}">${x.crit>0?fmtN(x.crit,x.crit%1?2:0):'—'}</td><td class="num">${fmtN(x.atual,x.atual%1?2:0)}</td>
+            <td><b>${x.nome}</b>${x.prazoRep?`<div class="gp-mini" title="Prazo de reposição cadastrado no produto">fornecedor entrega em ${x.prazoRep} dia${x.prazoRep>1?'s':''}</div>`:''}${souDoPrincipal()?lcFornSelectHTML(x.ins):''}</td><td class="num">${uSym(x.uni)}</td><td class="num">${fmtN(x.min,x.min%1?2:0)}</td><td class="num" style="${x.crit>0?'color:var(--red);font-weight:600':'color:var(--soft)'}">${x.crit>0?fmtN(x.crit,x.crit%1?2:0):'—'}</td><td class="num">${fmtN(x.atual,x.atual%1?2:0)}</td>
             <td class="num">${fmtN(x.necessidade,x.necessidade%1?2:0)}${x.sugerido!==x.necessidade&&insEmb(x.ins)?`<div class="gp-mini" title="Arredondado para ${esc(insEmb(x.ins).nome)} de ${fmtN(insEmb(x.ins).qtd)}">${fmtN(x.sugerido,x.sugerido%1?2:0)} em ${esc(insEmb(x.ins).nome)}</div>`:''}</td>
             <td class="num"><input class="input no-print" type="number" step="0.01" style="width:78px;text-align:right" value="${x.qtdPedir}" oninput="DB.insumos['${x.ins.id}'].qtdPedir=this.value;finTouch()" onchange="viewEstoque()"><span class="print-only">${fmtN(x.qtdPedir,x.qtdPedir%1?2:0)}</span></td>
             ${podeVerValores()?`<td class="num">${fmtBRL(x.custo)}</td><td class="num"><b>${fmtBRL(x.totalPrevisto)}</b></td>`:''}
