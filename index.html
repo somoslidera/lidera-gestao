@@ -2743,10 +2743,12 @@ function insTrocaRender(){const k=insTrocaCtx();if(!k)return;if(!k.usos.length){
   let conv='';
   if(para){const dp=insDim(para.uni);const dims=[...new Set(usos.map(k.dimLinha))];const dif=dims.filter(d=>insDimIncompat(d,dp));
     if(dif.length)conv+=`<div class="alert alert-amber" style="display:block;margin:12px 0 0"><div style="font-weight:700;margin-bottom:4px">${esc(para.nome)} é medido em ${BSYM[dp]}</div><div style="font-size:12.5px;margin-bottom:8px">Informe a conversão para o Flow ajustar as quantidades das receitas.</div>${dif.map(d=>{const p=insConvPergunta(d,dp);return `<div style="font-size:12px;font-weight:600;margin-top:8px">Linhas lançadas em ${BSYM[d]}</div><div style="display:flex;gap:8px;align-items:center;font-size:13px;margin-top:4px"><span style="white-space:nowrap">1 ${BSYM[p.um]} equivale a</span><input class="input" id="tr_f_${d}" type="number" step="0.001" min="0" placeholder="Ex.: 200" style="flex:0 1 110px;min-width:70px;text-align:right"><span>${BSYM[p.em]}</span></div>`;}).join('')}</div>`;
+    const nJa=insRecN(usos.filter(u=>((recDoUso(u)||{}).comps||[]).some(c=>c&&c[0]===para.id)));
+    if(nJa)conv+=`<div style="font-size:12px;color:var(--muted);margin-top:10px"><b>${nJa} receita${nJa>1?'s':''}</b> já ${nJa>1?'têm':'tem'} ${esc(para.nome)}. ${orf?'Onde a quantidade é a mesma, ele já foi lançado no lugar: a linha antiga só sai. Onde é diferente, as quantidades somam.':'Nelas as duas quantidades somam numa linha só.'}</div>`;
     if(dims.includes(''))conv+=`<div style="font-size:12px;color:var(--muted);margin-top:10px">Algumas linhas não guardaram em que unidade foram lançadas. A quantidade fica como está, lida em ${BSYM[dp]}. Confira essas receitas depois da troca.</div>`;}
   modal(`<div class="modal-head"><h3>${orf?'Ingrediente apagado':'Apagar produto em uso'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    <div style="font-size:13.5px;line-height:1.5;margin-bottom:10px">${orf?`${nome?`<b>${esc(nome)}</b> saiu do cadastro de produtos, mas`:'<b>Um produto apagado</b>, sem nome guardado,'} continua em <b>${nRec} receita${s}</b>. Enquanto não tiver substituto, essa linha não entra no custo.`:`<b>${esc(nome)}</b> é usado em <b>${nRec} receita${s}</b>. Escolha o produto que entra no lugar antes de apagar, para o custo das fichas continuar certo.`}</div>
+    <div style="font-size:13.5px;line-height:1.5;margin-bottom:10px">${orf?`${nome?`<b>${esc(nome)}</b> saiu do cadastro de produtos, mas`:'<b>Um produto apagado</b>, sem nome guardado,'} continua em <b>${nRec} receita${s}</b>. Essa linha não entra no custo.`:`<b>${esc(nome)}</b> é usado em <b>${nRec} receita${s}</b>. Escolha o produto que entra no lugar antes de apagar, para o custo das fichas continuar certo.`}</div>
     <div style="max-height:170px;overflow:auto;border-bottom:1px solid var(--line);margin-bottom:14px">${linhas}</div>
     <div class="field" style="margin:0"><label>Trocar por</label>
       ${para?`<div style="display:flex;align-items:center;gap:10px;border:1px solid var(--navy);border-radius:10px;padding:9px 12px"><div style="flex:1;min-width:0"><b style="font-size:13.5px">${esc(para.nome)}</b><div class="gp-mini">${para.tipo==='preparado'?'Preparado · ':''}${fmtBRLp(custoInsumoBase(para))} por ${bSym(para.uni)}</div></div><a class="gp-link" style="font-size:12.5px;cursor:pointer" onclick="_troca.para='';insTrocaRender()">escolher outro</a></div>`
@@ -2758,18 +2760,27 @@ function insTrocaRender(){const k=insTrocaCtx();if(!k)return;if(!k.usos.length){
 function insTrocaBusca(){const box=$('#tr_res');const k=insTrocaCtx();if(!box||!k)return;const q=lmNorm(($('#tr_q')||{}).value||'');let ms,tit='';
   if(q)ms=Object.values(DB.insumos).filter(i=>insTrocaPode(i,k)&&lmNorm(i.nome).includes(q)).sort((a,b)=>a.nome.localeCompare(b.nome)).slice(0,8);
   else{ms=insSugestoes(k.nome,i=>!insTrocaPode(i,k),5);tit=ms.length?'Parecidos com o nome':'';}
-  box.innerHTML=(tit?`<div class="gp-mini" style="margin-top:8px">${tit}</div>`:'')+(ms.length?`<div class="ins-results">${ms.map(i=>`<div onclick="_troca.para='${i.id}';insTrocaRender()">${esc(i.nome)}${i.tipo==='preparado'?' (preparado)':''} <span style="float:right;opacity:.7">${fmtBRLp(custoInsumoBase(i))}/${bSym(i.uni)}</span></div>`).join('')}</div>`:(q?`<div style="font-size:12px;color:var(--soft);padding:6px 2px">Nenhum produto encontrado.</div>`:''));}
-function insTrocarEmReceitas(deId,paraId,multDe){const para=DB.insumos[paraId];if(!para)return 0;const dp=insDim(para.uni);let n=0;
-  const troca=(tipo,r)=>{if(!(r.comps||[]).some(c=>c&&c[0]===deId))return;let soma=0,pos=-1,uni='';const out=[];
+  const mq=(!q&&!k.ins)?insTrocaMesmaQtd(k):[];
+  box.innerHTML=(mq.length?`<div class="gp-mini" style="margin-top:8px">Já lançados nessas receitas com a mesma quantidade</div><div class="ins-results">${mq.map(x=>`<div onclick="_troca.para='${x.i.id}';insTrocaRender()">${esc(x.i.nome)}${x.i.tipo==='preparado'?' (preparado)':''} <span style="float:right;opacity:.7">em ${x.n} de ${k.nRec}</span></div>`).join('')}</div>`:'')+(tit?`<div class="gp-mini" style="margin-top:8px">${tit}</div>`:'')+(ms.length?`<div class="ins-results">${ms.map(i=>`<div onclick="_troca.para='${i.id}';insTrocaRender()">${esc(i.nome)}${i.tipo==='preparado'?' (preparado)':''} <span style="float:right;opacity:.7">${fmtBRLp(custoInsumoBase(i))}/${bSym(i.uni)}</span></div>`).join('')}</div>`:(q?`<div style="font-size:12px;color:var(--soft);padding:6px 2px">Nenhum produto encontrado.</div>`:''));}
+function qtdIgual(a,b){return Math.abs(a-b)<=0.005*Math.max(Math.abs(a),Math.abs(b),1e-9);}
+// Receita que já tem o substituto: as quantidades somam numa linha só. Exceção, só ao religar ingrediente já apagado (orfao):
+// com a MESMA quantidade o substituto já foi relançado no lugar, então a linha antiga só sai, sem dobrar.
+function insTrocarEmReceitas(deId,paraId,multDe,orfao){const para=DB.insumos[paraId];const res={n:0,limpas:0};if(!para)return res;const dp=insDim(para.uni);
+  const troca=(tipo,r)=>{if(!(r.comps||[]).some(c=>c&&c[0]===deId))return;let qDe=0,qPara=0,pos=-1,uni='',temPara=false;const out=[];
     (r.comps||[]).forEach(c=>{if(!c||(c[0]!==deId&&c[0]!==paraId)){out.push(c);return;}
       let q=+c[1]||0,u=c[2]||'';
-      if(c[0]===deId){const m=multDe({tipo,id:r.id,c});q=q*m;if(m!==1||!(u&&BASE[u]===dp))u='';}else if(u&&BASE[u]!==dp)u='';
-      if(pos<0){pos=out.length;out.push(null);uni=u;}else if(u!==uni)uni='';   // a receita já tinha o substituto: soma numa linha só
-      soma+=q;});
-    soma=+soma.toFixed(6);out[pos]=uni?[paraId,soma,uni]:[paraId,soma];r.comps=out;n++;};
+      if(c[0]===deId){const m=multDe({tipo,id:r.id,c});q=q*m;if(m!==1||!(u&&BASE[u]===dp))u='';qDe+=q;}else{if(u&&BASE[u]!==dp)u='';qPara+=q;temPara=true;}
+      if(pos<0){pos=out.length;out.push(null);uni=u;}else if(u!==uni)uni='';});
+    const limpa=!!orfao&&temPara&&qtdIgual(qDe,qPara);const tot=+(limpa?qPara:qDe+qPara).toFixed(6);
+    out[pos]=uni?[paraId,tot,uni]:[paraId,tot];r.comps=out;res.n++;if(limpa)res.limpas++;};
   Object.values(DB.fichas||{}).forEach(f=>{if(f&&!f.revenda)troca('ficha',f);});
   Object.values(DB.insumos||{}).forEach(p=>{if(p&&p.tipo==='preparado'&&p.id!==deId&&p.id!==paraId)troca('prep',p);});
-  return n;}
+  return res;}
+function recDoUso(u){return u.tipo==='prep'?DB.insumos[u.id]:DB.fichas[u.id];}
+// produtos atuais lançados nas mesmas receitas com a mesma quantidade da linha apagada: quase sempre é quem entrou no lugar
+function insTrocaMesmaQtd(k){const cont={};k.usos.forEach(u=>{const r=recDoUso(u);const q=+u.c[1]||0;const vistos=new Set();
+  ((r&&r.comps)||[]).forEach(c=>{const i=c&&DB.insumos[c[0]];if(!i||vistos.has(i.id)||!insTrocaPode(i,k))return;if(qtdIgual(+c[1]||0,q)){vistos.add(i.id);cont[i.id]=(cont[i.id]||0)+1;}});});
+  return Object.entries(cont).sort((a,b)=>b[1]-a[1]||DB.insumos[a[0]].nome.localeCompare(DB.insumos[b[0]].nome)).slice(0,4).map(([id,n])=>({i:DB.insumos[id],n}));}
 function insTrocaFim(msg,ms){const volta=_troca&&_troca.volta;_troca=null;insApagadosLimpar();save();closeModal();insRerender();toast(msg,ms||4000);
   if(volta==='pend'){const p=recPendencias();if(Object.keys(p.orf).length||p.uni.length)fichasPendModal();}}
 function insTrocaAplicar(){const k=insTrocaCtx();if(!k)return;const para=DB.insumos[k.t.para];if(!para||!insTrocaPode(para,k))return toast('Escolha o produto que entra no lugar');
@@ -2777,9 +2788,9 @@ function insTrocaAplicar(){const k=insTrocaCtx();if(!k)return;const para=DB.insu
   for(const d of [...new Set(k.usos.map(k.dimLinha))]){if(!insDimIncompat(d,dp)){mult[d]=1;continue;}
     const f=parseFloat(($('#tr_f_'+d)||{}).value)||0;if(!(f>0)){const el=$('#tr_f_'+d);if(el)el.focus();return toast('Informe a conversão para ajustar as quantidades');}
     mult[d]=insConvPergunta(d,dp).mult(f);}
-  const n=insTrocarEmReceitas(k.t.id,para.id,u=>mult[k.dimLinha(u)]||1);
+  const r=insTrocarEmReceitas(k.t.id,para.id,u=>mult[k.dimLinha(u)]||1,!k.ins);
   if(k.ins)insApagar(k.t.id);
-  insTrocaFim(`${para.nome} entrou no lugar em ${n} receita${n>1?'s':''}${k.ins?' e o produto foi apagado':''}`);}
+  insTrocaFim(`${para.nome} no lugar em ${r.n} receita${r.n>1?'s':''}${r.limpas?` (${r.limpas} já ${r.limpas>1?'tinham':'tinha'} o produto na mesma quantidade: só saiu a linha antiga)`:''}${k.ins?'. Produto apagado':''}`,r.limpas?6500:4000);}
 function insTrocaSem(){const k=insTrocaCtx();if(!k)return;const s=k.nRec>1?'s':'';
   if(k.ins){insApagar(k.t.id);return insTrocaFim(`Produto apagado. ${k.nRec} receita${s} mostra${k.nRec>1?'m':''} o ingrediente como apagado até você escolher um substituto.`,6500);}
   if(!confirm(`Remover este ingrediente de ${k.nRec} receita${s}? A linha sai da receita e o custo deixa de contar com ela.`))return;
@@ -2793,7 +2804,7 @@ function fichasPendModal(){const p=recPendencias();
   const sub=t=>`<div class="fx-sublabel" style="margin:4px 0 2px">${t}</div>`;
   modal(`<div class="modal-head"><h3>Receitas com pendência</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
-    ${orf.length?`<div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px">Estes ingredientes saíram do cadastro de produtos, mas continuam nas receitas. A linha não entra no custo, então a ficha parece mais barata do que é. Escolha o produto que entra no lugar: a troca vale para todas as receitas de uma vez.</div>
+    ${orf.length?`<div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px">Estes ingredientes saíram do cadastro de produtos, mas continuam nas receitas. A linha não entra no custo: sem substituto, a ficha parece mais barata do que é. Escolha o produto que entra no lugar e a troca vale para todas as receitas de uma vez. Onde ele já foi lançado com a mesma quantidade, a linha antiga só sai.</div>
     ${sub('Ingredientes apagados · '+orf.length)}
     <div style="max-height:${p.uni.length?'34':'50'}vh;overflow:auto;margin-bottom:14px">${orf.map(o=>{const nomes=[...new Set(o.us.map(u=>u.nome))].sort((a,b)=>a.localeCompare(b));
       return `<div style="display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)"><div style="flex:1;min-width:0"><b style="font-size:13.5px">${o.nome?esc(o.nome):'Produto apagado <span class="gp-mini" style="font-weight:400">nome não guardado</span>'}</b><div class="gp-mini" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(nomes.join(', '))}">${o.n} receita${o.n>1?'s':''}: ${esc(nomes.slice(0,3).join(', '))}${nomes.length>3?' e mais '+(nomes.length-3):''}</div></div><button class="btn btn-ghost btn-sm" style="flex:0 0 auto" onclick="insTrocaModal('${o.id}','pend')">Resolver</button></div>`;}).join('')}</div>`:''}
@@ -3262,7 +3273,7 @@ function viewFichas(){
   if(fichaFiltro==='Todas'||fichaFiltro==='Modular')cards+=modulares.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(m=>modularFichaCard(m)).join('');
   if(fichaFiltro==='Todas'||fichaFiltro==='Preparado')cards+=preparados.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(p=>preparadoCard(p)).join('');
   if(fichaFiltro==='Com pendência')cards+=preparados.filter(p=>pendRec.has('prep:'+p.id)).sort((a,b)=>a.nome.localeCompare(b.nome)).map(p=>preparadoCard(p)).join('');
-  const avisoPend=pendRec.size?`<div class="alert alert-red" style="align-items:center;flex-wrap:wrap;margin-bottom:14px">${icoWarn}<div style="flex:1 1 240px;min-width:0">${nOrfRec?`<b>${nOrfRec} receita${nOrfRec>1?'s':''} com ingrediente apagado.</b> O produto saiu do cadastro e a linha parou de contar: o custo ${nOrfRec>1?'dessas fichas':'dessa ficha'} está menor que o real.`:''}${nOrfRec&&nUniRec?' ':''}${nUniRec?`<b>${nUniRec} receita${nUniRec>1?'s':''}</b> com quantidade lançada em unidade diferente da do produto.`:''}</div><button class="btn btn-primary btn-sm" style="flex:0 0 auto" onclick="fichasPendModal()">Ver e corrigir</button></div>`:'';
+  const avisoPend=pendRec.size?`<div class="alert alert-red" style="align-items:center;flex-wrap:wrap;margin-bottom:14px">${icoWarn}<div style="flex:1 1 240px;min-width:0">${nOrfRec?`<b>${nOrfRec} receita${nOrfRec>1?'s':''} com ingrediente apagado.</b> O produto saiu do cadastro e a linha parou de contar no custo. Confira se falta substituto ou se é só tirar a linha antiga.`:''}${nOrfRec&&nUniRec?' ':''}${nUniRec?`<b>${nUniRec} receita${nUniRec>1?'s':''}</b> com quantidade lançada em unidade diferente da do produto.`:''}</div><button class="btn btn-primary btn-sm" style="flex:0 0 auto" onclick="fichasPendModal()">Ver e corrigir</button></div>`:'';
   const temAlgo=cards!=='';
   $('#view').innerHTML=`${avisoPend}
   <div class="section-head"><div class="pill-filter">${cats.map(c=>`<button class="${c===fichaFiltro?'on':''}" ${(c==='Sem estoque de saída'||(c==='Com pendência'&&c!==fichaFiltro))?'style="color:var(--red)"':''} onclick="fichaFiltro='${c}';viewFichas()">${c}${c==='Sem estoque de saída'?' ('+semArm+')':''}${c==='Com pendência'?' ('+pendRec.size+')':''}</button>`).join('')}</div>
