@@ -1089,7 +1089,9 @@ const DEF_CAT_PRATO=['Prato Principal','Entrada','Acompanhamento','Sobremesa','D
 const CAT_INSUMO=DEF_CAT_INSUMO, CAT_FICHA=DEF_CAT_PRATO;     // aliases (compat.)
 function dbCats(){DB.cats=DB.cats||{insumo:[],prato:[]};DB.cats.insumo=DB.cats.insumo||[];DB.cats.prato=DB.cats.prato||[];return DB.cats;}
 const ordPt=arr=>(arr||[]).slice().sort((a,b)=>(''+a).localeCompare((''+b),'pt',{sensitivity:'base'}));
-function catList(t){const def=t==='prato'?DEF_CAT_PRATO:DEF_CAT_INSUMO;const cst=dbCats()[t]||[];return ordPt([...def,...cst.filter(c=>!def.includes(c))]);}
+function catPratoEmUso(c){return Object.values(DB.fichas||{}).concat(Object.values(DB.modulares||{})).filter(f=>f&&((f.cat||'')+'').trim()===c).length;}
+function catPratoSync(){const c=dbCats().prato;Object.values(DB.fichas||{}).concat(Object.values(DB.modulares||{})).forEach(f=>{const x=((f&&f.cat)||'')+'';const v=x.trim();if(v&&!DEF_CAT_PRATO.includes(v)&&!c.includes(v))c.push(v);});}
+function catList(t){if(t==='prato')catPratoSync();const def=t==='prato'?DEF_CAT_PRATO:DEF_CAT_INSUMO;const cst=dbCats()[t]||[];return ordPt([...def,...cst.filter(c=>!def.includes(c))]);}
 function isCatPadrao(t,c){return (t==='prato'?DEF_CAT_PRATO:DEF_CAT_INSUMO).includes(c);}
 function subOptionsCMV(sel){nfeEnsureCats();const subs=ordPt(((DB.categorias['CMV']||{subs:[]}).subs)||[]);if(sel&&!subs.includes(sel))subs.unshift(sel);return `<option value="">— subcategoria —</option>`+subs.map(x=>`<option ${x===sel?'selected':''}>${esc(x)}</option>`).join('');}
 function catOptions(t,sel){const list=catList(t).slice();if(sel&&!list.includes(sel))list.unshift(sel);return `<option value="">— categoria —</option>`+list.map(c=>`<option ${c===sel?'selected':''}>${esc(c)}</option>`).join('');}
@@ -2734,7 +2736,7 @@ function delSubIns(g,sub){const c=DB.categorias[g];if(!c)return;
   const usoLanc=(DB.lancamentos||[]).filter(l=>l.grupo===g&&l.sub===sub).length;
   if(usoProd||usoLanc){if(!confirm('A subcategoria "'+sub+'" está em uso em '+usoProd+' produto(s) e '+usoLanc+' lançamento(s).\n\nRemover mesmo assim? Os registros antigos mantêm o nome, mas ela some da lista de escolha.'))return;}
   c.subs=c.subs.filter(x=>x!==sub);save();gerenciarCategorias();}
-function delCatIdx(i){dbCats();if(i>=0)DB.cats[catTab].splice(i,1);save();gerenciarCategorias();}
+function delCatIdx(i){dbCats();if(i>=0&&catTab==='prato'){const n=catPratoEmUso(DB.cats.prato[i]);if(n)return toast('Categoria em uso por '+n+' ficha'+(n>1?'s':'')+'. Troque a categoria delas antes de remover.',5000);}if(i>=0)DB.cats[catTab].splice(i,1);save();gerenciarCategorias();}
 function fornCondSet(id,campo,v){const f=(DB.fin.fornecedores||[]).find(x=>x.id===id);if(!f)return;
   if(campo==='condN'){f.condN=parseInt(v)||0;if(f.condN&&!f.condIv)f.condIv='30';}else f.condIv=v||'30';
   save();gerenciarCategorias('fornecedor');}
@@ -7681,7 +7683,7 @@ function viewEstoque(){
       <select class="input" style="max-width:220px" onchange="estoqueFiltro=this.value;viewEstoque()">${cats.map(c=>`<option ${c===estoqueFiltro?'selected':''}>${c}</option>`).join('')}</select>
       <input class="input" id="estBusca" value="${esc(buscaEst)}" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="buscaEst=this.value;filtrarLinhas(this,'#estoqueTbody')"></div>
     <div class="card"><div class="scroll-x"><table>
-      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Ideal','min',1)}${thS('estoque','Crítico','crit',1)}${estMultiArm()?armazensPermitidos().map(a=>`<th class="num" title="Saldo em ${esc(a.nome)}">${esc(a.nome)}</th>`).join('')+(souDoPrincipal()?thS('estoque','Total','atual',1):''):thS('estoque','Atual','atual',1)}<th class="num" title="Dias de estoque pelo consumo dos últimos 30 dias (vendas baixadas, perdas e saídas)">Cobertura</th>${thS('estoque','Categoria','grupo')}${thS('estoque','Subcategoria','sub')}${thS('estoque','Fornecedor','fornecedor')}${podeVerValores()?thS('estoque','Custo médio','custo',1):''}${thS('estoque','Unid.','uni',1)}</tr></thead>
+      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Ideal','min',1)}${thS('estoque','Crítico','crit',1)}${estMultiArm()?armazensPermitidos().map(a=>`<th class="num" title="Saldo em ${esc(a.nome)}">${esc(a.nome)}</th>`).join('')+(souDoPrincipal()?thS('estoque','Total','atual',1):''):thS('estoque','Atual','atual',1)}<th class="num" title="Dias de estoque pelo consumo dos últimos 30 dias (vendas baixadas, perdas e saídas)">Cobertura</th>${thS('estoque','Categoria','grupo')}${thS('estoque','Subcategoria','sub')}${thS('estoque','Fornecedor','fornecedor')}${podeVerValores()?thS('estoque','Custo médio','custo',1):''}${podeVerValores()&&estSubprodutos().length?`<th class="num" title="Subprodutos com porção definida no cadastro: custo médio × tamanho da porção">Custo por porção</th>`:''}${thS('estoque','Unid.','uni',1)}</tr></thead>
       <tbody id="estoqueTbody">${filt.map(x=>`
         <tr>
           <td><a onclick="estKardex('${x.ins.id}')" title="Ver o kardex (histórico de entradas e saídas)" style="font-weight:700;cursor:pointer">${x.nome}</a>${x.ins.tipo==='preparado'?'<div style="font-size:11px;color:var(--gold);font-weight:600">subproduto</div>':''}</td>
@@ -7692,7 +7694,7 @@ function viewEstoque(){
           <td>${ehInsumoCMV(x.ins)?`<span class="tag tag-gray">CMV</span>`:`<span class="tag tag-amber" title="Não entra na apuração do CMV">${esc(x.grupo)}</span>`}</td>
           <td>${(x.sub||x.cat)?`<span style="font-size:12.5px">${esc(x.sub||x.cat)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
           <td><span style="font-size:12.5px;color:var(--muted)" title="Último fornecedor pelas notas. Para escolher outro, use a Lista de Compras.">${esc(insFornAtual(x.ins)==='Sem fornecedor'?'—':insFornAtual(x.ins))}</span></td>
-          ${podeVerValores()?`<td class="num">${fmtBRL(x.custo)}</td>`:''}
+          ${podeVerValores()?`<td class="num">${fmtBRL(x.custo)}</td>`:''}${podeVerValores()&&estSubprodutos().length?`<td class="num">${estCustoPorcaoCel(x)}</td>`:''}
           <td class="num">${uSym(x.uni)}</td>
         </tr>`).join('')}</tbody>
     </table></div></div>`;
@@ -7882,6 +7884,9 @@ function estRegularizarNegativos(){const neg=estNegativos().filter(x=>x.arm!==ES
   save();viewEstoque();toast(n+' item(ns) regularizado(s)');}
 
 /* ----- produção de subproduto (porcionamento): baixa os brutos e dá entrada no porcionado com o custo dos ingredientes ----- */
+function estCustoPorcaoCel(x){const ins=x.ins;if(!ins||ins.tipo!=='preparado'||!ins.estocavel)return '<span style="color:var(--soft)">—</span>';const pz=prepPorcao(ins);
+  if(!pz)return (!MEMBRO_PERMS||MEMBRO_PERMS.includes('fichas'))?`<a onclick="editPreparado('${ins.id}')" style="cursor:pointer;font-size:12px;color:var(--navy);text-decoration:underline" title="Informe o tamanho da porção no cadastro do preparado">definir porção</a>`:'<span style="color:var(--soft)">—</span>';
+  return `<b>${fmtBRL(x.custo*pz.base/(TO_BASE[ins.uni]||1))}</b><div class="gp-mini" style="white-space:nowrap">${esc(pz.nome)} de ${estQ(pz.base,bSym(ins.uni))}</div>`;}
 function estSubprodutos(){return Object.values(DB.insumos).filter(i=>i.tipo==='preparado'&&i.estocavel).sort((a,b)=>a.nome.localeCompare(b.nome));}
 /* consumo teórico dos ingredientes para produzir qtd unidades do subproduto, na unidade de compra de cada ingrediente */
 function estReceitaPara(sub,qtd){const fator=(+qtd||0)/((+sub.rendimento)||1);const out=[];
@@ -8571,7 +8576,7 @@ function estReqMediaVendas(data,semanas){semanas=semanas||4;const dow=estReqDiaS
   estBaixas().forEach(b=>{if(!b.data||b.data<de||b.data>=data||estReqDiaSemana(b.data)!==dow)return;dias.add(b.data);(b.itens||[]).forEach(x=>{acc[x.fichaId]=(acc[x.fichaId]||0)+(+x.qtd||0);});});
   const n=dias.size;if(!n)return null;const out={};Object.entries(acc).forEach(([id,q])=>{out[id]=Math.round(q/n);});return {media:out,dias:n};}
 function estReqEditorHTML(r){const fichas=fichasVendaveis().slice().sort((a,b)=>(a.cat||'').localeCompare(b.cat||'')||a.nome.localeCompare(b.nome));const mob=ehMobile();const fechada=!estReqEditavel(r);const concl=estReqConcluida(r);const separa=pode('req_separar');
-  const prev={};(r.pratos||[]).forEach(([id,q])=>{prev[id]=q;});const totPratos=Object.values(prev).reduce((s,q)=>s+(+q||0),0);
+  const prev={};(r.pratos||[]).forEach(([id,q])=>{prev[id]=q;});const totPratos=Object.entries(prev).reduce((s,[k,q])=>s+(String(k).startsWith('prep:')?0:(+q||0)),0);
   const itens=(r.itens||[]);const nSep=itens.filter(x=>+x.qtd>0).length;const custo=itens.reduce((s,x)=>{const i=DB.insumos[x.insumoId];return s+(i?estCustoAtual(i)*(+x.qtd||0):0);},0);
   const passo=r.status==='solicitada'?'Enviada ao estoque, aguardando separação.':r.status==='separando'?'O estoque está separando.':r.status==='pronta'?'Pronta: o setor pode buscar no estoque.':concl?'Retirada em '+fmtDataBR((r.retiradaEm||'').slice(0,10)||r.data)+(r.concluidoPor?' · concluída por '+esc(r.concluidoPor):'')+'.':r.status==='cancelada'?'Cancelada'+(r.motivoCancel?': '+esc(r.motivoCancel):'')+'.':'1) Preencha a previsão de pratos. 2) Gere a lista. 3) Ajuste e envie ao estoque.';
   const acoes=[`<button class="btn btn-ghost btn-sm" onclick="estReqSel=null;viewEstoque()">← Voltar</button>`,nSep?`<button class="btn btn-ghost btn-sm" onclick="estReqImprimir('${r.id}')">🖨️ Imprimir</button>`:''];
@@ -8595,10 +8600,10 @@ function estReqEditorHTML(r){const fichas=fichasVendaveis().slice().sort((a,b)=>
   </div>
   <div style="display:grid;grid-template-columns:${mob?'1fr':'minmax(0,1fr) minmax(0,1.3fr)'};gap:12px;align-items:start">
     <div class="card card-pad no-print" style="padding:14px 16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><div style="font-weight:700">1. Previsão de pratos <span class="gp-mini">${totPratos} no total</span></div>${fechada?'':`<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" style="padding:4px 9px;min-height:0;font-size:12px" title="Média das vendas registradas no mesmo dia da semana, últimas 4 semanas" onclick="estReqPreencherMedia('${r.id}')">Média do dia da semana</button><button class="btn btn-ghost btn-sm" style="padding:4px 9px;min-height:0;font-size:12px" title="Copia a previsão da última requisição do mesmo dia da semana" onclick="estReqCopiarUltima('${r.id}')">Repetir a última</button></div>`}</div>
-      <input class="input" placeholder="🔎 Filtrar prato" style="margin-bottom:6px;padding:7px 10px;font-size:13px" oninput="filtrarLinhas(this,'#rq_pratos')">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><div style="font-weight:700">1. Previsão de pratos e preparados <span class="gp-mini">${totPratos} no total</span></div>${fechada?'':`<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" style="padding:4px 9px;min-height:0;font-size:12px" title="Média das vendas registradas no mesmo dia da semana, últimas 4 semanas" onclick="estReqPreencherMedia('${r.id}')">Média do dia da semana</button><button class="btn btn-ghost btn-sm" style="padding:4px 9px;min-height:0;font-size:12px" title="Copia a previsão da última requisição do mesmo dia da semana" onclick="estReqCopiarUltima('${r.id}')">Repetir a última</button></div>`}</div>
+      <input class="input" placeholder="🔎 Filtrar prato ou preparado" style="margin-bottom:6px;padding:7px 10px;font-size:13px" oninput="filtrarLinhas(this,'#rq_pratos')">
       <div id="rq_pratos" style="max-height:${mob?'40vh':'56vh'};overflow:auto"><table style="width:100%">${(function(){let last=null;return fichas.map(f=>{const cab=f.cat!==last?`<tr><td colspan="2" style="padding:8px 0 2px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--gold);font-weight:700;border:0">${esc(f.cat||'Sem categoria')}</td></tr>`:'';last=f.cat;
-        return cab+`<tr><td style="padding:3px 0;border-top:1px solid var(--line);font-size:13px">${esc(f.nome)}${f.codPdv?` <span class="gp-mini">${esc(f.codPdv)}</span>`:''}</td><td style="padding:3px 0;border-top:1px solid var(--line);width:84px;text-align:right"><input class="input" type="number" min="0" step="1" inputmode="numeric" value="${prev[f.id]||''}" ${fechada?'disabled':''} placeholder="0" style="width:76px;text-align:right;padding:5px 8px" onchange="estReqPrato('${r.id}','${f.id}',this.value)"></td></tr>`;}).join('');})()}</table></div>
+        return cab+`<tr><td style="padding:3px 0;border-top:1px solid var(--line);font-size:13px">${esc(f.nome)}${f.codPdv?` <span class="gp-mini">${esc(f.codPdv)}</span>`:''}</td><td style="padding:3px 0;border-top:1px solid var(--line);width:84px;text-align:right"><input class="input" type="number" min="0" step="1" inputmode="numeric" value="${prev[f.id]||''}" ${fechada?'disabled':''} placeholder="0" style="width:76px;text-align:right;padding:5px 8px" onchange="estReqPrato('${r.id}','${f.id}',this.value)"></td></tr>`;}).join('')+estReqPrepsHTML(r,prev,fechada);})()}</table></div>
       ${fechada?'':`<button class="btn btn-primary" style="width:100%;margin-top:10px;justify-content:center" onclick="estReqGerar('${r.id}')">2. Gerar lista de itens →</button>`}
     </div>
     <div class="card card-pad" style="padding:14px 16px">
@@ -8615,7 +8620,7 @@ function estReqImprimir(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)re
   const ord=itens.slice().sort((a,b)=>{const ia=DB.insumos[a.insumoId]||{},ib=DB.insumos[b.insumoId]||{};return (ia.cat||'').localeCompare(ib.cat||'')||(ia.nome||'').localeCompare(ib.nome||'');});
   let body='',last=null;ord.forEach(x=>{const i=DB.insumos[x.insumoId];if(!i)return;if(i.cat!==last){last=i.cat;body+=`<div class="cg">${esc(i.cat||'Sem categoria')}</div>`;}
     body+=`<div class="ci"><span class="ci-n">${esc(i.nome)}${i.tipo==='preparado'?' <small>(porcionado)</small>':''}</span><span class="ci-q">${estQReq(x.qtd,i)}</span><span class="ci-b"></span></div>`;});
-  const pratos=(r.pratos||[]).map(([fid,q])=>{const f=DB.fichas[fid];return f?esc(f.nome)+' <b>'+q+'</b>':'';}).filter(Boolean).join(' · ');
+  const pratos=(r.pratos||[]).map(([fid,q])=>{if(String(fid).startsWith('prep:')){const sp=DB.insumos[fid.slice(5)];return sp?esc(sp.nome)+' <b>'+q+'</b>':'';}const f=DB.fichas[fid];return f?esc(f.nome)+' <b>'+q+'</b>':'';}).filter(Boolean).join(' · ');
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
   pa.innerHTML=`<div class="ct-head"><div><div style="font-size:19px;font-weight:700">${esc(rest)}</div><div style="font-size:13px">Requisição para ${esc(estArmNome(r.para))} · ${fmtDataBR(r.data)} · ${esc(turno)}</div></div><div style="font-size:11.5px;text-align:right;line-height:1.9">Separado por: __________________<br>Conferido por: __________________</div></div>
     <div class="ct-note">Sai de <b>${esc(estArmNome(r.de))}</b> para <b>${esc(estArmNome(r.para))}</b>. ${itens.length} item(ns). Marque a caixa ao separar cada item.${r.obs?' Obs.: '+esc(r.obs):''}</div>
@@ -8625,13 +8630,18 @@ function estReqImprimir(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)re
   const fim=()=>{document.body.classList.remove('print-contagem');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);}
 function estReqSet(id,k,v){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;r[k]=v;save();if(k==='de'||k==='para')viewEstoque();}
-function estReqPrato(id,fichaId,v){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;const q=parseInt(v)||0;r.pratos=(r.pratos||[]).filter(p=>p[0]!==fichaId);if(q>0)r.pratos.push([fichaId,q]);save();}
+function estReqPrepsHTML(r,prev,fechada){const todos=Object.values(DB.insumos).filter(i=>i.tipo==='preparado').sort((a,b)=>a.nome.localeCompare(b.nome));
+  const est=todos.filter(p=>p.estocavel&&prodNoSetor(p,r.para)),hora=todos.filter(p=>!p.estocavel&&(p.comps||[]).length);if(!est.length&&!hora.length)return '';
+  const cab=(t,h)=>`<tr><td colspan="2" style="padding:10px 0 2px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--navy);font-weight:700;border:0">${t} <span class="gp-mini" style="text-transform:none;letter-spacing:0;font-weight:400">${h}</span></td></tr>`;
+  const lin=sp=>{const pz=prepPorcao(sp);const k='prep:'+sp.id;return `<tr><td style="padding:3px 0;border-top:1px solid var(--line);font-size:13px">${esc(sp.nome)} <span class="gp-mini">${pz?'em '+esc(prepPlural(pz.nome,2))+' de '+estQ(pz.base,bSym(sp.uni)):'em '+uSym(sp.uni)}</span></td><td style="padding:3px 0;border-top:1px solid var(--line);width:84px;text-align:right"><input class="input" type="number" min="0" step="${pz?'1':'0.001'}" inputmode="decimal" value="${prev[k]||''}" ${fechada?'disabled':''} placeholder="0" style="width:76px;text-align:right;padding:5px 8px" onchange="estReqPrato('${r.id}','${k}',this.value)"></td></tr>`;};
+  return (est.length?cab('Preparados em estoque','saem prontos do estoque')+est.map(lin).join(''):'')+(hora.length?cab('Preparados feitos na hora','pede os insumos da receita')+hora.map(lin).join(''):'');}
+function estReqPrato(id,fichaId,v){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;const q=String(fichaId).startsWith('prep:')?(parseFloat(v)||0):(parseInt(v)||0);r.pratos=(r.pratos||[]).filter(p=>p[0]!==fichaId);if(q>0)r.pratos.push([fichaId,q]);save();}
 function estReqPreencherMedia(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)return;const m=estReqMediaVendas(r.data,4);if(!m)return toast('Sem vendas registradas no mesmo dia da semana nas últimas 4 semanas. Registre as vendas em "Baixa por vendas" para o Flow aprender.');
-  r.pratos=Object.entries(m.media).filter(([,q])=>q>0).map(([f,q])=>[f,q]);save();viewEstoque();toast('Previsão pela média de '+m.dias+' '+(m.dias>1?'dias':'dia')+' iguais a este');}
+  r.pratos=(r.pratos||[]).filter(p=>String(p[0]).startsWith('prep:')).concat(Object.entries(m.media).filter(([,q])=>q>0).map(([f,q])=>[f,q]));save();viewEstoque();toast('Previsão pela média de '+m.dias+' '+(m.dias>1?'dias':'dia')+' iguais a este');}
 function estReqCopiarUltima(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)return;const dow=estReqDiaSemana(r.data);const ant=estRequisicoes().filter(x=>x.id!==id&&(x.pratos||[]).length&&estReqDiaSemana(x.data)===dow).sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0]||estRequisicoes().filter(x=>x.id!==id&&(x.pratos||[]).length).sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];
   if(!ant)return toast('Nenhuma requisição anterior com previsão');r.pratos=JSON.parse(JSON.stringify(ant.pratos));save();viewEstoque();toast('Previsão copiada de '+fmtDataBR(ant.data));}
-function estReqGerar(id){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;if(!(r.pratos||[]).length)return toast('Informe a previsão de ao menos um prato');
-  const acc={};r.pratos.forEach(([fid,q])=>{const f=DB.fichas[fid];if(f&&q>0)estExplodir(f,q,acc);});
+function estReqGerar(id){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;if(!(r.pratos||[]).length)return toast('Informe a previsão de ao menos um prato ou preparado');
+  const acc={};r.pratos.forEach(([fid,q])=>{if(String(fid).startsWith('prep:')){const sp=DB.insumos[fid.slice(5)];if(!sp||!(q>0))return;const qu=opQtdUni(sp,q);if(sp.estocavel)acc[sp.id]=(acc[sp.id]||0)+qu;else estReceitaPara(sp,qu).forEach(x=>{acc[x.insumoId]=(acc[x.insumoId]||0)+x.q;});return;}const f=DB.fichas[fid];if(f&&q>0)estExplodir(f,q,acc);});
   const antigos={};(r.itens||[]).forEach(x=>{antigos[x.insumoId]=x;});const itens=[];
   let foraSetor=0;Object.entries(acc).forEach(([insumoId,nec])=>{const ins=DB.insumos[insumoId];if(!ins)return;if(!prodNoSetor(ins,r.para)){foraSetor++;return;}const tem=Math.max(0,estSaldoArm(ins,r.para));
     // ponto de reposição: só pede quando o que fica na cozinha depois do uso cai abaixo do mínimo cadastrado
