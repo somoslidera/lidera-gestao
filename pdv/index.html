@@ -105,7 +105,28 @@ h2{font:600 22px Fraunces,serif;margin:0 0 4px}h3{font:600 17px Fraunces,serif;m
 .auth-c .input{background:#fff;color:#1B2235;border-color:#E4E7EE}
 .org{display:block;width:100%;text-align:left;padding:13px 14px;border:1px solid #E4E7EE;border-radius:12px;margin-bottom:8px;font-weight:600;color:#1B2235}.org:hover{border-color:var(--navy);background:#F0F2F8}
 #printArea{display:none}
+/* mesas, conta, cozinha, balança de autoatendimento */
+.mesas{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.mesa{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--card);min-height:112px}
+.mesa b{font:600 18px Fraunces,serif}.mesa .v{font-weight:700;font-size:16px}.mesa:hover{border-color:var(--accent)}
+.mesa.ocup{background:var(--navy);border-color:var(--navy);color:#fff}.mesa.ocup .mini{color:#C9D2E6}.mesa.conta{background:var(--amber-bg);border-color:var(--gold)}
+.conta{max-width:760px;margin:0 auto}.conta-ac{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:12px}
+.conta-ac .btn-xl{grid-column:span 3}.conta-ac .btn-o{grid-column:span 2;background:var(--card)}.conta-ac .btn-o:nth-last-child(-n+2){grid-column:span 3}
+.kds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+.kcard{display:block;width:100%;text-align:left;padding:14px 16px;border-radius:16px;border:1px solid var(--line);border-left:6px solid var(--navy);background:var(--card);margin-bottom:10px;box-shadow:var(--shadow)}
+.kcard.preparo{border-left-color:var(--amber)}.kcard.pronto{border-left-color:var(--green)}.kcard.atras{border-left-color:var(--red);background:var(--red-bg)}
+.kh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}.kh b{font:600 20px Fraunces,serif}.kh span{font-size:13px;font-weight:700;color:var(--muted)}
+.kl{font-size:17px;line-height:1.35;padding:3px 0}.ko{font-size:14px;font-weight:700;color:var(--red);padding-left:26px}.kf{font-size:12px;color:var(--muted);margin-top:8px}
+.totem{display:grid;grid-template-columns:1.1fr 1fr;gap:0;border-radius:22px;overflow:hidden;box-shadow:var(--shadow-lg);min-height:calc(100vh - 130px)}
+.tot-l{padding:34px 38px;background:linear-gradient(150deg,var(--navy-900),var(--navy));color:#fff;display:flex;flex-direction:column;justify-content:center}
+.tot-l .peso input{font-size:112px}.tot-r{padding:30px 34px;background:var(--card);display:flex;flex-direction:column;justify-content:center}
+.tot-num{font:600 76px/1.1 Fraunces,serif;text-align:center;min-height:86px;margin:4px 0 18px;border-bottom:2px solid var(--line)}
+.teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.teclado button{min-height:78px;border-radius:18px;border:1px solid var(--line);font:600 30px Fraunces,serif;background:var(--card)}
+.teclado button:active{background:var(--hover)}.teclado .ok{background:var(--green);border-color:var(--green);color:#fff;font:600 18px Inter,sans-serif}
+.tot-ok{text-align:center;padding:30px 10px}
+#pinRoot{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;background:rgba(10,18,36,.6);padding:16px}
 @media (max-width:1050px){.pdv{grid-template-columns:1fr}.cmd{position:static;max-height:none}.grid{max-height:none}.painel{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:1fr}.rest{display:none}}
+@media (max-width:900px){.kds{grid-template-columns:1fr}.totem{grid-template-columns:1fr}.tot-l .peso input{font-size:72px}.conta-ac{grid-template-columns:repeat(2,1fr)}.conta-ac .btn,.conta-ac .btn-xl,.conta-ac .btn-o:nth-last-child(-n+2){grid-column:span 1}.conta-ac .btn-xl{grid-column:span 2}}
 @media (max-width:640px){.wrap{padding:12px}.top{padding-left:12px;padding-right:12px;gap:8px;flex-wrap:wrap}.nav{order:3;width:100%;margin:0;overflow:auto}.nav button{flex:1}.bal{grid-template-columns:1fr}.peso input{font-size:52px}.painel{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:1fr}.brand span{display:none}}
 @media print{body>*{display:none!important}#printArea{display:block!important;color:#000;font:12px/1.35 ui-monospace,Menlo,Consolas,monospace;padding:2mm}
  #printArea h4{font:700 14px/1.2 ui-monospace,monospace;margin:0 0 2px;text-align:center}#printArea .c{text-align:center}#printArea hr{border:0;border-top:1px dashed #000;margin:5px 0}
@@ -123,7 +144,7 @@ h2{font:600 22px Fraunces,serif;margin:0 0 4px}h3{font:600 17px Fraunces,serif;m
    Online por padrão: cada registro vai para a nuvem na hora e os terminais se atualizam em tempo real.
    Se a internet cair, continua vendendo: os registros ficam no aparelho e sobem sozinhos quando a conexão volta.
    O fechamento do caixa vai ao Flow pela API pública /v1/vendas. */
-const VERSAO='Estágio 1 · 10/11/2026';
+const VERSAO='Estágio 2 · 11/11/2026';
 const SUPA_URL='https://fvcbxorfstqqeewocxkf.supabase.co';
 const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2Y2J4b3Jmc3RxcWVld29jeGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzM5MjgsImV4cCI6MjA5Njg0OTkyOH0.X9gnZt535F1ASHpUaL24eEZysHHECwzfBwjaR4kVnyw';
 const API_FLOW=SUPA_URL+'/functions/v1/flow-api';
@@ -168,17 +189,22 @@ const IDB={db:null,mem:{ev:new Map(),kv:new Map()},
 /* ---------- contexto ---------- */
 let CTX=null;            // {orgId,orgNome,userId,email}
 let CAT={fichas:[],meios:[],precoKg:0,restaurante:''};
-let LOCAL={terminal:'Caixa 1',largura:80,autoImprimir:false,autoGuardar:false,tema:'auto',balBaud:9600,balDiv:1000,balSim:false,tokenFlow:''};
+let LOCAL={terminal:'Caixa 1',modo:'caixa',operador:'',setor:'',largura:80,autoImprimir:false,autoGuardar:false,tema:'auto',balBaud:9600,balDiv:1000,balSim:false,tokenFlow:''};
 let EV=[],IDX=new Set(),S=null,CURSOR=0;
 let CUR={comandaId:null,numero:''};
 let ROUTE='venda',UI={cat:'Todos',busca:'',pesoId:null,taraId:null};
 const DIAS_GUARDA=40;
 
-function novoEstado(){return {cfg:null,caixas:{},comandas:{},fechadas:{},vendas:{}};}
+function novoEstado(){return {cfg:null,caixas:{},comandas:{},fechadas:{},vendas:{},ped:{},kd:{}};}
 function cfg(){const c=(S&&S.cfg)||{};
   const pesos=(Array.isArray(c.pesos)&&c.pesos.length)?c.pesos:[{id:'buffet',nome:'Buffet por kg',codigo:'',precoKg:+CAT.precoKg||0,dias:{}}];
   const taras=Array.isArray(c.taras)?c.taras:[];
-  return {pesos,taras,servico:+c.servico||0,meiosOff:Array.isArray(c.meiosOff)?c.meiosOff:[],itensOff:Array.isArray(c.itensOff)?c.itensOff:[]};}
+  return {pesos,taras,servico:+c.servico||0,meiosOff:Array.isArray(c.meiosOff)?c.meiosOff:[],itensOff:Array.isArray(c.itensOff)?c.itensOff:[],
+    nMesas:Math.max(0,Math.min(300,parseInt(c.nMesas)||0)),setores:(Array.isArray(c.setores)&&c.setores.length)?c.setores:[{id:'cozinha',nome:'Cozinha'}],catSetor:(c.catSetor&&typeof c.catSetor==='object')?c.catSetor:{},pinHash:String(c.pinHash||''),servTudo:!!c.servTudo};}
+// taxa de serviço sugerida: nas mesas sempre; em comanda e balcão só se o restaurante marcar
+const servDe=c=>{const g=cfg();return (c&&(c.mesa||g.servTudo))?g.servico:0;};
+const setorDe=cat=>{const c=cfg();const id=c.catSetor[cat]||'';return id&&c.setores.some(x=>x.id===id)?id:'';};
+const rotulo=c=>c?(c.mesa?'Mesa '+c.mesa:(c.numero?'Comanda '+c.numero:'Balcão')):'';
 function salvarCfg(mut){const c=JSON.parse(JSON.stringify(cfg()));mut(c);emit('cfg',{dados:c});}
 const ehDinheiro=m=>/dinheiro|especie/.test(normTxt((m&&m.tipo)||'')+' '+normTxt((m&&m.nome)||''));
 function meiosAtivos(){const off=cfg().meiosOff;let l=(CAT.meios||[]).filter(m=>m&&m.nome&&!off.includes(m.id));if(!(CAT.meios||[]).some(ehDinheiro))l=[{id:'pdvDinheiro',nome:'Dinheiro',tipo:'Dinheiro'}].filter(m=>!off.includes(m.id)).concat(l);
@@ -194,11 +220,25 @@ function apply(e){const d=e.dados||{};switch(e.tipo){
   case 'cx_reabre':{const c=S.caixas[e.caixa_id];if(c)c.fechado=null;break;}
   case 'cx_flow':{const c=S.caixas[e.caixa_id];if(c)c.flow={em:e.criado_em,ok:!!d.ok,status:d.status||'',msg:d.msg||''};break;}
   case 'cm_item':{let k=e.ref;if(S.fechadas[k])k=k+':r';   // item que chegou depois da comanda paga: vira comanda residual, nada se perde
-    const c=S.comandas[k]||(S.comandas[k]={id:k,numero:d.numero||'',itens:[],abertaEm:e.criado_em});
-    if(d.item&&!c.itens.some(i=>i.id===d.item.id))c.itens.push(Object.assign({em:e.criado_em},d.item));if(d.numero&&!c.numero)c.numero=d.numero;break;}
-  case 'cm_del':{const c=S.comandas[e.ref]||S.comandas[e.ref+':r'];if(c){c.itens=c.itens.filter(i=>i.id!==d.itemId);if(!c.itens.length)delete S.comandas[c.id];}break;}
-  case 'cm_canc':delete S.comandas[e.ref];S.fechadas[e.ref]=true;break;
-  case 'venda':S.vendas[e.ref]=Object.assign({},d,{id:e.ref,caixaId:e.caixa_id,em:e.criado_em,terminal:e.terminal||''});if(d.comandaId){S.fechadas[d.comandaId]=true;delete S.comandas[d.comandaId];}break;
+    const c=S.comandas[k]||(S.comandas[k]={id:k,numero:d.numero||'',mesa:d.mesa||'',itens:[],abertaEm:e.criado_em});
+    if(d.numero&&!c.numero)c.numero=d.numero;if(d.mesa&&!c.mesa)c.mesa=d.mesa;
+    if(d.item&&!c.itens.some(i=>i.id===d.item.id)){const it=Object.assign({em:e.criado_em},d.item);c.itens.push(it);if(it.setor)S.ped[it.id]={it,cid:k,numero:c.numero,mesa:c.mesa};}break;}
+  case 'cm_meta':{let c=S.comandas[e.ref];if(!c){if(S.fechadas[e.ref])break;c=S.comandas[e.ref]={id:e.ref,numero:'',mesa:'',itens:[],abertaEm:e.criado_em};}
+    ['mesa','numero','pessoas','nome','conta'].forEach(k=>{if(d[k]!==undefined)c[k]=d[k];});if(d.fixa)c.fixa=true;
+    Object.values(S.ped).forEach(p=>{if(p.cid===c.id){p.mesa=c.mesa;p.numero=c.numero;}});break;}
+  case 'cm_del':{const c=S.comandas[e.ref]||S.comandas[e.ref+':r'];if(S.ped[d.itemId])S.ped[d.itemId].canc=true;if(c){c.itens=c.itens.filter(i=>i.id!==d.itemId);if(!c.itens.length&&!c.fixa)delete S.comandas[c.id];}break;}
+  case 'cm_obs':{const c=S.comandas[e.ref];const it=c&&c.itens.find(i=>i.id===d.itemId);if(it)it.obs=d.obs||'';break;}
+  case 'cm_move':{const o=S.comandas[e.ref];if(!o)break;
+    const dst=S.comandas[d.destinoId]||(S.comandas[d.destinoId]={id:d.destinoId,numero:d.destinoNumero||'',mesa:d.destinoMesa||'',itens:[],abertaEm:e.criado_em});
+    const ids=d.todos?o.itens.map(i=>i.id):(d.itemIds||[]);const mov=o.itens.filter(i=>ids.includes(i.id));o.itens=o.itens.filter(i=>!ids.includes(i.id));
+    mov.forEach(i=>{dst.itens.push(i);const p=S.ped[i.id];if(p){p.cid=dst.id;p.mesa=dst.mesa;p.numero=dst.numero;}});
+    if(d.todos){if(dst.pessoas==null&&o.pessoas!=null)dst.pessoas=o.pessoas;if(!dst.nome&&o.nome)dst.nome=o.nome;}
+    if(!o.itens.length){delete S.comandas[o.id];S.fechadas[o.id]=true;}break;}
+  case 'cm_canc':{const c=S.comandas[e.ref];if(c)c.itens.forEach(i=>{if(S.ped[i.id])S.ped[i.id].canc=true;});delete S.comandas[e.ref];S.fechadas[e.ref]=true;break;}
+  case 'kd':(d.ids||[]).forEach(id=>{S.kd[id]={st:d.st,em:e.criado_em};});break;
+  case 'venda':{S.vendas[e.ref]=Object.assign({},d,{id:e.ref,caixaId:e.caixa_id,em:e.criado_em,terminal:e.terminal||''});const c=d.comandaId&&S.comandas[d.comandaId];
+    if(d.parcial&&c){c.itens=c.itens.filter(i=>!(d.itemIds||[]).includes(i.id));if(!c.itens.length){delete S.comandas[c.id];S.fechadas[c.id]=true;}}
+    else if(d.comandaId){S.fechadas[d.comandaId]=true;delete S.comandas[d.comandaId];}break;}
   case 'venda_canc':{const v=S.vendas[e.ref];if(v)v.cancelada={em:e.criado_em,motivo:d.motivo||''};break;}
 }}
 function rebuild(){S=novoEstado();EV.sort((a,b)=>(Date.parse(a.criado_em)-Date.parse(b.criado_em))||(a.id<b.id?-1:1));EV.forEach(apply);}
@@ -253,25 +293,29 @@ function statusUI(){const el=$('#stSync');if(!el)return;const p=pendentes();let 
 const caixasLista=()=>Object.values(S.caixas).sort((a,b)=>Date.parse(b.abertoEm)-Date.parse(a.abertoEm));
 const cxAtual=()=>caixasLista().find(c=>!c.fechado)||null;
 const vendasDe=cxId=>Object.values(S.vendas).filter(v=>v.caixaId===cxId).sort((a,b)=>Date.parse(a.em)-Date.parse(b.em));
-const comandasAbertas=()=>Object.values(S.comandas).filter(c=>c.itens.length).sort((a,b)=>Date.parse(a.abertaEm)-Date.parse(b.abertaEm));
+const comandasAbertas=()=>Object.values(S.comandas).filter(c=>c.itens.length||c.fixa).sort((a,b)=>Date.parse(a.abertaEm)-Date.parse(b.abertaEm));
 const cmdTotal=c=>r2((c?c.itens:[]).reduce((s,i)=>s+(+i.total||0),0));
 function cmdAtual(){return CUR.comandaId?S.comandas[CUR.comandaId]||null:null;}
 function agrupar(itens){const out=[];itens.forEach(i=>{if(i.tipo==='peso'){out.push(Object.assign({ids:[i.id]},i));return;}
-  const g=out.find(x=>x.tipo!=='peso'&&x.prodId===i.prodId&&x.preco===i.preco);if(g){g.qtd=r3(g.qtd+i.qtd);g.total=r2(g.total+i.total);g.ids.push(i.id);}else out.push(Object.assign({ids:[i.id]},i));});return out;}
+  const g=out.find(x=>x.tipo!=='peso'&&x.prodId===i.prodId&&x.preco===i.preco&&(x.obs||'')===(i.obs||''));if(g){g.qtd=r3(g.qtd+i.qtd);g.total=r2(g.total+i.total);g.ids.push(i.id);}else out.push(Object.assign({ids:[i.id]},i));});return out;}
 function addItem(item){
   if(!CUR.comandaId){const n=String(CUR.numero||'').trim();const ex=n?comandasAbertas().find(c=>String(c.numero)===n):null;CUR.comandaId=ex?ex.id:uid();}
-  emit('cm_item',{ref:CUR.comandaId,dados:{numero:String(CUR.numero||'').trim(),item:Object.assign({id:uid()},item)}});
+  emit('cm_item',{ref:CUR.comandaId,dados:{numero:String(CUR.numero||'').trim(),item:Object.assign({id:uid(),garcom:LOCAL.operador||''},item)}});
 }
-function resumoCaixa(c){const vs=vendasDe(c.id).filter(v=>!v.cancelada);const porMeio={};let total=0,troco=0,kg=0,pratos=0,desc=0,serv=0;const itens={},horas={};
+// item de cardápio pronto para lançar: leva categoria (para a nota fiscal futura) e o setor de preparo (para a cozinha)
+function itemDeFicha(f,obs){return {tipo:'un',prodId:f.id,nome:f.nome,codigo:f.cod||'',cat:f.cat||'',qtd:1,preco:f.preco,total:f.preco,obs:obs||'',setor:setorDe(f.cat)};}
+function resumoCaixa(c,lista){const todas=lista||vendasDe(c.id);const vs=todas.filter(v=>!v.cancelada);const porMeio={};let total=0,troco=0,kg=0,pratos=0,desc=0,serv=0;const itens={},horas={},garcons={},dias={};
   vs.forEach(v=>{total+=+v.total||0;troco+=+v.troco||0;desc+=+v.desconto||0;serv+=+v.servico||0;
-    const h=new Date(v.em).getHours();horas[h]=(horas[h]||0)+1;
+    const dt=new Date(v.em),h=dt.getHours();horas[h]=(horas[h]||0)+1;const dk=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate());const dd=dias[dk]||(dias[dk]={dia:dk,n:0,total:0});dd.n++;dd.total=r2(dd.total+(+v.total||0));
+    const gn=v.garcom||'Sem garçom';const gg=garcons[gn]||(garcons[gn]={nome:gn,n:0,total:0,serv:0});gg.n++;gg.total=r2(gg.total+(+v.total||0));gg.serv=r2(gg.serv+(+v.servico||0));
     (v.pagamentos||[]).forEach(p=>{const m=porMeio[p.nome]||(porMeio[p.nome]={nome:p.nome,din:!!p.din,valor:0,n:0});m.valor+=+p.valor||0;m.n++;});
     (v.itens||[]).forEach(i=>{if(i.tipo==='peso'){kg+=+i.qtd||0;pratos++;}const k=(i.codigo||'')+'|'+i.nome;const x=itens[k]||(itens[k]={codigo:i.codigo||'',nome:i.nome,qtd:0,valor:0,peso:i.tipo==='peso'});x.qtd=r3(x.qtd+(+i.qtd||0));x.valor=r2(x.valor+(+i.total||0));});});
   Object.values(porMeio).forEach(m=>{if(m.din)m.valor-=troco;m.valor=r2(m.valor);});
-  const sup=c.movs.filter(m=>m.tipo==='suprimento').reduce((s,m)=>s+m.valor,0),san=c.movs.filter(m=>m.tipo==='sangria').reduce((s,m)=>s+m.valor,0);
+  const movs=(c&&c.movs)||[];const sup=movs.filter(m=>m.tipo==='suprimento').reduce((s,m)=>s+m.valor,0),san=movs.filter(m=>m.tipo==='sangria').reduce((s,m)=>s+m.valor,0);
   const din=Object.values(porMeio).filter(m=>m.din).reduce((s,m)=>s+m.valor,0);
   return {n:vs.length,total:r2(total),ticket:vs.length?r2(total/vs.length):0,kg:r3(kg),pratos,pesoMedio:pratos?r3(kg/pratos):0,desc:r2(desc),serv:r2(serv),porMeio:Object.values(porMeio).sort((a,b)=>b.valor-a.valor),
-    itens:Object.values(itens).sort((a,b)=>b.valor-a.valor),horas,sup:r2(sup),san:r2(san),gaveta:r2(c.fundo+din+sup-san),canceladas:vendasDe(c.id).filter(v=>v.cancelada).length};}
+    itens:Object.values(itens).sort((a,b)=>b.valor-a.valor),horas,garcons:Object.values(garcons).sort((a,b)=>b.total-a.total),dias:Object.values(dias).sort((a,b)=>a.dia<b.dia?-1:1),
+    sup:r2(sup),san:r2(san),gaveta:r2(((c&&c.fundo)||0)+din+sup-san),canceladas:todas.filter(v=>v.cancelada).length};}
 
 /* ---------- balança (Web Serial, simulador ou digitação) ---------- */
 const BAL={port:null,reader:null,on:false,kg:0,ult:[],buf:''};
@@ -352,19 +396,21 @@ async function entrar(orgId,nome){CTX={orgId,orgNome:String(nome||'').trim(),use
   $('#app').innerHTML='<div class="auth"><div style="color:#fff;font:600 20px Fraunces,serif">Abrindo o caixa…</div></div>';
   const cache=await IDB.get('cat:'+orgId);
   if(cache&&cache.fichas){CAT=cache;baixarCatalogo().then(c=>{if(c)refresh(true);});}else{CAT={fichas:[],meios:[],precoKg:0,restaurante:CTX.orgNome};await baixarCatalogo();}
-  await carregarEventos();CUR={comandaId:null,numero:''};ROUTE='venda';CLOUD_OK=!!sb;
+  await carregarEventos();CUR={comandaId:null,numero:''};ROUTE=navs()[0][0];CLOUD_OK=!!sb;
   if(sb&&navigator.onLine)await Promise.race([syncNow(),new Promise(r=>setTimeout(r,4000))]);   // online: abre já com o que está na nuvem
   render();syncNow();rtLigar();balAuto();
   clearInterval(_loop);_loop=setInterval(tique,5000);}
 let _catTent=0;
 function tique(){if(document.hidden||!CTX)return;
+  if((ROUTE==='cozinha'||(ROUTE==='mesas'&&!CONTA))&&!modalAberto())refresh();   // tempo decorrido dos pedidos e das mesas
+  if(DEMO)return;
   if(!RT_OK||pendentes()||Date.now()-SYNC_EM>20000)syncNow();   // com tempo real ligado, a busca periódica é só reserva
   if(navigator.onLine&&Date.now()-(CAT.em||0)>600000&&Date.now()-_catTent>120000){_catTent=Date.now();baixarCatalogo().then(c=>{if(c&&ROUTE==='venda'){catUI();pesoUI();}});}}   // preço mudou no Flow: chega em até 10 minutos
 async function sair(){if(CTX&&pendentes()&&!confirm('Há '+pendentes()+' registro(s) ainda não enviados para a nuvem. Eles ficam guardados neste aparelho. Sair mesmo assim?'))return;
   rtDesligar();try{if(sb)await sb.auth.signOut();}catch(e){}await IDB.set('ctx',null);location.reload();}
 async function trocarRestaurante(){if(!sb)return;let s=null;try{s=(await sb.auth.getSession()).data.session;}catch(e){}if(!s)return telaLogin();clearInterval(_loop);rtDesligar();CTX=null;await IDB.set('ctx',null);escolherOrg(s.user);}
 async function boot(){await IDB.open();Object.assign(LOCAL,(await IDB.get('local'))||{});aplicarTema();
-  if(DEMO){USER={id:'demo',email:'demonstracao'};CTX={orgId:'demo',orgNome:'Restaurante Demonstração',userId:'demo',email:'demonstracao'};CAT=catDemo();CLOUD_OK=false;await carregarEventos();render();return;}
+  if(DEMO){USER={id:'demo',email:'demonstracao'};CTX={orgId:'demo',orgNome:'Restaurante Demonstração',userId:'demo',email:'demonstracao'};CAT=catDemo();CLOUD_OK=false;await carregarEventos();ROUTE=navs()[0][0];render();clearInterval(_loop);_loop=setInterval(tique,5000);return;}
   const ctx=await IDB.get('ctx');let sess=null;try{if(sb)sess=(await sb.auth.getSession()).data.session;}catch(e){}
   if(sess&&ctx&&ctx.userId===sess.user.id){USER={id:sess.user.id,email:sess.user.email||''};return entrar(ctx.orgId,ctx.orgNome);}
   if(sess)return escolherOrg(sess.user);
@@ -373,15 +419,19 @@ async function boot(){await IDB.open();Object.assign(LOCAL,(await IDB.get('local
   telaLogin();}
 
 /* ---------- casca ---------- */
-function render(){if(!CTX)return;$('#app').innerHTML=`<header class="top"><div class="brand"><b>Flow PDV</b><span>by Lidera</span></div><div class="rest">${esc(CAT.restaurante||CTX.orgNome)}</div>
-  <nav class="nav">${[['venda','Venda'],['caixa','Caixa'],['vendas','Vendas'],['ajustes','Ajustes']].map(([k,l])=>`<button class="${ROUTE===k?'on':''}" onclick="ir('${k}')">${l}</button>`).join('')}</nav>
+const NAVS={caixa:[['venda','Venda'],['mesas','Mesas'],['cozinha','Cozinha'],['balanca','Balança'],['caixa','Caixa'],['vendas','Vendas'],['relatorios','Relatórios'],['ajustes','Ajustes']],
+  garcom:[['mesas','Mesas'],['ajustes','Ajustes']],cozinha:[['cozinha','Cozinha'],['ajustes','Ajustes']],balanca:[['balanca','Balança'],['ajustes','Ajustes']]};
+const navs=()=>NAVS[LOCAL.modo]||NAVS.caixa;
+function render(){if(!CTX)return;if(!navs().some(n=>n[0]===ROUTE))ROUTE=navs()[0][0];$('#app').innerHTML=`<header class="top"><div class="brand"><b>Flow PDV</b><span>by Lidera</span></div><div class="rest">${esc(CAT.restaurante||CTX.orgNome)}</div>
+  <nav class="nav">${navs().map(([k,l])=>`<button class="${ROUTE===k?'on':''}" onclick="ir('${k}')">${l}</button>`).join('')}</nav>
   <div class="top-r"><span class="pill" id="stSync"></span><button class="ibtn" title="Tema claro ou escuro" onclick="trocarTema()">◐</button></div></header><main class="wrap" id="view"></main>`;
   VIEWS[ROUTE]();statusUI();}
-function ir(r){ROUTE=r;AJ=null;render();}
+async function ir(r){if(r==='ajustes'&&LOCAL.modo!=='caixa'&&!(await exigirPin('Abrir os ajustes')))return;ROUTE=r;AJ=null;CONTA=null;render();}
 function refresh(forcar){if(!CTX||!$('#view'))return;
   if(ROUTE==='venda'){painelUI();abertasUI();cmdUI();pesoUI();if(forcar){catUI();balCardUI();}}
+  else if(ROUTE==='balanca'){pesoUI();}
   else if(ROUTE!=='ajustes'&&(!modalAberto()||forcar)){const y=scrollY;VIEWS[ROUTE]();scrollTo(0,y);}
-  statusUI();}
+  if(ROUTE==='cozinha')kdSom();statusUI();}
 
 /* ---------- venda ---------- */
 function viewVenda(){const cx=cxAtual();$('#view').innerHTML=`${cx?'':`<div class="aviso"><span>O caixa está fechado. Dá para pesar e lançar nas comandas, mas só é possível receber com o caixa aberto.</span><button class="btn btn-p btn-sm" onclick="abrirCaixaModal()">Abrir caixa</button></div>`}
@@ -420,45 +470,59 @@ function selComanda(n,quieto){n=String(n||'').trim();const ex=n?comandasAbertas(
 function selAberta(id){const c=S.comandas[id];if(!c)return;CUR={comandaId:id,numero:c.numero||''};const i=$('#cmdNum');if(i)i.value=CUR.numero;abertasUI();cmdUI();}
 function cmdEnter(){const n=$('#cmdNum');selComanda(n.value);if(LOCAL.autoGuardar&&pesoCalc().liq>0)lancarPeso();}
 function guardar(quieto){CUR={comandaId:null,numero:''};const i=$('#cmdNum');if(i){i.value='';if(LOCAL.autoGuardar)i.focus();}if(!quieto){abertasUI();cmdUI();}}
-function addProd(id){const f=CAT.fichas.find(x=>x.id===id);if(!f)return;sincNum();addItem({tipo:'un',prodId:f.id,nome:f.nome,codigo:f.cod||'',qtd:1,preco:f.preco,total:f.preco});abertasUI();cmdUI();painelUI();}
-function abertasUI(){const el=$('#abertas');if(!el)return;el.innerHTML=comandasAbertas().map(c=>`<button class="ab ${CUR.comandaId===c.id?'on':''}" onclick="selAberta('${c.id}')">${c.numero?esc(c.numero):'Balcão '+fHora(c.abertaEm)} · ${brl(cmdTotal(c))}</button>`).join('');}
+function addProd(id){const f=CAT.fichas.find(x=>x.id===id);if(!f)return;sincNum();addItem(itemDeFicha(f));abertasUI();cmdUI();painelUI();}
+function abertasUI(){const el=$('#abertas');if(!el)return;el.innerHTML=comandasAbertas().map(c=>`<button class="ab ${CUR.comandaId===c.id?'on':''}" onclick="selAberta('${c.id}')">${c.mesa?'Mesa '+esc(c.mesa):(c.numero?esc(c.numero):'Balcão '+fHora(c.abertaEm))} · ${brl(cmdTotal(c))}</button>`).join('');}
 function cmdUI(){const el=$('#cmdItens');if(!el)return;const c=cmdAtual();const its=c?agrupar(c.itens):[];
-  el.innerHTML=its.length?its.map((i,k)=>`<div class="it"><div><b>${esc(i.nome)}</b><div class="mini">${i.tipo==='peso'?fkg(i.qtd)+' kg × '+brl(i.preco):brl(i.preco)+' cada'}</div></div>
+  el.innerHTML=its.length?its.map((i,k)=>`<div class="it"><div><b>${esc(i.nome)}</b><div class="mini">${i.tipo==='peso'?fkg(i.qtd)+' kg × '+brl(i.preco):brl(i.preco)+' cada'}${i.obs?' · '+esc(i.obs):''}</div></div>
     <div style="text-align:right"><div class="v">${brl(i.total)}</div>${i.tipo==='peso'?`<button class="mini" style="text-decoration:underline" onclick="delItem(${k})">remover</button>`:`<span class="qt"><button onclick="delItem(${k})">−</button><b class="num">${fq(i.qtd)}</b><button onclick="maisItem(${k})">+</button></span>`}</div></div>`).join('')
     :`<div class="vazio">${CUR.numero?'Comanda '+esc(CUR.numero)+' sem itens.':'Pese o prato ou toque em um item para começar.'}</div>`;
-  $('#cmdTot').innerHTML=`<span class="muted">${c?(c.numero?'Comanda '+esc(c.numero):'Balcão'):'Total'}${c?` · <a style="cursor:pointer;text-decoration:underline" onclick="cancelarComanda()">cancelar</a>`:''}</span><b class="num">${brl(cmdTotal(c))}</b>`;
+  $('#cmdTot').innerHTML=`<span class="muted">${c?esc(rotulo(c)):'Total'}${c?` · <a style="cursor:pointer;text-decoration:underline" onclick="cancelarComanda()">cancelar</a>`:''}</span><b class="num">${brl(cmdTotal(c))}</b>`;
   const b=$('#btReceber');if(b)b.disabled=!its.length;}
 function delItem(k){const c=cmdAtual();if(!c)return;const g=agrupar(c.itens)[k];if(!g)return;emit('cm_del',{ref:c.id,dados:{itemId:g.ids[g.ids.length-1]}});abertasUI();cmdUI();painelUI();}
-function maisItem(k){const c=cmdAtual();if(!c)return;const g=agrupar(c.itens)[k];if(!g)return;addItem({tipo:'un',prodId:g.prodId,nome:g.nome,codigo:g.codigo||'',qtd:1,preco:g.preco,total:g.preco});abertasUI();cmdUI();painelUI();}
-function cancelarComanda(){const c=cmdAtual();if(!c)return;if(!confirm('Cancelar esta comanda e apagar os '+c.itens.length+' item(ns)?'))return;emit('cm_canc',{ref:c.id,dados:{por:CTX.email}});guardar();painelUI();}
+function maisItem(k){const c=cmdAtual();if(!c)return;const g=agrupar(c.itens)[k];if(!g)return;addItem({tipo:'un',prodId:g.prodId,nome:g.nome,codigo:g.codigo||'',cat:g.cat||'',qtd:1,preco:g.preco,total:g.preco,obs:g.obs||'',setor:g.setor||''});abertasUI();cmdUI();painelUI();}
+async function cancelarComanda(){const c=cmdAtual();if(!c)return;if(!confirm('Cancelar '+rotulo(c)+' e apagar os '+c.itens.length+' item(ns)?'))return;if(!(await exigirPin('Cancelar '+rotulo(c))))return;emit('cm_canc',{ref:c.id,dados:{por:CTX.email}});guardar();painelUI();}
 
 /* ---------- pagamento ---------- */
 let PG=null;
-function pgTotais(){const c=S.comandas[PG.comandaId];PG.sub=cmdTotal(c);PG.desc=Math.min(PG.sub,PG.desc||0);const serv=r2(PG.sub*(PG.servP||0)/100),total=Math.max(0,r2(PG.sub-PG.desc+serv)),pago=r2(PG.pags.reduce((s,p)=>s+p.valor,0)),rest=r2(total-pago);
+function pgItens(){const c=S.comandas[PG.comandaId];if(!c)return [];return PG.itemIds?c.itens.filter(i=>PG.itemIds.includes(i.id)):c.itens;}
+function pgTotais(){PG.sub=r2(pgItens().reduce((s,i)=>s+(+i.total||0),0));PG.desc=Math.min(PG.sub,PG.desc||0);const serv=r2(PG.sub*(PG.servP||0)/100),total=Math.max(0,r2(PG.sub-PG.desc+serv)),pago=r2(PG.pags.reduce((s,p)=>s+p.valor,0)),rest=r2(total-pago);
   return {serv,total,pago,rest:Math.max(0,rest),troco:rest<0?r2(-rest):0};}
-function receber(){sincNum();const c=cmdAtual();if(!c||!c.itens.length)return toast('Comanda vazia');if(!cxAtual())return abrirCaixaModal();PG={comandaId:c.id,sub:0,desc:0,servP:cfg().servico,pags:[]};pgUI();}
-function pgUI(){if(!PG)return;const t=pgTotais(),c=S.comandas[PG.comandaId];if(!c){PG=null;return fecharModal();}
-  modal(`<div class="m-h"><div><div class="kicker">${c.numero?'Comanda '+esc(c.numero):'Balcão'}</div><h2>Receber</h2></div><button class="btn btn-o btn-sm" onclick="PG=null;fecharModal()">Voltar</button></div>
-  <div class="m-b"><div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap"><div><div class="mini">Total</div><div class="pg-total num">${brl(t.total)}</div></div>
+function receber(cid){if(!cid)sincNum();const c=cid?S.comandas[cid]:cmdAtual();if(!c||!c.itens.length)return toast('Comanda vazia');if(!cxAtual())return (LOCAL.modo==='caixa'?abrirCaixaModal():toast('O caixa está fechado. Peça para abrirem o caixa.',4000));
+  PG={comandaId:c.id,sub:0,desc:0,servP:servDe(c),pags:[],itemIds:null,pessoas:+c.pessoas||0,tela:'pagar'};pgUI();}
+async function pgDesc(v){v=Math.max(0,num(v));if(v>0&&!(await exigirPin('Dar desconto de '+brl(v))))v=0;if(PG){PG.desc=v;pgUI();}}
+function pgUI(){if(!PG)return;const c=S.comandas[PG.comandaId];if(!c){PG=null;return fecharModal();}
+  if(PG.tela==='itens')return pgItensUI(c);
+  const t=pgTotais(),parc=!!PG.itemIds&&PG.itemIds.length<c.itens.length,np=Math.max(0,parseInt(PG.pessoas)||0);
+  modal(`<div class="m-h"><div><div class="kicker">${esc(rotulo(c))}${parc?' · parte da conta':''}</div><h2>Receber</h2></div><button class="btn btn-o btn-sm" onclick="PG=null;fecharModal()">Voltar</button></div>
+  <div class="m-b"><div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap"><div><div class="mini">Total${parc?' dos itens escolhidos':''}</div><div class="pg-total num">${brl(t.total)}</div></div>
       <div style="text-align:right"><div class="mini">${t.rest>0?'Falta receber':(t.troco>0?'Troco':'Pago')}</div><div class="num" style="font:600 26px Fraunces,serif;color:${t.rest>0?'var(--red)':'var(--green)'}">${brl(t.rest>0?t.rest:t.troco)}</div></div></div>
-    <div class="g2" style="margin:14px 0 4px;gap:10px"><div><label class="lb">Desconto em reais</label><input class="input num" inputmode="decimal" value="${PG.desc?PG.desc.toFixed(2).replace('.',','):''}" placeholder="0,00" onchange="PG.desc=Math.max(0,num(this.value));pgUI()"></div>
-      <div><label class="lb">Taxa de serviço (%)</label><input class="input num" inputmode="decimal" value="${PG.servP?fq(PG.servP):''}" placeholder="0" onchange="PG.servP=Math.max(0,num(this.value));pgUI()"></div></div>
+    <div class="g3" style="margin:14px 0 4px;gap:10px"><div><label class="lb">Desconto em reais</label><input class="input num" inputmode="decimal" value="${PG.desc?PG.desc.toFixed(2).replace('.',','):''}" placeholder="0,00" onchange="pgDesc(this.value)"></div>
+      <div><label class="lb">Taxa de serviço (%)</label><input class="input num" inputmode="decimal" value="${PG.servP?fq(PG.servP):''}" placeholder="0" onchange="PG.servP=Math.max(0,num(this.value));pgUI()"></div>
+      <div><label class="lb">Dividir por pessoas</label><input class="input num" inputmode="numeric" value="${np||''}" placeholder="1" onchange="PG.pessoas=parseInt(this.value)||0;pgUI()"></div></div>
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px"><a class="mini" style="cursor:pointer;text-decoration:underline" onclick="PG.tela='itens';pgUI()">${parc?'Trocar os itens escolhidos':'Receber só alguns itens'}</a>
+      ${np>1&&t.total>0?`<span class="mini">${brl(r2(t.total/np))} por pessoa · <a style="cursor:pointer;text-decoration:underline" onclick="document.getElementById('pgValor').value='${Math.min(t.rest,r2(t.total/np)).toFixed(2).replace('.',',')}'">usar este valor</a></span>`:''}</div>
     <label class="lb" style="margin-top:12px">Valor recebido nesta forma</label><input class="input num" id="pgValor" inputmode="decimal" style="font:600 24px Fraunces,serif" value="${t.rest>0?t.rest.toFixed(2).replace('.',','):''}" ${t.rest>0?'autofocus':''}>
     <div class="meios" style="margin-top:10px">${meiosAtivos().map((m,i)=>`<button class="meio" onclick="pgAdd(${i})">${esc(m.nome)}</button>`).join('')}</div>
     ${PG.pags.length?`<div style="margin-top:14px">${PG.pags.map((p,i)=>`<div class="linha"><span>${esc(p.nome)}</span><span><b>${brl(p.valor)}</b> <a class="mini" style="cursor:pointer;text-decoration:underline;margin-left:8px" onclick="PG.pags.splice(${i},1);pgUI()">tirar</a></span></div>`).join('')}</div>`:''}</div>
   <div class="m-f"><button class="btn btn-ok btn-xl" style="flex:1" ${t.rest>0||!PG.pags.length?'disabled':''} onclick="pgConcluir()">Concluir venda${t.rest<=0&&PG.pags.length?' (Enter)':''}</button></div>`);}
+function pgItensUI(c){const sel=new Set(PG.itemIds||c.itens.map(i=>i.id));
+  modal(`<div class="m-h"><div><div class="kicker">${esc(rotulo(c))}</div><h2>Quais itens receber agora</h2></div></div>
+  <div class="m-b"><div class="mini" style="margin-bottom:8px">O que ficar desmarcado continua na conta.</div>${c.itens.map(i=>`<label class="linha" style="cursor:pointer"><span style="display:flex;gap:10px;align-items:center"><input type="checkbox" class="pgIt" value="${i.id}" ${sel.has(i.id)?'checked':''}> ${esc(i.nome)}${i.tipo==='peso'?' '+fkg(i.qtd)+' kg':''}${i.obs?' <span class="mini">'+esc(i.obs)+'</span>':''}</span><b>${brl(i.total)}</b></label>`).join('')}</div>
+  <div class="m-f"><button class="btn btn-o" onclick="PG.itemIds=null;PG.pags=[];PG.tela='pagar';pgUI()">Receber tudo</button><button class="btn btn-p" onclick="pgItensOk()">Continuar</button></div>`);}
+function pgItensOk(){const ids=$$('.pgIt').filter(x=>x.checked).map(x=>x.value);if(!ids.length)return toast('Marque ao menos um item');const c=S.comandas[PG.comandaId];PG.itemIds=(c&&ids.length>=c.itens.length)?null:ids;PG.pags=[];PG.tela='pagar';pgUI();}
 function pgAdd(i){const m=meiosAtivos()[i];if(!m||!PG)return;const t=pgTotais();let v=r2(num($('#pgValor').value));if(!(v>0))v=t.rest;const din=ehDinheiro(m);if(!din)v=Math.min(v,t.rest);if(!(v>0))return toast('Nada a receber');
   PG.pags.push({meioId:m.id,nome:m.nome,din,valor:v});pgUI();}
-function pgConcluir(){if(!PG)return;const t=pgTotais();if(t.rest>0||!PG.pags.length)return;const c=S.comandas[PG.comandaId],cx=cxAtual();if(!c||!cx)return;
-  const itens=agrupar(c.itens).map(i=>({tipo:i.tipo,prodId:i.prodId,nome:i.nome,codigo:i.codigo||'',qtd:i.qtd,preco:i.preco,total:i.total}));const numero=vendasDe(cx.id).length+1,id=uid();
-  emit('venda',{ref:id,caixa_id:cx.id,dados:{numero,comandaId:c.id,comandaNumero:c.numero||'',itens,subtotal:PG.sub,desconto:r2(PG.desc),servico:t.serv,total:t.total,pagamentos:PG.pags,troco:t.troco,operador:CTX.email}});
-  PG=null;fecharModal();guardar(true);bip();toast('Venda '+numero+' concluída'+(t.troco>0?' · troco '+brl(t.troco):''),3500);if(LOCAL.autoImprimir)imprimirCupom(id);refresh();const n=$('#cmdNum');if(n)n.value='';}
+function pgConcluir(){if(!PG||PG.tela!=='pagar')return;const t=pgTotais();if(t.rest>0||!PG.pags.length)return;const c=S.comandas[PG.comandaId],cx=cxAtual();if(!c||!cx)return;
+  const its=pgItens(),parcial=its.length<c.itens.length;const gc={};its.forEach(i=>{if(i.garcom)gc[i.garcom]=(gc[i.garcom]||0)+1;});const garcom=Object.keys(gc).sort((a,b)=>gc[b]-gc[a])[0]||'';
+  const itens=agrupar(its).map(i=>({tipo:i.tipo,prodId:i.prodId,nome:i.nome,codigo:i.codigo||'',cat:i.cat||'',qtd:i.qtd,preco:i.preco,total:i.total,obs:i.obs||''}));const numero=vendasDe(cx.id).length+1,id=uid();
+  emit('venda',{ref:id,caixa_id:cx.id,dados:{numero,comandaId:c.id,comandaNumero:c.numero||'',mesa:c.mesa||'',nome:c.nome||'',pessoas:+c.pessoas||0,garcom,parcial,itemIds:parcial?its.map(i=>i.id):undefined,itens,subtotal:PG.sub,desconto:r2(PG.desc),servico:t.serv,total:t.total,pagamentos:PG.pags,troco:t.troco,operador:CTX.email}});
+  PG=null;fecharModal();guardar(true);bip();toast('Venda '+numero+' concluída'+(t.troco>0?' · troco '+brl(t.troco):'')+(parcial?' · o restante continua na conta':''),3500);if(LOCAL.autoImprimir)imprimirCupom(id);refresh(true);const n=$('#cmdNum');if(n)n.value='';}
 
 /* ---------- impressão ---------- */
 function imprimir(html){const p=$('#printArea');p.style.width=(+LOCAL.largura===58?'46mm':'70mm');p.innerHTML=html;setTimeout(()=>window.print(),80);}
 const pl=(a,b,cl)=>`<div class="l${cl?' '+cl:''}"><span>${a}</span><span>${b}</span></div>`;
 function imprimirCupom(id){const v=S.vendas[id];if(!v)return;
-  imprimir(`<h4>${esc(CAT.restaurante||CTX.orgNome)}</h4><div class="c">${fData(v.em)} ${fHora(v.em)} · venda ${v.numero}${v.comandaNumero?' · comanda '+esc(v.comandaNumero):''}</div><hr>
+  imprimir(`<h4>${esc(CAT.restaurante||CTX.orgNome)}</h4><div class="c">${fData(v.em)} ${fHora(v.em)} · venda ${v.numero}${v.mesa?' · mesa '+esc(v.mesa):(v.comandaNumero?' · comanda '+esc(v.comandaNumero):'')}</div><hr>
   ${(v.itens||[]).map(i=>`<div>${esc(i.nome)}</div>`+pl(i.tipo==='peso'?fkg(i.qtd)+' kg x '+brl(i.preco):fq(i.qtd)+' x '+brl(i.preco),brl(i.total))).join('')}<hr>
   ${pl('Subtotal',brl(v.subtotal))}${v.desconto?pl('Desconto','- '+brl(v.desconto)):''}${v.servico?pl('Serviço',brl(v.servico)):''}${pl('TOTAL',brl(v.total),'t')}<hr>
   ${(v.pagamentos||[]).map(p=>pl(esc(p.nome),brl(p.valor))).join('')}${v.troco?pl('Troco',brl(v.troco)):''}<hr><div class="c">Conferência de consumo. Não é documento fiscal.</div><div class="c">Obrigado pela preferência!</div>`);}
@@ -506,7 +570,7 @@ function relModal(id){const c=S.caixas[id];if(!c)return;modal(`<div class="m-h">
     <div style="margin-top:12px">${c.flow&&c.flow.ok?'<span class="tag tag-g">Enviado ao Flow</span>':(c.fechado?'<span class="tag tag-a">Envio ao Flow pendente</span>':'<span class="tag tag-n">Caixa aberto</span>')}</div></div>
   <div class="m-f"><button class="btn btn-o" onclick="relImprimir('${id}')">Imprimir</button><button class="btn btn-p" onclick="window.open('https://wa.me/?text='+encodeURIComponent(relTexto(S.caixas['${id}'])),'_blank')">Enviar por WhatsApp</button></div>`);}
 function relImprimir(id){const c=S.caixas[id];if(!c)return;imprimir('<h4>Fechamento de caixa</h4>'+relTexto(c).split('\n').slice(1).map(l=>l?`<div>${esc(l)}</div>`:'<hr>').join(''));}
-function reabrirCaixa(id){if(cxAtual())return toast('Feche o caixa atual antes');if(!confirm('Reabrir este caixa? Ao fechar de novo, o envio ao Flow substitui o anterior.'))return;emit('cx_reabre',{caixa_id:id});render();}
+async function reabrirCaixa(id){if(cxAtual())return toast('Feche o caixa atual antes');if(!(await exigirPin('Reabrir o caixa')))return;if(!confirm('Reabrir este caixa? Ao fechar de novo, o envio ao Flow substitui o anterior.'))return;emit('cx_reabre',{caixa_id:id});render();}
 function viewCaixa(){const cx=cxAtual(),lista=caixasLista();let h='';
   if(cx){const r=resumoCaixa(cx);const hs=Object.keys(r.horas).map(Number);const h0=hs.length?Math.min(...hs):11,h1=hs.length?Math.max(...hs):14,mx=Math.max(1,...Object.values(r.horas));let bars='';for(let x=h0;x<=h1;x++)bars+=`<div><span>${r.horas[x]||''}</span><i style="height:${Math.round((r.horas[x]||0)/mx*80)}px"></i><span>${x}h</span></div>`;
     h+=`<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px"><div><div class="kicker">Caixa aberto · ${fData(cx.data)}</div><h2>${brl(r.total)} <span class="mini" style="font-family:Inter">em ${r.n} venda(s)</span></h2><div class="mini">Aberto às ${fHora(cx.abertoEm)}${cx.operador?' por '+esc(cx.operador):''}</div></div>
@@ -529,9 +593,9 @@ function viewCaixa(){const cx=cxAtual(),lista=caixasLista();let h='';
 function viewVendas(){const cx=cxAtual()||caixasLista()[0];if(!cx){$('#view').innerHTML='<div class="card pad vazio">Nenhuma venda ainda. Abra o caixa para começar.</div>';return;}
   const vs=vendasDe(cx.id).slice().reverse(),aberto=!cx.fechado;
   $('#view').innerHTML=`<div style="margin-bottom:14px"><div class="kicker">Caixa de ${fData(cx.data)}${aberto?'':' · fechado'}</div><h2>Vendas</h2></div><div class="card pad"><div style="overflow:auto"><table><thead><tr><th>Nº</th><th>Hora</th><th>Comanda</th><th>Itens</th><th>Recebido em</th><th class="r">Total</th><th></th></tr></thead><tbody>
-    ${vs.map(v=>`<tr style="${v.cancelada?'opacity:.5':''}"><td><b>${v.numero}</b></td><td>${fHora(v.em)}</td><td>${esc(v.comandaNumero||'Balcão')}</td><td class="mini">${esc((v.itens||[]).map(i=>i.tipo==='peso'?i.nome+' '+fkg(i.qtd)+' kg':fq(i.qtd)+'x '+i.nome).join(', ')).slice(0,120)}</td><td class="mini">${esc((v.pagamentos||[]).map(p=>p.nome).join(', '))}</td>
+    ${vs.map(v=>`<tr style="${v.cancelada?'opacity:.5':''}"><td><b>${v.numero}</b></td><td>${fHora(v.em)}</td><td>${v.mesa?'Mesa '+esc(v.mesa):esc(v.comandaNumero||'Balcão')}${v.garcom?'<div class="mini">'+esc(v.garcom)+'</div>':''}</td><td class="mini">${esc((v.itens||[]).map(i=>i.tipo==='peso'?i.nome+' '+fkg(i.qtd)+' kg':fq(i.qtd)+'x '+i.nome).join(', ')).slice(0,120)}</td><td class="mini">${esc((v.pagamentos||[]).map(p=>p.nome).join(', '))}</td>
       <td class="r num"><b>${brl(v.total)}</b>${v.cancelada?'<div><span class="tag tag-r">Cancelada</span></div>':''}</td><td class="r" style="white-space:nowrap"><button class="btn btn-o btn-sm" onclick="imprimirCupom('${v.id}')">Cupom</button>${aberto&&!v.cancelada?` <button class="btn btn-d btn-sm" onclick="cancelarVenda('${v.id}')">Cancelar</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7" class="vazio">Nenhuma venda neste caixa.</td></tr>'}</tbody></table></div></div>`;}
-function cancelarVenda(id){const v=S.vendas[id];if(!v)return;const m=prompt('Motivo do cancelamento da venda '+v.numero+' ('+brl(v.total)+'):');if(m===null)return;if(!m.trim())return toast('Informe o motivo');emit('venda_canc',{ref:id,dados:{motivo:m.trim(),por:CTX.email}});refresh(true);}
+async function cancelarVenda(id){const v=S.vendas[id];if(!v)return;if(!(await exigirPin('Cancelar a venda '+v.numero)))return;const m=prompt('Motivo do cancelamento da venda '+v.numero+' ('+brl(v.total)+'):');if(m===null)return;if(!m.trim())return toast('Informe o motivo');emit('venda_canc',{ref:id,dados:{motivo:m.trim(),por:CTX.email}});refresh(true);}
 
 /* ---------- ajustes ---------- */
 const fm=n=>(+n||0).toFixed(2).replace('.',',');
@@ -547,9 +611,13 @@ function viewAjustes(){if(!AJ)AJ=JSON.parse(JSON.stringify(cfg()));const off=AJ.
       ${AJ.taras.map((t,i)=>`<div style="display:grid;grid-template-columns:1.6fr 1fr auto;gap:8px;margin-bottom:8px"><input class="input" value="${esc(t.nome)}" onchange="AJ.taras[${i}].nome=this.value"><input class="input num" inputmode="decimal" placeholder="kg" value="${t.kg?fkg(t.kg):''}" onchange="AJ.taras[${i}].kg=num(this.value)"><button class="btn btn-o btn-sm" onclick="AJ.taras.splice(${i},1);viewAjustes()">Tirar</button></div>`).join('')}
       <button class="btn btn-o btn-sm" onclick="AJ.taras.push({id:uid().slice(0,8),nome:'Prato',kg:0});viewAjustes()">Adicionar tara</button></div>
     <div class="card pad"><h3>Recebimento</h3><label class="lb">Taxa de serviço sugerida (%)</label><input class="input num" style="max-width:160px" inputmode="decimal" value="${AJ.servico?fq(AJ.servico):''}" placeholder="0" onchange="AJ.servico=num(this.value)">
+      <label style="display:flex;gap:9px;align-items:center;padding:8px 0 0"><input type="checkbox" ${AJ.servTudo?'checked':''} onchange="AJ.servTudo=this.checked"> Sugerir também em comandas e no balcão <span class="mini">sem isso, só nas mesas</span></label>
       <label class="lb" style="margin-top:14px">Formas aceitas no caixa</label>${meios.map(m=>`<label style="display:flex;gap:9px;align-items:center;padding:7px 0"><input type="checkbox" ${off.includes(m.id)?'':'checked'} onchange="ajMeio('${esc(m.id)}',this.checked)"> ${esc(m.nome)}</label>`).join('')}
       <div class="mini">As formas vêm do cadastro de meios de recebimento do Flow.</div></div></div>
-  <div class="g2" style="margin-top:16px"><div class="card pad"><h3>Este aparelho</h3><div class="g2" style="gap:10px"><div><label class="lb">Nome do terminal</label><input class="input" value="${esc(LOCAL.terminal)}" onchange="locSet('terminal',this.value.trim()||'Caixa 1')"></div>
+  ${ajSalaoHTML()}
+  <div class="g2" style="margin-top:16px"><div class="card pad"><h3>Este aparelho</h3><div class="g2" style="gap:10px"><div><label class="lb">Função deste aparelho</label><select class="input" onchange="locSet('modo',this.value);render()">${[['caixa','Caixa completo'],['garcom','Garçom'],['cozinha','Tela da cozinha'],['balanca','Balança de autoatendimento']].map(([k,l])=>`<option value="${k}" ${LOCAL.modo===k?'selected':''}>${l}</option>`).join('')}</select></div>
+        <div><label class="lb">Quem usa este aparelho</label><input class="input" value="${esc(LOCAL.operador||'')}" placeholder="Ex.: João" onchange="locSet('operador',this.value.trim())"></div></div>
+      <div class="g2" style="gap:10px;margin-top:10px"><div><label class="lb">Nome do terminal</label><input class="input" value="${esc(LOCAL.terminal)}" onchange="locSet('terminal',this.value.trim()||'Caixa 1')"></div>
         <div><label class="lb">Largura do cupom</label><select class="input" onchange="locSet('largura',+this.value)"><option value="80" ${+LOCAL.largura===80?'selected':''}>80 mm</option><option value="58" ${+LOCAL.largura===58?'selected':''}>58 mm</option></select></div></div>
       <label style="display:flex;gap:9px;align-items:center;padding:10px 0 4px"><input type="checkbox" ${LOCAL.autoImprimir?'checked':''} onchange="locSet('autoImprimir',this.checked)"> Imprimir o cupom ao concluir a venda</label>
       <label style="display:flex;gap:9px;align-items:flex-start;padding:6px 0"><input type="checkbox" style="margin-top:4px" ${LOCAL.autoGuardar?'checked':''} onchange="locSet('autoGuardar',this.checked)"> <span>Estação de pesagem<div class="mini">Digita a comanda, lança o peso e já fica pronto para o próximo cliente.</div></span></label>
@@ -567,10 +635,164 @@ function ajSalvar(){AJ.pesos=AJ.pesos.filter(p=>String(p.nome||'').trim());if(!A
 function locSet(k,v){LOCAL[k]=v;IDB.set('local',LOCAL);if(k==='balSim'&&!v&&BAL.sim)balSimular(0);}
 async function ajCardapio(){if(DEMO)return toast('Cardápio de demonstração');const c=await baixarCatalogo();toast(c?'Cardápio atualizado: '+CAT.fichas.length+' itens':'Não foi possível atualizar agora');viewAjustes();}
 
+/* ---------- senha do gerente ---------- */
+// A configuração é lida por todos os terminais, então a senha fica só como resumo (não é cofre: é trava de operação).
+function pinResumo(p){let a=2166136261,b=5381;const s='fpdv:'+String(p);for(let i=0;i<s.length;i++){a=Math.imul(a^s.charCodeAt(i),16777619)>>>0;b=(Math.imul(b,33)^s.charCodeAt(i))>>>0;}return a.toString(16).padStart(8,'0')+b.toString(16).padStart(8,'0');}
+let _pinRes=null;
+function exigirPin(motivo){const h=cfg().pinHash;if(!h)return Promise.resolve(true);
+  return new Promise(res=>{pinFim(false);_pinRes=res;const d=document.createElement('div');d.id='pinRoot';d.innerHTML=`<div class="modal" style="width:min(380px,100%)"><div class="m-h"><div><div class="kicker">Senha do gerente</div><h2 style="font-size:19px">${esc(motivo||'Confirmar')}</h2></div></div>
+    <div class="m-b"><input class="input num" id="pinIn" type="password" inputmode="numeric" autocomplete="off" style="font-size:24px;text-align:center;letter-spacing:6px" onkeydown="if(event.key==='Enter'){event.preventDefault();pinOk();}"><div id="pinErr" class="mini" style="color:var(--red);min-height:18px;margin-top:6px"></div></div>
+    <div class="m-f"><button class="btn btn-o" onclick="pinFim(false)">Cancelar</button><button class="btn btn-p" onclick="pinOk()">Confirmar</button></div></div>`;
+    d.addEventListener('click',e=>{if(e.target===d)pinFim(false);});document.body.appendChild(d);setTimeout(()=>{const i=$('#pinIn');if(i)i.focus();},40);});}
+function pinOk(){const i=$('#pinIn');if(!i)return;if(pinResumo(i.value)===cfg().pinHash)pinFim(true);else{i.value='';$('#pinErr').textContent='Senha incorreta';bip(false);}}
+function pinFim(ok){const d=$('#pinRoot');if(d)d.remove();const r=_pinRes;_pinRes=null;if(r)r(!!ok);}
+async function pinDefinir(){if(!(await exigirPin('Trocar a senha')))return;const a=prompt('Nova senha do gerente (só números, de 4 a 8 dígitos):');if(a===null)return;if(!/^\d{4,8}$/.test(a))return toast('Use de 4 a 8 números');const b=prompt('Digite a senha de novo:');if(a!==b)return toast('As senhas não conferem');
+  salvarCfg(c=>{c.pinHash=pinResumo(a);});AJ=null;toast('Senha do gerente definida');viewAjustes();}
+async function pinRemover(){if(!(await exigirPin('Remover a senha')))return;salvarCfg(c=>{c.pinHash='';});AJ=null;toast('Senha removida');viewAjustes();}
+
+/* ---------- ajustes do salão e da cozinha ---------- */
+function ajSalaoHTML(){const cats=[...new Set(CAT.fichas.map(f=>f.cat))].sort((a,b)=>a.localeCompare(b,'pt'));
+  return `<div class="g2" style="margin-top:16px"><div class="card pad"><h3>Salão</h3><label class="lb">Número de mesas</label><input class="input num" style="max-width:160px" inputmode="numeric" value="${AJ.nMesas||''}" placeholder="0" onchange="AJ.nMesas=Math.max(0,parseInt(this.value)||0)">
+      <div class="mini" style="margin-top:6px">Com zero, a tela Mesas mostra só as comandas.</div>
+      <h3 style="margin-top:20px">Senha do gerente</h3><div class="mini" style="margin-bottom:10px">Pedida para cancelar venda ou comanda, dar desconto, reabrir o caixa e abrir os ajustes nos aparelhos de garçom, cozinha e balança.</div>
+      ${cfg().pinHash?`<span class="tag tag-g">Definida</span> <button class="btn btn-o btn-sm" onclick="pinDefinir()">Trocar</button> <button class="btn btn-o btn-sm" onclick="pinRemover()">Remover</button>`:`<button class="btn btn-o btn-sm" onclick="pinDefinir()">Definir senha</button>`}</div>
+    <div class="card pad"><h3>Cozinha</h3><div class="mini" style="margin-bottom:10px">Cada setor tem a própria tela de preparo. Diga para onde vai cada categoria do cardápio. O que ficar sem setor não aparece na cozinha.</div>
+      ${AJ.setores.map((x,i)=>`<div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px"><input class="input" value="${esc(x.nome)}" onchange="AJ.setores[${i}].nome=this.value.trim()||'Setor'"><button class="btn btn-o btn-sm" ${AJ.setores.length<2?'disabled':''} onclick="AJ.setores.splice(${i},1);viewAjustes()">Tirar</button></div>`).join('')}
+      <button class="btn btn-o btn-sm" onclick="AJ.setores.push({id:uid().slice(0,8),nome:'Novo setor'});viewAjustes()">Adicionar setor</button>
+      <div style="margin-top:14px;max-height:300px;overflow:auto">${cats.map(c=>`<div class="linha" style="align-items:center"><span>${esc(c)}</span><select class="input" style="width:auto;padding:7px 10px;font-size:14px" data-c="${esc(c)}" onchange="AJ.catSetor[this.dataset.c]=this.value"><option value="">Não vai para a cozinha</option>${AJ.setores.map(x=>`<option value="${x.id}" ${AJ.catSetor[c]===x.id?'selected':''}>${esc(x.nome)}</option>`).join('')}</select></div>`).join('')||'<div class="mini">Sem categorias no cardápio.</div>'}</div></div></div>`;}
+
+/* ---------- mesas e comandas (atendimento do garçom) ---------- */
+let CONTA=null,DRAFT=null;   // CONTA={id,mesa,numero}; DRAFT={q:{prodId:{qtd,obs}},cat,busca}
+const comandaDaMesa=m=>comandasAbertas().find(c=>String(c.mesa)===String(m))||null;
+const minutos=ts=>Math.max(0,Math.round((Date.now()-Date.parse(ts))/60000));
+const fTempo=m=>m<60?m+' min':Math.floor(m/60)+' h '+pad(m%60);
+function statusCozinha(c){let pronto=0,fila=0;(c?c.itens:[]).forEach(i=>{if(!i.setor)return;const k=S.kd[i.id];const st=k?k.st:'novo';if(st==='pronto')pronto++;else if(st!=='entregue')fila++;});return {pronto,fila};}
+function viewMesas(){if(CONTA)return contaView();const n=cfg().nMesas,ab=comandasAbertas();const soltas=ab.filter(c=>!c.mesa);
+  const cartao=(titulo,c,acao)=>{const k=statusCozinha(c);return `<button class="mesa ${c?(c.conta?'conta':'ocup'):''}" onclick="${acao}"><b>${titulo}</b>${c?`<span class="num v">${brl(cmdTotal(c))}</span><span class="mini">${fTempo(minutos(c.abertaEm))}${c.pessoas?' · '+c.pessoas+' pess.':''}</span>${c.conta?'<span class="tag tag-a">Pediu a conta</span>':(k.pronto?'<span class="tag tag-g">Pedido pronto</span>':(k.fila?'<span class="tag tag-n">Na cozinha</span>':''))}`:'<span class="mini">Livre</span>'}</button>`;};
+  let h=`<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px"><div><div class="kicker">Atendimento${LOCAL.operador?' · '+esc(LOCAL.operador):''}</div><h2>Mesas e comandas</h2></div>
+    <form style="display:flex;gap:8px" onsubmit="event.preventDefault();abrirComandaNum(this.n.value)"><input class="input num" name="n" inputmode="numeric" placeholder="Comanda nº" style="width:150px"><button class="btn btn-p">Abrir</button></form></div>`;
+  if(n>0){h+='<div class="mesas">';for(let i=1;i<=n;i++)h+=cartao('Mesa '+i,comandaDaMesa(i),`abrirMesa('${i}')`);h+='</div>';}
+  else h+=`<div class="card pad mini" style="margin-bottom:14px">Para usar mesas, informe quantas são em Ajustes, na seção Salão. As comandas funcionam sem isso.</div>`;
+  if(soltas.length)h+=`<h3 style="margin:18px 0 10px">Comandas abertas</h3><div class="mesas">${soltas.map(c=>cartao(c.numero?'Comanda '+esc(c.numero):'Balcão '+fHora(c.abertaEm),c,`abrirConta('${c.id}')`)).join('')}</div>`;
+  $('#view').innerHTML=h;}
+function abrirMesa(m){const c=comandaDaMesa(m);CONTA={id:c?c.id:null,mesa:String(m),numero:c?c.numero:''};viewMesas();}
+function abrirComandaNum(n){n=String(n||'').trim();if(!n)return;const c=comandasAbertas().find(x=>String(x.numero)===n);CONTA={id:c?c.id:null,mesa:c?c.mesa:'',numero:n};viewMesas();}
+function abrirConta(id){const c=S.comandas[id];if(!c)return;CONTA={id,mesa:c.mesa||'',numero:c.numero||''};viewMesas();}
+function contaAtual(){return CONTA&&CONTA.id?S.comandas[CONTA.id]||null:null;}
+function contaId(){if(!CONTA.id){const c=CONTA.mesa?comandaDaMesa(CONTA.mesa):(CONTA.numero?comandasAbertas().find(x=>String(x.numero)===CONTA.numero):null);CONTA.id=c?c.id:uid();}return CONTA.id;}
+function contaView(){const c=contaAtual();if(CONTA.id&&!c&&S.fechadas[CONTA.id]){CONTA=null;toast('Conta encerrada');return viewMesas();}
+  const titulo=CONTA.mesa?'Mesa '+CONTA.mesa:(CONTA.numero?'Comanda '+CONTA.numero:'Balcão');const its=c?agrupar(c.itens):[];const sub=cmdTotal(c),sp=servDe(c||CONTA),serv=r2(sub*sp/100);
+  $('#view').innerHTML=`<div class="conta"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px"><button class="btn btn-o btn-sm" onclick="CONTA=null;viewMesas()">← Mesas</button>
+      <div style="text-align:right"><h2 style="margin:0">${esc(titulo)}</h2><div class="mini">${c?fTempo(minutos(c.abertaEm)):'livre'}${c&&c.pessoas?' · '+c.pessoas+' pessoa(s)':''}${c&&c.nome?' · '+esc(c.nome):''}${c&&c.mesa&&c.numero?' · comanda '+esc(c.numero):''}</div></div></div>
+    ${c&&c.conta?'<div class="aviso">O cliente pediu a conta.</div>':''}
+    <div class="card pad" style="padding-top:6px;padding-bottom:6px">${its.length?its.map((i,k)=>{const sts=i.ids.map(id=>S.kd[id]?S.kd[id].st:'novo');const tg=!i.setor?'':(sts.every(x=>x==='entregue')?'':(sts.some(x=>x==='pronto')?'<span class="tag tag-g">Pronto</span>':(sts.some(x=>x==='preparo')?'<span class="tag tag-a">Preparando</span>':'<span class="tag tag-n">Na cozinha</span>')));
+        return `<div class="it"><div><b>${i.tipo==='peso'?'':fq(i.qtd)+'× '}${esc(i.nome)}</b> ${tg}<div class="mini">${i.tipo==='peso'?fkg(i.qtd)+' kg × '+brl(i.preco):brl(i.preco)+' cada'}${i.obs?' · '+esc(i.obs):''}</div></div><div style="text-align:right"><div class="v">${brl(i.total)}</div><button class="mini" style="text-decoration:underline" onclick="contaTirar(${k})">tirar um</button></div></div>`;}).join(''):'<div class="vazio">Nenhum item lançado.</div>'}</div>
+    <div class="card pad" style="margin-top:12px"><div class="linha"><span>Subtotal</span><b>${brl(sub)}</b></div>${sp?`<div class="linha"><span>Taxa de serviço de ${fq(sp)}%</span><b>${brl(serv)}</b></div>`:''}<div class="linha"><span><b>Total</b></span><b style="font:600 24px Fraunces,serif">${brl(r2(sub+serv))}</b></div>
+      ${c&&c.pessoas>1?`<div class="mini" style="text-align:right">${brl(r2((sub+serv)/c.pessoas))} por pessoa</div>`:''}</div>
+    <div class="conta-ac"><button class="btn btn-p btn-xl" onclick="pickerAbrir()">Adicionar itens</button><button class="btn btn-g btn-xl" ${its.length?'':'disabled'} onclick="receber(CONTA.id)">Receber</button>
+      <button class="btn btn-o" ${its.length?'':'disabled'} onclick="contaPedirConta()">Pedir a conta</button><button class="btn btn-o" onclick="contaPessoas()">Pessoas</button><button class="btn btn-o" onclick="contaNome()">Nome</button>
+      <button class="btn btn-o" ${its.length?'':'disabled'} onclick="contaTransferir()">Transferir</button><button class="btn btn-o" ${c?'':'disabled'} onclick="contaCancelar()">Cancelar</button></div></div>`;}
+function contaMeta(d){const id=contaId();emit('cm_meta',{ref:id,dados:Object.assign({mesa:CONTA.mesa||'',numero:CONTA.numero||''},d)});viewMesas();}
+function contaPessoas(){const c=contaAtual();const v=prompt('Quantas pessoas?',c&&c.pessoas?c.pessoas:'');if(v===null)return;contaMeta({pessoas:Math.max(0,parseInt(v)||0),fixa:true});}
+function contaNome(){const c=contaAtual();const v=prompt('Nome do cliente:',c&&c.nome?c.nome:'');if(v===null)return;contaMeta({nome:v.trim().slice(0,40),fixa:true});}
+function contaPedirConta(){const c=contaAtual();if(!c)return;contaMeta({conta:true});if(LOCAL.modo==='caixa')imprimirConta(c.id);else toast('Conta pedida. O caixa já foi avisado.');}
+async function contaTirar(k){const c=contaAtual();if(!c)return;const g=agrupar(c.itens)[k];if(!g)return;const id=g.ids[g.ids.length-1];const k0=S.kd[id];
+  if(g.setor&&k0&&k0.st!=='novo'&&!(await exigirPin('Tirar item que já está em preparo')))return;emit('cm_del',{ref:c.id,dados:{itemId:id,por:LOCAL.operador||CTX.email}});viewMesas();}
+async function contaCancelar(){const c=contaAtual();if(!c){CONTA=null;return viewMesas();}if(!confirm('Cancelar '+rotulo(c)+(c.itens.length?' e apagar os '+c.itens.length+' item(ns)?':'?')))return;if(c.itens.length&&!(await exigirPin('Cancelar '+rotulo(c))))return;
+  emit('cm_canc',{ref:c.id,dados:{por:LOCAL.operador||CTX.email}});CONTA=null;viewMesas();}
+function contaTransferir(){const c=contaAtual();if(!c)return;modal(`<div class="m-h"><div><div class="kicker">${esc(rotulo(c))}</div><h2>Transferir</h2></div></div>
+  <div class="m-b"><div class="g2" style="gap:10px"><div><label class="lb">Para a mesa</label><input class="input num" id="trMesa" inputmode="numeric" placeholder="nº" autofocus></div><div><label class="lb">Ou para a comanda</label><input class="input num" id="trNum" inputmode="numeric" placeholder="nº"></div></div>
+    <div class="mini" style="margin:12px 0 6px">Desmarque o que deve ficar onde está.</div>${c.itens.map(i=>`<label class="linha" style="cursor:pointer"><span style="display:flex;gap:10px;align-items:center"><input type="checkbox" class="trIt" value="${i.id}" checked> ${esc(i.nome)}${i.tipo==='peso'?' '+fkg(i.qtd)+' kg':''}</span><b>${brl(i.total)}</b></label>`).join('')}</div>
+  <div class="m-f"><button class="btn btn-o" onclick="fecharModal()">Voltar</button><button class="btn btn-p" onclick="contaTransferirOk()">Transferir</button></div>`);}
+function contaTransferirOk(){const c=contaAtual();if(!c)return fecharModal();const m=$('#trMesa').value.trim(),n=$('#trNum').value.trim();if(!m&&!n)return toast('Informe a mesa ou a comanda de destino');
+  if(m&&(parseInt(m)<1||parseInt(m)>cfg().nMesas))return toast('Mesa '+m+' não existe');
+  const dst=m?comandaDaMesa(m):comandasAbertas().find(x=>String(x.numero)===n);if(dst&&dst.id===c.id)return toast('O destino é a própria conta');
+  const ids=$$('.trIt').filter(x=>x.checked).map(x=>x.value);if(!ids.length)return toast('Marque ao menos um item');const todos=ids.length===c.itens.length;
+  emit('cm_move',{ref:c.id,dados:{destinoId:dst?dst.id:uid(),destinoMesa:m||'',destinoNumero:m?'':n,itemIds:todos?undefined:ids,todos,por:LOCAL.operador||CTX.email}});
+  fecharModal();toast('Transferido para '+(m?'a mesa '+m:'a comanda '+n));if(todos)CONTA=null;viewMesas();}
+function imprimirConta(id){const c=S.comandas[id];if(!c)return;const sub=cmdTotal(c),sp=servDe(c),serv=r2(sub*sp/100),tot=r2(sub+serv);
+  imprimir(`<h4>${esc(CAT.restaurante||CTX.orgNome)}</h4><div class="c">Conferência de ${esc(rotulo(c))} · ${fData(new Date().toISOString())} ${fHora(Date.now())}</div><hr>${agrupar(c.itens).map(i=>`<div>${esc(i.nome)}</div>`+pl(i.tipo==='peso'?fkg(i.qtd)+' kg x '+brl(i.preco):fq(i.qtd)+' x '+brl(i.preco),brl(i.total))).join('')}<hr>
+  ${pl('Subtotal',brl(sub))}${serv?pl('Serviço '+fq(sp)+'%',brl(serv)):''}${pl('TOTAL',brl(tot),'t')}${c.pessoas>1?pl('Por pessoa ('+c.pessoas+')',brl(r2(tot/c.pessoas))):''}<hr><div class="c">Conferência de consumo. Não é documento fiscal.</div>`);}
+/* escolha de itens: monta o pedido e só então envia (a cozinha recebe tudo de uma vez) */
+function pickerAbrir(){DRAFT={q:{},cat:'Todos',busca:''};pickerUI();}
+function pickerUI(){const off=cfg().itensOff,fs=CAT.fichas.filter(f=>!off.includes(f.id));const cats=['Todos',...new Set(fs.map(f=>f.cat))];const b=normTxt(DRAFT.busca);
+  const l=fs.filter(f=>(DRAFT.cat==='Todos'||f.cat===DRAFT.cat)&&(!b||normTxt(f.nome).includes(b)||normTxt(f.cod).includes(b))).slice(0,200);
+  const tot=Object.entries(DRAFT.q).reduce((s,[id,x])=>{const f=CAT.fichas.find(y=>y.id===id);return {n:s.n+x.qtd,v:r2(s.v+(f?f.preco*x.qtd:0))};},{n:0,v:0});
+  modal(`<div class="m-h"><div><div class="kicker">${esc(CONTA.mesa?'Mesa '+CONTA.mesa:(CONTA.numero?'Comanda '+CONTA.numero:'Balcão'))}</div><h2>Adicionar itens</h2></div><button class="btn btn-o btn-sm" onclick="DRAFT=null;fecharModal()">Voltar</button></div>
+  <div class="m-b" style="padding-bottom:0"><input class="input" id="pkBusca" placeholder="Buscar item" value="${esc(DRAFT.busca)}" oninput="DRAFT.busca=this.value;pickerLista()">
+    <div class="chips" style="flex-wrap:nowrap;overflow:auto;padding:10px 0 4px">${cats.map(c=>`<button class="chip ${DRAFT.cat===c?'on':''}" data-c="${esc(c)}" onclick="DRAFT.cat=this.dataset.c;pickerUI()">${esc(c)}</button>`).join('')}</div>
+    <div id="pkLista" style="max-height:48vh;overflow:auto"></div></div>
+  <div class="m-f"><button class="btn btn-p btn-xl" style="flex:1" id="pkEnviar" ${tot.n?'':'disabled'} onclick="pickerEnviar()">Enviar pedido · ${tot.n} item(ns) · ${brl(tot.v)}</button></div>`,true);pickerLista();}
+function pickerLista(){const off=cfg().itensOff,b=normTxt(DRAFT.busca);const l=CAT.fichas.filter(f=>!off.includes(f.id)&&(DRAFT.cat==='Todos'||f.cat===DRAFT.cat)&&(!b||normTxt(f.nome).includes(b)||normTxt(f.cod).includes(b))).slice(0,200);
+  const el=$('#pkLista');if(!el)return;el.innerHTML=l.map(f=>{const x=DRAFT.q[f.id];return `<div class="it" style="align-items:center"><div><b>${esc(f.nome)}</b><div class="mini">${brl(f.preco)}${x&&x.obs?' · '+esc(x.obs):''}${x?` · <a style="cursor:pointer;text-decoration:underline" data-id="${esc(f.id)}" onclick="pickerObs(this.dataset.id)">${x.obs?'trocar observação':'observação'}</a>`:''}</div></div>
+      <span class="qt"><button data-id="${esc(f.id)}" onclick="pickerQtd(this.dataset.id,-1)">−</button><b class="num" style="min-width:22px;text-align:center">${x?x.qtd:0}</b><button data-id="${esc(f.id)}" onclick="pickerQtd(this.dataset.id,1)">+</button></span></div>`;}).join('')||'<div class="vazio">Nenhum item encontrado.</div>';
+  const tot=Object.entries(DRAFT.q).reduce((s,[id,x])=>{const f=CAT.fichas.find(y=>y.id===id);return {n:s.n+x.qtd,v:r2(s.v+(f?f.preco*x.qtd:0))};},{n:0,v:0});const bt=$('#pkEnviar');if(bt){bt.disabled=!tot.n;bt.textContent='Enviar pedido · '+tot.n+' item(ns) · '+brl(tot.v);}}
+function pickerQtd(id,d){const x=DRAFT.q[id]||(DRAFT.q[id]={qtd:0,obs:''});x.qtd=Math.max(0,Math.min(99,x.qtd+d));if(!x.qtd)delete DRAFT.q[id];pickerLista();}
+function pickerObs(id){const x=DRAFT.q[id];if(!x)return;const v=prompt('Observação para a cozinha:',x.obs||'');if(v===null)return;x.obs=v.trim().slice(0,80);pickerLista();}
+function pickerEnviar(){const ent=Object.entries(DRAFT.q);if(!ent.length)return;const cid=contaId(),ped=uid();let n=0,coz=0;
+  ent.forEach(([id,x])=>{const f=CAT.fichas.find(y=>y.id===id);if(!f)return;for(let k=0;k<x.qtd;k++){const it=Object.assign({id:uid(),garcom:LOCAL.operador||'',pedidoId:ped},itemDeFicha(f,x.obs));if(it.setor)coz++;emit('cm_item',{ref:cid,dados:{numero:CONTA.numero||'',mesa:CONTA.mesa||'',item:it}});n++;}});
+  DRAFT=null;fecharModal();bip();toast(n+' item(ns) lançado(s)'+(coz?' · '+coz+' na cozinha':''));viewMesas();}
+
+/* ---------- tela da cozinha ---------- */
+let KD_N=-1;
+function cozinhaGrupos(setor){const lim=Date.now()-12*36e5,out={};
+  Object.values(S.ped).forEach(p=>{if(p.canc||p.it.setor!==setor||Date.parse(p.it.em)<lim)return;const k=S.kd[p.it.id],st=k?k.st:'novo';if(st==='entregue'||(st==='pronto'&&Date.now()-Date.parse(k.em)>15*6e4))return;
+    const gid=(p.it.pedidoId||p.cid)+'|'+st;const g=out[gid]||(out[gid]={gid,st,mesa:p.mesa,numero:p.numero,em:p.it.em,garcom:p.it.garcom||'',linhas:{},ids:[]});
+    const lk=p.it.nome+'|'+(p.it.obs||'');const l=g.linhas[lk]||(g.linhas[lk]={nome:p.it.nome,obs:p.it.obs||'',qtd:0});l.qtd+=+p.it.qtd||1;g.ids.push(p.it.id);if(Date.parse(p.it.em)<Date.parse(g.em))g.em=p.it.em;});
+  return Object.values(out).sort((a,b)=>Date.parse(a.em)-Date.parse(b.em));}
+function setorAtual(){const ss=cfg().setores;return ss.find(x=>x.id===LOCAL.setor)||ss[0];}
+function kdSom(){const n=cozinhaGrupos(setorAtual().id).filter(g=>g.st==='novo').length;if(KD_N>=0&&n>KD_N)bip();KD_N=n;}
+function viewCozinha(){const c=cfg(),st=setorAtual(),gs=cozinhaGrupos(st.id);const usa=Object.values(c.catSetor).some(v=>v);
+  const col=(titulo,est,prox,acao)=>{const l=gs.filter(g=>g.st===est);return `<div class="kcol"><div class="kicker" style="margin-bottom:8px">${titulo} · ${l.length}</div>${l.map(g=>{const m=minutos(g.em);return `<button class="kcard ${est} ${est!=='pronto'&&m>=15?'atras':''}" data-g="${esc(g.gid)}" onclick="kdAvancar(this.dataset.g,'${prox}')"><div class="kh"><b>${g.mesa?'Mesa '+esc(g.mesa):(g.numero?'Comanda '+esc(g.numero):'Balcão')}</b><span>${fTempo(m)}</span></div>
+      ${Object.values(g.linhas).map(x=>`<div class="kl"><b>${fq(x.qtd)}×</b> ${esc(x.nome)}${x.obs?`<div class="ko">${esc(x.obs)}</div>`:''}</div>`).join('')}<div class="kf">${g.garcom?esc(g.garcom)+' · ':''}toque para ${acao}</div></button>`;}).join('')||'<div class="mini" style="padding:10px 2px">Nada aqui.</div>'}</div>`;};
+  $('#view').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px"><div><div class="kicker">Preparo</div><h2>${esc(st.nome)}</h2></div>
+    ${c.setores.length>1?`<div class="chips">${c.setores.map(x=>`<button class="chip ${x.id===st.id?'on':''}" onclick="locSet('setor','${x.id}');KD_N=-1;viewCozinha()">${esc(x.nome)}</button>`).join('')}</div>`:''}</div>
+  ${usa?`<div class="kds">${col('Novos','novo','preparo','começar')}${col('Preparando','preparo','pronto','marcar pronto')}${col('Prontos','pronto','entregue','entregar')}</div>`:`<div class="card pad">Nenhuma categoria do cardápio está ligada a um setor. Em Ajustes, na seção Cozinha, escolha para onde vai cada categoria.</div>`}`;
+  if(KD_N<0)KD_N=gs.filter(g=>g.st==='novo').length;}
+function kdAvancar(gid,st){const g=cozinhaGrupos(setorAtual().id).find(x=>x.gid===gid);if(!g)return;emit('kd',{dados:{ids:g.ids,st,por:LOCAL.operador||LOCAL.terminal}});KD_N=-1;viewCozinha();}
+
+/* ---------- balança de autoatendimento ---------- */
+let TOT={num:'',ok:null,t:null};
+function viewBalanca(){const p=pesoSel();const ant=$('#pesoIn');const antV=ant&&!BAL.on?ant.value:'';
+  $('#view').innerHTML=`<div class="totem"><div class="tot-l"><div class="bal-st"><i class="dot" id="balDot"></i><span id="balTxt"></span></div><div class="kicker" style="margin-top:14px;color:var(--gold-soft)">${esc(p.nome)} · ${brl(precoKgDe(p))} o quilo</div>
+      <div class="peso"><input id="pesoIn" class="num" inputmode="decimal" placeholder="0,000" autocomplete="off" oninput="pesoUI()"><span>kg</span></div><div class="bal-sub" id="balSub"></div><div class="mini" id="balConta" style="color:#C9D2E6;margin-top:16px"></div><div class="bal-val num" id="balValor" style="font-size:54px"></div>
+      ${LOCAL.balSim?`<div style="margin-top:14px;display:flex;gap:6px"><button class="chip" onclick="balSimular()">Simular prato</button><button class="chip" onclick="balSimular(0)">Esvaziar</button></div>`:''}</div>
+    <div class="tot-r">${TOT.ok?`<div class="tot-ok"><div class="kicker">Lançado</div><h2 style="font-size:30px;margin:6px 0">Comanda ${esc(TOT.ok.n)}</h2><div class="num" style="font:600 26px Fraunces,serif">${fkg(TOT.ok.kg)} kg · ${brl(TOT.ok.valor)}</div><div class="mini" style="margin-top:10px">Bom apetite!</div></div>`
+      :`<label class="lb" style="text-align:center">Número da sua comanda</label><div class="tot-num num">${esc(TOT.num)||'<span style="opacity:.3">0</span>'}</div>
+      <div class="teclado">${[1,2,3,4,5,6,7,8,9].map(d=>`<button onclick="totTecla('${d}')">${d}</button>`).join('')}<button onclick="totApagar()" style="font-size:18px">Apagar</button><button onclick="totTecla('0')">0</button><button class="ok" onclick="totConfirmar()">Confirmar</button></div>`}</div></div>`;
+  if(antV)$('#pesoIn').value=antV;pesoUI();}
+function totTecla(d){if(TOT.ok)return;if(TOT.num.length<6){TOT.num+=d;viewBalanca();}}
+function totApagar(){if(TOT.ok)return;TOT.num=TOT.num.slice(0,-1);viewBalanca();}
+function totConfirmar(){if(TOT.ok)return;const n=TOT.num.replace(/^0+/,''),pc=pesoCalc(),p=pesoSel();
+  if(!n)return (bip(false),toast('Digite o número da comanda'));if(!(pc.preco>0))return toast('Preço do quilo não definido');if(!(pc.liq>0))return (bip(false),toast('Coloque o prato na balança'));if(BAL.on&&!balEstavel())return (bip(false),toast('Aguarde o peso estabilizar'));
+  CUR={comandaId:null,numero:n};selComanda(n,true);addItem({tipo:'peso',prodId:p.id,nome:p.nome,codigo:p.codigo||'',cat:'',qtd:pc.liq,preco:pc.preco,total:pc.valor,bruto:pc.bruto,tara:pc.tara});CUR={comandaId:null,numero:''};
+  bip();const i=$('#pesoIn');if(i&&!BAL.on)i.value='';clearTimeout(TOT.t);TOT={num:'',ok:{n,kg:pc.liq,valor:pc.valor},t:setTimeout(()=>{TOT.ok=null;if(ROUTE==='balanca')viewBalanca();},3200)};viewBalanca();}
+
+/* ---------- relatórios ---------- */
+let REL={p:'hoje'};
+function relPeriodo(){const h=new Date();h.setHours(0,0,0,0);const d=n=>new Date(h.getTime()-n*864e5);const fim=new Date(h.getTime()+864e5);
+  return ({hoje:[h,fim,'Hoje'],ontem:[d(1),h,'Ontem'],sem:[d(6),fim,'Últimos 7 dias'],mes:[new Date(h.getFullYear(),h.getMonth(),1),fim,'Este mês'],tudo:[d(DIAS_GUARDA),fim,'Últimos '+DIAS_GUARDA+' dias']})[REL.p];}
+function relVendas(){const [a,b]=relPeriodo();return Object.values(S.vendas).filter(v=>{const t=Date.parse(v.em);return t>=a.getTime()&&t<b.getTime();}).sort((x,y)=>Date.parse(x.em)-Date.parse(y.em));}
+function viewRelatorios(){const vs=relVendas(),r=resumoCaixa(null,vs),per=relPeriodo();const mxD=Math.max(1,...r.dias.map(d=>d.total));
+  const tab=(tit,cab,linhas)=>`<div class="card pad"><h3>${tit}</h3>${linhas.length?`<div style="overflow:auto"><table><thead><tr>${cab.map((c,i)=>`<th class="${i?'r':''}">${c}</th>`).join('')}</tr></thead><tbody>${linhas.map(l=>`<tr>${l.map((c,i)=>`<td class="${i?'r num':''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'<div class="mini">Sem vendas no período.</div>'}</div>`;
+  $('#view').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px"><div><div class="kicker">Relatórios</div><h2>${per[2]}</h2></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="chips">${[['hoje','Hoje'],['ontem','Ontem'],['sem','7 dias'],['mes','Mês'],['tudo','Tudo']].map(([k,l])=>`<button class="chip ${REL.p===k?'on':''}" onclick="REL.p='${k}';viewRelatorios()">${l}</button>`).join('')}</div><button class="btn btn-o btn-sm" onclick="relCSV()">Baixar planilha</button></div></div>
+  <div class="painel">${[['Faturamento',brl(r.total)],['Vendas',r.n],['Ticket médio',brl(r.ticket)],['Quilos vendidos',fkg(r.kg)],['Peso médio do prato',fkg(r.pesoMedio)+' kg']].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v num">${v}</div></div>`).join('')}</div>
+  <div class="g2">${tab('Por forma de pagamento',['Forma','Recebimentos','Valor'],r.porMeio.map(m=>[esc(m.nome),m.n,brl(m.valor)]))}${tab('Por dia',['Dia','Vendas','Total'],r.dias.map(d=>[fData(d.dia)+`<div style="height:4px;border-radius:2px;background:var(--gold);width:${Math.round(d.total/mxD*100)}%;margin-top:4px"></div>`,d.n,brl(d.total)]))}</div>
+  <div class="g2" style="margin-top:16px">${tab('Itens vendidos',['Item','Quantidade','Valor'],r.itens.slice(0,60).map(i=>[esc(i.nome),i.peso?fkg(i.qtd)+' kg':fq(i.qtd),brl(i.valor)]))}${tab('Por garçom',['Garçom','Vendas','Total','Taxa de serviço'],r.garcons.map(g=>[esc(g.nome),g.n,brl(g.total),brl(g.serv)]))}</div>
+  <div class="mini" style="margin-top:12px">${r.desc?'Descontos '+brl(r.desc)+'. ':''}${r.serv?'Taxa de serviço '+brl(r.serv)+'. ':''}${r.canceladas?r.canceladas+' venda(s) cancelada(s) fora da conta. ':''}Este aparelho guarda ${DIAS_GUARDA} dias de movimento.</div>`;}
+function relCSV(){const vs=relVendas();if(!vs.length)return toast('Sem vendas no período');const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';const n=v=>String(r2(v)).replace('.',',');
+  const L=[['Data','Hora','Venda','Mesa','Comanda','Garçom','Itens','Subtotal','Desconto','Serviço','Total','Formas','Troco','Situação'].map(q).join(';')];
+  vs.forEach(v=>L.push([fData(v.em),fHora(v.em),v.numero,v.mesa||'',v.comandaNumero||'',v.garcom||'',(v.itens||[]).map(i=>(i.tipo==='peso'?fkg(i.qtd)+' kg ':fq(i.qtd)+'x ')+i.nome).join(' | '),n(v.subtotal),n(v.desconto),n(v.servico),n(v.total),(v.pagamentos||[]).map(p=>p.nome+' '+n(p.valor)).join(' | '),n(v.troco),v.cancelada?'cancelada':'ok'].map(q).join(';')));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+L.join('\r\n')],{type:'text/csv;charset=utf-8'}));a.download='flow-pdv-vendas-'+hojeISO()+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
+
+
 /* ---------- atalhos e partida ---------- */
-const VIEWS={venda:viewVenda,caixa:viewCaixa,vendas:viewVendas,ajustes:viewAjustes};
+const VIEWS={venda:viewVenda,mesas:viewMesas,cozinha:viewCozinha,balanca:viewBalanca,caixa:viewCaixa,vendas:viewVendas,relatorios:viewRelatorios,ajustes:viewAjustes};
 document.addEventListener('keydown',e=>{if(!CTX||!S)return;
-  if(modalAberto()){if(e.key==='Escape'){PG=null;fecharModal();}else if(e.key==='Enter'&&PG){const t=pgTotais();if(t.rest<=0&&PG.pags.length){e.preventDefault();pgConcluir();}}return;}
+  if($('#pinRoot')){if(e.key==='Escape')pinFim(false);return;}
+  if(modalAberto()){if(e.key==='Escape'){PG=null;fecharModal();}else if(e.key==='Enter'&&PG&&PG.tela==='pagar'&&!/INPUT|SELECT/.test(document.activeElement.tagName)){const t=pgTotais();if(t.rest<=0&&PG.pags.length){e.preventDefault();pgConcluir();}}return;}
+  if(ROUTE==='balanca'){if(document.activeElement&&document.activeElement.id==='pesoIn')return;if(/^\d$/.test(e.key)){e.preventDefault();totTecla(e.key);}else if(e.key==='Backspace'){e.preventDefault();totApagar();}else if(e.key==='Enter'){e.preventDefault();totConfirmar();}return;}
   if(ROUTE!=='venda')return;
   if(e.key==='F2'){e.preventDefault();lancarPeso();}else if(e.key==='F4'){e.preventDefault();receber();}else if(e.key==='F8'){e.preventDefault();guardar();}
   else if(e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();const b=$('#busca');if(b)b.focus();}});
