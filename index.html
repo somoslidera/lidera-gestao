@@ -4362,6 +4362,312 @@ function liqAgrupar(parc){const map=new Map();
     let g=map.get(k);if(!g){g={key:k,nome:rec?mr.nome:liqNome(l),data:x.liq.data,idx:rec?0:x.idx,n:rec?1:(l.liquidacoes||[]).length,valor:0,base:0,extras:false,obs:'',pago:true,ids:[],itens:[],cats:new Set(),vendas:!!rec};map.set(k,g);}
     g.valor=+(g.valor+liqCobr(x.liq)).toFixed(2);g.base=+(g.base+(+x.liq.valor||0)).toFixed(2);g.extras=g.extras||liqExtras(x.liq);if(!g.obs)g.obs=x.liq.obs||l.obsPagto||'';g.pago=g.pago&&!!x.liq.pago;g.ids.push(l.id);g.itens.push(x);g.cats.add((l.grupo||'')+(l.sub?' · '+l.sub:''));});
   return Array.from(map.values()).map(g=>{g.cat=g.cats.size===1?[...g.cats][0]:[...new Set(g.itens.map(x=>x.lanc.grupo||''))].join(', ');return g;}).sort((a,b)=>(a.data||'').localeCompare(b.data||''));}
+/* ===== BOLETOS (12/11/2026) · leitura da linha digitável e do código de barras, sem IA e sem serviço externo =====
+   Boleto de cobrança: 47 dígitos na linha digitável, 44 no código de barras (banco, moeda, DV, fator de vencimento, valor, campo livre).
+   Arrecadação (luz, água, telefone, guias): 48 dígitos na linha, 44 no código (começa com 8).
+   O código de barras é sempre Intercalado 2 de 5 com 44 dígitos; a linha digitável é o mesmo dado com dígitos de conferência. */
+const BOL_BANCOS={'001':'Banco do Brasil','003':'Banco da Amazônia','004':'Banco do Nordeste','021':'Banestes','033':'Santander','041':'Banrisul','047':'Banese','070':'BRB','077':'Inter','084':'Uniprime','085':'Ailos','097':'Credisis','099':'Uniprime Central','104':'Caixa','133':'Cresol','136':'Unicred','197':'Stone','208':'BTG Pactual','212':'Original','218':'BS2','237':'Bradesco','246':'ABC Brasil','260':'Nubank','274':'BMP','290':'PagBank','318':'BMG','323':'Mercado Pago','336':'C6 Bank','341':'Itaú','364':'Efí','380':'PicPay','389':'Mercantil','403':'Cora','422':'Safra','461':'Asaas','529':'Pinbank','536':'Neon','633':'Rendimento','637':'Sofisa','655':'Votorantim','707':'Daycoval','741':'Ribeirão Preto','743':'Semear','745':'Citibank','748':'Sicredi','756':'Sicoob'};
+const BOL_SEGMENTOS={'1':'Prefeitura','2':'Saneamento','3':'Energia ou gás','4':'Telecomunicações','5':'Órgão governamental','6':'Carnê ou convênio','7':'Multa de trânsito','9':'Convênio bancário'};
+function bolDig(s){return String(s==null?'':s).replace(/\D/g,'');}
+function bolMod10(n){let s=0,m=2;for(let i=n.length-1;i>=0;i--){let p=(+n[i])*m;if(p>9)p=Math.floor(p/10)+(p%10);s+=p;m=m===2?1:2;}return (10-(s%10))%10;}
+function bolMod11Banco(n){let s=0,p=2;for(let i=n.length-1;i>=0;i--){s+=(+n[i])*p;p=p===9?2:p+1;}const r=11-(s%11);return (r===0||r===10||r===11)?1:r;}
+function bolMod11Arrec(n){let s=0,p=2;for(let i=n.length-1;i>=0;i--){s+=(+n[i])*p;p=p===9?2:p+1;}const r=s%11;return r<2?0:(r===10?1:11-r);}
+function bolISO(d){return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');}
+// fator de vencimento: dias desde 07/10/1997. Em 22/02/2025 o fator voltou de 9999 para 1000, então o mesmo número vale para duas datas: fica a mais perto de hoje.
+function bolVencDoFator(f,hoje){f=+f||0;if(f<1000)return '';const base=Date.UTC(1997,9,7),dia=86400000;const ref=hoje?Date.parse(hoje+'T00:00:00Z'):Date.now();
+  const a=base+f*dia,b=a+9000*dia;return bolISO(new Date(Math.abs(b-ref)<Math.abs(a-ref)?b:a));}
+function bolCodParaLinha(c){if(c[0]==='8'){const m=(c[2]==='6'||c[2]==='7')?bolMod10:bolMod11Arrec;let o='';for(let i=0;i<44;i+=11){const b=c.slice(i,i+11);o+=b+m(b);}return o;}
+  const c1=c.slice(0,4)+c.slice(19,24),c2=c.slice(24,34),c3=c.slice(34,44);return c1+bolMod10(c1)+c2+bolMod10(c2)+c3+bolMod10(c3)+c[4]+c.slice(5,19);}
+function bolLinhaParaCod(l){if(l.length===48)return l.slice(0,11)+l.slice(12,23)+l.slice(24,35)+l.slice(36,47);
+  return l.slice(0,4)+l[32]+l.slice(33,47)+l.slice(4,9)+l.slice(10,20)+l.slice(21,31);}
+/* Lê o que foi colado, digitado ou veio do leitor. Devolve {ok, tipo:'banco'|'arrecadacao', cod(44), linha(47|48), banco, emissor, valor, venc, erro}. */
+function bolLer(txt,hoje){const d=bolDig(txt);const r={ok:false,entrada:d,erro:''};
+  if(!d){r.erro='vazio';return r;}
+  let cod='',linha='';
+  if(d.length===44){cod=d;linha=bolCodParaLinha(d);}
+  else if(d.length===47&&d[0]!=='8'){linha=d;cod=bolLinhaParaCod(d);}
+  else if(d.length===48&&d[0]==='8'){linha=d;cod=bolLinhaParaCod(d);}
+  else{r.erro=d.length<44?('faltam dígitos: '+d.length+' de '+(d[0]==='8'?48:47)):('quantidade de dígitos inesperada: '+d.length);return r;}
+  r.cod=cod;r.linha=linha;
+  if(cod[0]==='8'){r.tipo='arrecadacao';const m=(cod[2]==='6'||cod[2]==='7')?bolMod10:bolMod11Arrec;
+    if(!/[6-9]/.test(cod[2])){r.erro='código de arrecadação com identificador inválido';return r;}
+    if(m(cod.slice(0,3)+cod.slice(4))!==+cod[3]){r.erro='dígito verificador geral não confere';return r;}
+    if(d.length===48){for(let i=0;i<4;i++){const b=d.slice(i*12,i*12+11);if(m(b)!==+d[i*12+11]){r.erro='dígito verificador do '+(i+1)+'º bloco não confere';return r;}}}
+    r.emissor=BOL_SEGMENTOS[cod[1]]||'Arrecadação';r.banco='';r.valor=(cod[2]==='6'||cod[2]==='8')?(+cod.slice(4,15))/100:0;r.venc='';r.ok=true;return r;}
+  r.tipo='banco';
+  if(bolMod11Banco(cod.slice(0,4)+cod.slice(5))!==+cod[4]){r.erro='dígito verificador geral não confere';return r;}
+  if(d.length===47){const cs=[[d.slice(0,9),d[9]],[d.slice(10,20),d[20]],[d.slice(21,31),d[31]]];for(let i=0;i<3;i++)if(bolMod10(cs[i][0])!==+cs[i][1]){r.erro='dígito verificador do '+(i+1)+'º campo não confere';return r;}}
+  r.banco=cod.slice(0,3);r.emissor=BOL_BANCOS[r.banco]||('Banco '+r.banco);r.valor=(+cod.slice(9,19))/100;r.venc=bolVencDoFator(cod.slice(5,9),hoje);r.ok=true;return r;}
+function bolLinhaFmt(l){l=bolDig(l);if(l.length===47)return l.slice(0,5)+'.'+l.slice(5,10)+' '+l.slice(10,15)+'.'+l.slice(15,21)+' '+l.slice(21,26)+'.'+l.slice(26,32)+' '+l[32]+' '+l.slice(33);
+  if(l.length===48)return [0,1,2,3].map(i=>l.slice(i*12,i*12+11)+'-'+l[i*12+11]).join(' ');return l;}
+/* Procura uma linha digitável ou código de barras válido dentro de um texto qualquer (PDF, e-mail, leitura com ruído). */
+function bolAcharNoTexto(txt,hoje){const t=String(txt||'');const vistos=new Set();const tenta=s=>{const d=bolDig(s);if(vistos.has(d))return null;vistos.add(d);const r=bolLer(d,hoje);return r.ok?r:null;};
+  const pads=[/\d{5}[.\s]?\d{5}\s*\d{5}[.\s]?\d{6}\s*\d{5}[.\s]?\d{6}\s*\d\s*\d{14}/g,/(?:8\d{10}[\s.-]*\d[\s.-]*)(?:\d{11}[\s.-]*\d[\s.-]*){3}/g,/\b\d{44}\b/g,/\b\d{47,48}\b/g];
+  for(const p of pads){const ms=t.match(p)||[];for(const m of ms){const r=tenta(m);if(r)return r;}}
+  // último recurso: janelas de 47 e 48 dígitos sobre todos os dígitos de cada linha do texto
+  for(const ln of t.split(/\n/)){const d=bolDig(ln);for(const n of [47,48,44])for(let i=0;i+n<=d.length&&i<60;i++){const r=tenta(d.slice(i,i+n));if(r)return r;}}
+  return null;}
+/* Código de barras Intercalado 2 de 5 em SVG. mod = largura do módulo estreito em px; barras largas = 3 módulos. */
+const BOL_ITF=['nnwwn','wnnnw','nwnnw','wwnnn','nnwnw','wnwnn','nwwnn','nnnww','wnnwn','nwnwn'];
+function bolITFModulos(cod){const seq=[1,1,1,1];for(let i=0;i<cod.length;i+=2){const a=BOL_ITF[+cod[i]],b=BOL_ITF[+cod[i+1]];for(let k=0;k<5;k++){seq.push(a[k]==='w'?3:1);seq.push(b[k]==='w'?3:1);}}seq.push(3,1,1);return seq;}   // alterna barra, espaço, barra…
+function bolITFSvg(cod,mod,alt,fluido){cod=bolDig(cod);if(cod.length%2)return '';mod=mod||2;alt=alt||80;const seq=bolITFModulos(cod);const q=10;let x=q*mod,rs='';
+  seq.forEach((w,i)=>{if(i%2===0)rs+=`<rect x="${x}" y="0" width="${w*mod}" height="${alt}"/>`;x+=w*mod;});const W=x+q*mod;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${alt}" ${fluido?'preserveAspectRatio="none" style="background:#fff;display:block;width:100%;height:'+alt+'px"':'width="'+W+'" height="'+alt+'" shape-rendering="crispEdges" style="background:#fff;display:block;max-width:none"'}><rect x="0" y="0" width="${W}" height="${alt}" fill="#fff"/><g fill="#000">${rs}</g></svg>`;}
+/* ----- Boleto e anexos por parcela (12/11/2026) -----
+   Dados: DB.boletos = { id: {id, k (nota), ids (lançamentos), idx (parcela) | conta (id da conta avulsa), linha, cod, anexos:[{id,tipo,path,nome,mime,tam,em,por}], em, por} }.
+   Fica fora de l.liquidacoes de propósito: as parcelas são refeitas a cada edição da nota e o vínculo se perderia.
+   Arquivos: Supabase Storage, bucket privado "anexos", caminho <org>/<ano>/<arquivo>. O banco guarda só o caminho. */
+const BOL_BUCKET='anexos', BOL_MAX_PDF=5*1024*1024, BOL_GUARDA_DIAS=730,   // limpeza automática: Edge Function anexos-limpar, 2 anos depois do pagamento
+   BOL_LIB_DET='https://cdn.jsdelivr.net/npm/barcode-detector@3.2.3/dist/iife/ponyfill.js', BOL_LIB_PDF='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+let BOL_ALVO=null, BOL_CAM=null;
+function bolMapa(){if(!DB.boletos||typeof DB.boletos!=='object'||Array.isArray(DB.boletos))DB.boletos={};return DB.boletos;}
+function bolPode(){return podeFinPagto()||podeFinNota();}
+function bolNuvem(){return !!(typeof CLOUD!=='undefined'&&CLOUD&&typeof sb!=='undefined'&&sb&&ORG&&ORG.id);}
+function bolChaveG(g){const l=g.itens[0].lanc;return nfKey(l.nfe)?'nf|'+nfKey(l.nfe)+'|'+(l.fornecedor||'').trim().toLowerCase():'id|'+l.id;}
+function bolDeG(g){if(!g||g.vendas||!DB.boletos)return null;const k=bolChaveG(g),ids=new Set(g.ids);let ach=null;
+  for(const r of Object.values(DB.boletos)){if(!r||r.conta||(+r.idx||0)!==g.idx)continue;if(r.k===k)return r;if(!ach&&(r.ids||[]).some(id=>ids.has(id)))ach=r;}return ach;}
+function bolDeConta(id){return (id&&DB.boletos)?(Object.values(DB.boletos).find(r=>r&&r.conta===id)||null):null;}
+function bolAlvoG(){const a=BOL_ALVO;return (a&&a.tipo==='g')?((window._liqG||[]).find(x=>x.key===a.key)||null):null;}
+function bolAlvoConta(){const a=BOL_ALVO;return (a&&a.tipo==='conta')?(((DB.fin||{})[a.chave]||[]).find(x=>x&&x.id===a.id)||null):null;}
+function bolAlvoRec(criar){const a=BOL_ALVO;if(!a)return null;const m=bolMapa();let r=null;
+  if(a.tipo==='g'){const g=bolAlvoG();if(!g)return null;r=bolDeG(g);if(!r&&criar){r={id:uid(),idx:g.idx,anexos:[]};m[r.id]=r;}if(r&&criar){r.k=bolChaveG(g);r.ids=[...new Set(g.ids)];}}
+  else{const c=bolAlvoConta();if(!c)return null;r=bolDeConta(c.id);if(!r&&criar){r={id:uid(),conta:c.id,anexos:[]};m[r.id]=r;}}
+  return r;}
+function bolAlvoInfo(){const a=BOL_ALVO;if(!a)return null;
+  if(a.tipo==='g'){const g=bolAlvoG();if(!g)return null;return {valor:g.valor,base:g.base,venc:g.data,pago:g.pago,rec:grupoTipo(g.itens[0].lanc.grupo)==='receita',oque:'parcela',nome:g.nome+(g.n>1?' · '+(g.idx+1)+'/'+g.n:'')};}
+  const c=bolAlvoConta();if(!c)return null;return {valor:+c.valor||0,base:+c.valor||0,venc:c.vencimento||'',pago:!!(c.pago||c.recebido),rec:a.chave==='contasReceber',oque:'conta',nome:c.descricao||'Conta avulsa'};}
+function bolLimpaVazio(r){if(r&&!r.linha&&!(r.anexos||[]).length)delete bolMapa()[r.id];}
+function bolNomeRec(r){if(!r)return '';if(r.conta){const c=((DB.fin||{}).contasPagar||[]).concat((DB.fin||{}).contasReceber||[]).find(x=>x&&x.id===r.conta);return c?(c.descricao||'conta avulsa')+(c.vencimento?' · vence '+fmtDataBR(c.vencimento):''):'conta avulsa apagada';}
+  const l=(DB.lancamentos||[]).find(x=>(r.ids||[]).includes(x.id));if(!l)return 'nota apagada';const n=(l.liquidacoes||[]).length;const q=(l.liquidacoes||[])[+r.idx||0];return liqNome(l)+(n>1?' · '+((+r.idx||0)+1)+'/'+n:'')+(q&&q.data?' · vence '+fmtDataBR(q.data):'');}
+function bolOndeEsta(cod,menosId){return cod?Object.values(bolMapa()).filter(r=>r&&r.cod===cod&&r.id!==menosId):[];}
+function bolTam(b){b=+b||0;return b>=1048576?(b/1048576).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(b/1024))+' KB';}
+function bolH(t){return `<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--navy);font-weight:700;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--line)">${t}</div>`;}
+// resumo curto para a lista de parcelas: "boleto · 2 anexos"
+function bolSelo(r){if(!r)return '';const n=(r.anexos||[]).length;const p=[];if(r.linha)p.push('▥ boleto');if(n)p.push('📎 '+n);return p.length?' · <span style="color:var(--navy);font-weight:600">'+p.join(' · ')+'</span>':'';}
+/* o que o boleto diz contra o que a parcela diz */
+function bolConfere(b,info){const out={ok:true,msgs:[]};if(!b||!info)return out;
+  if(b.valor>0){const bate=Math.abs(b.valor-info.valor)<0.009||Math.abs(b.valor-info.base)<0.009;if(!bate){out.ok=false;out.msgs.push('o boleto é de '+fmtBRL(b.valor)+' e a '+(info.oque||'parcela')+' é de '+fmtBRL(info.valor));}}
+  if(b.venc&&info.venc&&b.venc!==info.venc){out.ok=false;out.msgs.push('o boleto vence em '+fmtDataBR(b.venc)+' e a '+(info.oque||'parcela')+' em '+fmtDataBR(info.venc));}
+  return out;}
+function bolSecHTML(){const info=bolAlvoInfo();if(!info)return '';const r=bolAlvoRec(false);const edita=bolPode();const b=r&&r.linha?bolLer(r.linha):null;
+  let h='';
+  if(!info.rec){h+=bolH('Boleto');
+    if(b&&b.ok){const cf=bolConfere(b,info);const larg=Math.min(820,window.innerWidth)-80;const mod=larg>=850?2:1;
+      h+=`<div style="font-size:13px;margin-bottom:8px"><b>${esc(b.emissor)}</b>${b.valor>0?' · '+fmtBRL(b.valor):' · sem valor no código'}${b.venc?' · vence '+fmtDataBR(b.venc):''}
+          ${cf.ok?`<span class="tag tag-green" style="font-size:9.5px;padding:0 6px;margin-left:4px">✓ confere com a ${info.oque||'parcela'}</span>`:''}</div>
+        ${cf.ok?'':`<div class="alert alert-amber" style="margin-bottom:10px">${typeof icoWarn!=='undefined'?icoWarn:''}<div><b>Confira antes de pagar:</b> ${esc(cf.msgs.join('; '))}.</div></div>`}
+        <div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 6px;overflow-x:auto;text-align:center">${ehMobile()?bolITFSvg(b.cod,1,64,true):`<div style="display:inline-block">${bolITFSvg(b.cod,mod,72)}</div>`}</div>
+        <div id="bol_linha" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;margin-top:8px;overflow-wrap:anywhere;user-select:all">${esc(bolLinhaFmt(b.linha))}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn btn-primary btn-sm" onclick="bolCopiar()">Copiar linha digitável</button>
+          <button class="btn btn-ghost btn-sm mob-hide" onclick="bolAmpliar()" title="Mostra o código de barras grande, para ler com o aplicativo do banco no celular">Ampliar para ler com o celular</button>
+          ${edita?`<button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="bolRemoverLinha()">Remover</button>`:''}
+        </div>`;}
+    else if(edita){h+=`<input class="input" id="bol_in" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="Cole ou digite a linha digitável, ou use o leitor de código de barras" oninput="bolInput(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();bolAplicar(this.value,true);}" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px">
+        <div id="bol_msg" class="gp-mini" style="min-height:16px;margin-top:5px">Com leitor de código de barras: clique no campo e aponte para o boleto.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn btn-primary btn-sm" onclick="bolCamera(r=>bolAplicar(r.cod,true))">📷 Ler com a câmera</button>
+          <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="O Flow procura a linha digitável no PDF ou o código de barras na foto">🖼 Ler de uma foto ou PDF<input type="file" accept="image/*,application/pdf" style="display:none" onchange="bolLerDeArquivo(this,r=>bolAplicar(r.cod,true))"></label>
+        </div>`;}
+    else h+=`<div class="gp-mini">Nenhum boleto informado.</div>`;}
+  const an=(r&&r.anexos)||[];
+  h+=bolH('Anexos'+(an.length?' · '+an.length:''));
+  h+=an.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)">
+      <div style="min-width:0;font-size:12.5px"><span class="tag ${x.tipo==='comprovante'?'tag-green':'tag-navy'}" style="font-size:9px;padding:0 6px;letter-spacing:.3px">${x.tipo==='comprovante'?'COMPROVANTE':'BOLETO'}</span> <span style="overflow-wrap:anywhere">${esc(x.nome||'arquivo')}</span><div class="gp-mini">${bolTam(x.tam)}${x.em?' · '+fmtDataBR(x.em):''}${x.por?' · '+esc(x.por):''}</div></div>
+      <div style="display:flex;gap:6px;flex:0 0 auto"><button class="btn btn-ghost btn-sm" onclick="bolAbrirAnexo('${x.id}')">Abrir</button>${edita?`<button class="btn btn-ghost btn-sm" style="color:var(--red);padding:4px 8px" title="Apagar este anexo" onclick="bolRemoverAnexo('${x.id}')">✕</button>`:''}</div></div>`).join('');
+  if(!an.length)h+=`<div class="gp-mini" style="margin-bottom:8px">Nenhum arquivo anexado.</div>`;
+  if(edita){h+=bolNuvem()?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        ${info.rec?'':`<label class="btn btn-ghost btn-sm" style="cursor:pointer">${icoPlus} Anexar boleto<input type="file" accept="image/*,application/pdf" style="display:none" onchange="bolAnexar(this,'boleto')"></label>`}
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">${icoPlus} Anexar comprovante<input type="file" accept="image/*,application/pdf" style="display:none" onchange="bolAnexar(this,'comprovante')"></label>
+      </div><div id="bol_up" class="gp-mini" style="min-height:16px;margin-top:6px">Foto ou PDF, até 5 MB. No celular, o botão abre a câmera. Os arquivos ficam guardados por 2 anos depois do pagamento.</div>`
+      :`<div class="gp-mini" style="margin-top:6px">Os anexos ficam disponíveis com o Flow conectado à nuvem.</div>`;}
+  return h;}
+function bolSecRender(){const el=document.getElementById('bolSec');if(el)el.innerHTML=bolSecHTML();try{viewFinanceiroSoLista();}catch(e){}}
+function viewFinanceiroSoLista(){   // redesenha a lista por baixo do modal (selo de boleto/anexo na linha) sem mexer no modal aberto
+  if(typeof finTab==='undefined'||(finTab!=='pagar'&&finTab!=='receber'))return;const y=window.scrollY;viewFinanceiro();try{window.scrollTo(0,y);}catch(e){}}
+function bolMsg(t,cor){const m=document.getElementById('bol_msg');if(m){m.innerHTML=t;m.style.color=cor||'';}}
+function bolInput(el){const d=bolDig(el.value);clearTimeout(window._bolT);
+  if(!d){bolMsg('Com leitor de código de barras: clique no campo e aponte para o boleto.');return;}
+  const alvo=d[0]==='8'?48:47;
+  if(d.length===44||d.length===alvo){window._bolT=setTimeout(()=>bolAplicar(el.value,d.length===alvo),d.length===44?350:60);if(d.length===44)bolMsg('44 dígitos: lendo como código de barras…');return;}
+  bolMsg(d.length<alvo?(d.length+' de '+alvo+' dígitos'):('Dígitos demais: '+d.length+'. A linha digitável tem '+alvo+'.'),d.length>alvo?'var(--red)':'');}
+function bolAplicar(txt,avisar){const b=bolLer(txt);
+  if(!b.ok){if(avisar)bolMsg('Não é um boleto válido: '+esc(b.erro)+'. Confira os números.','var(--red)');return false;}
+  const antes=bolAlvoRec(false);const dup=bolOndeEsta(b.cod,antes&&antes.id);
+  if(dup.length&&!confirm('Este boleto já está vinculado a:\n'+dup.map(bolNomeRec).join('\n')+'\n\nVincular também aqui?'))return false;
+  const r=bolAlvoRec(true);if(!r)return false;r.linha=b.linha;r.cod=b.cod;r.em=hojeISO();r.por=quemSou();save();bolSecRender();
+  const cf=bolConfere(b,bolAlvoInfo());toast(cf.ok?'Boleto vinculado · '+esc(b.emissor)+(b.valor>0?' · '+fmtBRL(b.valor):''):'Boleto vinculado, mas '+esc(cf.msgs[0]),cf.ok?undefined:6000);return true;}
+function bolRemoverLinha(){const r=bolAlvoRec(false);if(!r||!confirm('Remover a linha digitável? Os anexos continuam.'))return;delete r.linha;delete r.cod;bolLimpaVazio(r);save();bolSecRender();}
+function bolCopiarTxt(t){const ok=()=>toast('Linha digitável copiada');const velho=()=>{const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;opacity:0;top:0;left:0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');ok();}catch(e){toast('Não foi possível copiar. Selecione os números e copie.');}ta.remove();};
+  try{if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(ok,velho);else velho();}catch(e){velho();}}
+function bolCopiar(){const r=bolAlvoRec(false);if(r&&r.linha)bolCopiarTxt(r.linha);}
+function bolAmpliar(cod,legenda){if(!cod){const r=bolAlvoRec(false);if(!r||!r.cod)return;cod=r.cod;const b=bolLer(cod);legenda=bolLinhaFmt(r.linha)+(b.ok&&b.valor>0?' · '+fmtBRL(b.valor):'')+(b.ok&&b.venc?' · vence '+fmtDataBR(b.venc):'');}
+  bolAmpliarFechar();const mod=Math.max(1,Math.min(4,Math.floor((window.innerWidth-48)/425)));const d=document.createElement('div');d.id='bolZoom';
+  d.style.cssText='position:fixed;inset:0;z-index:1600;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px;cursor:zoom-out';
+  d.innerHTML=`<div style="color:#111;font-size:15px;font-weight:700;font-family:inherit">Aponte o aplicativo do banco para o código de barras</div><div style="max-width:100%;overflow:auto">${bolITFSvg(cod,mod,150)}</div><div style="color:#111;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;text-align:center;overflow-wrap:anywhere">${esc(legenda||'')}</div><div style="color:#555;font-size:12.5px">Aumente o brilho da tela se o banco não ler. Clique em qualquer lugar ou aperte Esc para fechar.</div>`;
+  d.onclick=bolAmpliarFechar;document.body.appendChild(d);window._bolEsc=e=>{if(e.key==='Escape')bolAmpliarFechar();};document.addEventListener('keydown',window._bolEsc);}
+function bolAmpliarFechar(){const d=document.getElementById('bolZoom');if(d)d.remove();if(window._bolEsc){document.removeEventListener('keydown',window._bolEsc);window._bolEsc=null;}}
+/* ----- anexos ----- */
+function bolB64Blob(b64,mime){const bin=atob(b64);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:mime});}
+async function bolAnexar(input,tipo){const f=input.files&&input.files[0];input.value='';if(!f)return;const up=t=>{const e=document.getElementById('bol_up');if(e)e.innerHTML=t;};
+  if(!bolNuvem())return toast('Os anexos precisam do Flow conectado à nuvem');
+  const pdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name),img=/^image\//.test(f.type);
+  if(!pdf&&!img)return toast('Envie uma foto (JPG ou PNG) ou um PDF');
+  if(pdf&&f.size>BOL_MAX_PDF)return toast('O PDF tem '+bolTam(f.size)+'. O limite é 5 MB.');
+  const alvo=BOL_ALVO;   // o envio demora: garante que o arquivo vai para a parcela em que a pessoa clicou
+  try{
+    // 1) tenta ler a linha digitável do próprio arquivo (sem IA), só quando é boleto e a parcela ainda não tem
+    let lido=null;const tinha=bolAlvoRec(false);
+    if(tipo==='boleto'&&!(tinha&&tinha.linha)){up('Procurando a linha digitável no arquivo…');try{lido=await bolLerArquivo(f);}catch(e){lido=null;}}
+    // 2) foto é reduzida no aparelho antes de subir
+    up('Preparando o arquivo…');let blob=f,mime=pdf?'application/pdf':f.type,ext=pdf?'pdf':'jpg';
+    if(img){const c=await lmComprimeImg(f,2000,0,.82);if(!c)return up('<span style="color:var(--red)">Não foi possível ler a imagem.</span>');blob=bolB64Blob(c.b64,'image/jpeg');mime='image/jpeg';}
+    if(blob.size>BOL_MAX_PDF)return up('<span style="color:var(--red)">O arquivo ficou com '+bolTam(blob.size)+'. O limite é 5 MB.</span>');
+    up('Enviando '+bolTam(blob.size)+'…');
+    const path=ORG.id+'/'+hojeISO().slice(0,4)+'/'+uid()+uid()+'.'+ext;
+    const r=await sb.storage.from(BOL_BUCKET).upload(path,blob,{contentType:mime,cacheControl:'3600',upsert:false});
+    if(r.error){up('<span style="color:var(--red)">Não foi possível enviar: '+esc(r.error.message||'falha')+'</span>');return;}
+    const volta=BOL_ALVO;BOL_ALVO=alvo;const rec=bolAlvoRec(true);
+    if(!rec){BOL_ALVO=volta;try{await sb.storage.from(BOL_BUCKET).remove([path]);}catch(e){}return toast('A parcela não está mais na tela. Abra de novo e anexe.');}
+    rec.anexos=rec.anexos||[];rec.anexos.push({id:uid(),tipo,path,nome:(f.name||(tipo+'.'+ext)).slice(0,80),mime,tam:blob.size,em:hojeISO(),por:quemSou()});
+    let extra='';if(lido&&lido.ok&&!rec.linha&&!bolOndeEsta(lido.cod,rec.id).length){rec.linha=lido.linha;rec.cod=lido.cod;rec.em=hojeISO();rec.por=quemSou();extra=' · linha digitável lida do arquivo';}
+    save();BOL_ALVO=volta;if(volta&&alvo&&JSON.stringify(volta)===JSON.stringify(alvo))bolSecRender();toast((tipo==='comprovante'?'Comprovante anexado':'Boleto anexado')+extra);
+  }catch(e){up('<span style="color:var(--red)">Não foi possível anexar: '+esc((e&&e.message)||e)+'</span>');}}
+async function bolAbrirAnexo(id){const r=bolAlvoRec(false);const x=r&&(r.anexos||[]).find(a=>a.id===id);if(!x)return;if(!bolNuvem())return toast('Abra o Flow conectado à nuvem para ver o anexo');
+  const w=window.open('about:blank','_blank');   // abre já no clique: depois da espera o navegador bloquearia a aba
+  try{const s=await sb.storage.from(BOL_BUCKET).createSignedUrl(x.path,600);if(s.error||!s.data||!s.data.signedUrl)throw new Error((s.error&&s.error.message)||'arquivo não encontrado');
+    if(w)w.location.href=s.data.signedUrl;else window.location.href=s.data.signedUrl;}
+  catch(e){if(w)w.close();const m=(e&&e.message)||''+e;toast(/not.?found|não encontrado/i.test(m)?'Este anexo não está mais disponível. Os arquivos são apagados 2 anos depois do pagamento.':'Não foi possível abrir o anexo: '+esc(m),7000);}}
+async function bolRemoverAnexo(id){const r=bolAlvoRec(false);const i=r?(r.anexos||[]).findIndex(a=>a.id===id):-1;if(i<0)return;const x=r.anexos[i];
+  if(!confirm('Apagar o anexo "'+(x.nome||'arquivo')+'"? Não dá para desfazer.'))return;
+  try{if(bolNuvem())await sb.storage.from(BOL_BUCKET).remove([x.path]);}catch(e){}
+  r.anexos.splice(i,1);bolLimpaVazio(r);save();bolSecRender();toast('Anexo apagado');}
+/* ----- leitura do código de barras: câmera, foto e PDF (sem IA) ----- */
+function bolScript(src){return new Promise((ok,er)=>{if(document.querySelector('script[data-bol="'+src+'"]'))return ok();const s=document.createElement('script');s.src=src;s.dataset.bol=src;s.onload=()=>ok();s.onerror=()=>{s.remove();er(new Error('sem conexão para carregar o leitor'));};document.head.appendChild(s);});}
+function bolDetector(){if(window._bolDet)return window._bolDet;
+  window._bolDet=(async()=>{try{if('BarcodeDetector' in window){const f=await window.BarcodeDetector.getSupportedFormats();if(f&&f.includes('itf'))return new window.BarcodeDetector({formats:['itf']});}}catch(e){}
+    await bolScript(BOL_LIB_DET);return new window.BarcodeDetectionAPI.BarcodeDetector({formats:['itf']});})();
+  window._bolDet.catch(()=>{window._bolDet=null;});return window._bolDet;}
+async function bolDetectar(fonte){const det=await bolDetector();let cs=[];try{cs=await det.detect(fonte);}catch(e){cs=[];}
+  for(const c of cs){const b=bolLer(c.rawValue);if(b.ok)return b;}return null;}
+function bolCanvasDe(img,max,rot){const w=img.videoWidth||img.naturalWidth||img.width,h=img.videoHeight||img.naturalHeight||img.height;const sc=Math.min(1,(max||2600)/Math.max(w,h));const dw=Math.round(w*sc),dh=Math.round(h*sc);
+  const c=document.createElement('canvas');c.width=rot?dh:dw;c.height=rot?dw:dh;const x=c.getContext('2d');if(rot){x.translate(c.width/2,c.height/2);x.rotate(Math.PI/2);x.drawImage(img,-dw/2,-dh/2,dw,dh);}else x.drawImage(img,0,0,dw,dh);return c;}
+function bolImgDe(file){return new Promise(res=>{const im=new Image();const u=URL.createObjectURL(file);im.onload=()=>{URL.revokeObjectURL(u);res(im);};im.onerror=()=>{URL.revokeObjectURL(u);res(null);};im.src=u;});}
+async function bolLerImagem(file){const im=await bolImgDe(file);if(!im)return null;
+  for(const [max,rot] of [[2600,0],[2600,1],[1600,0],[1600,1]]){const b=await bolDetectar(bolCanvasDe(im,max,rot));if(b)return b;}return null;}
+async function bolLerPdf(file){await bolScript(BOL_LIB_PDF);const lib=window.pdfjsLib;lib.GlobalWorkerOptions.workerSrc=BOL_LIB_PDF.replace('pdf.min.js','pdf.worker.min.js');
+  const doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;const n=Math.min(doc.numPages,3);
+  for(let p=1;p<=n;p++){const pg=await doc.getPage(p);const tc=await pg.getTextContent();   // boleto de banco traz a linha digitável como texto
+    const linhas={};tc.items.forEach(it=>{const y=Math.round(it.transform[5]);(linhas[y]=linhas[y]||[]).push(it);});
+    const txt=Object.keys(linhas).sort((a,b)=>b-a).map(y=>linhas[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ')).join('\n');
+    const b=bolAcharNoTexto(txt)||bolAcharNoTexto(tc.items.map(i=>i.str).join(''));if(b)return b;}
+  for(let p=1;p<=n;p++){const pg=await doc.getPage(p);const vp=pg.getViewport({scale:3});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;   // PDF escaneado: procura o código de barras na imagem da página
+    await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;const b=await bolDetectar(c);if(b)return b;}
+  return null;}
+async function bolLerArquivo(file){const pdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name||'');return pdf?bolLerPdf(file):bolLerImagem(file);}
+async function bolLerDeArquivo(input,cb){const f=input.files&&input.files[0];input.value='';if(!f)return;bolMsg('Procurando o boleto no arquivo…');
+  let b=null,erro='';try{b=await bolLerArquivo(f);}catch(e){erro=(e&&e.message)||''+e;}
+  if(b){bolMsg('');cb(b);}else bolMsg(erro?'Não foi possível ler o arquivo: '+esc(erro):'Não encontrei o código de barras nem a linha digitável nesse arquivo. Tente uma foto mais de perto, com o código inteiro e sem reflexo, ou digite os números.','var(--red)');}
+function bolCamera(cb){bolCamFechar();const d=document.createElement('div');d.id='bolCam';d.style.cssText='position:fixed;inset:0;z-index:1500;background:#000;display:flex;flex-direction:column;color:#fff';
+  d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px"><div style="font-size:15px;font-weight:700">Aponte para o código de barras do boleto</div><button onclick="bolCamFechar()" style="background:none;border:0;color:#fff;font-size:26px;line-height:1;padding:4px 8px;cursor:pointer" aria-label="Fechar">×</button></div>
+    <div style="position:relative;flex:1;min-height:0;overflow:hidden"><video id="bolVid" playsinline autoplay muted style="width:100%;height:100%;object-fit:cover;background:#000"></video>
+      <div style="position:absolute;left:3%;right:3%;top:50%;height:24%;transform:translateY(-50%);border:2px solid #D6BE8C;border-radius:12px;box-shadow:0 0 0 3000px rgba(0,0,0,.5);pointer-events:none"></div></div>
+    <div style="padding:12px 14px 18px;display:flex;flex-direction:column;gap:10px;align-items:center">
+      <div id="bolCamMsg" style="font-size:13px;text-align:center;min-height:18px">Abrindo a câmera…</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+        <button id="bolCamLuz" class="btn btn-ghost btn-sm" style="display:none;background:#222;color:#fff;border-color:#444" onclick="bolCamLuz()">🔦 Lanterna</button>
+        <button id="bolCamZoom" class="btn btn-ghost btn-sm" style="display:none;background:#222;color:#fff;border-color:#444" onclick="bolCamZoom()">Zoom 2x</button>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;background:#222;color:#fff;border-color:#444">Tirar uma foto<input type="file" accept="image/*" capture="environment" style="display:none" onchange="bolCamFoto(this)"></label>
+      </div><div style="font-size:11.5px;color:#bbb;text-align:center">O código precisa caber inteiro dentro da faixa. Virar o celular de lado ajuda.</div></div>`;
+  document.body.appendChild(d);BOL_CAM={cb,stream:null,rodando:true,luz:false,zoom:1};bolCamAbrir();}
+function bolCamMsg(t){const m=document.getElementById('bolCamMsg');if(m)m.innerHTML=t;}
+async function bolCamAbrir(){const st=BOL_CAM;if(!st)return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){bolCamMsg('Este navegador não libera a câmera aqui. Use "Tirar uma foto".');return;}
+  try{st.stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});}
+  catch(e){bolCamMsg('Não consegui abrir a câmera'+(e&&e.name==='NotAllowedError'?': a permissão foi negada':'')+'. Use "Tirar uma foto" ou digite os números.');return;}
+  if(BOL_CAM!==st){st.stream.getTracks().forEach(t=>t.stop());return;}
+  const v=document.getElementById('bolVid');v.srcObject=st.stream;try{await v.play();}catch(e){}
+  const tr=st.stream.getVideoTracks()[0];let cap={};try{cap=tr.getCapabilities?tr.getCapabilities():{};}catch(e){}
+  try{if(cap.focusMode&&cap.focusMode.includes('continuous'))await tr.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}
+  if(cap.torch){const b=document.getElementById('bolCamLuz');if(b)b.style.display='';}
+  if(cap.zoom&&cap.zoom.max>=2){const b=document.getElementById('bolCamZoom');if(b)b.style.display='';}
+  bolCamMsg('Carregando o leitor…');let det;try{det=await bolDetector();}catch(e){bolCamMsg('Não consegui carregar o leitor ('+esc((e&&e.message)||e)+'). Digite os números.');return;}
+  bolCamMsg('Procurando o código de barras…');const c=document.createElement('canvas');const x=c.getContext('2d',{willReadFrequently:true});let n=0;
+  const passo=async()=>{if(BOL_CAM!==st||!st.rodando)return;
+    if(v.readyState>=2&&v.videoWidth){const vw=v.videoWidth,vh=v.videoHeight;n++;
+      // alterna a faixa do meio (rápido e em resolução cheia) com o quadro inteiro (pega código fora da faixa ou em pé)
+      const faixa=n%3!==0;const sh=faixa?Math.round(vh*.34):vh,sy=faixa?Math.round((vh-sh)/2):0;c.width=vw;c.height=sh;x.drawImage(v,0,sy,vw,sh,0,0,vw,sh);
+      let cs=[];try{cs=await det.detect(c);}catch(e){}
+      for(const k of cs){const b=bolLer(k.rawValue);if(b.ok){try{navigator.vibrate&&navigator.vibrate(70);}catch(e){}const cb=st.cb;bolCamFechar();cb(b);return;}}
+      if(cs.length)bolCamMsg('Li um código, mas não é de boleto. Enquadre o código de barras comprido do boleto.');}
+    setTimeout(passo,140);};
+  passo();}
+async function bolCamLuz(){const st=BOL_CAM;if(!st||!st.stream)return;st.luz=!st.luz;try{await st.stream.getVideoTracks()[0].applyConstraints({advanced:[{torch:st.luz}]});}catch(e){}}
+async function bolCamZoom(){const st=BOL_CAM;if(!st||!st.stream)return;st.zoom=st.zoom>1?1:2;try{await st.stream.getVideoTracks()[0].applyConstraints({advanced:[{zoom:st.zoom}]});}catch(e){}const b=document.getElementById('bolCamZoom');if(b)b.textContent=st.zoom>1?'Zoom 1x':'Zoom 2x';}
+async function bolCamFoto(input){const st=BOL_CAM;const f=input.files&&input.files[0];input.value='';if(!f||!st)return;bolCamMsg('Lendo a foto…');let b=null;try{b=await bolLerImagem(f);}catch(e){}
+  if(BOL_CAM!==st)return;if(b){const cb=st.cb;bolCamFechar();cb(b);}else bolCamMsg('Não encontrei o código de barras na foto. Chegue mais perto, com o código inteiro e sem reflexo.');}
+function bolCamFechar(){const st=BOL_CAM;BOL_CAM=null;if(st){st.rodando=false;try{st.stream&&st.stream.getTracks().forEach(t=>t.stop());}catch(e){}}const d=document.getElementById('bolCam');if(d)d.remove();}
+/* ----- "Ler boleto": lê e procura de qual parcela ele é ----- */
+function bolGruposAbertos(){return liqAgrupar(liqDoPeriodo('pagar','0000-00-00','9999-12-31')).filter(g=>!g.vendas);}
+function bolDias(a,b){return Math.round((Date.parse(a+'T12:00:00Z')-Date.parse(b+'T12:00:00Z'))/86400000);}
+function bolCandidatos(b){const out=[];const pts=(valor,base,venc,pago)=>{const v=b.valor>0&&(Math.abs(valor-b.valor)<0.009||Math.abs(base-b.valor)<0.009);const d=(b.venc&&venc)?Math.abs(bolDias(venc,b.venc)):null;
+    let p=0,txt='';if(v&&d===0){p=100;txt='valor e vencimento conferem';}else if(v&&d!==null&&d<=10){p=80;txt='valor confere · vencimento '+d+' dia'+(d>1?'s':'')+' de diferença';}else if(v&&!b.venc){p=70;txt='valor confere';}else if(v&&!pago){p=55;txt='valor confere · vencimento diferente';}else if(!(b.valor>0)&&d===0){p=40;txt='mesmo vencimento · boleto sem valor no código';}
+    if(pago&&p<100)p=0;return {p,txt,d:d===null?999:d};};
+  bolGruposAbertos().forEach(g=>{const s=pts(g.valor,g.base,g.data,g.pago);if(s.p)out.push(Object.assign(s,{tipo:'g',g,nome:g.nome+(g.n>1?' · '+(g.idx+1)+'/'+g.n:''),venc:g.data,valor:g.valor,pago:g.pago,tem:!!(bolDeG(g)||{}).linha}));});
+  ((DB.fin||{}).contasPagar||[]).forEach(c=>{if(!c||!c.id)return;const s=pts(+c.valor||0,+c.valor||0,c.vencimento||'',!!c.pago);if(s.p)out.push(Object.assign(s,{tipo:'conta',c,nome:(c.descricao||'Conta avulsa')+' (avulsa)',venc:c.vencimento||'',valor:+c.valor||0,pago:!!c.pago,tem:!!(bolDeConta(c.id)||{}).linha}));});
+  return out.sort((a,b2)=>b2.p-a.p||a.d-b2.d).slice(0,8);}
+function bolBuscarModal(){window._bolBusca=null;
+  modal(`<div class="modal-head"><h3>Ler boleto</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Leia o boleto e o Flow procura de qual parcela ele é, pelo valor e pelo vencimento.</div>
+    <input class="input" id="bol_in" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="Cole ou digite a linha digitável, ou use o leitor de código de barras" oninput="bolBuscaInput(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();bolBuscaLer(this.value,true);}" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px">
+    <div id="bol_msg" class="gp-mini" style="min-height:16px;margin-top:5px">Com leitor de código de barras: aponte para o boleto com o cursor neste campo.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn btn-primary btn-sm" onclick="bolCamera(r=>bolBuscaMostrar(r))">📷 Ler com a câmera</button>
+      <label class="btn btn-ghost btn-sm" style="cursor:pointer">🖼 Ler de uma foto ou PDF<input type="file" accept="image/*,application/pdf" style="display:none" onchange="bolLerDeArquivo(this,r=>bolBuscaMostrar(r))"></label>
+    </div>
+    <div id="bolBuscaRes"></div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fechar</button></div>`,true);
+  setTimeout(()=>{const i=document.getElementById('bol_in');if(i&&!ehMobile())i.focus();},60);}
+function bolBuscaInput(el){const d=bolDig(el.value);clearTimeout(window._bolT);if(!d){bolMsg('Com leitor de código de barras: aponte para o boleto com o cursor neste campo.');return;}
+  const alvo=d[0]==='8'?48:47;if(d.length===44||d.length===alvo){window._bolT=setTimeout(()=>bolBuscaLer(el.value,d.length===alvo),d.length===44?350:60);return;}
+  bolMsg(d.length<alvo?(d.length+' de '+alvo+' dígitos'):('Dígitos demais: '+d.length+'. A linha digitável tem '+alvo+'.'),d.length>alvo?'var(--red)':'');}
+function bolBuscaLer(txt,avisar){const b=bolLer(txt);if(!b.ok){if(avisar)bolMsg('Não é um boleto válido: '+esc(b.erro)+'. Confira os números.','var(--red)');return;}bolBuscaMostrar(b);}
+function bolBuscaMostrar(b){window._bolBusca=b;const el=document.getElementById('bolBuscaRes');if(!el){bolBuscarModal();return setTimeout(()=>bolBuscaMostrar(b),30);}
+  const i=document.getElementById('bol_in');if(i)i.value=bolLinhaFmt(b.linha);bolMsg('');
+  const ja=bolOndeEsta(b.cod);const cs=bolCandidatos(b);window._bolCands=cs;
+  el.innerHTML=bolH('Boleto lido')+`<div style="font-size:14px"><b>${esc(b.emissor)}</b>${b.valor>0?' · <b>'+fmtBRL(b.valor)+'</b>':' · sem valor no código'}${b.venc?' · vence '+fmtDataBR(b.venc):' · sem vencimento no código'}</div>`
+    +(ja.length?`<div class="alert alert-amber" style="margin-top:10px">${typeof icoWarn!=='undefined'?icoWarn:''}<div><b>Este boleto já está no Flow:</b> ${ja.map(r=>esc(bolNomeRec(r))).join('; ')}.</div></div>`:'')
+    +bolH(cs.length?'De qual parcela é este boleto?':'Nenhuma parcela encontrada')
+    +(cs.length?cs.map((c,k)=>`<div style="display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)">
+        <div style="min-width:0"><div style="font-size:13px;font-weight:600;overflow-wrap:anywhere">${esc(c.nome)}</div><div class="gp-mini">${c.venc?'vence '+fmtDataBR(c.venc)+' · ':''}${fmtBRL(c.valor)}${c.pago?' · <b style="color:var(--green)">já paga</b>':''}${c.tem?' · já tem boleto':''} · <span style="color:${c.p>=80?'var(--green)':'var(--amber)'};font-weight:600">${esc(c.txt)}</span></div></div>
+        <button class="btn ${k===0&&c.p>=80?'btn-primary':'btn-ghost'} btn-sm" onclick="bolBuscaVincular(${k})">Vincular</button></div>`).join('')
+      :`<div class="gp-mini">Não há parcela em aberto com esse valor${b.venc?' ou vencimento':''}. Confira se a nota já foi lançada.</div>`)
+    +(bolPode()?`<div style="margin-top:14px"><button class="btn btn-ghost btn-sm" onclick="bolBuscaAvulsa()">${icoPlus} Criar conta avulsa com este boleto</button></div>`:'');}
+function bolIrPara(venc){lancFiltro={data:'',grupo:'',sub:'',desc:'',nf:'',fornecedor:'',forma:''};if(venc){if(finRangeAtivo()&&!(venc>=finDe&&venc<=finAte)){finDe='';finAte='';}if(!finRangeAtivo())lancYM=ymOf(venc);}finTab='pagar';viewFinanceiro();}
+function bolGravarEm(b){const r=bolAlvoRec(true);if(!r)return false;r.linha=b.linha;r.cod=b.cod;r.em=hojeISO();r.por=quemSou();save();return true;}
+function bolBuscaVincular(k){const c=(window._bolCands||[])[k],b=window._bolBusca;if(!c||!b)return;if(!bolPode())return toast('Sem permissão para vincular boletos');
+  if(c.tem&&!confirm('Esta parcela já tem um boleto. Trocar pelo que você acabou de ler?'))return;
+  closeModal();bolIrPara(c.venc);
+  if(c.tipo==='g'){const gi=(window._liqG||[]).findIndex(x=>x.key===c.g.key);if(gi<0)return toast('Não encontrei a parcela na lista. Limpe os filtros e tente de novo.');
+    BOL_ALVO={tipo:'g',key:c.g.key};bolGravarEm(b);viewFinanceiro();liqDetalhe((window._liqG||[]).findIndex(x=>x.key===c.g.key));}
+  else{BOL_ALVO={tipo:'conta',chave:'contasPagar',id:c.c.id};bolGravarEm(b);viewFinanceiro();bolContaModal('contasPagar',(DB.fin.contasPagar||[]).findIndex(x=>x&&x.id===c.c.id));}
+  toast('Boleto vinculado');}
+function bolBuscaAvulsa(){const b=window._bolBusca;if(!b||!bolPode())return;DB.fin.contasPagar=DB.fin.contasPagar||[];const row=FIN_TEMPLATES.contasPagar();row.id=row.id||uid();
+  row.descricao='Boleto '+b.emissor;row.valor=b.valor||0;row.vencimento=b.venc||hojeISO();if((DB.formasPagamento||[]).includes('Boleto'))row.forma='Boleto';
+  DB.fin.contasPagar.push(row);BOL_ALVO={tipo:'conta',chave:'contasPagar',id:row.id};bolGravarEm(b);closeModal();bolIrPara(row.vencimento);
+  bolContaModal('contasPagar',DB.fin.contasPagar.findIndex(x=>x&&x.id===row.id));toast('Conta avulsa criada. Ajuste a descrição e a categoria.',5000);}
+/* ----- conta avulsa: boleto e anexos ----- */
+function bolContaModal(chave,i){const row=((DB.fin||{})[chave]||[])[i];if(!row)return;if(!row.id){row.id=uid();save();}BOL_ALVO={tipo:'conta',chave,id:row.id};const pg=chave==='contasPagar';
+  modal(`<div class="modal-head"><h3>${pg?'Boleto e anexos':'Anexos'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px;overflow-wrap:anywhere">${esc(row.descricao||'Conta avulsa')}</div>
+    <div class="gp-mini">${row.vencimento?'vence '+fmtDataBR(row.vencimento)+' · ':''}${fmtBRL(row.valor||0)}${(row.pago||row.recebido)?' · '+(pg?'paga':'recebida'):''}</div>
+    <div id="bolSec">${bolSecHTML()}</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fechar</button></div>`,true);}
+function bolSecG(g){BOL_ALVO={tipo:'g',key:g.key};return `<div id="bolSec">${bolSecHTML()}</div>`;}
 /* ===== Detalhe da parcela / boleto (12/11/2026): de Contas a Pagar/Receber, clicar na parcela mostra vencimento, situação,
    a nota de origem (fornecedor, NF, data, total, itens, quem definiu o pagamento), as outras parcelas da mesma nota e
    leva até a nota em Lançamentos Realizados. window._liqG = grupos desenhados por último em finContas. ===== */
@@ -4375,6 +4681,8 @@ function liqSitTxt(pago,data,pagoEm,rec){const h=hojeISO();if(pago)return `<span
   const d=Math.round((new Date(h+'T12:00:00')-new Date((data||h)+'T12:00:00'))/86400000);
   return d>0?`<span style="color:var(--red)">Vencida há ${d} dia${d>1?'s':''}</span>`:d===0?'<span style="color:var(--amber)">Vence hoje</span>':`Em aberto · vence em ${-d} dia${-d>1?'s':''}`;}
 function liqDetalhe(gi){const g=(window._liqG||[])[gi];if(!g)return;liqDetKey=g.key;liqDetalheRender(g);}
+function liqDetalheIr(idx,data){const g=(window._liqG||[]).find(x=>x.key===liqDetKey);if(!g)return;const k=bolChaveG(g);const acha=()=>(window._liqG||[]).findIndex(x=>!x.vendas&&x.idx===idx&&bolChaveG(x)===k);
+  let i=acha();if(i<0&&data){bolIrPara(data);i=acha();}if(i<0)return toast('Não encontrei essa parcela na lista');liqDetalhe(i);}
 function liqDetalheBaixa(){let g=(window._liqG||[]).find(x=>x.key===liqDetKey);if(!g)return;liqTogglePagoMulti(g.ids.join(','),g.idx);
   g=(window._liqG||[]).find(x=>x.key===liqDetKey);if(g&&podeFinPagto())liqDetalheRender(g);else closeModal();}
 function liqIrParaNota(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)return;closeModal();
@@ -4402,12 +4710,12 @@ function liqDetalheRender(g){const l=g.itens[0].lanc;const rec=grupoTipo(l.grupo
       +G(C(rec?'Cliente / origem':'Fornecedor',esc(l.fornecedor||'—'))+C('NF nº',l.nfe?esc(l.nfe):'sem nota')+C(temNF?'Data da nota':'Data',fmtDataBR(l.data))+C(temNF?'Total da nota':'Total',fmtBRL(tot))+C('Categoria',esc(cats.length>2?cats.slice(0,2).join(', ')+' e mais '+(cats.length-2):cats.join(', ')))+(def?C('Pagamento definido por',def):''))
       +(l.nfeChave?`<div class="gp-mini" style="margin-top:8px;overflow-wrap:anywhere">Chave da NF-e: ${esc(l.nfeChave)}</div>`:'')+(obs?`<div style="font-size:12.5px;margin-top:8px">📝 ${esc(obs)}</div>`:'')
       +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn btn-primary btn-sm" onclick="liqIrParaNota('${l.id}')">${temNF?'Ver a nota nos lançamentos':'Ver o lançamento'} →</button>${podeFinNota()?`<button class="btn btn-ghost btn-sm" onclick="closeModal();editNota('${l.id}')">${temNF?'Editar a nota':'Editar o lançamento'}</button>`:''}</div>`
-      +(parc.length>1?H(temNF?'Parcelas desta nota':'Parcelas deste lançamento')+parc.map(q=>`<div style="display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:baseline;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--line);${q.idx===g.idx?'font-weight:700':''}"><span>${q.idx+1}/${parc.length}</span><span>${fmtDataBR(q.data)} · ${liqSitTxt(q.pago,q.data,q.pagoEm,rec)}${q.idx===g.idx?' <span class="tag tag-navy" style="font-size:9px;padding:0 5px">ESTA</span>':''}</span><span style="white-space:nowrap">${fmtBRL(q.valor)}</span></div>`).join(''):'')
+      +(parc.length>1?H(temNF?'Parcelas desta nota':'Parcelas deste lançamento')+parc.map(q=>`<div ${q.idx===g.idx?'':`onclick="liqDetalheIr(${q.idx},'${q.data||''}')" title="Abrir esta parcela"`} style="display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:baseline;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--line);${q.idx===g.idx?'font-weight:700':'cursor:pointer'}"><span>${q.idx+1}/${parc.length}</span><span>${fmtDataBR(q.data)} · ${liqSitTxt(q.pago,q.data,q.pagoEm,rec)}${q.idx===g.idx?' <span class="tag tag-navy" style="font-size:9px;padding:0 5px">ESTA</span>':''}</span><span style="white-space:nowrap">${fmtBRL(q.valor)}</span></div>`).join(''):'')
       +H(itens.length+' '+(itens.length>1?'itens':'item')+(temNF?' na nota':''))+itens.slice(0,40).map(x=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:5px 0;border-bottom:1px solid var(--line)"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.descricao||'(sem descrição)')}${(+x.qtd>0)?' <span style="color:var(--soft)">· '+nNum(+x.qtd)+(x.uni?' '+esc(x.uni):'')+'</span>':''}</span><b style="white-space:nowrap">${fmtBRL(x.valor||0)}</b></div>`).join('')+(itens.length>40?`<div class="gp-mini" style="padding-top:6px">e mais ${itens.length-40} itens</div>`:'');}
   modal(`<div class="modal-head"><h3>${g.vendas?'Recebimento':'Parcela '+(g.idx+1)+' de '+g.n}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div style="font-size:15px;font-weight:700;margin-bottom:12px;overflow-wrap:anywhere">${esc(g.nome)}</div>
-    ${parcela}${meio}
+    ${parcela}${g.vendas?'':bolSecG(g)}${meio}
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fechar</button>${podeFinPagto()?`<button class="btn ${g.pago?'btn-ghost':'btn-primary'}" onclick="liqDetalheBaixa()">${g.pago?'Desfazer a baixa':(rec?'Marcar como recebida':'Marcar como paga')}</button>`:''}</div>`,true);}
 function liqTogglePagoMulti(ids,idx){if(!podeFinPagto())return toast('Só quem tem a permissão "definir pagamentos" dá baixa');const ls=(''+ids).split(',').map(id=>(DB.lancamentos||[]).find(x=>x.id===id)).filter(Boolean);if(!ls.length)return;
@@ -6267,7 +6575,7 @@ function finContas(key){
   const total=noMes.reduce((s,c)=>s+(c.valor||0),0);
   const aberto=noMes.filter(c=>!c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const feito=noMes.filter(c=>c[cf]).reduce((s,c)=>s+(c.valor||0),0);
-  const gC='1.5fr 1.2fr 1.2fr 142px 124px 128px 108px 64px';
+  const gC='1.5fr 1.2fr 1.2fr 142px 124px 128px 108px 100px';
   const linhas=all.map((row,i)=>{if(((row.vencimento&&!noPer(row))||!finFiltroOk(row))&&!cpMostrar.has(row.id))return '';const subs=ordPt((DB.categorias[row.grupo]||{subs:[]}).subs);return `
     <div class="comp-row cf-row" style="grid-template-columns:${gC};align-items:center">
       <div class="cf"><span class="cf-l">Descrição</span><input class="input" value="${(row.descricao||'').replace(/"/g,'&quot;')}" placeholder="Descrição" oninput="DB.fin.${key}[${i}].descricao=this.value;contaResync('${key}',${i})"></div>
@@ -6277,7 +6585,7 @@ function finContas(key){
       <div class="cf"><span class="cf-l">Valor</span><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(row.valor||0)}" oninput="DB.fin.${key}[${i}].valor=moneyMask(this);contaResync('${key}',${i})" onblur="viewFinanceiro()"></div></div>
       <div class="cf"><span class="cf-l">Forma</span>${formaSelect(row.forma,`DB.fin.${key}[${i}].forma=this.value;contaResync('${key}',${i})`)}</div>
       <div class="cf"><span class="cf-l">${fLabel}</span><button class="icon-btn" onclick="contaToggle('${key}',${i})" title="Marcar como ${fLabel.toLowerCase()}" style="white-space:nowrap;width:auto;padding:0 10px;${row[cf]?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${row[cf]?'✓ ':'○ '}${fLabel}</button></div>
-      <div class="cf-acts"><button class="icon-btn" title="Parcelar esta conta (qualquer quantidade de parcelas, ex.: 24x)" onclick="contaParcelarModal('${key}',${i})" style="width:auto;padding:0 6px;font-size:10px;font-weight:700;letter-spacing:.3px">${row.parcGrupo?esc(row.parcN||'')+'x':'÷'}</button><button class="mini-del" onclick="deleteConta('${key}',${i})">${icoX}</button></div>
+      <div class="cf-acts"><button class="icon-btn" title="${isPagar?'Boleto, código de barras e anexos':'Anexos'} desta conta" onclick="bolContaModal('${key}',${i})" style="width:auto;padding:0 7px;font-size:12px;${bolDeConta(row.id)?'color:var(--navy);border-color:var(--navy);background:var(--bg)':''}">📎</button><button class="icon-btn" title="Parcelar esta conta (qualquer quantidade de parcelas, ex.: 24x)" onclick="contaParcelarModal('${key}',${i})" style="width:auto;padding:0 6px;font-size:10px;font-weight:700;letter-spacing:.3px">${row.parcGrupo?esc(row.parcN||'')+'x':'÷'}</button><button class="mini-del" onclick="deleteConta('${key}',${i})">${icoX}</button></div>
     </div>`;}).join('');
   const parc=liqDoPeriodo(isPagar?'pagar':'receber',PR.de,PR.ate).filter(x=>finFiltroOk(x.lanc));
   const pAberto=parc.filter(x=>!x.liq.pago).reduce((s,x)=>s+liqCobr(x.liq),0);
@@ -6296,7 +6604,7 @@ function finContas(key){
       ${(window._liqG=liqAgrupar(parc)).map((g,gi)=>{const atras=!g.pago&&g.data<hoje;
         const desc=g.nome+(g.n>1?' · '+(g.idx+1)+'/'+g.n:'');
         return `<div class="comp-row" style="grid-template-columns:${gP};align-items:center">
-        <div onclick="liqDetalhe(${gi})" style="min-width:0;font-size:12.5px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;cursor:pointer" title="Abrir os detalhes desta parcela e a nota de origem · ${esc(desc)}${g.vendas?' · '+g.itens.length+' venda(s) de '+fmtDataBR(g.itens.map(x=>x.lanc.data).sort()[0])+' a '+fmtDataBR(g.itens.map(x=>x.lanc.data).sort().slice(-1)[0]):g.itens.length>1?' · '+g.itens.length+' itens da nota':''}"><span style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--navy);font-weight:600">${esc(desc)}</span>${g.vendas?`<span class="tag tag-navy" style="font-size:9px;letter-spacing:.3px;flex:0 0 auto">${g.itens.length} VENDA${g.itens.length>1?'S':''}</span>`:g.itens.length>1?`<span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px;flex:0 0 auto">${g.itens.length} ITENS</span>`:''}<span class="gp-mini" style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${liqMiniInfo(g)}</span></div>
+        <div onclick="liqDetalhe(${gi})" style="min-width:0;font-size:12.5px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;cursor:pointer" title="Abrir os detalhes desta parcela e a nota de origem · ${esc(desc)}${g.vendas?' · '+g.itens.length+' venda(s) de '+fmtDataBR(g.itens.map(x=>x.lanc.data).sort()[0])+' a '+fmtDataBR(g.itens.map(x=>x.lanc.data).sort().slice(-1)[0]):g.itens.length>1?' · '+g.itens.length+' itens da nota':''}"><span style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--navy);font-weight:600">${esc(desc)}</span>${g.vendas?`<span class="tag tag-navy" style="font-size:9px;letter-spacing:.3px;flex:0 0 auto">${g.itens.length} VENDA${g.itens.length>1?'S':''}</span>`:g.itens.length>1?`<span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px;flex:0 0 auto">${g.itens.length} ITENS</span>`:''}<span class="gp-mini" style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${liqMiniInfo(g)}${bolSelo(bolDeG(g))}</span></div>
         <div style="font-size:12.5px;${atras?'color:var(--red);font-weight:600':''}">${atras?'⚠ ':''}${fmtDataBR(g.data)}</div>
         <div style="font-size:12.5px;font-weight:600" title="${g.extras?'Nota '+fmtBRL(g.base)+' · '+esc(liqExtrasTxt(g.itens.map(x=>x.liq).reduce((a,x)=>({juros:(+a.juros||0)+(+x.juros||0),multa:(+a.multa||0)+(+x.multa||0),desconto:(+a.desconto||0)+(+x.desconto||0)}),{})))+' = cobrança '+fmtBRL(g.valor):''}">${fmtBRL(g.valor)}${g.extras?' <span class="tag tag-gold" style="font-size:9px;padding:0 5px">J/M/D</span>':''}${g.obs?` <span title="${esc(g.obs)}" style="cursor:help">📝</span>`:''}</div>
         <div style="font-size:11.5px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(g.cat)}">${esc(g.cat)}</div>
@@ -6306,7 +6614,7 @@ function finContas(key){
     </div>`;
   return `<div class="card card-pad" style="max-width:1220px">
     <div class="section-head" style="flex-wrap:wrap;gap:10px"><div><div class="ttl">${isPagar?'Contas a Pagar':'Contas a Receber'}</div><div class="desc">Previsão do que ainda ${isPagar?'sai':'entra'}. Dar baixa registra o dinheiro no Fluxo de Caixa, sem lançar de novo no DRE.</div></div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="cpImprimirModal('${isPagar?'pagar':'receber'}')" title="Lista de um dia ou período para imprimir ou salvar em PDF">🖨️ ${isPagar?'Imprimir pagamentos':'Imprimir recebimentos'}</button>${finPeriodoHTML()}</div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${isPagar&&bolPode()?`<button class="btn btn-primary btn-sm" onclick="bolBuscarModal()" title="Leia o boleto com o leitor de código de barras, com a câmera ou cole a linha digitável: o Flow acha de qual parcela ele é">▥ Ler boleto</button>`:''}<button class="btn btn-ghost btn-sm" onclick="cpImprimirModal('${isPagar?'pagar':'receber'}')" title="Lista de um dia ou período para imprimir ou salvar em PDF">🖨️ ${isPagar?'Imprimir pagamentos':'Imprimir recebimentos'}</button>${finPeriodoHTML()}</div></div>
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <div class="dash-pill"><span>Total ${rng?'do período':'do mês'}</span><b>${fmtBRL(total+pAberto+pFeito)}</b></div>
       <div class="dash-pill"><span>${isPagar?'A pagar (em aberto)':'A receber (em aberto)'}</span><b style="color:${isPagar?'var(--red)':'var(--amber)'}">${fmtBRL(aberto+pAberto)}</b></div>
