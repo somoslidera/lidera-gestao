@@ -221,7 +221,8 @@ body.dark .bell,body.dark .bell-pop{background:#0E1626}body.dark .bell-pop .bi.n
 .folha-scroll table th:first-child,.folha-scroll table td:first-child{position:sticky;left:0;z-index:1;background:var(--card);box-shadow:1px 0 0 var(--line)}
 .folha-scroll thead th:first-child{background:var(--bg);z-index:2}
 .folha-scroll tbody tr.folha-sub td:first-child{background:var(--bg)}
-@media (max-width:760px){.pill-filter.tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;margin-right:-16px;padding-right:40px;mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent)}.pill-filter.tabs::-webkit-scrollbar{display:none}.pill-filter.tabs button{flex:0 0 auto;white-space:nowrap}}
+@media (max-width:760px){.pill-filter.tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;margin-right:-16px;padding-right:40px;mask-image:linear-gradient(90deg,#000 calc(100% - 36px),transparent)}.pill-filter.tabs::-webkit-scrollbar{display:none}
+@media(max-width:640px){.pill-filter.lanc-abas{gap:6px}.pill-filter.lanc-abas button{flex:1 1 0;min-width:0;padding-left:6px;padding-right:6px;font-size:12.5px;white-space:nowrap;text-align:center}}.pill-filter.tabs button{flex:0 0 auto;white-space:nowrap}}
 .pill-filter button{padding:7px 13px;border-radius:20px;font-size:12.5px;font-weight:600;background:#fff;border:1px solid var(--line);color:var(--muted)}
 .pill-filter button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .dash-pill{display:flex;flex-direction:column;gap:1px;padding:7px 14px;border:1px solid var(--line);border-radius:11px;background:#FAFBFC;min-width:96px}
@@ -4201,6 +4202,7 @@ function ymOf(d){return (d||'').slice(0,7);}
 function fmtDataBR(iso){if(!iso)return '—';const p=iso.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:iso;}
 function ymLabel(ym){const p=(ym||'').split('-');return p.length===2?`${MESES_PT[(+p[1])-1]||''} / ${p[0]}`:ym;}
 let lancYM=null, lancFiltro={data:'',grupo:'',sub:'',desc:'',nf:'',fornecedor:'',forma:''};
+let lancAba='novo';   // sub-aba de Financeiro › Lançamentos: 'novo' (Novo Lançamento) | 'feitos' (Lançamentos Realizados)
 /* ===== período livre do Financeiro (de/até) · vale para Lançamentos, Contas a Pagar/Receber e Fluxo ===== */
 let finDe='',finAte='';
 function finRangeAtivo(){return !!(finDe&&finAte&&finAte>=finDe);}
@@ -5258,7 +5260,7 @@ function nfeInboxRender(){const el=$('#nfeInbox');if(!el||!NFE_CACHE)return;cons
       <div><div style="font-weight:700">📨 Notas recebidas da Sefaz <span class="tag tag-gold" style="font-size:9px;letter-spacing:.3px">${novas.length} para revisar · ${fmtBRL(tot)}</span></div><div class="gp-mini">Chegam sozinhas de hora em hora. Nada entra nos lançamentos sem alguém revisar itens, quantidades e o vínculo com o cadastro.${resumos.length?' <b>'+resumos.length+'</b> aguardando o XML completo.':''}</div></div>
       <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="nfeSync()">⟳ Consultar agora</button>${feitas.length?`<button class="btn btn-ghost btn-sm" onclick="nfeHistoricoModal()">Histórico</button>`:''}</div></div>
     ${ab.length?ab.sort((a,b)=>String(b.dhEmi||'').localeCompare(String(a.dhEmi||''))).map(linha).join(''):'<div class="gp-mini" style="padding:6px 0">Nenhuma nota nova para revisar.</div>'}`;}
-function nfeNavBadge(){const a=document.querySelector('#nav a[data-route=financeiro]');if(!a)return;let b=a.querySelector('.nav-badge.nfe');const n=(NFE_CACHE||[]).filter(x=>x.status==='nova').length;
+function nfeNavBadge(){lancAbaBadge();const a=document.querySelector('#nav a[data-route=financeiro]');if(!a)return;let b=a.querySelector('.nav-badge.nfe');const n=(NFE_CACHE||[]).filter(x=>x.status==='nova').length;
   if(!n){if(b)b.remove();return;}if(!b){b=document.createElement('span');b.className='nav-badge nfe';b.style.background='var(--gold)';a.appendChild(b);}b.textContent=n;b.title=n+' nota(s) da Sefaz para revisar';}
 async function nfeSync(){toast('Consultando a Sefaz…');const r=await chamarFn('nfe-sync',{acao:'sync',orgId:ORG.id});const d=r.data||{};
   if(!d.ok)return toast('Sefaz: '+(d.erro||'falha'),8000);if(d.pulado)toast(d.pulado,7000);else toast('Sefaz '+d.cStat+' · '+(d.novas||0)+' nota(s) nova(s)'+(d.resumos?' · '+d.resumos+' resumo(s)':'')+(d.canceladas?' · '+d.canceladas+' cancelada(s)':''),8000);
@@ -5518,27 +5520,45 @@ function lancRefreshTabela(){
   const ft=$('#lancFoot'); if(ft)ft.innerHTML=lancFootHTML(ls,ativo,filtTot);
 }
 function lancTotaisPeriodo(){const ls=(DB.lancamentos||[]).filter(l=>l.data>=finDe&&l.data<=finAte);let recTot=0,despTot=0;ls.forEach(l=>{if(grupoTipo(l.grupo)==='receita')recTot+=(+l.valor||0);else despTot+=(+l.valor||0);});return {recTot,despTot,resultado:recTot-despTot};}
-function finLancamentos(){
+/* Lançamentos em duas sub-abas (12/11/2026): "Novo Lançamento" (lançar, importar e as notas que chegam da Sefaz) e
+   "Lançamentos Realizados" (período, totais, filtros e a lista). Quem não pode lançar (sem fin_nota) vê só a lista. */
+function lancAbaAtual(){return (podeFinNota()&&lancAba!=='feitos')?'novo':'feitos';}
+function lancAbaNovas(){return (nfeAtivo()&&NFE_CACHE)?NFE_CACHE.filter(x=>x.status==='nova').length:0;}
+function lancAbaBadge(){const s=$('#lancAbaN');if(!s)return;const n=lancAbaNovas();s.textContent=n||'';s.style.display=n?'inline-block':'none';s.title=n?n+' nota(s) da Sefaz para revisar':'';}
+async function lancAbaContar(){if(!nfeAtivo()||NFE_CACHE||window._lancCont)return;window._lancCont=1;   // na aba Realizados a caixa da Sefaz não é desenhada: busca só para o contador
+  try{const r=await chamarFn('nfe-sync',{acao:'lista',orgId:ORG.id,limite:120});if(r.data&&r.data.ok){NFE_CACHE=r.data.notas||[];nfeNavBadge();}}catch(e){}window._lancCont=0;}
+function lancAbasHTML(){if(!podeFinNota())return '';const a=lancAbaAtual();const n=lancAbaNovas();
+  return `<div class="pill-filter lanc-abas" style="margin-bottom:14px"><button class="${a==='novo'?'on':''}" onclick="lancAba='novo';viewFinanceiro()">Novo Lançamento<span id="lancAbaN" title="${n?n+' nota(s) da Sefaz para revisar':''}" style="display:${n?'inline-block':'none'};margin-left:7px;background:var(--gold);color:#fff;border-radius:10px;padding:0 6px;font-size:10.5px;line-height:17px;font-weight:700;vertical-align:1px">${n||''}</span></button><button class="${a==='feitos'?'on':''}" onclick="lancAba='feitos';viewFinanceiro()">Lançamentos Realizados</button></div>`;}
+function finLancamentos(){return lancAbasHTML()+(lancAbaAtual()==='novo'?finLancNovo():finLancFeitos());}
+function finLancNovo(){const ym=curYM();const n=lancMes(ym).length;
+  return `<div class="card card-pad" style="max-width:1180px">
+    <div class="section-head"><div><div class="ttl">Novo Lançamento</div><div class="desc">Receitas e despesas, alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:8px">
+      <button class="btn btn-primary" style="min-height:52px;justify-content:center;font-size:14.5px" onclick="lancarModal()">${icoPlus} Lançar nota, despesa ou receita</button>
+      <label class="btn btn-ghost" style="min-height:52px;justify-content:center;cursor:pointer" title="XML (mais preciso) ou PDF do DANFE">🧾 Importar NF-e (XML ou PDF)<input type="file" accept=".xml,.pdf" style="display:none" onchange="importarNFe(this)"></label>
+      <label class="btn btn-ghost" style="min-height:52px;justify-content:center;cursor:pointer">⬆ Importar planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarLancamentos(this)"></label>
+    </div>
+    <div style="font-size:12px;color:var(--soft);margin-bottom:16px">Em Lançar você digita os itens ou envia a foto da nota para o Flow preencher. Para a planilha, <a onclick="modeloLancModal()" style="color:var(--navy);font-weight:600;cursor:pointer">baixe o modelo</a>.</div>
+    ${nfeInboxHTML()}
+    <div style="font-size:12.5px;color:var(--soft);padding-top:4px">${n} lançamento(s) em ${esc(ymLabel(ym))}. <a onclick="lancAba='feitos';viewFinanceiro()" style="color:var(--navy);font-weight:600;cursor:pointer;white-space:nowrap">Ver Lançamentos Realizados →</a></div>
+  </div>`;}
+function finLancFeitos(){
   const ym=curYM(); const d=finRangeAtivo()?lancTotaisPeriodo():dreLanc(ym);
   const fl=lancFiltro;
   const {ls,ativo,filtTot}=lancFiltrados(ym);
   const grupos=ordPt(Object.keys(DB.categorias));
   const formas=ordPt(DB.formasPagamento||[]);
+  if(podeFinNota())setTimeout(lancAbaContar,60);
   return `<div class="card card-pad" style="max-width:1180px">
-    <div class="section-head"><div><div class="ttl">Lançamentos</div><div class="desc">Receitas e despesas, alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div>
+    <div class="section-head"><div><div class="ttl">Lançamentos Realizados</div><div class="desc">Receitas e despesas, alimentam o DRE, o Fluxo de Caixa e o Dashboard</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        ${podeFinNota()?`<button class="btn btn-primary btn-sm" onclick="lancarModal()">${icoPlus} Lançar</button>`:''}
         ${finPeriodoHTML()}
-        ${ddMais(`<label class="btn btn-ghost" style="cursor:pointer" title="XML (mais preciso) ou PDF do DANFE">🧾 Importar NF-e (XML ou PDF)<input type="file" accept=".xml,.pdf" style="display:none" onchange="importarNFe(this)"></label>
-        <label class="btn btn-ghost" style="cursor:pointer">⬆ Importar planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarLancamentos(this)"></label>
-        <button class="btn btn-ghost" onclick="modeloLancModal()">⬇ Baixar modelo da planilha</button>`,'⋯ Importar')}
       </div></div>
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
       <div class="dash-pill"><span>Receitas</span><b style="color:var(--green)">${fmtBRL(d.recTot)}</b></div>
       <div class="dash-pill"><span>Despesas</span><b style="color:var(--red)">${fmtBRL(d.despTot)}</b></div>
       <div class="dash-pill"><span>Resultado</span><b style="color:${d.resultado>=0?'var(--green)':'var(--red)'}">${fmtBRL(d.resultado)}</b></div>
     </div>
-    ${nfeInboxHTML()}
     <div id="lancInfo" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">${lancInfoHTML(ls,ativo)}</div>
     ${ehMobile()?lancMobileHTML(ls,ativo,filtTot,fl,grupos):''}
     <div class="scroll-x mob-hide"><table><thead>
