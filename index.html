@@ -2378,7 +2378,7 @@ function gaugeSVG(pct){
     <path d="M22 92 A73 73 0 0 1 168 92" fill="none" stroke="${cor}" stroke-width="13" stroke-linecap="round" stroke-dasharray="${Math.PI*73}" stroke-dashoffset="${Math.PI*73*(1-p/100)}"/>
   </svg>`;
 }
-function cmvRealPeriodo(R){const regs=(DB.cmvRegistros||[]).map(cmvRegCalc).filter(r=>r.data&&r.data>=R.de&&r.data<=R.ate);
+function cmvRealPeriodo(R){const regs=cmvRegsFechadas().filter(r=>r.data&&r.data>=R.de&&r.data<=R.ate);
   if(!regs.length)return null;const cmvRS=regs.reduce((s,r)=>s+(r.cmvRS||0),0),ve=regs.reduce((s,r)=>s+(r.ve||0),0);return ve>0?cmvRS/ve*100:null;}
 function cmvLancPeriodo(R){const ls=(DB.lancamentos||[]).filter(l=>l.data>=R.de&&l.data<=R.ate);
   const cmv=ls.filter(l=>l.grupo==='CMV').reduce((s,l)=>s+(l.valor||0),0);
@@ -4869,7 +4869,7 @@ function semanaAtual(){const h=hojeISO();const d=new Date(h+'T12:00:00');const d
 function metaCompraSemana(){const S=semanaAtual();const ls=DB.lancamentos||[];const vend=de=>ls.filter(l=>l.data>=de.de&&l.data<=de.ate&&grupoTipo(l.grupo)==='receita').reduce((s,l)=>s+(+l.valor||0),0);
   const comp=de=>ls.filter(l=>l.data>=de.de&&l.data<=de.ate&&l.grupo==='CMV').reduce((s,l)=>s+(+l.valor||0),0);
   const ant={de:diasSoma(S.de,-7),ate:diasSoma(S.de,-1)};const vSem=vend(S),vAnt=vend(ant),cSem=comp(S);
-  const regs=(DB.cmvRegistros||[]).map(cmvRegCalc).filter(r=>r.data).sort((a,b)=>b.data.localeCompare(a.data));const ult=regs[0]||null;
+  const regs=cmvRegsFechadas().filter(r=>r.data).sort((a,b)=>b.data.localeCompare(a.data));const ult=regs[0]||null;
   const alvo=cmvAlvoRef();
   // feriados: a semana com feriado fechado tem menos dias de venda; quando a base é a semana passada, ajusta pela proporção de dias de funcionamento
   const dSem=diasTrabEntre(S.de,S.ate),dAnt=diasTrabEntre(ant.de,ant.ate);const fer=feriadosEntre(S.de,S.ate);
@@ -8005,7 +8005,14 @@ function buffetCubaUp(){const d=buffetDrag;window.removeEventListener('pointermo
 const MESES_PT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 function semanaISO(iso){const p=(iso||'').split('-');if(p.length<3)return'';const dt=new Date(Date.UTC(+p[0],+p[1]-1,+p[2]));const day=(dt.getUTCDay()+6)%7;dt.setUTCDate(dt.getUTCDate()-day+3);const ft=new Date(Date.UTC(dt.getUTCFullYear(),0,4));const fd=(ft.getUTCDay()+6)%7;ft.setUTCDate(ft.getUTCDate()-fd+3);return 1+Math.round((dt-ft)/(7*24*3600*1000));}
 function fmtDataBR(iso){const p=(iso||'').split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:'—';}
-function cmvRegCalc(r){const ei=+r.ei||0,co=+r.compras||0,ef=+r.ef||0,ve=+r.vendas||0;const cmvRS=ei+co-ef;const pct=ve?cmvRS/ve*100:0;const cls=pct<=cmvAlvoRef()?'Excelente':pct<=cmvUpRef()?'Aceitável':'Crítico';return {...r,ei,co,ef,ve,cmvRS,pct,cls};}
+/* Contagem sem estoque final é período EM ABERTO: a pessoa registrou o estoque inicial e ainda vai contar no fim.
+   Não entra em percentual, média, gráfico, painel nem DRE (sem o final, a conta diria que todo o estoque foi consumido).
+   Enquanto está aberta, compras e vendas são lidas ao vivo dos lançamentos do período. */
+function cmvRegAberta(r){return !!r&&!(+r.ef>0);}
+function cmvRegCalc(r){const ei=+r.ei||0,ef=+r.ef||0;
+  if(cmvRegAberta(r)){const a=cmvPeriodoAuto(r.de||'',r.data||'');return {...r,ei,co:a.compras,ef:0,ve:a.vendas,cmvRS:0,pct:0,cls:'',aberta:true};}
+  const co=+r.compras||0,ve=+r.vendas||0;const cmvRS=ei+co-ef;const pct=ve?cmvRS/ve*100:0;const cls=pct<=cmvAlvoRef()?'Excelente':pct<=cmvUpRef()?'Aceitável':'Crítico';return {...r,ei,co,ef,ve,cmvRS,pct,cls};}
+function cmvRegsFechadas(){return (DB.cmvRegistros||[]).filter(r=>!cmvRegAberta(r)).map(cmvRegCalc);}
 function cmvCls(cls){return cls==='Excelente'?'tag-green':cls==='Aceitável'?'tag-amber':'tag-red';}
 function cmvClsCor(cls){return cls==='Excelente'?'var(--green)':cls==='Aceitável'?'var(--amber)':'var(--red)';}
 
@@ -8139,7 +8146,8 @@ function viewCMV(){
   const regs=(DB.cmvRegistros||[]).map(cmvRegCalc).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
   const anos=['todos',...new Set(regs.map(r=>(r.data||'').slice(0,4)).filter(Boolean))];
   if(!anos.includes(cmvAno))cmvAno='todos';
-  const filt=cmvAno==='todos'?regs:regs.filter(r=>(r.data||'').slice(0,4)===cmvAno);
+  const todas=cmvAno==='todos'?regs:regs.filter(r=>(r.data||'').slice(0,4)===cmvAno);
+  const abertas=todas.filter(r=>r.aberta), filt=todas.filter(r=>!r.aberta);
   const ultimo=filt[0];
   const totCMV=filt.reduce((s,r)=>s+r.cmvRS,0), totVen=filt.reduce((s,r)=>s+r.ve,0);
   const cmvMed=totVen?totCMV/totVen*100:0;
@@ -8158,6 +8166,11 @@ function viewCMV(){
   $('#view').innerHTML=`
   <div class="section-head"><div><div class="ttl">CMV Real por contagem de estoque</div><div class="desc">CMV% = (Estoque inicial + Compras − Estoque final) ÷ Vendas · compras e vendas vêm dos lançamentos do período; no estoque, só produtos da categoria CMV</div></div>
     <div class="pill-filter">${anos.map(a=>`<button class="${a===cmvAno?'on':''}" onclick="cmvAno='${a}';viewCMV()">${a==='todos'?'Todos':a}</button>`).join('')}</div></div>
+  ${abertas.map(r=>`<div class="card card-pad" style="margin-bottom:16px;border-left:4px solid var(--amber)">
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:240px">
+      <div style="font-weight:700;color:var(--navy)">Contagem em andamento${r.de?' · '+fmtDataBR(r.de)+' a '+fmtDataBR(r.data):' · '+fmtDataBR(r.data)}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px">Falta o estoque final. Sem ele o CMV real não é calculado. Estoque inicial ${fmtBRL(r.ei)} · até agora, compras ${fmtBRL(r.co)} e vendas ${fmtBRL(r.ve)} nos lançamentos do período.</div></div>
+      ${pode('cmv')?`<button class="btn btn-primary no-print" onclick="editCmvReg('${r.id}')">Informar estoque final</button>`:''}</div></div>`).join('')}
   <div class="kpi-grid">
     <div class="kpi"><div class="ic ic-${ultimo?(ultimo.cls==='Excelente'?'green':ultimo.cls==='Aceitável'?'gold':'red'):'navy'}">${ico('cmv')}</div><div class="k-lbl">CMV Real (última contagem)</div><div class="k-val">${ultimo?fmtPct(ultimo.pct):'—'}</div><div class="k-sub" style="color:var(--soft)">${ultimo?fmtDataBR(ultimo.data):'sem contagens'}</div></div>
     <div class="kpi"><div class="ic ic-navy">${ico('mc')}</div><div class="k-lbl">CMV Real médio</div><div class="k-val">${filt.length?fmtPct(cmvMed):'—'}</div><div class="k-sub" style="color:var(--soft)">${filt.length} contagem(ns)</div></div>
@@ -8182,12 +8195,12 @@ function viewCMV(){
 
   <div class="card" style="margin-top:20px">
     <div class="card-pad" style="padding-bottom:0"><div class="section-head"><div><div class="ttl">Contagens</div><div class="desc">Registros de apuração do CMV</div></div></div></div>
-    ${filt.length?`<div class="scroll-x"><table>
+    ${todas.length?`<div class="scroll-x"><table>
       <thead><tr><th>Data</th><th class="num">Sem.</th><th class="num">Estoque inicial</th><th class="num">Compras</th><th class="num">Estoque final</th><th class="num">Vendas</th><th class="num">CMV</th><th></th></tr></thead>
-      <tbody>${filt.map(r=>`<tr>
+      <tbody>${todas.map(r=>`<tr>
         <td><b>${fmtDataBR(r.data)}</b>${r.de?`<div style="font-size:11px;color:var(--soft)">desde ${fmtDataBR(r.de)}</div>`:''}</td><td class="num">${semanaISO(r.data)}</td>
-        <td class="num">${fmtBRL(r.ei)}</td><td class="num">${fmtBRL(r.co)}</td><td class="num">${fmtBRL(r.ef)}</td><td class="num">${fmtBRL(r.ve)}</td>
-        <td class="num"><span class="tag ${cmvCls(r.cls)}">${fmtPct(r.pct)}</span></td>
+        <td class="num">${fmtBRL(r.ei)}</td><td class="num">${fmtBRL(r.co)}</td><td class="num">${r.aberta?'<span style="color:var(--soft)">falta contar</span>':fmtBRL(r.ef)}</td><td class="num">${fmtBRL(r.ve)}</td>
+        <td class="num">${r.aberta?'<span class="tag tag-amber">em andamento</span>':`<span class="tag ${cmvCls(r.cls)}">${fmtPct(r.pct)}</span>`}</td>
         <td><div class="row-actions"><button class="icon-btn" onclick="editCmvReg('${r.id}')">${icoEdit}</button><button class="icon-btn del" onclick="delCmvReg('${r.id}')">${icoTrash}</button></div></td></tr>`).join('')}</tbody>
     </table></div>`:emptyState('Nenhuma contagem registrada','Registre a 1ª apuração de CMV com estoque inicial, compras, estoque final e vendas.','editCmvReg()')}
   </div>
@@ -8207,9 +8220,10 @@ function editCmvReg(id,prefill){if(!pode('cmv'))return toast('Seu acesso não pe
   const estTot=Math.round(estoqueValorCMV()*100)/100, estGeral=Math.round(estoqueValorTotal()*100)/100;
   const hoje=hojeISO();
   const deDef=(last&&last.data)?diasSoma(last.data,1):hoje.slice(0,7)+'-01';
-  const r=id?(DB.cmvRegistros||[]).find(x=>x.id===id):Object.assign({data:hoje,de:deDef,ei:(last?last.ef:''),compras:'',ef:'',vendas:''},prefill||{});
-  if(!id){const a=cmvPeriodoAuto(r.de,r.data);if(r.compras===''&&a.compras)r.compras=a.compras;if(r.vendas===''&&a.vendas)r.vendas=a.vendas;}
-  else{cmvManual={compras:true,vendas:true};} // ao editar, não sobrescreve o que foi salvo
+  const salvo=id?(DB.cmvRegistros||[]).find(x=>x.id===id):null, reabre=!!salvo&&cmvRegAberta(salvo);
+  const r=salvo?(reabre?Object.assign({},salvo,{compras:'',vendas:'',ef:''}):salvo):Object.assign({data:hoje,de:deDef,ei:(last&&!cmvRegAberta(last)?last.ef:''),compras:'',ef:'',vendas:''},prefill||{});
+  if(!id||reabre){const a=cmvPeriodoAuto(r.de,r.data);if(r.compras===''&&a.compras)r.compras=a.compras;if(r.vendas===''&&a.vendas)r.vendas=a.vendas;}
+  else{cmvManual={compras:true,vendas:true};} // ao editar contagem fechada, não sobrescreve o que foi salvo
   modal(`<div class="modal-head"><h3>${id?'Editar contagem':'Nova contagem de CMV'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div class="grid-2">
@@ -8247,6 +8261,7 @@ function cmvAutoRefresh(force){const de=$('#cr_de')?$('#cr_de').value:'',ate=$('
   updCmvPrev();}
 function updCmvPrev(){const el=$('#cr_calc');if(!el)return;
   const ei=parseFloat($('#cr_ei').value)||0,co=parseFloat($('#cr_compras').value)||0,ef=parseFloat($('#cr_ef').value)||0,ve=parseFloat($('#cr_vendas').value)||0;
+  if(!(ef>0)){el.innerHTML=`<div class="calc-box"><div class="line"><span>Sem o estoque final a contagem fica <b>em andamento</b> e o CMV real não é calculado. Salve agora para guardar o estoque inicial e volte no fim do período para informar o final.</span></div></div>`;return;}
   const cmvRS=ei+co-ef, pct=ve?cmvRS/ve*100:0, cls=pct<=cmvAlvoRef()?'Excelente':pct<=cmvUpRef()?'Aceitável':'Crítico';
   const cc=cls==='Excelente'?'#9ee5c2':cls==='Aceitável'?'#f0cd8a':'#f3a39c';
   el.innerHTML=`<div class="calc-box">
@@ -8260,7 +8275,7 @@ function saveCmvReg(id){const data=$('#cr_data').value;if(!data)return toast('In
   DB.cmvRegistros=DB.cmvRegistros||[];const i=DB.cmvRegistros.findIndex(x=>x.id===obj.id);
   if(i>=0)DB.cmvRegistros[i]=obj;else DB.cmvRegistros.push(obj);
   const zerou=false;_cmvZeraEstoque=false;   // o saldo é do livro de movimentações; a contagem física já o acertou
-  save();closeModal();viewCMV();toast(id?'Contagem atualizada':('Contagem registrada'+(zerou?' · estoque atual zerado':'')));}
+  save();closeModal();viewCMV();toast(cmvRegAberta(obj)?'Contagem salva em andamento. Informe o estoque final para ver o CMV real.':id?'Contagem atualizada':('Contagem registrada'+(zerou?' · estoque atual zerado':'')),cmvRegAberta(obj)?6000:undefined);}
 function delCmvReg(id){if(!confirm('Remover esta contagem?'))return;DB.cmvRegistros=(DB.cmvRegistros||[]).filter(x=>x.id!==id);save();viewCMV();toast('Contagem removida');}
 
 /* ===================== ESTOQUE & COMPRAS ===================== */
@@ -8338,7 +8353,7 @@ function viewEstoque(){
   const valorTotal=items.reduce((s,x)=>s+x.valorEstoque,0);
   const itCMV=items.filter(x=>ehInsumoCMV(x.ins)), itFora=items.filter(x=>!ehInsumoCMV(x.ins));
   const valorCMV=itCMV.reduce((s,x)=>s+x.valorEstoque,0), valorFora=valorTotal-valorCMV;
-  const ultReg=(DB.cmvRegistros||[]).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];
+  const ultReg=(DB.cmvRegistros||[]).filter(r=>!cmvRegAberta(r)).sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];
   const comprarList=items.filter(x=>x.comprar);
   const totalCompras=comprarList.reduce((s,x)=>s+x.totalPrevisto,0);
   $('#topActions').innerHTML = estoqueTab==='compras'
@@ -9964,7 +9979,7 @@ async function adminKpisBuscar(o){if(!o||_adminKpiBusca.has(o.id)||!(typeof sb!=
 async function adminCarregarOrgs(){   // lista leve (view organizacoes_admin: só as chaves que o admin usa + kpis); cai para a tabela inteira se a view não existir
   try{const r=await sb.from('organizacoes_admin').select('*').order('nome',{ascending:true});if(!r.error&&Array.isArray(r.data))return r.data;}catch(e){}
   try{return (await sb.from('organizacoes').select('*').order('nome',{ascending:true})).data||[];}catch(e){return [];}}
-function kpisDe(dados){return withDB((dados&&dados.insumos)?dados:emptyDB(),()=>{const t=totaisGerais();const regs=(DB.cmvRegistros||[]).map(cmvRegCalc).sort((a,b)=>(b.data||'').localeCompare(a.data||''));return {fat:t.faturamento,cmv:t.cmv,real:regs.length?regs[0].pct:null,lucro:t.lucro,nf:Object.keys(DB.fichas).length,ni:Object.keys(DB.insumos).length};});}
+function kpisDe(dados){return withDB((dados&&dados.insumos)?dados:emptyDB(),()=>{const t=totaisGerais();const regs=cmvRegsFechadas().sort((a,b)=>(b.data||'').localeCompare(a.data||''));return {fat:t.faturamento,cmv:t.cmv,real:regs.length?regs[0].pct:null,lucro:t.lucro,nf:Object.keys(DB.fichas).length,ni:Object.keys(DB.insumos).length};});}
 /* ---- ADMIN · estado e projetos ---- */
 let adminSel=null, adminBusca='', adminProjTab='dados';
 let ADMIN_ORGS=[], ADMIN_PEND=[];
