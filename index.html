@@ -5581,6 +5581,27 @@ async function lmLerNota(input){const file=input&&input.files&&input.files[0];if
 }
 /* ===== NF-e recebidas da Sefaz (caixa de entrada · nada vira lançamento sem revisão) ===== */
 let NFE_CACHE=null;
+/* ===== Aviso de vencimento do certificado digital (12/11/2026) =====
+   O e-CNPJ A1 vale 1 ano. Sem ele as notas da Sefaz (e o banco, quando usa o mesmo arquivo) param no dia do vencimento.
+   Cliente: faixa no topo do Financeiro a partir de 30 dias (vermelha a 7 dias ou vencido). Lidera: faixa no painel do
+   administrador com todos os clientes a 45 dias ou menos (ação 'certs' da nfe-sync, só para admin). */
+let NFE_CERT=null, ADMIN_CERTS=null;
+const CERT_AVISO_DIAS=30, CERT_CRITICO_DIAS=7, CERT_ADMIN_DIAS=45;
+function certDias(v){return v?Math.round((Date.parse(String(v).slice(0,10)+'T12:00:00')-Date.parse(hojeISO()+'T12:00:00'))/86400000):null;}
+function certQuando(d,dt){return d<0?'venceu em '+dt:d===0?'vence hoje ('+dt+')':d===1?'vence amanhã ('+dt+')':'vence em '+d+' dias ('+dt+')';}
+function certAvisoHTML(){if(!NFE_CERT||!ORG||NFE_CERT.org!==ORG.id||!nfeAtivo())return '';const d=certDias(NFE_CERT.validade);if(d===null||d>CERT_AVISO_DIAS)return '';
+  const dt=fmtDataBR(String(NFE_CERT.validade).slice(0,10)),crit=d<=CERT_CRITICO_DIAS;
+  return `<div class="alert ${crit?'alert-red':'alert-amber'}" style="margin-bottom:14px">${icoWarn}<div><b>O certificado digital ${certQuando(d,dt)}.</b> ${d<0?'As notas da Sefaz pararam de chegar no Flow.':'Depois dessa data as notas da Sefaz param de chegar no Flow.'} Renove o e-CNPJ com a certificadora e envie o arquivo novo para a Lidera.</div></div>`;}
+async function certChecar(){if(!nfeAtivo()||!ORG||window._certBusca===ORG.id||(NFE_CERT&&NFE_CERT.org===ORG.id))return;const org=ORG.id;window._certBusca=org;
+  try{const r=await chamarFn('nfe-sync',{acao:'status',orgId:org});const v=r.data&&r.data.cfg&&r.data.cfg.cert_validade;if(!ORG||ORG.id!==org)return;NFE_CERT={org,validade:v?String(v).slice(0,10):''};
+    if(certAvisoHTML()&&typeof current!=='undefined'&&current==='financeiro'&&!document.querySelector('#modalRoot .modal-overlay')){const ae=document.activeElement;if(!(ae&&/^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName)))viewFinanceiro();}}
+  catch(e){window._certBusca=null;}}
+async function adminCertsCarregar(){if(ADMIN_CERTS||window._adminCertBusca||typeof sb==='undefined'||!sb)return;window._adminCertBusca=1;
+  try{const r=await chamarFn('nfe-sync',{acao:'certs'});ADMIN_CERTS=(r.data&&r.data.ok)?(r.data.certs||[]):[];if(ADMIN_CERTS.some(c=>c.dias<=CERT_ADMIN_DIAS)&&typeof renderAdmin==='function'&&document.getElementById('admin_modo'))renderAdmin();}catch(e){ADMIN_CERTS=[];}window._adminCertBusca=0;}
+function adminCertsHTML(){if(!ADMIN_CERTS){setTimeout(adminCertsCarregar,300);return '';}
+  const vis=new Set(),it=[];ADMIN_CERTS.filter(c=>c.dias<=CERT_ADMIN_DIAS).forEach(c=>{const k=c.org_id+'|'+c.validade;if(vis.has(k)){const j=it.find(x=>x.k===k);if(j&&!j.usos.includes(c.uso))j.usos.push(c.uso);return;}vis.add(k);it.push({k,org:c.org,dias:c.dias,validade:c.validade,usos:[c.uso]});});
+  if(!it.length)return '';const crit=it.some(c=>c.dias<=CERT_CRITICO_DIAS);
+  return `<div class="alert ${crit?'alert-red':'alert-amber'}" style="flex:1 1 100%;margin:0">${icoWarn}<div><b>Certificado digital perto de vencer.</b> ${it.map(c=>`${esc(c.org)}: ${certQuando(c.dias,fmtDataBR(c.validade))} · ${esc(c.usos.join(' e '))}`).join('; ')}. Peça o e-CNPJ novo ao cliente antes da data: sem ele a integração para.</div></div>`;}
 function nfeAtivo(){return !!(DB.fin&&DB.fin.nfeSefaz&&typeof sb!=='undefined'&&sb&&CLOUD&&ORG&&podeFinNota());}
 function nfeChaveLancada(chave){return !!chave&&(DB.lancamentos||[]).some(l=>l.nfeChave===chave);}
 function normUniNfe(u){const s=(u||'').toString().trim().toLowerCase().replace(/[^a-z]/g,'');const m={un:'un',und:'un',unid:'un',unidade:'un',pc:'un',pç:'un',pca:'un',pec:'un',peca:'un',kg:'kg',kilo:'kg',quilo:'kg',g:'g',gr:'g',l:'L',lt:'L',litro:'L',ml:'ml'};return m[s]||'';}   // '' = embalagem (cx, fd, dz, pct, sc, bd…)
@@ -6166,7 +6187,7 @@ function viewFinanceiro(){finTabAjustar();
   else if(finTab==='pagar')body=finContas('contasPagar');
   else if(finTab==='receber')body=finContas('contasReceber');
   else if(finTab==='param')body=finParamCompleto();
-  $('#view').innerHTML=tabsHTML+body;
+  $('#view').innerHTML=certAvisoHTML()+tabsHTML+body;setTimeout(certChecar,150);
 }
 function finCard(ttl,desc,inner,foot){
   return `<div class="card card-pad" style="max-width:880px">
@@ -9888,7 +9909,7 @@ async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin(
 function consNome(id){if(!id)return 'Lidera';const c=CONSULTORES.find(x=>x.id===id);return c?(c.nome||c.email||'Consultor'):(IS_SUPER?'Lidera · grupo '+donoNome(id):'Lidera');}
 function renderAdmin(){
   const gestao=(adminModo==='gestao'&&!adminSel);const escondeLista=gestao||(ehMobile()&&!!adminSel);
-  const mo=$('#admin_modo');if(mo)mo.innerHTML=`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="pill-filter" style="margin:0"><button class="${adminModo==='gestao'&&!adminSel?'on':''}" onclick="adminSetModo('gestao')">📊 Gestão de projetos</button><button class="${adminModo==='clientes'||adminSel?'on':''}" onclick="adminSetModo('clientes')">🏪 Clientes</button></div>${adminSel&&(adminModo==='gestao'||ehMobile())?`<button class="btn btn-ghost btn-sm" onclick="adminSel=null;renderAdmin()">← ${adminModo==='gestao'?'Voltar à gestão':'Voltar à lista'}</button>`:''}</div>`;
+  const mo=$('#admin_modo');if(mo)mo.innerHTML=`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="pill-filter" style="margin:0"><button class="${adminModo==='gestao'&&!adminSel?'on':''}" onclick="adminSetModo('gestao')">📊 Gestão de projetos</button><button class="${adminModo==='clientes'||adminSel?'on':''}" onclick="adminSetModo('clientes')">🏪 Clientes</button></div>${adminSel&&(adminModo==='gestao'||ehMobile())?`<button class="btn btn-ghost btn-sm" onclick="adminSel=null;renderAdmin()">← ${adminModo==='gestao'?'Voltar à gestão':'Voltar à lista'}</button>`:''}${adminCertsHTML()}</div>`;
   const sd=$('#admin_side');if(sd)sd.style.display=escondeLista?'none':'';
   renderAdminSide();renderAdminMain();}
 function renderAdminSide(){const el=$('#admin_side');if(!el)return;
