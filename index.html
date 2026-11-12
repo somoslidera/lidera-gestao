@@ -1202,25 +1202,68 @@ function custoInsumoBase(ins,_seen){ // custo por 1 unidade-base (g/ml/un) do in
    comps travado em 1 unidade do produto, nome acompanha o produto; preço de venda, código no PDV e categoria ficam na ficha.
    Marcar revenda converte uma ficha existente que já seja "só este produto ×1" (mantém PDV, preço e histórico); desmarcar
    devolve a ficha ao normal. Nada muda para quem não marcar. */
-function fichaRevendaDe(insId){return Object.values(DB.fichas||{}).find(f=>f&&f.revenda&&f.insumoId===insId)||null;}
+/* BEBIDA EM ML E VENDA EM DOSE (12/11/2026): bebida fica em ml (ou litro) e é comprada em unidade (garrafa com N ml,
+   a embalagem do "Como você compra"). O espelho da unidade inteira baixa 1 embalagem (antes baixava 1 ml). Quem também
+   vende em dose marca no produto: ins.doseMl + segunda ficha espelho (f.revenda, f.revDose) que baixa só os ml da dose. */
+const REV_DOSE_RE=/\b(dose|doses|shot|shots)\b/i;
+function revendaNomeQtd(nome,uni){const b=BASE[uni];const s=String(nome||'');let m;   // conteúdo escrito no nome ("750ML", "1L"), em unidade-base
+  if(b==='ml'){m=s.match(/(\d+(?:[.,]\d+)?)\s*(ml|lts?|litros?|l)\b/i);if(m){const v=parseFloat(m[1].replace(',','.'));const q=/^ml$/i.test(m[2])?v:v*1000;return q>=20&&q<=20000?q:0;}return /\blitro\b/i.test(s)?1000:0;}
+  if(b==='g'){m=s.match(/(\d+(?:[.,]\d+)?)\s*(kg|grs?|g)\b/i);if(m){const v=parseFloat(m[1].replace(',','.'));const q=/^kg$/i.test(m[2])?v*1000:v;return q>=5&&q<=50000?q:0;}}
+  return 0;}
+// quanto UMA unidade vendida contém, em unidade-base: produto em un = 1; em ml/L/g/kg = a embalagem; sem embalagem, o que o nome diz; 0 = não se sabe
+function revendaQtdBase(ins){if(!ins)return 1;const u=ins.uni||'un';if((BASE[u]||'un')==='un')return 1;const e=insEmb(ins);if(e)return e.qtd*(TO_BASE[u]||1);return revendaNomeQtd(ins.nome,u);}
+function revendaSemConteudo(ins){return !!(ins&&ins.revenda&&!(revendaQtdBase(ins)>0));}
+function revendaComps(ins){return [[ins.id,revendaQtdBase(ins)||1,ins.uni||'un']];}
+function fichaDoseDe(insId){return Object.values(DB.fichas||{}).find(f=>f&&f.revenda&&f.revDose&&f.insumoId===insId)||null;}
+// ficha que já é (ou viraria) a da dose: a marcada, senão uma ficha comum "… DOSE" que seja só este produto
+function fichaDoseCandidata(insId){return fichaDoseDe(insId)||Object.values(DB.fichas||{}).find(x=>x&&!x.revenda&&(x.comps||[]).length===1&&x.comps[0][0]===insId&&+x.comps[0][1]>1&&(x.porcoes||1)==1&&REV_DOSE_RE.test(x.nome||''))||null;}
+function revendaDoseNome(ins){return (ins.nome||'')+' (dose '+nNum(+ins.doseMl||0)+' ml)';}
+function revendaDoseSync(ins,extra){if(!ins)return null;const ml=+ins.doseMl||0;let d=fichaDoseDe(ins.id);
+  if(!ins.revenda||!(ml>0)||BASE[ins.uni]!=='ml'){if(d){delete d.revenda;delete d.revDose;delete d.insumoId;delete d.nomeAuto;}return null;}
+  if(!d){d=fichaDoseCandidata(ins.id);
+    if(!d){d={id:uid(),nome:'',cat:'',porcoes:1,rendGramas:ml,rendUni:'ml',custoEmbalagem:0,precoVenda:0,precos:{},vendasMes:0,comps:[],criada:hoje(),nomeAuto:true};DB.fichas[d.id]=d;}
+    d.revenda=true;d.revDose=true;d.insumoId=ins.id;}
+  if(d.nomeAuto||!d.nome)d.nome=revendaDoseNome(ins);
+  d.comps=[[ins.id,ml,'ml']];d.porcoes=1;
+  if(extra){if(+extra.precoVenda>0||!(d.precoVenda>0))d.precoVenda=+extra.precoVenda||d.precoVenda||0;if(extra.codPdv)d.codPdv=String(extra.codPdv);if(extra.cat&&!d.cat)d.cat=extra.cat;}
+  if(!d.cat){const g=fichaRevendaDe(ins.id);d.cat=(g&&g.cat)||ins.sub||ins.cat||'Revenda';}
+  return d;}
+function fichaRevendaDe(insId){return Object.values(DB.fichas||{}).find(f=>f&&f.revenda&&!f.revDose&&f.insumoId===insId)||null;}
 // ficha que já é (ou viraria) o espelho: a marcada, senão uma ficha comum que seja só este produto ×1
-function fichaRevendaCandidata(insId){return fichaRevendaDe(insId)||Object.values(DB.fichas||{}).find(x=>x&&!x.revenda&&(x.comps||[]).length===1&&x.comps[0][0]===insId&&+x.comps[0][1]===1)||null;}
+function fichaRevendaCandidata(insId){return fichaRevendaDe(insId)||Object.values(DB.fichas||{}).find(x=>x&&!x.revenda&&(x.comps||[]).length===1&&x.comps[0][0]===insId&&+x.comps[0][1]===1&&!REV_DOSE_RE.test(x.nome||''))||null;}
 function revendaSync(ins,extra){if(!ins||!ins.revenda)return null;DB.fichas=DB.fichas||{};
   let f=fichaRevendaDe(ins.id);
   if(!f){f=fichaRevendaCandidata(ins.id);
     if(!f){f={id:uid(),nome:ins.nome,cat:'',porcoes:1,rendGramas:1,rendUni:ins.uni||'un',custoEmbalagem:0,precoVenda:0,precos:{},vendasMes:0,comps:[],criada:hoje()};DB.fichas[f.id]=f;}
     f.revenda=true;f.insumoId=ins.id;}
-  f.nome=ins.nome;f.comps=[[ins.id,1,ins.uni||'un']];f.porcoes=1;
+  f.nome=ins.nome;f.comps=revendaComps(ins);f.porcoes=1;
   if(extra){if(+extra.precoVenda>0||!(f.precoVenda>0))f.precoVenda=+extra.precoVenda||f.precoVenda||0;if(extra.codPdv)f.codPdv=String(extra.codPdv);if(extra.cat)f.cat=extra.cat;}
   if(!f.cat)f.cat=ins.sub||ins.cat||'Revenda';
   return f;}
-function revendaDesfazer(insId){const f=fichaRevendaDe(insId);if(f){delete f.revenda;delete f.insumoId;}}
+function revendaDesfazer(insId){Object.values(DB.fichas||{}).forEach(f=>{if(f&&f.revenda&&f.insumoId===insId){delete f.revenda;delete f.revDose;delete f.insumoId;delete f.nomeAuto;}});}
 function revendaNormalizar(){const fichas=DB.fichas||{};
   Object.values(fichas).forEach(f=>{if(!f||!f.revenda)return;const ins=DB.insumos[f.insumoId];
-    if(!ins){delete fichas[f.id];return;} if(!ins.revenda){delete f.revenda;delete f.insumoId;return;}
-    f.nome=ins.nome;f.comps=[[ins.id,1,ins.uni||'un']];f.porcoes=1;});
-  Object.values(DB.insumos||{}).forEach(i=>{if(i&&i.revenda&&!fichaRevendaDe(i.id))revendaSync(i);});}
-function updRevenda(){const on=$('#i_revenda')&&$('#i_revenda').checked;const b=$('#i_revenda_box');if(b)b.style.display=on?'block':'none';}
+    if(!ins){delete fichas[f.id];return;}
+    if(!ins.revenda||(f.revDose&&(!(+ins.doseMl>0)||BASE[ins.uni]!=='ml'))){delete f.revenda;delete f.revDose;delete f.insumoId;delete f.nomeAuto;return;}
+    if(f.revDose){if(f.nomeAuto||!f.nome)f.nome=revendaDoseNome(ins);f.comps=[[ins.id,+ins.doseMl,'ml']];}
+    else{f.nome=ins.nome;f.comps=revendaComps(ins);}
+    f.porcoes=1;});
+  Object.values(DB.insumos||{}).forEach(i=>{if(!i||!i.revenda)return;if(!fichaRevendaDe(i.id))revendaSync(i);if(+i.doseMl>0&&BASE[i.uni]==='ml'&&!fichaDoseDe(i.id))revendaDoseSync(i);});}
+function updRevenda(){const on=$('#i_revenda')&&$('#i_revenda').checked;const b=$('#i_revenda_box');if(b)b.style.display=on?'block':'none';
+  const uni=($('#i_uni')||{}).value||'un';const vol=BASE[uni]==='ml',frac=(BASE[uni]||'un')!=='un';
+  const cb=$('#i_rev_cont');if(cb)cb.style.display=(on&&frac)?'block':'none';
+  const dw=$('#i_dose_wrap');if(dw)dw.style.display=(on&&vol)?'block':'none';
+  // produto em ml/litro/peso vendido inteiro precisa do conteúdo da unidade: liga o "Como você compra" e sugere pelo nome
+  if(on&&frac&&$('#i_emb_on')&&$('#i_emb_on').value!=='1'){$('#i_emb_on').value='1';
+    if(!($('#i_emb_nome').value||'').trim())$('#i_emb_nome').value=vol?'garrafa':'pacote';
+    if(!(parseFloat($('#i_emb_qtd').value)>0)){const q=revendaNomeQtd(($('#i_nome')||{}).value,uni);if(q>0)$('#i_emb_qtd').value=+(q/(TO_BASE[uni]||1)).toFixed(3);}
+    updEmb();}
+  updDose();}
+function updDose(){const el=$('#i_dose_info');const bx=$('#i_dose_box');if(!bx)return;const on=!!($('#i_dose_on')&&$('#i_dose_on').checked);bx.style.display=on?'block':'none';if(!el)return;
+  const uni=($('#i_uni')||{}).value||'un';const fb=TO_BASE[uni]||1;const ml=parseFloat(($('#i_dose_ml')||{}).value)||0;
+  const embOn=$('#i_emb_on')&&$('#i_emb_on').value==='1';const per=embOn?(parseFloat(($('#i_emb_qtd')||{}).value)||0)*fb:0;
+  const q=(parseFloat(($('#i_qtd')||{}).value)||1)*fb;const cml=q?moneyVal('i_preco')/q:0;
+  el.innerHTML=(on&&ml>0)?`Custo da dose: <b style="color:var(--navy)">${fmtBRL(cml*ml)}</b>${per>0?` · cerca de <b>${nNum(Math.floor(per/ml*10)/10)}</b> doses por ${esc((($('#i_emb_nome')||{}).value||'garrafa').trim()||'garrafa')}`:''}`:'';}
 function custoFicha(ficha){ // soma dos insumos da ficha (sem embalagem)
   return (ficha.comps||[]).reduce((s,c)=>{const ins=DB.insumos[c[0]];return s+(ins?custoInsumoBase(ins)*(c[1]||0):0);},0);
 }
@@ -2554,7 +2597,7 @@ function insSubMaybeNew(){const s=$('#i_sub');if(!s||s.value!=='__new__')return;
 function editInsumo(id){
   nfeEnsureCats(); // garante DB.categorias + grupo CMV
   const i=id?DB.insumos[id]:{nome:'',cat:'',tipo:'pronto',uni:'g',preco:'',qtd:'',rendimento:'',comps:[],fornecedor:''};
-  const gruSel=i.grupo||'CMV', subSel=i.sub||i.cat||'';const fr=id?fichaRevendaCandidata(id):null;
+  const gruSel=i.grupo||'CMV', subSel=i.sub||i.cat||'';const fr=id?fichaRevendaCandidata(id):null;const fd=id?fichaDoseCandidata(id):null;const doseMl0=+i.doseMl||(fd&&fd.comps&&fd.comps[0]?+fd.comps[0][1]:0)||50;
   editingInsId=id||null; draftInsTipo='pronto'; draftInsComps=[];
   modal(`<div class="modal-head"><h3>${id?'Editar produto':'Novo produto'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
@@ -2565,7 +2608,7 @@ function editInsumo(id){
     </div>
     <div style="font-size:11.5px;color:var(--muted);margin:-6px 0 12px">Só produtos na categoria <b>CMV</b> entram na apuração do CMV. Limpeza, escritório e afins ficam em <b>Materiais</b>: continuam no controle de estoque, mas fora da conta.</div>
     <div class="grid-2">
-      <div class="field"><label>Unidade</label><select class="input" id="i_uni" onchange="updUniLabels();updInsPreview();insConvCheck()">${UNIDADES.map(u=>`<option value="${u}" ${u===i.uni?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
+      <div class="field"><label>Unidade</label><select class="input" id="i_uni" onchange="updUniLabels();updInsPreview();insConvCheck();updRevenda()">${UNIDADES.map(u=>`<option value="${u}" ${u===i.uni?'selected':''}>${ULABEL[u]}</option>`).join('')}</select></div>
       <div class="field"><label>Fornecedores <span class="hint">pelas compras lançadas</span>${i.id&&DB.insumos[i.id]?` <a onclick="estHistAbrir('${i.id}')" style="float:right;font-size:11px;color:var(--navy);cursor:pointer;font-weight:600" title="Todas as compras deste produto, de todos os fornecedores">histórico de compras ›</a>`:''}</label><div style="padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)">${insFornResumoHTML(i)}</div></div>
     </div>
     <div id="i_conv_box"></div>
@@ -2615,13 +2658,26 @@ function editInsumo(id){
           <div class="field" style="margin:0"><label>Código no PDV <span class="hint">como aparece nas vendas</span></label><input class="input" id="i_codpdv" value="${esc(fr?fr.codPdv||'':'')}" placeholder="Ex.: 2031 ou COCA LATA"></div>
         </div>
         <div class="field" style="margin:10px 0 0"><label>Categoria no cardápio</label><select class="input" id="i_fcat">${catOptions('prato',fr?fr.cat:(i.sub||i.cat||''))}</select></div>
-        <div style="font-size:11.5px;color:var(--soft);margin-top:6px">O Flow cria e mantém sozinho a ficha técnica deste produto: 1 unidade, custo pelo preço de compra, aparece em Fichas Técnicas › Produtos finais e na Engenharia como Revenda. Cada venda no PDV baixa 1 unidade do estoque. Vinho em taça, chope e bala a granel <b>não</b> são revenda: têm ficha própria.</div>
+        <div id="i_rev_cont" style="display:none;font-size:12px;color:var(--navy);margin-top:8px">Produto em ml, litro ou peso: a venda da unidade inteira baixa <b>1 embalagem</b>. Confira acima, em <b>Como você compra</b>, quanto ela contém (ex.: garrafa com 750 ml).</div>
+        <div style="font-size:11.5px;color:var(--soft);margin-top:6px">O Flow cria e mantém sozinho a ficha técnica deste produto: 1 unidade vendida, custo pelo preço de compra, aparece em Fichas Técnicas › Produtos finais e na Engenharia como Revenda. Cada venda no PDV baixa 1 unidade do estoque (a garrafa inteira, quando o produto está em ml). Chope e bala a granel <b>não</b> são revenda: têm ficha própria.</div>
+        <div id="i_dose_wrap" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;font-size:13px"><input type="checkbox" id="i_dose_on" ${+i.doseMl>0?'checked':''} onchange="updDose()" style="width:16px;height:16px;accent-color:var(--navy);flex:0 0 auto"> <b>Também vende em dose</b> <span class="hint">whisky, cachaça, licor, vinho em taça</span></label>
+          <div id="i_dose_box" style="display:none;margin-top:10px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px">
+              <div class="field" style="margin:0"><label>Dose <span class="hint">ml</span></label><input class="input" id="i_dose_ml" type="number" step="1" min="1" value="${doseMl0}" oninput="updDose()" style="text-align:right"></div>
+              <div class="field" style="margin:0"><label>Preço da dose</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="i_dose_pv" inputmode="numeric" value="${fmtMoneyInput(fd?fd.precoVenda||0:0)}" oninput="moneyMask(this)"></div></div>
+              <div class="field" style="margin:0"><label>Código no PDV</label><input class="input" id="i_dose_cod" value="${esc(fd?fd.codPdv||'':'')}" placeholder="Ex.: WHISKY DOSE"></div>
+            </div>
+            <div id="i_dose_info" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
+            <div style="font-size:11.5px;color:var(--soft);margin-top:4px">O Flow mantém uma segunda ficha, a da dose: cada dose vendida baixa só os ml da dose, e a garrafa inteira continua baixando a garrafa.${fd&&!fd.revenda?` A ficha <b>${esc(fd.nome||'')}</b>, que já existe, passa a ser a ficha da dose, com o preço e o histórico dela.`:''}</div>
+          </div>
+        </div>
       </div>
     </div>
     <div id="i_preview" style="font-size:13px;color:var(--muted);margin-top:12px"></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveInsumo('${id||''}')">Salvar produto</button></div>`);
-  updUniLabels(); updInsPreview();
+  updUniLabels(); updInsPreview(); updRevenda();
 }
 function updUniLabels(){const s=$('#i_uni');if(!s)return;const sym=uSym(s.value);document.querySelectorAll('.u-sym').forEach(e=>e.textContent=sym);}
 function updUniOptions(){const s=$('#i_uni');if(!s)return;const cur=s.value;
@@ -2658,7 +2714,7 @@ function updInsPreview(){const el=$('#i_preview');if(!el)return;const uni=$('#i_
     el.innerHTML=`Custo da receita: <b>${fmtBRL(total)}</b> · Custo por ${uSym(uni)}: <b style="color:var(--navy)">${fmtBRLp(c)}</b>`;
   }else{const p=moneyVal('i_preco'),q=parseFloat($('#i_qtd').value)||1;const c=p/(q||1);
     const on=$('#i_emb_on')&&$('#i_emb_on').value==='1';const per=on?parseFloat($('#i_emb_qtd').value)||0:0;const nome=on?($('#i_emb_nome').value||'embalagem').trim():'';
-    el.innerHTML=`Preço por ${uSym(uni)}: <b style="color:var(--navy)">${fmtBRLp(c)}</b>${per>0?` · por ${esc(nome)}: <b style="color:var(--navy)">${fmtBRL(c*per)}</b>`:''}`;}}
+    el.innerHTML=`Preço por ${uSym(uni)}: <b style="color:var(--navy)">${fmtBRLp(c)}</b>${per>0?` · por ${esc(nome)}: <b style="color:var(--navy)">${fmtBRL(c*per)}</b>`:''}`;if(typeof updDose==='function')updDose();}}
 function saveInsumo(id){const nome=$('#i_nome').value.trim();if(!nome)return toast('Informe o nome do insumo');
   const uni=$('#i_uni').value;
   const conv=insConvLer(id);if(conv===false)return;   // unidade mudou de dimensão e o produto está em receitas: precisa do fator
@@ -2679,10 +2735,16 @@ function saveInsumo(id){const nome=$('#i_nome').value.trim();if(!nome)return toa
   if($('#i_estmin'))obj.estoqueMin=parseFloat($('#i_estmin').value)||0;if($('#i_estcrit'))obj.estoqueCrit=parseFloat($('#i_estcrit').value)||0;if($('#i_prazorep'))obj.prazoRep=parseInt($('#i_prazorep').value)||0;
   // merge: preserva estoque, mínimo, apelidos e outros campos que o modal não edita
   const eraRevenda=!!(DB.insumos[obj.id]&&DB.insumos[obj.id].revenda);if($('#i_revenda'))obj.revenda=!!$('#i_revenda').checked;
+  if($('#i_revenda')&&obj.tipo==='pronto'){const fb=TO_BASE[uni]||1,frac=(BASE[uni]||'un')!=='un';
+    if(obj.revenda&&frac&&!(obj.embQtd>0))return toast('Produto de revenda em '+uSym(uni)+': informe em "Como você compra" quanto tem cada unidade vendida (ex.: garrafa com 750 ml)',7000);
+    const dOn=!!(obj.revenda&&BASE[uni]==='ml'&&$('#i_dose_on')&&$('#i_dose_on').checked);obj.doseMl=dOn?(parseFloat($('#i_dose_ml').value)||0):0;
+    if(dOn&&!(obj.doseMl>0))return toast('Informe o tamanho da dose em ml');
+    if(dOn&&obj.doseMl>=obj.embQtd*fb)return toast('A dose precisa ser menor que a '+(obj.embNome||'embalagem'));}
   DB.insumos[obj.id]=Object.assign({},DB.insumos[obj.id]||{},obj);
   if(conv)insConvAplicar(obj.id,conv);
-  if(obj.revenda)revendaSync(DB.insumos[obj.id],{precoVenda:moneyVal('i_pv')||0,codPdv:(($('#i_codpdv')||{}).value||'').trim(),cat:(($('#i_fcat')||{}).value||'').trim()});else if(eraRevenda)revendaDesfazer(obj.id);
-  save();closeModal();viewInsumos();toast(obj.revenda?'Produto de revenda salvo · ficha técnica espelho atualizada':id?'Insumo atualizado':'Insumo adicionado');}
+  if(obj.revenda){const fcat=(($('#i_fcat')||{}).value||'').trim();revendaSync(DB.insumos[obj.id],{precoVenda:moneyVal('i_pv')||0,codPdv:(($('#i_codpdv')||{}).value||'').trim(),cat:fcat});
+    revendaDoseSync(DB.insumos[obj.id],{precoVenda:$('#i_dose_pv')?moneyVal('i_dose_pv')||0:0,codPdv:(($('#i_dose_cod')||{}).value||'').trim(),cat:fcat});}else if(eraRevenda)revendaDesfazer(obj.id);
+  save();closeModal();viewInsumos();toast(obj.revenda?(obj.doseMl>0?'Produto de revenda salvo · fichas da unidade e da dose atualizadas':'Produto de revenda salvo · ficha técnica espelho atualizada'):id?'Insumo atualizado':'Insumo adicionado');}
 /* ===== INGREDIENTE APAGADO E TROCA DE UNIDADE (10/11/2026, caso Mania Caseira)
    Receita guarda comps=[insumoId, qtd na unidade-base, unidade de exibição]. Produto apagado deixava a linha órfã e o custo a
    ignorava em silêncio; unidade trocada de dimensão (peso/volume ↔ un) deixava a quantidade valendo outra coisa.
@@ -2723,7 +2785,7 @@ function insConvPergunta(de,para){if(!de||!para||de===para)return null;
   return de==='g'?{um:'ml',em:'g',mult:f=>1/f}:{um:'ml',em:'g',mult:f=>f};}
 function insApagar(id){const ins=DB.insumos[id];if(!ins)return;
   if(insUsos(id).length){DB.insApagados=DB.insApagados||{};DB.insApagados[id]={nome:ins.nome||'',uni:ins.uni||'',em:hoje()};}   // lápide: a receita continua mostrando quem era
-  const fr=fichaRevendaDe(id);if(fr)delete DB.fichas[fr.id];delete DB.insumos[id];}
+  Object.values(DB.fichas||{}).forEach(f=>{if(f&&f.revenda&&f.insumoId===id)delete DB.fichas[f.id];});delete DB.insumos[id];}
 function insRerender(){try{const r=ROUTES[current];if(r&&r.render)r.render();else viewInsumos();}catch(e){}}
 function delInsumo(id){const ins=DB.insumos[id];if(!ins)return;
   if(insUsos(id).length)return insTrocaModal(id);
@@ -3302,7 +3364,7 @@ function fichaCard(f,fixosPct){
   const preco=m.balcao.preco, cmv=m.balcao.cmv;
   const peso=pesoFichaKg(f)*1000;
   const rend=(f.rendGramas>0)?`${nNum(f.rendGramas)} ${uSym(f.rendUni||'g')}`:(peso>0?`${fmtN(peso)}gr`:`${fmtN(f.porcoes||1)} porç${(f.porcoes||1)>1?'ões':'ão'}`);
-  const cmvCls=cmvClasse(cmv);const badge=(f.revenda?`<span class="fcard-badge tag-navy" title="Produto de revenda: ficha espelho mantida pelo cadastro do produto" style="margin-right:4px">Revenda</span>`:'')+(preco>0?`<span class="fcard-badge ${cmvCls==='excelente'?'tag-green':cmvCls==='atencao'?'tag-amber':'tag-red'}">CMV ${fmtPct(cmv)}</span>`:`<span class="fcard-badge tag-amber">sem preço</span>`);
+  const cmvCls=cmvClasse(cmv);const badge=(f.revenda?`<span class="fcard-badge tag-navy" title="${f.revDose?'Dose de produto de revenda: baixa só os ml da dose':'Produto de revenda: ficha espelho mantida pelo cadastro do produto'}" style="margin-right:4px">${f.revDose?'Dose':'Revenda'}</span>`+(!f.revDose&&revendaSemConteudo(DB.insumos[f.insumoId])?`<span class="fcard-badge tag-red" title="Falta dizer quanto tem cada unidade no cadastro do produto (Como você compra)" style="margin-right:4px">sem conteúdo</span>`:''):'')+(preco>0?`<span class="fcard-badge ${cmvCls==='excelente'?'tag-green':cmvCls==='atencao'?'tag-amber':'tag-red'}">CMV ${fmtPct(cmv)}</span>`:`<span class="fcard-badge tag-amber">sem preço</span>`);
   return `<div class="fcard" data-nome="${esc(f.nome)}">
     <div class="fcard-top"><div class="fcard-ic">${icoFicha}</div>
       <div style="min-width:0"><div class="fcard-nm">${esc(f.nome)}</div><div class="fcard-sub">${esc(f.cat||'—')}${f.criada?' · criada '+f.criada:''}${estMultiArm()?(f.armVenda&&estArm(f.armVenda)?' · sai de '+esc(estArmNome(f.armVenda)):(estCfg().vendasNuncaPrincipal?' · <span style="color:var(--red);font-weight:600">sem estoque de saída</span>':'')):''}${recPendTxt(f)?' · <span style="color:var(--red);font-weight:600">'+recPendTxt(f)+'</span>':''}</div></div>${badge}</div>
@@ -3343,7 +3405,7 @@ function preparadoCard(p){
     <div style="font-size:11.5px;color:var(--soft);margin-top:8px">Usado como ingrediente nas fichas.</div>
   </div>`;
 }
-function duplicarFicha(id){const f=DB.fichas[id];if(!f)return;const c=JSON.parse(JSON.stringify(f));c.id=uid();c.nome=f.nome+' (cópia)';c.criada=hoje();delete c.revenda;delete c.insumoId;DB.fichas[c.id]=c;save();viewFichas();toast('Ficha duplicada');}
+function duplicarFicha(id){const f=DB.fichas[id];if(!f)return;const c=JSON.parse(JSON.stringify(f));c.id=uid();c.nome=f.nome+' (cópia)';c.criada=hoje();delete c.revenda;delete c.revDose;delete c.nomeAuto;delete c.insumoId;DB.fichas[c.id]=c;save();viewFichas();toast('Ficha duplicada');}
 function filtrarCards(input,sel){const q=(input.value||'').toLowerCase();document.querySelectorAll(sel+' > [data-nome]').forEach(el=>{el.style.display=(el.dataset.nome||'').toLowerCase().includes(q)?'':'none';});}
 function novoPreparado(){editPreparado();}
 function prepTab(t){$('#ptab_c').classList.toggle('on',t==='c');$('#ptab_o').classList.toggle('on',t==='o');$('#ptab_custos').style.display=t==='c'?'block':'none';$('#ptab_op').style.display=t==='o'?'block':'none';const lc=$('#fx_left_custos'),lo=$('#fx_left_op');if(lc)lc.style.display=t==='c'?'flex':'none';if(lo)lo.style.display=t==='o'?'block':'none';}
@@ -3694,7 +3756,9 @@ function fichaFoto(input){const f=input.files&&input.files[0];if(!f)return;const
 let fichaEditIdx=-1;
 function nNum(x){return (+(+x||0).toFixed(3)).toString().replace('.',',');}
 function renderInsumosPanel(){const el=$('#fx_left_custos');if(!el)return;
-  if(draftFichaId&&DB.fichas[draftFichaId]&&DB.fichas[draftFichaId].revenda){const ins=DB.insumos[DB.fichas[draftFichaId].insumoId];el.innerHTML=`<div class="fx-sublabel" style="margin-bottom:10px">Produto de revenda</div><div style="font-size:13px;line-height:1.5">Esta ficha é o espelho do produto <b>${esc(ins?ins.nome:'?')}</b>: sempre <b>1 ${esc(uSym(ins?ins.uni:'un'))}</b> por venda, custo pelo preço de compra (${fmtBRL(ins?custoInsumoBase(ins):0)}).<br><br>Ingredientes, nome e unidade não se editam aqui. Para mudar, abra o <a onclick="closeModal();editInsumo('${ins?ins.id:''}')" style="color:var(--navy);font-weight:600;cursor:pointer">cadastro do produto</a>. Aqui você define preço de venda, código no PDV, categoria e estoque de saída.</div>`;const n=$('#f_nome');if(n){n.readOnly=true;n.title='Nome vem do cadastro do produto';n.style.opacity='.75';}return;}
+  if(draftFichaId&&DB.fichas[draftFichaId]&&DB.fichas[draftFichaId].revenda){const fx=DB.fichas[draftFichaId];const ins=DB.insumos[fx.insumoId];const qx=(fx.comps&&fx.comps[0]&&+fx.comps[0][1])||1;const ex=ins?insEmb(ins):null;const unx=!ins||(BASE[ins.uni]||'un')==='un';
+    const qtx=unx?'1 un':nNum(qx)+' '+bSym(ins.uni);const semx=!fx.revDose&&revendaSemConteudo(ins);
+    el.innerHTML=`<div class="fx-sublabel" style="margin-bottom:10px">${fx.revDose?'Dose de produto de revenda':'Produto de revenda'}</div><div style="font-size:13px;line-height:1.5">Esta ficha é ${fx.revDose?'a <b>dose</b>':'o espelho'} do produto <b>${esc(ins?ins.nome:'?')}</b>: sempre <b>${esc(qtx)}</b> por ${fx.revDose?'dose vendida':'venda'}${(!fx.revDose&&!unx&&ex)?' (1 '+esc(ex.nome)+')':''}, custo pelo preço de compra (${fmtBRL(custoFicha(fx))}).${semx?`<div style="color:var(--red);margin-top:8px"><b>Falta dizer quanto tem cada unidade.</b> Por enquanto cada venda baixa só 1 ${esc(bSym(ins.uni))}. Abra o cadastro do produto e preencha "Como você compra" (ex.: garrafa com 750 ml).</div>`:''}<br><br>Ingredientes, nome e unidade não se editam aqui. Para mudar, abra o <a onclick="closeModal();editInsumo('${ins?ins.id:''}')" style="color:var(--navy);font-weight:600;cursor:pointer">cadastro do produto</a>. Aqui você define preço de venda, código no PDV, categoria e estoque de saída.</div>`;const n=$('#f_nome');if(n&&!(fx.revDose&&!fx.nomeAuto)){n.readOnly=true;n.title='Nome vem do cadastro do produto';n.style.opacity='.75';}return;}
   const cards=draftComps.map((row,idx)=>{const ins=DB.insumos[row[0]];if(!ins)return row[0]?compApagadoCard(row,idx):'';
     const baseU=BASE[ins.uni]; const uniTroca=compUniTroca(row,ins); const u=(row[2]&&BASE[row[2]]===baseU)?row[2]:baseU;
     const avisoUni=uniTroca?`Lançado em ${uSym(row[2])}, produto hoje em ${uSym(ins.uni)}: confira a quantidade`:'';
@@ -3823,7 +3887,9 @@ function coletarFichaForm(id){const nome=($('#f_nome').value||'').trim();
     padraoFinalizacao:$('#f_final')?.value||'',foto:draftFoto||'',codPdv:(($('#f_codpdv')||{}).value||'').trim(),armVenda:(($('#f_armvenda')||{}).value||''),comps:draftComps.filter(c=>c[0]&&c[1]>0),
     criada:(id&&DB.fichas[id]&&DB.fichas[id].criada)||hoje()};}
 function saveFicha(id){if(!($('#f_nome').value||'').trim())return toast('Informe o nome');
-  const obj=coletarFichaForm(id);const old=id&&DB.fichas[id];if(old&&old.revenda){const ins=DB.insumos[old.insumoId];obj.revenda=true;obj.insumoId=old.insumoId;if(ins){obj.nome=ins.nome;obj.comps=[[ins.id,1,ins.uni||'un']];}else obj.comps=old.comps;obj.porcoes=1;}
+  const obj=coletarFichaForm(id);const old=id&&DB.fichas[id];if(old&&old.revenda){const ins=DB.insumos[old.insumoId];obj.revenda=true;obj.insumoId=old.insumoId;
+    if(old.revDose){obj.revDose=true;if(old.nomeAuto)obj.nomeAuto=true;if(ins){if(old.nomeAuto||!obj.nome)obj.nome=revendaDoseNome(ins);obj.comps=[[ins.id,+ins.doseMl||+(old.comps&&old.comps[0]&&old.comps[0][1])||1,'ml']];}else obj.comps=old.comps;}
+    else if(ins){obj.nome=ins.nome;obj.comps=revendaComps(ins);}else obj.comps=old.comps;obj.porcoes=1;}
   DB.fichas[obj.id]=obj;insApagadosLimpar();save();closeModal();viewFichas();toast(id?'Ficha atualizada':'Ficha criada');}
 function delFicha(id){const fr=DB.fichas[id];if(fr&&fr.revenda){const ins=DB.insumos[fr.insumoId];return toast('Esta ficha é o espelho do produto '+(ins?ins.nome:'')+'. Para tirá-la, desmarque "Produto de revenda" no cadastro do produto.',6000);}if(!confirm('Remover esta ficha?'))return;delete DB.fichas[id];save();closeModal();viewFichas();toast('Ficha removida');}
 function imprimirFicha(){
