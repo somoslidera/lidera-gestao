@@ -9920,13 +9920,18 @@ function datasAnoCorrigir(){if(!podeFinNota())return toast('Sem permissão para 
     (DB.estoqueMov||[]).forEach(m=>{if(m&&m.refId===l.id&&+String(m.data||'').slice(0,4)===y){const nm=anoN+String(m.data).slice(4);if(dataValida(nm))m.data=nm;}});
     l.data=nova;n++;});
   save();closeModal();viewFinanceiro();toast(n+' lançamento'+(n===1?' corrigido':'s corrigidos')+' para '+anoN,5000);}
-/* versão nova publicada: avisa quem ficou com a aba aberta (12/11: aba antiga quase estragou as fichas de dose) */
+/* versão nova publicada: avisa quem ficou com a aba aberta (12/11: aba antiga quase estragou as fichas de dose).
+   SÓ em atualização maior: VER_MAIOR sobe junto com o arquivo versao.json do site. Ajuste pequeno não mexe em nenhum dos dois e ninguém é avisado. */
+const VER_MAIOR='2026-11-12';
 let VER_ETAG=null;
-async function verChecar(){if(!/^https?:$/.test(location.protocol)||/^(localhost|127\.|\[::1\])/.test(location.hostname))return;
-  try{const r=await fetch(location.pathname+'?v='+Date.now(),{method:'HEAD',cache:'no-store'});if(!r.ok)return;const e=r.headers.get('etag')||r.headers.get('last-modified');if(!e)return;if(VER_ETAG===null){VER_ETAG=e;return;}if(e!==VER_ETAG)verAviso();}catch(e){}}
+async function verChecar(forcar){if(!forcar&&(!/^https?:$/.test(location.protocol)||/^(localhost|127\.|\[::1\])/.test(location.hostname)))return;
+  try{if(VER_ETAG===null){VER_ETAG='';try{const h=await fetch(location.pathname+'?v='+Date.now(),{method:'HEAD',cache:'no-store'});if(h.ok)VER_ETAG=h.headers.get('etag')||h.headers.get('last-modified')||'';}catch(e){}}
+    const r=await fetch('versao.json?v='+Date.now(),{cache:'no-store'});if(!r.ok)return;const j=await r.json();
+    if(j&&typeof j.maior==='string'&&/^\d{4}-\d{2}-\d{2}/.test(j.maior)&&j.maior>VER_MAIOR)verAviso();}catch(e){}}
+function verAtualizar(){try{const u=new URL(location.href);u.searchParams.set('v',Date.now());location.replace(u.toString());}catch(e){location.reload();}}
 function verAviso(){if(document.getElementById('verAviso'))return;const d=document.createElement('div');d.id='verAviso';
   d.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:1300;background:var(--navy);color:#fff;border-radius:12px;padding:10px 12px 10px 16px;display:flex;gap:12px;align-items:center;font-size:13px;box-shadow:0 8px 28px rgba(0,0,0,.28);max-width:calc(100vw - 24px)';
-  d.innerHTML='<span>Saiu uma versão nova do Flow.</span><button class="btn btn-sm" style="background:#fff;color:var(--navy);font-weight:700;border:0" onclick="location.reload()">Atualizar agora</button><button style="background:none;border:0;color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:0 4px" onclick="this.parentElement.remove()" aria-label="Depois" title="Depois">×</button>';
+  d.innerHTML='<span>Saiu uma versão nova do Flow.</span><button class="btn btn-sm" style="background:#fff;color:var(--navy);font-weight:700;border:0" onclick="verAtualizar()">Atualizar agora</button><button style="background:none;border:0;color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:0 4px" onclick="this.parentElement.remove()" aria-label="Depois" title="Depois">×</button>';
   document.body.appendChild(d);}
 setTimeout(verChecar,4000);setInterval(verChecar,10*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)verChecar();});
 /* erros de tela: grava em app_erros para a Lidera ver (no máximo 8 por sessão, sem repetir o mesmo) */
@@ -9934,7 +9939,7 @@ const ERR_VISTOS=new Set();let ERR_N=0;
 function errRegistrar(msg,origem,pilha){try{if(ERR_N>=8||typeof sb==='undefined'||!sb||typeof CLOUD==='undefined'||!CLOUD)return;msg=String(msg||'').slice(0,500);if(!msg)return;
   const k=msg.slice(0,120)+'|'+String(origem||'').slice(0,60);if(ERR_VISTOS.has(k))return;ERR_VISTOS.add(k);ERR_N++;
   const tela=(typeof current!=='undefined'?String(current||''):'')+((typeof current!=='undefined'&&current==='financeiro'&&typeof finTab!=='undefined')?'/'+finTab:'');
-  sb.from('app_erros').insert({org_id:(typeof ORG!=='undefined'&&ORG&&ORG.id)||null,usuario:String((typeof quemSou==='function'&&quemSou())||'').slice(0,120),msg,origem:String(origem||'').slice(0,200),pilha:String(pilha||'').slice(0,1500),tela:tela.slice(0,60),versao:String(VER_ETAG||'').slice(0,80),ua:String(navigator.userAgent||'').slice(0,200)}).then(()=>{},()=>{});}catch(e){}}
+  sb.from('app_erros').insert({org_id:(typeof ORG!=='undefined'&&ORG&&ORG.id)||null,usuario:String((typeof quemSou==='function'&&quemSou())||'').slice(0,120),msg,origem:String(origem||'').slice(0,200),pilha:String(pilha||'').slice(0,1500),tela:tela.slice(0,60),versao:(VER_MAIOR+' '+String(VER_ETAG||'')).slice(0,80),ua:String(navigator.userAgent||'').slice(0,200)}).then(()=>{},()=>{});}catch(e){}}
 window.addEventListener('error',e=>{if(e&&e.message&&!/^Script error\.?$/.test(e.message))errRegistrar(e.message,String(e.filename||'').split('/').pop()+':'+e.lineno+':'+e.colno,e.error&&e.error.stack);});
 window.addEventListener('unhandledrejection',e=>{const r=e&&e.reason;errRegistrar('Promise: '+String((r&&r.message)||r),'',r&&r.stack);});
 let ADMIN_ERROS=null;
