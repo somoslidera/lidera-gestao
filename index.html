@@ -1214,15 +1214,18 @@ function revendaNomeQtd(nome,uni){const b=BASE[uni];const s=String(nome||'');let
 function revendaQtdBase(ins){if(!ins)return 1;const u=ins.uni||'un';if((BASE[u]||'un')==='un')return 1;const e=insEmb(ins);if(e)return e.qtd*(TO_BASE[u]||1);return revendaNomeQtd(ins.nome,u);}
 function revendaSemConteudo(ins){return !!(ins&&ins.revenda&&!(revendaQtdBase(ins)>0));}
 function revendaComps(ins){return [[ins.id,revendaQtdBase(ins)||1,ins.uni||'un']];}
-function fichaDoseDe(insId){return Object.values(DB.fichas||{}).find(f=>f&&f.revenda&&f.revDose&&f.insumoId===insId)||null;}
+// a ficha da dose é marcada só com revDose (sem f.revenda): assim uma aba ainda na versão antiga do app a trata como ficha comum e não a renomeia
+function fRev(f){return !!(f&&(f.revenda||f.revDose));}
+function fichaDoseDe(insId){return Object.values(DB.fichas||{}).find(f=>f&&f.revDose&&f.insumoId===insId)||null;}
 // ficha que já é (ou viraria) a da dose: a marcada, senão uma ficha comum "… DOSE" que seja só este produto
-function fichaDoseCandidata(insId){return fichaDoseDe(insId)||Object.values(DB.fichas||{}).find(x=>x&&!x.revenda&&(x.comps||[]).length===1&&x.comps[0][0]===insId&&+x.comps[0][1]>1&&(x.porcoes||1)==1&&REV_DOSE_RE.test(x.nome||''))||null;}
+function fichaDoseCandidata(insId){return fichaDoseDe(insId)||Object.values(DB.fichas||{}).find(x=>x&&!fRev(x)&&(x.comps||[]).length===1&&x.comps[0][0]===insId&&+x.comps[0][1]>1&&(x.porcoes||1)==1&&REV_DOSE_RE.test(x.nome||''))||null;}
 function revendaDoseNome(ins){return (ins.nome||'')+' (dose '+nNum(+ins.doseMl||0)+' ml)';}
 function revendaDoseSync(ins,extra){if(!ins)return null;const ml=+ins.doseMl||0;let d=fichaDoseDe(ins.id);
-  if(!ins.revenda||!(ml>0)||BASE[ins.uni]!=='ml'){if(d){delete d.revenda;delete d.revDose;delete d.insumoId;delete d.nomeAuto;}return null;}
+  if(!ins.revenda||!(ml>0)||BASE[ins.uni]!=='ml'){if(d){delete d.revDose;delete d.insumoId;delete d.nomeAuto;}return null;}
   if(!d){d=fichaDoseCandidata(ins.id);
     if(!d){d={id:uid(),nome:'',cat:'',porcoes:1,rendGramas:ml,rendUni:'ml',custoEmbalagem:0,precoVenda:0,precos:{},vendasMes:0,comps:[],criada:hoje(),nomeAuto:true};DB.fichas[d.id]=d;}
-    d.revenda=true;d.revDose=true;d.insumoId=ins.id;}
+    d.revDose=true;d.insumoId=ins.id;}
+  delete d.revenda;
   if(d.nomeAuto||!d.nome)d.nome=revendaDoseNome(ins);
   d.comps=[[ins.id,ml,'ml']];d.porcoes=1;
   if(extra){if(+extra.precoVenda>0||!(d.precoVenda>0))d.precoVenda=+extra.precoVenda||d.precoVenda||0;if(extra.codPdv)d.codPdv=String(extra.codPdv);if(extra.cat&&!d.cat)d.cat=extra.cat;}
@@ -1230,7 +1233,7 @@ function revendaDoseSync(ins,extra){if(!ins)return null;const ml=+ins.doseMl||0;
   return d;}
 function fichaRevendaDe(insId){return Object.values(DB.fichas||{}).find(f=>f&&f.revenda&&!f.revDose&&f.insumoId===insId)||null;}
 // ficha que já é (ou viraria) o espelho: a marcada, senão uma ficha comum que seja só este produto ×1
-function fichaRevendaCandidata(insId){return fichaRevendaDe(insId)||Object.values(DB.fichas||{}).find(x=>x&&!x.revenda&&(x.comps||[]).length===1&&x.comps[0][0]===insId&&+x.comps[0][1]===1&&!REV_DOSE_RE.test(x.nome||''))||null;}
+function fichaRevendaCandidata(insId){return fichaRevendaDe(insId)||Object.values(DB.fichas||{}).find(x=>x&&!fRev(x)&&(x.comps||[]).length===1&&x.comps[0][0]===insId&&+x.comps[0][1]===1&&!REV_DOSE_RE.test(x.nome||''))||null;}
 function revendaSync(ins,extra){if(!ins||!ins.revenda)return null;DB.fichas=DB.fichas||{};
   let f=fichaRevendaDe(ins.id);
   if(!f){f=fichaRevendaCandidata(ins.id);
@@ -1240,12 +1243,12 @@ function revendaSync(ins,extra){if(!ins||!ins.revenda)return null;DB.fichas=DB.f
   if(extra){if(+extra.precoVenda>0||!(f.precoVenda>0))f.precoVenda=+extra.precoVenda||f.precoVenda||0;if(extra.codPdv)f.codPdv=String(extra.codPdv);if(extra.cat)f.cat=extra.cat;}
   if(!f.cat)f.cat=ins.sub||ins.cat||'Revenda';
   return f;}
-function revendaDesfazer(insId){Object.values(DB.fichas||{}).forEach(f=>{if(f&&f.revenda&&f.insumoId===insId){delete f.revenda;delete f.revDose;delete f.insumoId;delete f.nomeAuto;}});}
+function revendaDesfazer(insId){Object.values(DB.fichas||{}).forEach(f=>{if(fRev(f)&&f.insumoId===insId){delete f.revenda;delete f.revDose;delete f.insumoId;delete f.nomeAuto;}});}
 function revendaNormalizar(){const fichas=DB.fichas||{};
-  Object.values(fichas).forEach(f=>{if(!f||!f.revenda)return;const ins=DB.insumos[f.insumoId];
+  Object.values(fichas).forEach(f=>{if(!fRev(f))return;const ins=DB.insumos[f.insumoId];
     if(!ins){delete fichas[f.id];return;}
     if(!ins.revenda||(f.revDose&&(!(+ins.doseMl>0)||BASE[ins.uni]!=='ml'))){delete f.revenda;delete f.revDose;delete f.insumoId;delete f.nomeAuto;return;}
-    if(f.revDose){if(f.nomeAuto||!f.nome)f.nome=revendaDoseNome(ins);f.comps=[[ins.id,+ins.doseMl,'ml']];}
+    if(f.revDose){delete f.revenda;if(f.nomeAuto||!f.nome)f.nome=revendaDoseNome(ins);f.comps=[[ins.id,+ins.doseMl,'ml']];}
     else{f.nome=ins.nome;f.comps=revendaComps(ins);}
     f.porcoes=1;});
   Object.values(DB.insumos||{}).forEach(i=>{if(!i||!i.revenda)return;if(!fichaRevendaDe(i.id))revendaSync(i);if(+i.doseMl>0&&BASE[i.uni]==='ml'&&!fichaDoseDe(i.id))revendaDoseSync(i);});}
@@ -2755,7 +2758,7 @@ function insDim(u){return BASE[u]||'un';}
 function insDimIncompat(a,b){return !!a&&!!b&&a!==b&&(a==='un'||b==='un');}   // peso e volume convivem (1 gr ≈ 1 ml); o que quebra o custo é peso/volume contra unidade
 function insRecN(usos){return new Set(usos.map(u=>u.tipo+':'+u.id)).size;}
 function insUsos(id){const r=[];
-  Object.values(DB.fichas||{}).forEach(f=>{if(!f||f.revenda)return;(f.comps||[]).forEach(c=>{if(c&&c[0]===id)r.push({tipo:'ficha',id:f.id,nome:f.nome||'',c});});});
+  Object.values(DB.fichas||{}).forEach(f=>{if(!f||fRev(f))return;(f.comps||[]).forEach(c=>{if(c&&c[0]===id)r.push({tipo:'ficha',id:f.id,nome:f.nome||'',c});});});
   Object.values(DB.insumos||{}).forEach(p=>{if(!p||p.tipo!=='preparado'||p.id===id)return;(p.comps||[]).forEach(c=>{if(c&&c[0]===id)r.push({tipo:'prep',id:p.id,nome:p.nome||'',c});});});
   return r;}
 function compUniTroca(c,ins){return !!(c&&ins&&c[2]&&insDimIncompat(BASE[c[2]],insDim(ins.uni)));}   // quantidade lançada numa dimensão, produto hoje em outra
@@ -2763,10 +2766,10 @@ function recPendencias(){const orf={},uni=[];
   const ver=(tipo,r)=>(r.comps||[]).forEach(c=>{if(!c||!c[0])return;const ins=DB.insumos[c[0]];
     if(!ins)(orf[c[0]]=orf[c[0]]||[]).push({tipo,id:r.id,nome:r.nome||'',c});
     else if(compUniTroca(c,ins))uni.push({tipo,id:r.id,nome:r.nome||'',c,ins});});
-  Object.values(DB.fichas||{}).forEach(f=>{if(f&&!f.revenda)ver('ficha',f);});
+  Object.values(DB.fichas||{}).forEach(f=>{if(f&&!fRev(f))ver('ficha',f);});
   Object.values(DB.insumos||{}).forEach(p=>{if(p&&p.tipo==='preparado')ver('prep',p);});
   return {orf,uni};}
-function recPendTxt(r){if(!r||r.revenda)return '';let ap=0,un=0;(r.comps||[]).forEach(c=>{if(!c||!c[0])return;const ins=DB.insumos[c[0]];if(!ins)ap++;else if(compUniTroca(c,ins))un++;});
+function recPendTxt(r){if(!r||fRev(r))return '';let ap=0,un=0;(r.comps||[]).forEach(c=>{if(!c||!c[0])return;const ins=DB.insumos[c[0]];if(!ins)ap++;else if(compUniTroca(c,ins))un++;});
   return ap?`${ap} ingrediente${ap>1?'s':''} apagado${ap>1?'s':''}`:un?'unidade a conferir':'';}
 function insApagadoNome(id){const a=(DB.insApagados||{})[id];return (a&&a.nome)||'';}
 function insApagadosLimpar(){const m=DB.insApagados;if(!m)return;Object.keys(m).forEach(k=>{if(DB.insumos[k]||!insUsos(k).length)delete m[k];});if(!Object.keys(m).length)delete DB.insApagados;}
@@ -2785,7 +2788,7 @@ function insConvPergunta(de,para){if(!de||!para||de===para)return null;
   return de==='g'?{um:'ml',em:'g',mult:f=>1/f}:{um:'ml',em:'g',mult:f=>f};}
 function insApagar(id){const ins=DB.insumos[id];if(!ins)return;
   if(insUsos(id).length){DB.insApagados=DB.insApagados||{};DB.insApagados[id]={nome:ins.nome||'',uni:ins.uni||'',em:hoje()};}   // lápide: a receita continua mostrando quem era
-  Object.values(DB.fichas||{}).forEach(f=>{if(f&&f.revenda&&f.insumoId===id)delete DB.fichas[f.id];});delete DB.insumos[id];}
+  Object.values(DB.fichas||{}).forEach(f=>{if(fRev(f)&&f.insumoId===id)delete DB.fichas[f.id];});delete DB.insumos[id];}
 function insRerender(){try{const r=ROUTES[current];if(r&&r.render)r.render();else viewInsumos();}catch(e){}}
 function delInsumo(id){const ins=DB.insumos[id];if(!ins)return;
   if(insUsos(id).length)return insTrocaModal(id);
@@ -2835,7 +2838,7 @@ function insTrocarEmReceitas(deId,paraId,multDe,orfao){const para=DB.insumos[par
       if(pos<0){pos=out.length;out.push(null);uni=u;}else if(u!==uni)uni='';});
     const limpa=!!orfao&&temPara&&qtdIgual(qDe,qPara);const tot=+(limpa?qPara:qDe+qPara).toFixed(6);
     out[pos]=uni?[paraId,tot,uni]:[paraId,tot];r.comps=out;res.n++;if(limpa)res.limpas++;};
-  Object.values(DB.fichas||{}).forEach(f=>{if(f&&!f.revenda)troca('ficha',f);});
+  Object.values(DB.fichas||{}).forEach(f=>{if(f&&!fRev(f))troca('ficha',f);});
   Object.values(DB.insumos||{}).forEach(p=>{if(p&&p.tipo==='preparado'&&p.id!==deId&&p.id!==paraId)troca('prep',p);});
   return res;}
 function recDoUso(u){return u.tipo==='prep'?DB.insumos[u.id]:DB.fichas[u.id];}
@@ -2857,7 +2860,7 @@ function insTrocaSem(){const k=insTrocaCtx();if(!k)return;const s=k.nRec>1?'s':'
   if(k.ins){insApagar(k.t.id);return insTrocaFim(`Produto apagado. ${k.nRec} receita${s} mostra${k.nRec>1?'m':''} o ingrediente como apagado até você escolher um substituto.`,6500);}
   if(!confirm(`Remover este ingrediente de ${k.nRec} receita${s}? A linha sai da receita e o custo deixa de contar com ela.`))return;
   const tira=r=>{if(r&&Array.isArray(r.comps))r.comps=r.comps.filter(c=>!c||c[0]!==k.t.id);};
-  Object.values(DB.fichas||{}).forEach(f=>{if(f&&!f.revenda)tira(f);});Object.values(DB.insumos||{}).forEach(p=>{if(p&&p.tipo==='preparado')tira(p);});
+  Object.values(DB.fichas||{}).forEach(f=>{if(f&&!fRev(f))tira(f);});Object.values(DB.insumos||{}).forEach(p=>{if(p&&p.tipo==='preparado')tira(p);});
   insTrocaFim(`Ingrediente removido de ${k.nRec} receita${s}`);}
 /* lista de pendências das receitas (aberta pelo aviso em Fichas Técnicas) */
 function fichasPendModal(){const p=recPendencias();
@@ -2897,7 +2900,7 @@ function insConvLer(id){const k=insConvInfo(id);if(!k)return null;if(!$('#i_conv
   if(!(f>0)){const b=$('#i_conv_box');if(b&&b.scrollIntoView)b.scrollIntoView({block:'center'});const fi=$('#i_conv_f');if(fi)fi.focus();toast('Informe a conversão da unidade para ajustar as receitas',3500);return false;}
   return {mult:k.perg.mult(f)};}
 function insConvAplicar(id,conv){const fix=r=>(r.comps||[]).forEach(c=>{if(!c||c[0]!==id)return;if(conv.mult!==1)c[1]=+((+c[1]||0)*conv.mult).toFixed(6);if(c.length>2)c.length=2;});
-  Object.values(DB.fichas||{}).forEach(f=>{if(f&&!f.revenda)fix(f);});Object.values(DB.insumos||{}).forEach(p=>{if(p&&p.tipo==='preparado'&&p.id!==id)fix(p);});}
+  Object.values(DB.fichas||{}).forEach(f=>{if(f&&!fRev(f))fix(f);});Object.values(DB.insumos||{}).forEach(p=>{if(p&&p.tipo==='preparado'&&p.id!==id)fix(p);});}
 /* linha de ingrediente apagado dentro do editor de ficha/preparado (mexe só no rascunho; vale ao salvar a receita) */
 function compApagadoCard(row,idx){const nm=insApagadoNome(row[0]);const qt=compQtdTxt(row,null);
   if(idx===fichaEditIdx)return `<div class="ins-card edit" style="border-color:var(--red);box-shadow:0 0 0 1px var(--red)">
@@ -3322,14 +3325,14 @@ function viewFichas(){
   const cats=['Todas',...new Set(fichas.map(f=>f.cat).filter(Boolean))];
   if(modulares.length)cats.push('Modular');
   if(preparados.length)cats.push('Preparado');
-  if(fichas.some(f=>f&&f.revenda))cats.push('Produtos finais');
+  if(fichas.some(f=>fRev(f)))cats.push('Produtos finais');
   const semArm=estMultiArm()?fichas.filter(f=>!f.armVenda).length:0;if(semArm)cats.push('Sem estoque de saída');
   const pend=recPendencias();const pendOrf=Object.values(pend.orf).flat();const pendRec=new Set([...pendOrf,...pend.uni].map(u=>u.tipo+':'+u.id));const nOrfRec=insRecN(pendOrf),nUniRec=insRecN(pend.uni);if(pendRec.size)cats.push('Com pendência');
   if(!cats.includes(fichaFiltro))fichaFiltro='Todas';
   const T=totaisGerais();const fixosPct=T.fixosPct||0;
   let cards='';
   if(fichaFiltro!=='Preparado'&&fichaFiltro!=='Modular'){
-    const ff=fichaFiltro==='Todas'?fichas:fichaFiltro==='Sem estoque de saída'?fichas.filter(f=>!f.armVenda):fichaFiltro==='Produtos finais'?fichas.filter(f=>f.revenda):fichaFiltro==='Com pendência'?fichas.filter(f=>pendRec.has('ficha:'+f.id)):fichas.filter(f=>f.cat===fichaFiltro);
+    const ff=fichaFiltro==='Todas'?fichas:fichaFiltro==='Sem estoque de saída'?fichas.filter(f=>!f.armVenda):fichaFiltro==='Produtos finais'?fichas.filter(f=>fRev(f)):fichaFiltro==='Com pendência'?fichas.filter(f=>pendRec.has('ficha:'+f.id)):fichas.filter(f=>f.cat===fichaFiltro);
     cards+=ff.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(f=>fichaCard(f,fixosPct)).join('');
   }
   if(fichaFiltro==='Todas'||fichaFiltro==='Modular')cards+=modulares.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(m=>modularFichaCard(m)).join('');
@@ -3364,7 +3367,7 @@ function fichaCard(f,fixosPct){
   const preco=m.balcao.preco, cmv=m.balcao.cmv;
   const peso=pesoFichaKg(f)*1000;
   const rend=(f.rendGramas>0)?`${nNum(f.rendGramas)} ${uSym(f.rendUni||'g')}`:(peso>0?`${fmtN(peso)}gr`:`${fmtN(f.porcoes||1)} porç${(f.porcoes||1)>1?'ões':'ão'}`);
-  const cmvCls=cmvClasse(cmv);const badge=(f.revenda?`<span class="fcard-badge tag-navy" title="${f.revDose?'Dose de produto de revenda: baixa só os ml da dose':'Produto de revenda: ficha espelho mantida pelo cadastro do produto'}" style="margin-right:4px">${f.revDose?'Dose':'Revenda'}</span>`+(!f.revDose&&revendaSemConteudo(DB.insumos[f.insumoId])?`<span class="fcard-badge tag-red" title="Falta dizer quanto tem cada unidade no cadastro do produto (Como você compra)" style="margin-right:4px">sem conteúdo</span>`:''):'')+(preco>0?`<span class="fcard-badge ${cmvCls==='excelente'?'tag-green':cmvCls==='atencao'?'tag-amber':'tag-red'}">CMV ${fmtPct(cmv)}</span>`:`<span class="fcard-badge tag-amber">sem preço</span>`);
+  const cmvCls=cmvClasse(cmv);const badge=(fRev(f)?`<span class="fcard-badge tag-navy" title="${f.revDose?'Dose de produto de revenda: baixa só os ml da dose':'Produto de revenda: ficha espelho mantida pelo cadastro do produto'}" style="margin-right:4px">${f.revDose?'Dose':'Revenda'}</span>`+(!f.revDose&&revendaSemConteudo(DB.insumos[f.insumoId])?`<span class="fcard-badge tag-red" title="Falta dizer quanto tem cada unidade no cadastro do produto (Como você compra)" style="margin-right:4px">sem conteúdo</span>`:''):'')+(preco>0?`<span class="fcard-badge ${cmvCls==='excelente'?'tag-green':cmvCls==='atencao'?'tag-amber':'tag-red'}">CMV ${fmtPct(cmv)}</span>`:`<span class="fcard-badge tag-amber">sem preço</span>`);
   return `<div class="fcard" data-nome="${esc(f.nome)}">
     <div class="fcard-top"><div class="fcard-ic">${icoFicha}</div>
       <div style="min-width:0"><div class="fcard-nm">${esc(f.nome)}</div><div class="fcard-sub">${esc(f.cat||'—')}${f.criada?' · criada '+f.criada:''}${estMultiArm()?(f.armVenda&&estArm(f.armVenda)?' · sai de '+esc(estArmNome(f.armVenda)):(estCfg().vendasNuncaPrincipal?' · <span style="color:var(--red);font-weight:600">sem estoque de saída</span>':'')):''}${recPendTxt(f)?' · <span style="color:var(--red);font-weight:600">'+recPendTxt(f)+'</span>':''}</div></div>${badge}</div>
@@ -3756,7 +3759,7 @@ function fichaFoto(input){const f=input.files&&input.files[0];if(!f)return;const
 let fichaEditIdx=-1;
 function nNum(x){return (+(+x||0).toFixed(3)).toString().replace('.',',');}
 function renderInsumosPanel(){const el=$('#fx_left_custos');if(!el)return;
-  if(draftFichaId&&DB.fichas[draftFichaId]&&DB.fichas[draftFichaId].revenda){const fx=DB.fichas[draftFichaId];const ins=DB.insumos[fx.insumoId];const qx=(fx.comps&&fx.comps[0]&&+fx.comps[0][1])||1;const ex=ins?insEmb(ins):null;const unx=!ins||(BASE[ins.uni]||'un')==='un';
+  if(draftFichaId&&fRev(DB.fichas[draftFichaId])){const fx=DB.fichas[draftFichaId];const ins=DB.insumos[fx.insumoId];const qx=(fx.comps&&fx.comps[0]&&+fx.comps[0][1])||1;const ex=ins?insEmb(ins):null;const unx=!ins||(BASE[ins.uni]||'un')==='un';
     const qtx=unx?'1 un':nNum(qx)+' '+bSym(ins.uni);const semx=!fx.revDose&&revendaSemConteudo(ins);
     el.innerHTML=`<div class="fx-sublabel" style="margin-bottom:10px">${fx.revDose?'Dose de produto de revenda':'Produto de revenda'}</div><div style="font-size:13px;line-height:1.5">Esta ficha é ${fx.revDose?'a <b>dose</b>':'o espelho'} do produto <b>${esc(ins?ins.nome:'?')}</b>: sempre <b>${esc(qtx)}</b> por ${fx.revDose?'dose vendida':'venda'}${(!fx.revDose&&!unx&&ex)?' (1 '+esc(ex.nome)+')':''}, custo pelo preço de compra (${fmtBRL(custoFicha(fx))}).${semx?`<div style="color:var(--red);margin-top:8px"><b>Falta dizer quanto tem cada unidade.</b> Por enquanto cada venda baixa só 1 ${esc(bSym(ins.uni))}. Abra o cadastro do produto e preencha "Como você compra" (ex.: garrafa com 750 ml).</div>`:''}<br><br>Ingredientes, nome e unidade não se editam aqui. Para mudar, abra o <a onclick="closeModal();editInsumo('${ins?ins.id:''}')" style="color:var(--navy);font-weight:600;cursor:pointer">cadastro do produto</a>. Aqui você define preço de venda, código no PDV, categoria e estoque de saída.</div>`;const n=$('#f_nome');if(n&&!(fx.revDose&&!fx.nomeAuto)){n.readOnly=true;n.title='Nome vem do cadastro do produto';n.style.opacity='.75';}return;}
   const cards=draftComps.map((row,idx)=>{const ins=DB.insumos[row[0]];if(!ins)return row[0]?compApagadoCard(row,idx):'';
@@ -3887,11 +3890,11 @@ function coletarFichaForm(id){const nome=($('#f_nome').value||'').trim();
     padraoFinalizacao:$('#f_final')?.value||'',foto:draftFoto||'',codPdv:(($('#f_codpdv')||{}).value||'').trim(),armVenda:(($('#f_armvenda')||{}).value||''),comps:draftComps.filter(c=>c[0]&&c[1]>0),
     criada:(id&&DB.fichas[id]&&DB.fichas[id].criada)||hoje()};}
 function saveFicha(id){if(!($('#f_nome').value||'').trim())return toast('Informe o nome');
-  const obj=coletarFichaForm(id);const old=id&&DB.fichas[id];if(old&&old.revenda){const ins=DB.insumos[old.insumoId];obj.revenda=true;obj.insumoId=old.insumoId;
+  const obj=coletarFichaForm(id);const old=id&&DB.fichas[id];if(fRev(old)){const ins=DB.insumos[old.insumoId];obj.insumoId=old.insumoId;if(!old.revDose)obj.revenda=true;
     if(old.revDose){obj.revDose=true;if(old.nomeAuto)obj.nomeAuto=true;if(ins){if(old.nomeAuto||!obj.nome)obj.nome=revendaDoseNome(ins);obj.comps=[[ins.id,+ins.doseMl||+(old.comps&&old.comps[0]&&old.comps[0][1])||1,'ml']];}else obj.comps=old.comps;}
     else if(ins){obj.nome=ins.nome;obj.comps=revendaComps(ins);}else obj.comps=old.comps;obj.porcoes=1;}
   DB.fichas[obj.id]=obj;insApagadosLimpar();save();closeModal();viewFichas();toast(id?'Ficha atualizada':'Ficha criada');}
-function delFicha(id){const fr=DB.fichas[id];if(fr&&fr.revenda){const ins=DB.insumos[fr.insumoId];return toast('Esta ficha é o espelho do produto '+(ins?ins.nome:'')+'. Para tirá-la, desmarque "Produto de revenda" no cadastro do produto.',6000);}if(!confirm('Remover esta ficha?'))return;delete DB.fichas[id];save();closeModal();viewFichas();toast('Ficha removida');}
+function delFicha(id){const fr=DB.fichas[id];if(fRev(fr)){const ins=DB.insumos[fr.insumoId];return toast('Esta ficha é '+(fr.revDose?'a dose':'o espelho')+' do produto '+(ins?ins.nome:'')+'. Para tirá-la, desmarque "'+(fr.revDose?'Também vende em dose':'Produto de revenda')+'" no cadastro do produto.',6000);}if(!confirm('Remover esta ficha?'))return;delete DB.fichas[id];save();closeModal();viewFichas();toast('Ficha removida');}
 function imprimirFicha(){
   const f=$('#f_nome')?coletarFichaForm(draftFichaId):(draftFichaId?DB.fichas[draftFichaId]:null);
   if(!f||!f.nome)return toast('Informe o nome da ficha antes de imprimir');
