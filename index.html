@@ -5490,6 +5490,7 @@ function lmParcFechar(i){const r=lmRow(i);const lista=r.parcelasLista||[];
   if(lista.length&&Math.abs(total-soma)>=0.01)
     return toast('A soma das parcelas ('+fmtBRL(soma)+') não bate com o valor da linha ('+fmtBRL(total)+')');
   if(lista.some(x=>!x.data))return toast('Toda parcela precisa de uma data de vencimento');
+  {const _p=lista.find(x=>dataForaDoComum(x.data,3000,400));if(_p)return toast('Parcela com vencimento em '+fmtDataBR(_p.data)+': confira o ano antes de continuar.',6000);}
   r.parcelas=lista.length||1;
   if(lmParcPagto)return pagtoSalvar(lista);
   if(i<0)lmNotaAplicarParcelas(lista);
@@ -5753,6 +5754,7 @@ function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
   lmEdit=null;save();closeModal();viewFinanceiro();
   toast('Nota atualizada · '+n+' item(ns)'+(novos?' · '+novos+' novo(s)':'')+(remov.length?' · '+remov.length+' excluído(s)':'')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':'')+lmSemConvMsg(semConv));}
 function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
+  if(!lmDatasConferir())return;   // ano digitado ou lido errado deixava o lançamento fora do DRE (572 casos em 15 clientes)
   if(lmEdit)return lancarModalSalvarEdicao();
   lmNotaAutoCond(true); // condição padrão do fornecedor, se a nota ficou sem parcelas
   const nfGeradas=lmNumerarSemNF(lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo));
@@ -5844,6 +5846,7 @@ function editLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveLancamento('${id}')">Salvar</button></div>`);
 }
 function saveLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)return closeModal();
+  {const _d=($('#el_data')||{}).value||'';if(_d&&_d!==l.data&&dataForaDoComum(_d)&&!confirm('A data '+fmtDataBR(_d)+' está fora do comum e o lançamento ficaria fora do DRE deste ano. Salvar assim mesmo?'))return;}
   const valor=moneyVal('el_valor');if(!valor)return toast('Informe o valor');
   const nfAntes=l.nfe||'',fornAntes=l.fornecedor||'';const irmaos=nfKey(nfAntes)?notaItens(nfAntes,fornAntes).filter(x=>x.id!==id):[];
   l.data=$('#el_data').value||l.data;l.grupo=$('#el_grupo').value;l.sub=$('#el_sub').value||'';l.descricao=($('#el_desc').value||'').trim();l.nfe=($('#el_nfe')?($('#el_nfe').value||'').trim():(l.nfe||''));l.fornecedor=($('#el_fornecedor')?($('#el_fornecedor').value||'').trim():(l.fornecedor||''));l.valor=valor;l.forma=$('#el_forma').value||'';{const ob=(($('#el_obs')||{}).value||'').trim();if(ob)l.obs=ob;else delete l.obs;}
@@ -5938,6 +5941,7 @@ function finLancFeitos(){
       <div class="dash-pill"><span>Despesas</span><b style="color:var(--red)">${fmtBRL(d.despTot)}</b></div>
       <div class="dash-pill"><span>Resultado</span><b style="color:${d.resultado>=0?'var(--green)':'var(--red)'}">${fmtBRL(d.resultado)}</b></div>
     </div>
+    ${datasAnoBannerHTML()}
     <div id="lancInfo" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">${lancInfoHTML(ls,ativo)}</div>
     ${ehMobile()?lancMobileHTML(ls,ativo,filtTot,fl,grupos):''}
     <div class="scroll-x mob-hide"><table><thead>
@@ -9855,14 +9859,101 @@ let adminTab='ativos';
 function adminBox(){let b=document.getElementById('adminScreen');if(!b){b=document.createElement('div');b.id='adminScreen';b.style.cssText='position:fixed;inset:0;z-index:250;background:var(--bg);overflow:auto';document.body.appendChild(b);}return b;}
 function hideAdmin(){const b=document.getElementById('adminScreen');if(b)b.style.display='none';}
 function withDB(d,fn){const bak=DB;DB=d;try{return fn();}finally{DB=bak;}}
-function kpisResumo(){try{const k=kpisDe(DB);k.em=new Date().toISOString();return k;}catch(e){return null;}}   // gravado na coluna organizacoes.kpis a cada save; o admin lê daqui em vez de baixar o JSON inteiro
+/* ===== Revisão geral de 12/11/2026: saúde dos dados, trava de data, versão nova e registro de erros =====
+   saudeDados() conta o que deixa os números do cliente menos confiáveis; vai junto no resumo (organizacoes.kpis.saude)
+   a cada salvamento, e o painel do administrador mostra por cliente sem baixar o JSON inteiro. */
+function dataValida(iso){if(!/^\d{4}-\d\d-\d\d$/.test(String(iso||'')))return false;const d=new Date(iso+'T12:00:00');return !isNaN(d)&&d.toISOString().slice(0,10)===iso;}
+function dataForaDoComum(iso,futuroDias,passadoDias){if(!iso)return false;if(!dataValida(iso))return true;const h=hojeISO();return iso<diasSoma(h,-(passadoDias||400))||iso>diasSoma(h,futuroDias||60);}
+function anoErrado(iso){const ano=+hojeISO().slice(0,4),y=+String(iso||'').slice(0,4);return !y||y<ano-1||y>ano+1;}
+function saudeDados(){const h=hojeISO();const L=DB.lancamentos||[],I=DB.insumos||{},F=DB.fichas||{};const s={ano:0,anoV:0,semPreco:0,custoMaior:0,unPeso:0,ingApagado:0,estNeg:0,venc:0,vencV:0};
+  const lim=diasSoma(h,-30);
+  L.forEach(l=>{if(!l)return;if(anoErrado(l.data)){s.ano++;s.anoV+=+l.valor||0;}
+    if(grupoTipo(l.grupo)!=='receita'&&Array.isArray(l.liquidacoes))l.liquidacoes.forEach(q=>{if(q&&!q.pago&&q.data&&q.data<lim&&!anoErrado(q.data)){s.venc++;s.vencV+=liqCobr(q);}});});
+  const usados=new Set();Object.values(F).concat(Object.values(I).filter(p=>p&&p.tipo==='preparado')).forEach(r=>(r&&r.comps||[]).forEach(c=>{if(!c||!c[0])return;usados.add(c[0]);const ins=I[c[0]];if(!ins){s.ingApagado++;return;}if(ins.tipo!=='preparado'&&ins.uni==='un'&&+c[1]>=30)s.unPeso++;}));
+  Object.values(I).forEach(i=>{if(!i)return;if(i.tipo!=='preparado'&&!(+i.preco>0)&&usados.has(i.id))s.semPreco++;if(+i.estoqueAtual<0)s.estNeg++;});
+  Object.values(F).forEach(f=>{if(!f||!(+f.precoVenda>0))return;const c=custoFicha(f)/(+f.porcoes||1)+(+f.custoEmbalagem||0);if(c>+f.precoVenda)s.custoMaior++;});
+  s.anoV=+s.anoV.toFixed(2);s.vencV=+s.vencV.toFixed(2);s.total=s.ano+s.semPreco+s.custoMaior+s.unPeso+s.ingApagado+s.estNeg+s.venc;return s;}
+function saudeLinhas(s){if(!s)return [];const L=[];const p=(n,um,varios)=>n+' '+(n===1?um:varios);
+  if(s.ano)L.push(p(s.ano,'lançamento com o ano errado','lançamentos com o ano errado')+' ('+fmtBRL(s.anoV)+'): estão fora do DRE do ano. Corrige em Financeiro › Lançamentos Realizados.');
+  if(s.semPreco)L.push(p(s.semPreco,'produto sem preço usado em receita','produtos sem preço usados em receita')+': a ficha fica com custo menor que o real.');
+  if(s.custoMaior)L.push(p(s.custoMaior,'ficha com custo maior que o preço de venda','fichas com custo maior que o preço de venda')+': costuma ser unidade errada no cadastro do produto.');
+  if(s.unPeso)L.push(p(s.unPeso,'ingrediente cadastrado em unidade e lançado como peso','ingredientes cadastrados em unidade e lançados como peso')+' nas receitas.');
+  if(s.ingApagado)L.push(p(s.ingApagado,'ingrediente apagado ainda em receita','ingredientes apagados ainda em receitas')+'.');
+  if(s.estNeg)L.push(p(s.estNeg,'produto com estoque negativo','produtos com estoque negativo')+': saída por venda sem a entrada da compra.');
+  if(s.venc)L.push(p(s.venc,'parcela vencida há mais de 30 dias sem baixa','parcelas vencidas há mais de 30 dias sem baixa')+' ('+fmtBRL(s.vencV)+'): o Fluxo de Caixa fica errado.');
+  return L;}
+/* painel do administrador */
+function adminSaudeDe(o){if(!o)return null;if(o.kpis&&o.kpis.saude)return o.kpis.saude;if(o._saude)return o._saude;adminSaudeBuscar(o);return null;}
+async function adminSaudeBuscar(o){if(!o||o._saudeBusca||typeof sb==='undefined'||!sb)return;o._saudeBusca=1;   // só lê e calcula: não grava nada no cliente
+  try{let d=(o.dados&&o.dados.insumos&&!o.dados._leve)?o.dados:null;if(!d){const r=await sb.from('organizacoes').select('dados').eq('id',o.id).maybeSingle();d=r.data&&r.data.dados;}
+    if(d&&d.insumos){o._saude=withDB(d,saudeDados);if(adminSel===o.id&&document.getElementById('admin_main'))renderAdminMain();}}catch(e){}}
+function adminSaudeHTML(o){const s=adminSaudeDe(o);const em=(o.kpis&&o.kpis.saude&&o.kpis.em)?String(o.kpis.em).slice(0,10):'';
+  if(!s)return `<div class="card card-pad" style="margin-bottom:14px"><div class="ttl" style="font-size:15px">Pendências de dados</div><div class="gp-mini">Calculando…</div></div>`;
+  const L=saudeLinhas(s);return `<div class="card card-pad" style="margin-bottom:14px"><div class="section-head" style="margin-bottom:6px"><div><div class="ttl">Pendências de dados${L.length?' · '+s.total:''}</div><div class="desc">O que deixa os números deste cliente menos confiáveis.${em?' Calculado no salvamento de '+fmtDataBR(em)+'.':''}</div></div></div>${L.length?L.map(x=>`<div style="font-size:13px;line-height:1.5;padding:7px 0;border-top:1px solid var(--line)">${esc(x)}</div>`).join(''):'<div style="font-size:13px;color:var(--green);padding-top:4px">Nenhuma pendência encontrada.</div>'}</div>`;}
+function adminSaudeSelo(o){const s=o&&o.kpis&&o.kpis.saude;return (s&&s.total)?`<span title="${s.total} pendência(s) de dados. Abra o cliente para ver." style="font-size:10.5px;font-weight:700;color:var(--amber);white-space:nowrap">◆ ${s.total}</span>`:'';}
+/* data: trava no lançamento e correção em lote do que já entrou errado */
+function lmDatasConferir(){const ruins=(lancDraft||[]).filter(r=>r&&lmTotalLinha(r)>0&&dataForaDoComum(r.data));if(!ruins.length)return true;
+  const ano=hojeISO().slice(0,4);const ex=[...new Set(ruins.map(r=>fmtDataBR(r.data)))].slice(0,4).join(', ');
+  if(confirm('Atenção: '+ruins.length+(ruins.length>1?' linhas com data':' linha com data')+' fora do comum ('+ex+').\nCom essa data o lançamento fica fora do DRE deste ano.\n\nOK = trocar o ano para '+ano+'\nCancelar = não trocar')){
+    ruins.forEach(r=>{const n=ano+String(r.data||'').slice(4);if(dataValida(n))r.data=n;});return true;}
+  return confirm('Manter a data como está ('+ex+') e lançar mesmo assim?');}
+function datasAnoRuins(){return (DB.lancamentos||[]).filter(l=>l&&anoErrado(l.data));}
+function datasAnoNova(l){const ano=hojeISO().slice(0,4);const n=ano+String(l.data||'').slice(4);return (dataValida(n)&&n<=hojeISO())?n:'';}   // lançamento não nasce no futuro: se ficaria depois de hoje, o ano certo provavelmente é o anterior e alguém precisa olhar
+function datasAnoBannerHTML(){if(!podeFinNota())return '';const r=datasAnoRuins();if(!r.length)return '';const anos=[...new Set(r.map(l=>String(l.data||'').slice(0,4)||'sem data'))].sort().join(', ');
+  return `<div class="alert alert-amber" style="margin-bottom:12px">${icoWarn}<div><b>${r.length} lançamento${r.length>1?'s':''} com o ano errado</b> (${esc(anos)}), somando ${fmtBRL(r.reduce((s,l)=>s+(+l.valor||0),0))}. Não aparecem no DRE nem nas listas deste ano. <a onclick="datasAnoModal()" style="color:var(--navy);font-weight:700;cursor:pointer;white-space:nowrap">Ver e corrigir →</a></div></div>`;}
+function datasAnoModal(){const r=datasAnoRuins().sort((a,b)=>String(a.data||'').localeCompare(String(b.data||'')));const ano=hojeISO().slice(0,4);const ok=r.filter(l=>datasAnoNova(l)).length;
+  modal(`<div class="modal-head"><h3>Lançamentos com o ano errado</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">O Flow troca só o ano para ${ano} e mantém dia e mês. As parcelas que foram junto no ano errado também são ajustadas. Valor, fornecedor e itens não mudam.</div>
+    ${r.slice(0,300).map(l=>{const n=datasAnoNova(l);return `<div style="display:grid;grid-template-columns:${ehMobile()?'1fr auto':'92px 1fr 96px 108px'};gap:4px 12px;align-items:baseline;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)">
+      <span style="color:var(--red);font-weight:600">${fmtDataBR(l.data)}</span>
+      <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc((l.fornecedor||'')+' '+(l.descricao||''))}">${esc(l.fornecedor||l.descricao||'(sem descrição)')}${l.nfe?' · NF '+esc(l.nfe):''}</span>
+      <span style="font-weight:600;white-space:nowrap">${fmtBRL(l.valor||0)}</span>
+      <span style="white-space:nowrap;color:${n?'var(--green)':'var(--amber)'}">${n?'→ '+fmtDataBR(n):'revisar à mão'}</span></div>`;}).join('')}
+    ${r.length>300?`<div class="gp-mini" style="padding-top:8px">e mais ${r.length-300}</div>`:''}
+    ${ok<r.length?`<div class="gp-mini" style="margin-top:10px">${r.length-ok} não ${r.length-ok>1?'entram':'entra'} na correção automática porque a data ficaria no futuro ou é inválida. Abra o lançamento e corrija a data.</div>`:''}
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fechar</button>${ok?`<button class="btn btn-primary" onclick="datasAnoCorrigir()">Corrigir ${ok} para ${ano}</button>`:''}</div>`,true);}
+function datasAnoCorrigir(){if(!podeFinNota())return toast('Sem permissão para alterar lançamentos');const anoN=+hojeISO().slice(0,4);let n=0;
+  datasAnoRuins().forEach(l=>{const nova=datasAnoNova(l);if(!nova)return;const y=+String(l.data).slice(0,4);const delta=anoN-y;
+    (l.liquidacoes||[]).forEach(q=>{const qy=+String((q&&q.data)||'').slice(0,4);if(q&&qy&&(qy===y||qy===y+1)){const nq=(qy+delta)+String(q.data).slice(4);if(dataValida(nq))q.data=nq;}});
+    (DB.estoqueMov||[]).forEach(m=>{if(m&&m.refId===l.id&&+String(m.data||'').slice(0,4)===y){const nm=anoN+String(m.data).slice(4);if(dataValida(nm))m.data=nm;}});
+    l.data=nova;n++;});
+  save();closeModal();viewFinanceiro();toast(n+' lançamento'+(n===1?' corrigido':'s corrigidos')+' para '+anoN,5000);}
+/* versão nova publicada: avisa quem ficou com a aba aberta (12/11: aba antiga quase estragou as fichas de dose) */
+let VER_ETAG=null;
+async function verChecar(){if(!/^https?:$/.test(location.protocol)||/^(localhost|127\.|\[::1\])/.test(location.hostname))return;
+  try{const r=await fetch(location.pathname+'?v='+Date.now(),{method:'HEAD',cache:'no-store'});if(!r.ok)return;const e=r.headers.get('etag')||r.headers.get('last-modified');if(!e)return;if(VER_ETAG===null){VER_ETAG=e;return;}if(e!==VER_ETAG)verAviso();}catch(e){}}
+function verAviso(){if(document.getElementById('verAviso'))return;const d=document.createElement('div');d.id='verAviso';
+  d.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:1300;background:var(--navy);color:#fff;border-radius:12px;padding:10px 12px 10px 16px;display:flex;gap:12px;align-items:center;font-size:13px;box-shadow:0 8px 28px rgba(0,0,0,.28);max-width:calc(100vw - 24px)';
+  d.innerHTML='<span>Saiu uma versão nova do Flow.</span><button class="btn btn-sm" style="background:#fff;color:var(--navy);font-weight:700;border:0" onclick="location.reload()">Atualizar agora</button><button style="background:none;border:0;color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:0 4px" onclick="this.parentElement.remove()" aria-label="Depois" title="Depois">×</button>';
+  document.body.appendChild(d);}
+setTimeout(verChecar,4000);setInterval(verChecar,10*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)verChecar();});
+/* erros de tela: grava em app_erros para a Lidera ver (no máximo 8 por sessão, sem repetir o mesmo) */
+const ERR_VISTOS=new Set();let ERR_N=0;
+function errRegistrar(msg,origem,pilha){try{if(ERR_N>=8||typeof sb==='undefined'||!sb||typeof CLOUD==='undefined'||!CLOUD)return;msg=String(msg||'').slice(0,500);if(!msg)return;
+  const k=msg.slice(0,120)+'|'+String(origem||'').slice(0,60);if(ERR_VISTOS.has(k))return;ERR_VISTOS.add(k);ERR_N++;
+  const tela=(typeof current!=='undefined'?String(current||''):'')+((typeof current!=='undefined'&&current==='financeiro'&&typeof finTab!=='undefined')?'/'+finTab:'');
+  sb.from('app_erros').insert({org_id:(typeof ORG!=='undefined'&&ORG&&ORG.id)||null,usuario:String((typeof quemSou==='function'&&quemSou())||'').slice(0,120),msg,origem:String(origem||'').slice(0,200),pilha:String(pilha||'').slice(0,1500),tela:tela.slice(0,60),versao:String(VER_ETAG||'').slice(0,80),ua:String(navigator.userAgent||'').slice(0,200)}).then(()=>{},()=>{});}catch(e){}}
+window.addEventListener('error',e=>{if(e&&e.message&&!/^Script error\.?$/.test(e.message))errRegistrar(e.message,String(e.filename||'').split('/').pop()+':'+e.lineno+':'+e.colno,e.error&&e.error.stack);});
+window.addEventListener('unhandledrejection',e=>{const r=e&&e.reason;errRegistrar('Promise: '+String((r&&r.message)||r),'',r&&r.stack);});
+let ADMIN_ERROS=null;
+async function adminErrosCarregar(){if(ADMIN_ERROS||window._adminErrBusca||typeof sb==='undefined'||!sb)return;window._adminErrBusca=1;
+  try{const r=await sb.from('app_erros').select('criado_em,org_id,usuario,msg,origem,tela').gte('criado_em',new Date(Date.now()-7*86400000).toISOString()).order('criado_em',{ascending:false}).limit(200);ADMIN_ERROS=r.error?[]:(r.data||[]);if(ADMIN_ERROS.length&&document.getElementById('admin_modo'))renderAdmin();}catch(e){ADMIN_ERROS=[];}window._adminErrBusca=0;}
+function adminErrosHTML(){if(!ADMIN_ERROS){setTimeout(adminErrosCarregar,500);return '';}if(!ADMIN_ERROS.length)return '';
+  return `<a onclick="adminErrosModal()" title="Erros que aconteceram na tela dos clientes nos últimos 7 dias" style="font-size:12px;font-weight:600;color:var(--red);cursor:pointer;white-space:nowrap">⚠ ${ADMIN_ERROS.length} erro${ADMIN_ERROS.length>1?'s':''} de tela em 7 dias</a>`;}
+function adminErrosModal(){const nome=id=>{const o=(ADMIN_ORGS||[]).find(x=>x.id===id);return o?o.nome:'';};
+  modal(`<div class="modal-head"><h3>Erros de tela · últimos 7 dias</h3><button class="x" onclick="closeModal()">${icoX}</button></div><div class="modal-body">
+    ${(ADMIN_ERROS||[]).map(e=>`<div style="padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px"><div style="font-weight:600;overflow-wrap:anywhere">${esc(e.msg||'')}</div><div class="gp-mini">${fmtDataBR(String(e.criado_em).slice(0,10))} ${esc(String(e.criado_em).slice(11,16))} · ${esc(nome(e.org_id)||'sem cliente')}${e.usuario?' · '+esc(e.usuario):''}${e.tela?' · tela '+esc(e.tela):''}${e.origem?' · '+esc(e.origem):''}</div></div>`).join('')}
+  </div><div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fechar</button></div>`,true);}
+function kpisResumo(){try{const k=kpisDe(DB);k.em=new Date().toISOString();try{k.saude=saudeDados();}catch(e){}return k;}catch(e){return null;}}   // gravado na coluna organizacoes.kpis a cada save; o admin lê daqui em vez de baixar o JSON inteiro
 let _adminKpiBusca=new Set(),_adminKpiT=null;
 function adminKpis(o){if(!o)return {fat:0,cmv:0,real:null,lucro:0,nf:0,ni:0};
   if(o.kpis&&typeof o.kpis==='object')return o.kpis;
   if(o.dados&&o.dados.insumos&&!o.dados._leve)return kpisDe(o.dados);
   adminKpisBuscar(o);const n=(o.dados&&o.dados._n)||{};return {fat:0,cmv:0,real:null,lucro:0,nf:+n.fichas||0,ni:+n.insumos||0,pendente:true};}
 async function adminKpisBuscar(o){if(!o||_adminKpiBusca.has(o.id)||!(typeof sb!=='undefined'&&sb))return;_adminKpiBusca.add(o.id);   // org sem kpis gravados: baixa o JSON dela UMA vez, calcula e grava a coluna
-  try{const r=await sb.from('organizacoes').select('dados').eq('id',o.id).maybeSingle();const d=r.data&&r.data.dados;if(!d)return;const k=kpisDe(d);k.em=new Date().toISOString();o.kpis=k;
+  try{const r=await sb.from('organizacoes').select('dados').eq('id',o.id).maybeSingle();const d=r.data&&r.data.dados;if(!d)return;const k=kpisDe(d);k.em=new Date().toISOString();try{k.saude=withDB(d,saudeDados);}catch(e){}o.kpis=k;
     try{await sb.from('organizacoes').update({kpis:k}).eq('id',o.id);}catch(e){}
     clearTimeout(_adminKpiT);_adminKpiT=setTimeout(()=>{try{if(document.getElementById('admin_main'))renderAdminMain();if(document.getElementById('admin_listc'))renderAdminList();}catch(e){}},400);}catch(e){}}
 async function adminCarregarOrgs(){   // lista leve (view organizacoes_admin: só as chaves que o admin usa + kpis); cai para a tabela inteira se a view não existir
@@ -9917,7 +10008,7 @@ async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin(
 function consNome(id){if(!id)return 'Lidera';const c=CONSULTORES.find(x=>x.id===id);return c?(c.nome||c.email||'Consultor'):(IS_SUPER?'Lidera · grupo '+donoNome(id):'Lidera');}
 function renderAdmin(){
   const gestao=(adminModo==='gestao'&&!adminSel);const escondeLista=gestao||(ehMobile()&&!!adminSel);
-  const mo=$('#admin_modo');if(mo)mo.innerHTML=`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="pill-filter" style="margin:0"><button class="${adminModo==='gestao'&&!adminSel?'on':''}" onclick="adminSetModo('gestao')">📊 Gestão de projetos</button><button class="${adminModo==='clientes'||adminSel?'on':''}" onclick="adminSetModo('clientes')">🏪 Clientes</button></div>${adminSel&&(adminModo==='gestao'||ehMobile())?`<button class="btn btn-ghost btn-sm" onclick="adminSel=null;renderAdmin()">← ${adminModo==='gestao'?'Voltar à gestão':'Voltar à lista'}</button>`:''}${adminCertsHTML()}</div>`;
+  const mo=$('#admin_modo');if(mo)mo.innerHTML=`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="pill-filter" style="margin:0"><button class="${adminModo==='gestao'&&!adminSel?'on':''}" onclick="adminSetModo('gestao')">📊 Gestão de projetos</button><button class="${adminModo==='clientes'||adminSel?'on':''}" onclick="adminSetModo('clientes')">🏪 Clientes</button></div>${adminSel&&(adminModo==='gestao'||ehMobile())?`<button class="btn btn-ghost btn-sm" onclick="adminSel=null;renderAdmin()">← ${adminModo==='gestao'?'Voltar à gestão':'Voltar à lista'}</button>`:''}${adminErrosHTML()}${adminCertsHTML()}</div>`;
   const sd=$('#admin_side');if(sd)sd.style.display=escondeLista?'none':'';
   renderAdminSide();renderAdminMain();}
 function renderAdminSide(){const el=$('#admin_side');if(!el)return;
@@ -9944,7 +10035,7 @@ function renderAdminList(){const el=$('#admin_listc');if(!el)return;
     <div onclick="adminSelOrg('${o.id}')" style="cursor:pointer;padding:9px 10px;border-radius:9px;margin:2px 0;${sel?'background:var(--navy);color:#fff':''}">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
         <span style="font-weight:600;font-size:13.5px;${sel?'color:#fff':''}"><span title="${(GP_SIT[gpInfo(o).sit]||[''])[0]}" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${(GP_SIT[gpInfo(o).sit]||GP_SIT.ok)[2]};margin-right:6px"></span>${esc(o.nome||'')}</span>
-        <span style="display:flex;gap:6px;align-items:center;flex:0 0 auto">${cadDe(o).drive?`<a href="${esc(cadLink('drive',cadDe(o).drive))}" target="_blank" rel="noopener" title="Pasta no Drive" onclick="event.stopPropagation()" style="font-size:12px;text-decoration:none">📁</a>`:''}${cadDe(o).ifood?`<a href="${IFOOD_PORTAL}" target="_blank" rel="noopener" title="Portal do iFood" onclick="event.stopPropagation()" style="font-size:12px;text-decoration:none">🛵</a>`:''}<span title="Cliente desde ${fmtDataBR(cadIngresso(o))}" style="font-size:10.5px;white-space:nowrap;${sel?'color:#cdd6ea':'color:var(--soft)'}">${esc(cadDesdeLabel(o,true))}</span>${atr?`<span title="${atr} atrasada(s)" style="color:${sel?'#ffb4b4':'var(--red)'};font-size:11px;font-weight:600">⚠ ${atr}</span>`:''}</span>
+        <span style="display:flex;gap:6px;align-items:center;flex:0 0 auto">${cadDe(o).drive?`<a href="${esc(cadLink('drive',cadDe(o).drive))}" target="_blank" rel="noopener" title="Pasta no Drive" onclick="event.stopPropagation()" style="font-size:12px;text-decoration:none">📁</a>`:''}${cadDe(o).ifood?`<a href="${IFOOD_PORTAL}" target="_blank" rel="noopener" title="Portal do iFood" onclick="event.stopPropagation()" style="font-size:12px;text-decoration:none">🛵</a>`:''}${adminSaudeSelo(o)}<span title="Cliente desde ${fmtDataBR(cadIngresso(o))}" style="font-size:10.5px;white-space:nowrap;${sel?'color:#cdd6ea':'color:var(--soft)'}">${esc(cadDesdeLabel(o,true))}</span>${atr?`<span title="${atr} atrasada(s)" style="color:${sel?'#ffb4b4':'var(--red)'};font-size:11px;font-weight:600">⚠ ${atr}</span>`:''}</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:3px">
         <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${sel?'color:#cdd6ea':'color:var(--soft)'}">${ehGrupo(o)?'👥 grupo · '+grupoUnidades(o).length+' unidade'+(grupoUnidades(o).length===1?'':'s'):IS_SUPER?esc(consNome(o.consultor_id)):(susp?'suspenso':esc(o.responsavel||'')||'—')}${cadDe(o).segmento?' · '+esc(cadDe(o).segmento):''}</span>
@@ -10141,7 +10232,7 @@ async function cadSaveOrg(o){if(!o)return;const st=$('#cad_status');
     const r=await sb.from('organizacoes').update({dados}).eq('id',o.id);if(r&&r.error)throw r.error;
     Object.assign(o.dados,dados);if(st){st.textContent='Salvo ✓';st.style.color='var(--green)';}}
   catch(e){if(st){st.textContent='Erro ao salvar';st.style.color='var(--red)';}toast('Erro ao salvar o cadastro');}}
-function dadosHTML(o,k,nm,arq){return `<div id="ia_uso_box" data-org="${o.id}"></div><div class="card card-pad">
+function dadosHTML(o,k,nm,arq){return `${adminSaudeHTML(o)}<div id="ia_uso_box" data-org="${o.id}"></div><div class="card card-pad">
   <div class="kpi-grid" style="margin:0 0 14px">
    <div class="kpi"><div class="k-lbl">Faturamento</div><div class="k-val" style="font-size:20px">${fmtBRL(k.fat)}</div></div>
    <div class="kpi"><div class="k-lbl">CMV</div><div class="k-val" style="font-size:20px">${k.real!=null?fmtPct(k.real):fmtPct(k.cmv)}</div></div>
