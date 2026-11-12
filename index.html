@@ -837,8 +837,8 @@ thead th{letter-spacing:.7px}
 .catpick button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:8px 10px;border-radius:9px;font-size:13px;color:var(--ink);background:transparent;border:0;cursor:pointer}.catpick .cp-g button.on,.catpick .cp-g button:hover{background:var(--navy);color:#fff}.catpick .cp-s button:hover{background:var(--amber-bg);color:var(--navy)}.catpick .cp-n{margin-left:auto;font-size:10.5px;opacity:.6}.catpick .cp-g button.on .cp-n{opacity:.8}.catpick .cp-empty{font-size:12.5px;color:var(--soft);padding:10px}.catpick .cp-only{margin-top:6px;border-top:1px solid var(--line)!important;border-radius:0 0 9px 9px;color:var(--muted);font-size:12px}.catpick .cp-rec{font-size:9.5px;font-weight:800;letter-spacing:.3px;color:var(--green);background:var(--green-bg);border-radius:5px;padding:1px 5px}.catpick .cp-g button.on .cp-rec{background:rgba(255,255,255,.2);color:#fff}
 @media(max-width:640px){.catpick{inset:auto 0 0 0;border-radius:16px 16px 0 0;grid-template-columns:1fr;max-height:78vh;box-shadow:0 -10px 40px rgba(16,32,63,.3)}.catpick .cp-col{max-height:78vh}.catpick .cp-g{border-right:0}.catpick button{padding:12px 14px;font-size:15px}.catpick .cp-back{color:var(--navy);font-weight:700}}
 .nav-badge{margin-left:auto;background:var(--gold);color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:1px 7px;min-width:18px;text-align:center;line-height:16px}
-.pc-row{display:grid;grid-template-columns:28px 1fr 118px 96px 96px 96px 118px 30px;gap:6px;align-items:center;margin-bottom:6px}.pc-row .input{padding:6px 8px}.pc-row .money-inp{padding-left:34px}.pc-cob{font-weight:700;font-size:13px;color:var(--navy);text-align:right;white-space:nowrap}
-@media(max-width:640px){.pc-row{grid-template-columns:28px 1fr 1fr 30px;row-gap:4px;padding-bottom:8px;border-bottom:1px solid var(--line)}.pc-row .pc-x{grid-column:1/5;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.pc-row .pc-x .input{font-size:13px;padding-left:28px}.pc-row .pc-x .money-pre{font-size:10px;left:8px}.pc-row .pc-x .pc-cob{grid-column:1/4;text-align:right;font-size:14px;padding-top:2px}.pc-row .pc-x .pc-cob::before{content:'Cobrança ';font-weight:400;color:var(--soft);font-size:11px}}
+.pc-row{display:grid;grid-template-columns:28px 1fr 118px 96px 96px 96px 118px 64px;gap:6px;align-items:center;margin-bottom:6px}.pc-row .input{padding:6px 8px}.pc-row .money-inp{padding-left:34px}.pc-cob{font-weight:700;font-size:13px;color:var(--navy);text-align:right;white-space:nowrap}
+@media(max-width:640px){.pc-row{grid-template-columns:28px 1fr 1fr 64px;row-gap:4px;padding-bottom:8px;border-bottom:1px solid var(--line)}.pc-row .pc-x{grid-column:1/5;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.pc-row .pc-x .input{font-size:13px;padding-left:28px}.pc-row .pc-x .money-pre{font-size:10px;left:8px}.pc-row .pc-x .pc-cob{grid-column:1/4;text-align:right;font-size:14px;padding-top:2px}.pc-row .pc-x .pc-cob::before{content:'Cobrança ';font-weight:400;color:var(--soft);font-size:11px}}
 .pt-ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}.pt-ctl-f{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--soft);font-weight:700;text-transform:uppercase;letter-spacing:.3px}.pt-ctl-f .input{padding:6px 9px;font-size:13px;min-width:170px}
 .pt-rec{display:grid;grid-template-columns:24px minmax(0,1fr) 128px 150px 140px 148px 34px 30px;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}.pt-rec:first-of-type{border-top:0}
 .pt-rec .inp{border:1px solid transparent;background:transparent;padding:6px 8px;border-radius:8px;font-size:13px;color:var(--ink);min-width:0;width:100%}.pt-rec .inp:hover{border-color:var(--line);background:var(--bg)}.pt-rec .inp.sel{font-size:12px}.pt-rec .inp.late{background:var(--red-bg);color:var(--red);font-weight:600}
@@ -1102,7 +1102,8 @@ function ensureFornecedor(nome){nome=(nome||'').trim();if(!nome)return;DB.fin=DB
 
 let DB=load();
 function load(){try{const d=JSON.parse(localStorage.getItem(STORE_KEY));if(d&&d.insumos)return d;}catch(e){}return seed();}
-function save(){if(typeof CLOUD!=='undefined'&&CLOUD){pushCloud();renderFoot();return;}try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){if(window.toast)toast('Não foi possível salvar (armazenamento cheio ou bloqueado)');}renderFoot();}
+function save(){try{if(typeof bolColher==='function')bolColher();}catch(e){}   // boleto informado no lançamento vira registro em DB.boletos antes de gravar
+  if(typeof CLOUD!=='undefined'&&CLOUD){pushCloud();renderFoot();return;}try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){if(window.toast)toast('Não foi possível salvar (armazenamento cheio ou bloqueado)');}renderFoot();}
 async function saveNow(){clearTimeout(window._cloudT);renderFoot();
   if(typeof CLOUD!=='undefined'&&CLOUD&&typeof sb!=='undefined'&&sb&&typeof ORG!=='undefined'&&ORG){
     try{localStorage.setItem(localBackupKey(),JSON.stringify({dados:DB,ts:Date.now()}));}catch(e){}
@@ -4286,7 +4287,7 @@ function finTabsPermitidas(tabs){if(!finSoLanc())return tabs;const ok=['lanc'];i
 function finTabAjustar(){if(!finSoLanc())return;const ok=finTabsPermitidas([['lanc'],['dre']]).map(t=>t[0]);if(!ok.includes(finTab))finTab='lanc';}
 function liqCobr(x){return +((+x.valor||0)+(+x.juros||0)+(+x.multa||0)-(+x.desconto||0)).toFixed(2);}
 function liqExtras(x){return !!(x&&((+x.juros||0)||(+x.multa||0)||(+x.desconto||0)));}
-function liqExtrasDe(x){const o={};if(+x.juros)o.juros=+(+x.juros).toFixed(2);if(+x.multa)o.multa=+(+x.multa).toFixed(2);if(+x.desconto)o.desconto=+(+x.desconto).toFixed(2);if(x.obs)o.obs=(''+x.obs).trim();return o;}
+function liqExtrasDe(x){const o={};if(+x.juros)o.juros=+(+x.juros).toFixed(2);if(+x.multa)o.multa=+(+x.multa).toFixed(2);if(+x.desconto)o.desconto=+(+x.desconto).toFixed(2);if(x.obs)o.obs=(''+x.obs).trim();if(x.bol&&(x.bol.linha||(x.bol.anexos||[]).length))o.bol=x.bol;return o;}
 function liqExtrasTxt(x){const p=[];if(+x.juros)p.push('juros '+fmtBRL(x.juros));if(+x.multa)p.push('multa '+fmtBRL(x.multa));if(+x.desconto)p.push('desconto '+fmtBRL(x.desconto));return p.join(' · ');}
 function pagtoPendentes(){const map=new Map();(DB.lancamentos||[]).forEach(l=>{if(!l||!l.pagtoPendente||l.autoTaxa)return;
     const k=nfKey(l.nfe)?('nf|'+nfKey(l.nfe)+'|'+(l.fornecedor||'').trim().toLowerCase()):('id|'+l.id);
@@ -4429,17 +4430,18 @@ function bolDeG(g){if(!g||g.vendas||!DB.boletos)return null;const k=bolChaveG(g)
 function bolDeConta(id){return (id&&DB.boletos)?(Object.values(DB.boletos).find(r=>r&&r.conta===id)||null):null;}
 function bolAlvoG(){const a=BOL_ALVO;return (a&&a.tipo==='g')?((window._liqG||[]).find(x=>x.key===a.key)||null):null;}
 function bolAlvoConta(){const a=BOL_ALVO;return (a&&a.tipo==='conta')?(((DB.fin||{})[a.chave]||[]).find(x=>x&&x.id===a.id)||null):null;}
-function bolAlvoRec(criar){const a=BOL_ALVO;if(!a)return null;const m=bolMapa();let r=null;
+function bolAlvoRasc(){const a=BOL_ALVO;return (a&&a.tipo==='rasc')?((((typeof lmRow==='function'?lmRow(a.i):null)||{}).parcelasLista||[])[a.k]||null):null;}
+function bolAlvoRec(criar){const a=BOL_ALVO;if(!a)return null;if(a.tipo==='rasc'){const x=bolAlvoRasc();if(!x)return null;if(!x.bol&&criar)x.bol={anexos:[]};return x.bol||null;}const m=bolMapa();let r=null;
   if(a.tipo==='g'){const g=bolAlvoG();if(!g)return null;r=bolDeG(g);if(!r&&criar){r={id:uid(),idx:g.idx,anexos:[]};m[r.id]=r;}if(r&&criar){r.k=bolChaveG(g);r.ids=[...new Set(g.ids)];}}
   else{const c=bolAlvoConta();if(!c)return null;r=bolDeConta(c.id);if(!r&&criar){r={id:uid(),conta:c.id,anexos:[]};m[r.id]=r;}}
   return r;}
-function bolAlvoInfo(){const a=BOL_ALVO;if(!a)return null;
+function bolAlvoInfo(){const a=BOL_ALVO;if(!a)return null;if(a.tipo==='rasc'){const x=bolAlvoRasc();return x?{valor:liqCobr(x),base:+x.valor||0,venc:x.data||'',pago:false,rec:false,oque:'parcela',nome:'Parcela '+(a.k+1)}:null;}
   if(a.tipo==='g'){const g=bolAlvoG();if(!g)return null;return {valor:g.valor,base:g.base,venc:g.data,pago:g.pago,rec:grupoTipo(g.itens[0].lanc.grupo)==='receita',oque:'parcela',nome:g.nome+(g.n>1?' · '+(g.idx+1)+'/'+g.n:'')};}
   const c=bolAlvoConta();if(!c)return null;return {valor:+c.valor||0,base:+c.valor||0,venc:c.vencimento||'',pago:!!(c.pago||c.recebido),rec:a.chave==='contasReceber',oque:'conta',nome:c.descricao||'Conta avulsa'};}
-function bolLimpaVazio(r){if(r&&!r.linha&&!(r.anexos||[]).length)delete bolMapa()[r.id];}
+function bolLimpaVazio(r){if(r&&r.id&&!r.linha&&!(r.anexos||[]).length)delete bolMapa()[r.id];}
 function bolNomeRec(r){if(!r)return '';if(r.conta){const c=((DB.fin||{}).contasPagar||[]).concat((DB.fin||{}).contasReceber||[]).find(x=>x&&x.id===r.conta);return c?(c.descricao||'conta avulsa')+(c.vencimento?' · vence '+fmtDataBR(c.vencimento):''):'conta avulsa apagada';}
   const l=(DB.lancamentos||[]).find(x=>(r.ids||[]).includes(x.id));if(!l)return 'nota apagada';const n=(l.liquidacoes||[]).length;const q=(l.liquidacoes||[])[+r.idx||0];return liqNome(l)+(n>1?' · '+((+r.idx||0)+1)+'/'+n:'')+(q&&q.data?' · vence '+fmtDataBR(q.data):'');}
-function bolOndeEsta(cod,menosId){return cod?Object.values(bolMapa()).filter(r=>r&&r.cod===cod&&r.id!==menosId):[];}
+function bolOndeEsta(cod,menosId){return cod?Object.values(bolMapa()).filter(r=>r&&r.cod===cod&&(!menosId||r.id!==menosId)):[];}
 function bolTam(b){b=+b||0;return b>=1048576?(b/1048576).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(b/1024))+' KB';}
 function bolH(t){return `<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--navy);font-weight:700;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--line)">${t}</div>`;}
 // resumo curto para a lista de parcelas: "boleto · 2 anexos"
@@ -4659,14 +4661,6 @@ function bolBuscaAvulsa(){const b=window._bolBusca;if(!b||!bolPode())return;DB.f
   DB.fin.contasPagar.push(row);BOL_ALVO={tipo:'conta',chave:'contasPagar',id:row.id};bolGravarEm(b);closeModal();bolIrPara(row.vencimento);
   bolContaModal('contasPagar',DB.fin.contasPagar.findIndex(x=>x&&x.id===row.id));toast('Conta avulsa criada. Ajuste a descrição e a categoria.',5000);}
 /* ----- conta avulsa: boleto e anexos ----- */
-function bolContaModal(chave,i){const row=((DB.fin||{})[chave]||[])[i];if(!row)return;if(!row.id){row.id=uid();save();}BOL_ALVO={tipo:'conta',chave,id:row.id};const pg=chave==='contasPagar';
-  modal(`<div class="modal-head"><h3>${pg?'Boleto e anexos':'Anexos'}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
-  <div class="modal-body">
-    <div style="font-size:15px;font-weight:700;margin-bottom:4px;overflow-wrap:anywhere">${esc(row.descricao||'Conta avulsa')}</div>
-    <div class="gp-mini">${row.vencimento?'vence '+fmtDataBR(row.vencimento)+' · ':''}${fmtBRL(row.valor||0)}${(row.pago||row.recebido)?' · '+(pg?'paga':'recebida'):''}</div>
-    <div id="bolSec">${bolSecHTML()}</div>
-  </div>
-  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fechar</button></div>`,true);}
 function bolSecG(g){BOL_ALVO={tipo:'g',key:g.key};return `<div id="bolSec">${bolSecHTML()}</div>`;}
 /* ===== Detalhe da parcela / boleto (12/11/2026): de Contas a Pagar/Receber, clicar na parcela mostra vencimento, situação,
    a nota de origem (fornecedor, NF, data, total, itens, quem definiu o pagamento), as outras parcelas da mesma nota e
@@ -5470,7 +5464,7 @@ function lmParcRender(i){const r=lmRow(i);const total=lmTotalLinha(r);
       <div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" id="pc_v_${k}" inputmode="numeric" value="${fmtMoneyInput(x.valor||0)}" oninput="moneyMask(this)" onchange="lmParcSet(${i},${k},'valor')" title="Valor da parcela (soma = valor da nota)"></div>
       ${ehMobile()?'':ex('juros','Juros')}${ehMobile()?'':ex('multa','Multa')}${ehMobile()?'':ex('desconto','Desconto')}
       ${ehMobile()?'':`<div class="pc-cob" id="pc_cob_${k}" title="Cobrança = valor + juros + multa − desconto">${fmtBRL(liqCobr(x))}</div>`}
-      <button class="btn btn-ghost btn-sm" title="Remover parcela" onclick="lmParcDel(${i},${k})" style="padding:4px 6px;color:var(--red)">✕</button>
+      <div style="display:flex;gap:4px;justify-content:flex-end">${(bolPode()&&!(lancDraft[0]&&grupoTipo(lancDraft[0].grupo)==='receita'))?`<button class="btn btn-ghost btn-sm" title="Boleto desta parcela: linha digitável, leitura por câmera e anexo${bolRascTem(x)?' (já informado)':''}" onclick="bolRascAbrir(${i},${k})" style="padding:4px 6px;${bolRascTem(x)?'color:#fff;background:var(--navy);border-color:var(--navy)':''}">▥</button>`:''}<button class="btn btn-ghost btn-sm" title="Remover parcela" onclick="lmParcDel(${i},${k})" style="padding:4px 6px;color:var(--red)">✕</button></div>
       ${ehMobile()?`<div class="pc-x">${ex('juros','Juros')}${ex('multa','Multa')}${ex('desconto','Desc.')}<div class="pc-cob" id="pc_cob_${k}" style="align-self:center">${fmtBRL(liqCobr(x))}</div></div>`:''}
     </div>`;}).join('')}
     ${lista.length?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
@@ -6565,6 +6559,94 @@ function contaToggle(key,i){if(!podeFinPagto())return toast('Só quem tem a perm
 function contaSetGrupo(key,i,g){const row=DB.fin[key][i];row.grupo=g;const subs=(DB.categorias[g]||{subs:[]}).subs;if(!subs.includes(row.sub))row.sub=subs[0]||'';
   if(row[key==='contasPagar'?'pago':'recebido'])syncContaLanc(key,row);save();viewFinanceiro();}
 function contaResync(key,i){const row=DB.fin[key][i];if(row[key==='contasPagar'?'pago':'recebido'])syncContaLanc(key,row);finTouch();}
+/* ===== Contas a pagar/receber em LISTA ÚNICA (12/11/2026) =====
+   Antes eram dois blocos: "Parcelas de lançamentos" (vêm de nota, já no DRE) e "Contas avulsas" (custo fixo recorrente ou digitada,
+   só entram no DRE ao dar baixa). Agora é uma lista só, por vencimento, com a origem em etiqueta: NOTA, CUSTO FIXO ou MANUAL.
+   A conta (custo fixo/manual) é editada no modal contaModal, com os mesmos gravadores de antes (contaResync, contaSetGrupo, cpVenc). */
+function cpListaHTML(key,parc,all,noPer){const isPagar=key==='contasPagar',cf=isPagar?'pago':'recebido',fLabel=isPagar?'Pago':'Recebido',hoje=hojeISO(),PR=finRange(),rng=finRangeAtivo(),mob=ehMobile();
+  const grupos=window._liqG=liqAgrupar(parc);const itens=[];
+  grupos.forEach((g,gi)=>itens.push({t:'nota',data:g.data||'',g,gi}));
+  all.forEach((row,i)=>{if(!row)return;if(((row.vencimento&&!noPer(row))||!finFiltroOk(row))&&!cpMostrar.has(row.id))return;itens.push({t:row.fromRec?'fixo':'manual',data:row.vencimento||'',row,i});});
+  itens.sort((a,b)=>(a.data||'9999-99-99').localeCompare(b.data||'9999-99-99')||((a.t==='nota'?0:1)-(b.t==='nota'?0:1)));
+  const gU='92px 1.8fr 112px 124px 1.1fr 112px 34px';
+  const ET={nota:['NOTA','tag-gray','Veio de uma nota já lançada. O valor já está no DRE na data da nota: dar baixa move só o Fluxo de Caixa.'],vendas:['VENDAS','tag-gray','Vendas já lançadas. Dar baixa registra a entrada do dinheiro no Fluxo de Caixa.'],
+    fixo:['CUSTO FIXO','tag-navy','Gerada pelo cadastro de Custos Fixos. Ainda não está no DRE: entra no DRE e no Fluxo quando você marca como '+fLabel.toLowerCase()+'.'],manual:['MANUAL','tag-gold','Conta lançada à mão. Ainda não está no DRE: entra no DRE e no Fluxo quando você marca como '+fLabel.toLowerCase()+'.']};
+  const etq=k=>`<span class="tag ${ET[k][1]}" style="font-size:9px;letter-spacing:.3px;white-space:nowrap" title="${esc(ET[k][2])}">${ET[k][0]}</span>`;
+  const btn=(feito,js,dica)=>`<button class="icon-btn" onclick="${js}" title="${esc(dica)}" style="white-space:nowrap;width:auto;padding:0 10px;${feito?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${feito?'✓ ':'○ '}${fLabel}</button>`;
+  const linha=it=>{let k,abre,desc,mini,venc,atras,valorH,cat,feito,baixa,selos='';
+    if(it.t==='nota'){const g=it.g;k=g.vendas?'vendas':'nota';abre=`liqDetalhe(${it.gi})`;desc=g.nome+(g.n>1?' · '+(g.idx+1)+'/'+g.n:'');feito=g.pago;atras=!g.pago&&g.data<hoje;venc=fmtDataBR(g.data);cat=g.cat;
+      selos=g.vendas?`<span class="tag tag-navy" style="font-size:9px;letter-spacing:.3px;flex:0 0 auto">${g.itens.length} VENDA${g.itens.length>1?'S':''}</span>`:g.itens.length>1?`<span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px;flex:0 0 auto">${g.itens.length} ITENS</span>`:'';
+      mini=liqMiniInfo(g)+bolSelo(bolDeG(g));
+      valorH=fmtBRL(g.valor)+(g.extras?` <span class="tag tag-gold" style="font-size:9px;padding:0 5px" title="${esc('Nota '+fmtBRL(g.base)+' · '+liqExtrasTxt(g.itens.map(x=>x.liq).reduce((a,x)=>({juros:(+a.juros||0)+(+x.juros||0),multa:(+a.multa||0)+(+x.multa||0),desconto:(+a.desconto||0)+(+x.desconto||0)}),{}))+' = cobrança '+fmtBRL(g.valor))}">J/M/D</span>`:'')+(g.obs?` <span title="${esc(g.obs)}" style="cursor:help">📝</span>`:'');
+      baixa=btn(feito,`liqTogglePagoMulti('${g.ids.join(',')}',${g.idx})`,(feito?'Desfazer a baixa':'Marcar como '+fLabel.toLowerCase())+(g.itens.length>1?' (todos os itens da nota)':''));}
+    else{const row=it.row;k=it.t;abre=`contaModal('${key}',${it.i})`;desc=row.descricao||'(sem descrição)';feito=!!row[cf];atras=!feito&&!!row.vencimento&&row.vencimento<hoje;
+      venc=row.vencimento?fmtDataBR(row.vencimento):'<span style="color:var(--amber)">sem vencimento</span>';cat=(row.grupo||'')+(row.sub?' · '+row.sub:'');
+      mini=(feito?'já no DRE e no Fluxo':'ainda fora do DRE')+(row.forma?' · '+esc(row.forma):'')+(row.vencimento&&!noPer(row)?' · <span style="color:var(--gold)">vence em outro mês</span>':'')+bolSelo(bolDeConta(row.id));
+      valorH=(+row.valor>0)?fmtBRL(row.valor):'<span style="color:var(--amber)">sem valor</span>';
+      baixa=btn(feito,`contaToggle('${key}',${it.i})`,feito?'Desfazer a baixa':'Marcar como '+fLabel.toLowerCase()+': lança no DRE e no Fluxo');}
+    const vencH=`<span style="${atras?'color:var(--red);font-weight:600':''}">${atras?'⚠ ':''}${venc}</span>`;
+    if(mob)return `<div style="padding:11px 0;border-bottom:1px solid var(--line)">
+        <div onclick="${abre}" style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;cursor:pointer"><div style="min-width:0;font-size:13.5px;font-weight:600;color:var(--navy);overflow-wrap:anywhere">${esc(desc)}</div><div style="font-size:14px;font-weight:700;white-space:nowrap">${valorH}</div></div>
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:7px"><div class="gp-mini" style="min-width:0;line-height:1.6">${etq(k)} ${vencH}${mini?' · '+mini:''}</div><div style="flex:0 0 auto">${baixa}</div></div></div>`;
+    return `<div class="comp-row" style="grid-template-columns:${gU};align-items:center">
+        <div>${etq(k)}</div>
+        <div onclick="${abre}" style="min-width:0;font-size:12.5px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;cursor:pointer" title="Abrir os detalhes · ${esc(desc)}"><span style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--navy);font-weight:600">${esc(desc)}</span>${selos}<span class="gp-mini" style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${mini}</span></div>
+        <div style="font-size:12.5px">${vencH}</div>
+        <div style="font-size:12.5px;font-weight:600">${valorH}</div>
+        <div style="font-size:11.5px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(cat)}">${esc(cat)}</div>
+        ${baixa}
+        <button class="icon-btn" title="Ver detalhes" onclick="${abre}" style="font-size:16px;font-weight:700">›</button>
+      </div>`;};
+  const a=liqAtrasadasAntes(isPagar?'pagar':'receber',PR.de);
+  return `${a.n?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${a.n}</b> parcela(s) anteriores a ${fmtDataBR(PR.de)} seguem sem baixa, somando <b>${fmtBRL(a.v)}</b>. Volte o período para regularizar.</div></div>`:''}
+    <div class="comp-row mob-head" style="grid-template-columns:${gU};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Origem</span><span>Descrição</span><span>Vencimento</span><span>Valor</span><span>Categoria</span><span>Situação</span><span></span></div>
+    ${itens.length?itens.map(linha).join(''):`<div style="font-size:13px;color:var(--soft);padding:10px 0 6px">Nenhuma conta ${isPagar?'a pagar':'a receber'} ${rng?'neste período':'neste mês'}${finFiltroAtivo()?' com esses filtros':''}.</div>`}
+    <button class="btn btn-ghost btn-sm" onclick="finAddConta('${key}')" style="margin-top:10px">${icoPlus} Nova conta</button>
+    <div style="font-size:11.5px;color:var(--soft);margin-top:10px;line-height:1.6">${isPagar?`${etq('nota')} já está no DRE desde a data da nota: dar baixa move só o Fluxo de Caixa. ${etq('fixo')} e ${etq('manual')} ainda não estão no DRE: entram no DRE e no Fluxo quando você marca como <b>pago</b>.`:`${etq('vendas')} e ${etq('nota')} já estão no DRE: dar baixa move só o Fluxo de Caixa. ${etq('manual')} ainda não está no DRE: entra no DRE e no Fluxo quando você marca como <b>recebido</b>.`}</div>`;}
+function finAddConta(key){DB.fin[key]=DB.fin[key]||[];const r=FIN_TEMPLATES[key]();if(!r.id)r.id=uid();DB.fin[key].push(r);cpMostrar.add(r.id);save();viewFinanceiro();contaModal(key,DB.fin[key].length-1);}
+function contaModalFechar(){closeModal();viewFinanceiro();}
+function contaModalExcluir(key,i){const row=((DB.fin||{})[key]||[])[i];if(!row)return;
+  if(key==='contasPagar'&&row.fromRec){closeModal();deleteConta(key,i);return;}   // custo fixo: o próprio Flow pergunta se apaga só este mês ou a recorrência
+  if(!confirm('Excluir a conta "'+(row.descricao||'sem descrição')+'"?'))return;closeModal();deleteConta(key,i);}
+function contaModal(key,i){const row=((DB.fin||{})[key]||[])[i];if(!row)return;if(!row.id){row.id=uid();save();}
+  const pg=key==='contasPagar',cf=pg?'pago':'recebido',feito=!!row[cf],fixo=!!row.fromRec;BOL_ALVO={tipo:'conta',chave:key,id:row.id};
+  const grupos=ordPt(Object.keys(DB.categorias||{})),subs=ordPt((DB.categorias[row.grupo]||{subs:[]}).subs);const at=v=>String(v==null?'':v).replace(/"/g,'&quot;');
+  modal(`<div class="modal-head"><h3>${pg?'Conta a pagar':'Conta a receber'}</h3><button class="x" onclick="contaModalFechar()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:12.5px;line-height:1.6;margin-bottom:14px"><span class="tag ${fixo?'tag-navy':'tag-gold'}" style="font-size:9px;letter-spacing:.3px">${fixo?'CUSTO FIXO':'MANUAL'}</span> ${fixo?'Gerada pelo cadastro de Custos Fixos'+(row.mesRef?' para '+esc(mesNomeYM(row.mesRef)):'')+'. Alterar aqui muda só este mês.':'Conta lançada à mão.'} ${feito?`<b style="color:var(--green)">${pg?'Paga':'Recebida'}: já está no DRE e no Fluxo.</b>`:`Ainda não está no DRE: entra no DRE e no Fluxo quando você marcar como ${pg?'paga':'recebida'}.`}</div>
+    <div class="field"><label>Descrição</label><input class="input" id="ct_desc" value="${at(row.descricao)}" placeholder="Ex.: Aluguel, energia, contador" oninput="DB.fin.${key}[${i}].descricao=this.value;contaResync('${key}',${i})"></div>
+    <div class="grid-2">
+      <div class="field"><label>Categoria</label><select class="input" onchange="contaSetGrupo('${key}',${i},this.value);contaModal('${key}',${i})">${grupos.map(g=>`<option ${g===row.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
+      <div class="field"><label>Subcategoria</label><select class="input" onchange="DB.fin.${key}[${i}].sub=this.value;contaResync('${key}',${i})">${subs.map(s=>`<option ${s===row.sub?'selected':''}>${esc(s)}</option>`).join('')||'<option value="">—</option>'}</select></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>Vencimento</label><input type="date" class="input" value="${at(row.vencimento)}" onchange="cpVenc('${key}',${i},this.value);bolSecRender()"></div>
+      <div class="field"><label>Valor</label><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(row.valor||0)}" oninput="DB.fin.${key}[${i}].valor=moneyMask(this);contaResync('${key}',${i})" onblur="bolSecRender()"></div></div>
+    </div>
+    <div class="field"><label>Forma de pagamento</label>${formaSelect(row.forma,`DB.fin.${key}[${i}].forma=this.value;contaResync('${key}',${i})`)}</div>
+    <div id="bolSec">${bolSecHTML()}</div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" style="color:var(--red);margin-right:auto" onclick="contaModalExcluir('${key}',${i})">Excluir</button><button class="btn btn-ghost" onclick="contaModalFechar()">Fechar</button><button class="btn ${feito?'btn-ghost':'btn-primary'}" onclick="contaToggle('${key}',${i});contaModal('${key}',${i})">${feito?'Desfazer a baixa':(pg?'Marcar como paga':'Marcar como recebida')}</button></div>`,true,true);}
+function bolContaModal(chave,i){contaModal(chave,i);}
+/* ===== Boleto já no lançamento da nota (12/11/2026) =====
+   Na tela de parcelamento cada parcela ganha o botão ▥. O boleto fica no rascunho da parcela (x.bol = {linha, cod, anexos}),
+   viaja junto pelos mesmos caminhos do juros/multa (liqExtrasDe) e, na primeira gravação, bolColher() o move para DB.boletos. */
+function bolRascTem(x){return !!(x&&x.bol&&(x.bol.linha||(x.bol.anexos||[]).length));}
+function bolRascAbrir(i,k){const x=((lmRow(i)||{}).parcelasLista||[])[k];if(!x)return;bolRascFechar(true);BOL_ALVO={tipo:'rasc',i,k};
+  const d=document.createElement('div');d.id='bolRasc';d.style.cssText='position:fixed;inset:0;z-index:1100;background:rgba(16,32,63,.5);display:flex;align-items:flex-start;justify-content:center;padding:34px 12px;overflow-y:auto';
+  d.innerHTML=`<div class="modal wide" style="max-width:720px"><div class="modal-head"><h3>Boleto da parcela ${k+1}</h3><button class="x" onclick="bolRascFechar()">${icoX}</button></div>
+    <div class="modal-body"><div style="font-size:12.5px;color:var(--muted)">Vence em ${fmtDataBR(x.data)} · ${fmtBRL(liqCobr(x))}. O boleto e os anexos ficam guardados quando você salvar o lançamento.</div><div id="bolSec">${bolSecHTML()}</div></div>
+    <div class="modal-foot"><button class="btn btn-primary" onclick="bolRascFechar()">Concluir</button></div></div>`;
+  document.body.appendChild(d);}
+function bolRascFechar(semRender){const d=document.getElementById('bolRasc');if(d)d.remove();if(BOL_ALVO&&BOL_ALVO.tipo==='rasc'){const i=BOL_ALVO.i;BOL_ALVO=null;if(!semRender){try{if(document.querySelector('#modalRoot .pc-row')||document.getElementById('pc_n'))lmParcRender(i);}catch(e){}}}}
+function bolColher(){if(!Array.isArray(DB.lancamentos))return 0;let n=0;
+  DB.lancamentos.forEach(l=>{if(!l||!Array.isArray(l.liquidacoes))return;l.liquidacoes.forEach((q,idx)=>{if(!q||!q.bol)return;const d=q.bol;delete q.bol;if(!d||(!d.linha&&!(d.anexos||[]).length))return;
+    const m=bolMapa();const k=nfKey(l.nfe)?'nf|'+nfKey(l.nfe)+'|'+(l.fornecedor||'').trim().toLowerCase():'id|'+l.id;const ids=nfKey(l.nfe)?notaItens(l.nfe,l.fornecedor).map(x=>x.id):[l.id];if(!ids.includes(l.id))ids.push(l.id);
+    let r=Object.values(m).find(x=>x&&!x.conta&&(+x.idx||0)===idx&&(x.k===k||(x.ids||[]).some(id=>ids.includes(id))));
+    if(!r){r={id:uid(),idx,anexos:[]};m[r.id]=r;}
+    r.k=k;r.ids=[...new Set([...(r.ids||[]),...ids])];if(d.linha){r.linha=d.linha;r.cod=d.cod;r.em=d.em||hojeISO();r.por=d.por||quemSou();}
+    r.anexos=(r.anexos||[]).concat((d.anexos||[]).filter(a=>a&&a.path&&!(r.anexos||[]).some(b=>b.path===a.path)));n++;});});
+  return n;}
 function finContas(key){
   const isPagar=key==='contasPagar';const cf=isPagar?'pago':'recebido';const fLabel=isPagar?'Pago':'Recebido';
   const ym=curYM();
@@ -6575,43 +6657,9 @@ function finContas(key){
   const total=noMes.reduce((s,c)=>s+(c.valor||0),0);
   const aberto=noMes.filter(c=>!c[cf]).reduce((s,c)=>s+(c.valor||0),0);
   const feito=noMes.filter(c=>c[cf]).reduce((s,c)=>s+(c.valor||0),0);
-  const gC='1.5fr 1.2fr 1.2fr 142px 124px 128px 108px 100px';
-  const linhas=all.map((row,i)=>{if(((row.vencimento&&!noPer(row))||!finFiltroOk(row))&&!cpMostrar.has(row.id))return '';const subs=ordPt((DB.categorias[row.grupo]||{subs:[]}).subs);return `
-    <div class="comp-row cf-row" style="grid-template-columns:${gC};align-items:center">
-      <div class="cf"><span class="cf-l">Descrição</span><input class="input" value="${(row.descricao||'').replace(/"/g,'&quot;')}" placeholder="Descrição" oninput="DB.fin.${key}[${i}].descricao=this.value;contaResync('${key}',${i})"></div>
-      <div class="cf"><span class="cf-l">Grupo</span><select class="input" onchange="contaSetGrupo('${key}',${i},this.value)">${grupos.map(g=>`<option ${g===row.grupo?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
-      <div class="cf"><span class="cf-l">Subcategoria</span><select class="input" onchange="DB.fin.${key}[${i}].sub=this.value;contaResync('${key}',${i})">${subs.map(s=>`<option ${s===row.sub?'selected':''}>${esc(s)}</option>`).join('')||'<option value="">—</option>'}</select></div>
-      <div class="cf"><span class="cf-l">Vencimento</span><input type="date" class="input" value="${row.vencimento||''}" ${row.vencimento&&ymOf(row.vencimento)!==ym?'style="border-color:var(--gold)" title="Vence em outro mês: aparece na lista do mês dela"':''} onchange="cpVenc('${key}',${i},this.value)"></div>
-      <div class="cf"><span class="cf-l">Valor</span><div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(row.valor||0)}" oninput="DB.fin.${key}[${i}].valor=moneyMask(this);contaResync('${key}',${i})" onblur="viewFinanceiro()"></div></div>
-      <div class="cf"><span class="cf-l">Forma</span>${formaSelect(row.forma,`DB.fin.${key}[${i}].forma=this.value;contaResync('${key}',${i})`)}</div>
-      <div class="cf"><span class="cf-l">${fLabel}</span><button class="icon-btn" onclick="contaToggle('${key}',${i})" title="Marcar como ${fLabel.toLowerCase()}" style="white-space:nowrap;width:auto;padding:0 10px;${row[cf]?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${row[cf]?'✓ ':'○ '}${fLabel}</button></div>
-      <div class="cf-acts"><button class="icon-btn" title="${isPagar?'Boleto, código de barras e anexos':'Anexos'} desta conta" onclick="bolContaModal('${key}',${i})" style="width:auto;padding:0 7px;font-size:12px;${bolDeConta(row.id)?'color:var(--navy);border-color:var(--navy);background:var(--bg)':''}">📎</button><button class="icon-btn" title="Parcelar esta conta (qualquer quantidade de parcelas, ex.: 24x)" onclick="contaParcelarModal('${key}',${i})" style="width:auto;padding:0 6px;font-size:10px;font-weight:700;letter-spacing:.3px">${row.parcGrupo?esc(row.parcN||'')+'x':'÷'}</button><button class="mini-del" onclick="deleteConta('${key}',${i})">${icoX}</button></div>
-    </div>`;}).join('');
   const parc=liqDoPeriodo(isPagar?'pagar':'receber',PR.de,PR.ate).filter(x=>finFiltroOk(x.lanc));
   const pAberto=parc.filter(x=>!x.liq.pago).reduce((s,x)=>s+liqCobr(x.liq),0);
   const pFeito=parc.filter(x=>x.liq.pago).reduce((s,x)=>s+liqCobr(x.liq),0);
-  const hoje=hojeISO();
-  const gP='1.7fr 132px 118px 130px 118px 40px';
-  const blocoParcelas=!parc.length?'':`
-    <div style="margin-bottom:18px">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">
-        <div style="font-size:13px;font-weight:700">Parcelas de lançamentos</div>
-        <span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px" title="O valor já foi contabilizado no DRE na data do fato (entrada da nota). Dar baixa aqui move só o Fluxo de Caixa.">JÁ NO DRE</span>
-      </div>
-      <div style="font-size:11.5px;color:var(--muted);margin-bottom:9px">Vêm das compras e vendas já lançadas. Dar baixa <b>não lança de novo no DRE</b>: apenas registra que o dinheiro entrou ou saiu.</div>
-      ${(function(){const a=liqAtrasadasAntes(isPagar?'pagar':'receber',PR.de);return a.n?`<div class="alert alert-amber" style="margin-bottom:10px">${icoWarn}<div><b>${a.n}</b> parcela(s) anteriores a ${fmtDataBR(PR.de)} seguem sem baixa, somando <b>${fmtBRL(a.v)}</b>. Volte o período para regularizar.</div></div>`:'';})()}
-      <div class="comp-row mob-head" style="grid-template-columns:${gP};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Origem</span><span>Vencimento</span><span>Valor</span><span>Categoria</span><span>Situação</span><span></span></div>
-      ${(window._liqG=liqAgrupar(parc)).map((g,gi)=>{const atras=!g.pago&&g.data<hoje;
-        const desc=g.nome+(g.n>1?' · '+(g.idx+1)+'/'+g.n:'');
-        return `<div class="comp-row" style="grid-template-columns:${gP};align-items:center">
-        <div onclick="liqDetalhe(${gi})" style="min-width:0;font-size:12.5px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;cursor:pointer" title="Abrir os detalhes desta parcela e a nota de origem · ${esc(desc)}${g.vendas?' · '+g.itens.length+' venda(s) de '+fmtDataBR(g.itens.map(x=>x.lanc.data).sort()[0])+' a '+fmtDataBR(g.itens.map(x=>x.lanc.data).sort().slice(-1)[0]):g.itens.length>1?' · '+g.itens.length+' itens da nota':''}"><span style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--navy);font-weight:600">${esc(desc)}</span>${g.vendas?`<span class="tag tag-navy" style="font-size:9px;letter-spacing:.3px;flex:0 0 auto">${g.itens.length} VENDA${g.itens.length>1?'S':''}</span>`:g.itens.length>1?`<span class="tag tag-gray" style="font-size:9px;letter-spacing:.3px;flex:0 0 auto">${g.itens.length} ITENS</span>`:''}<span class="gp-mini" style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${liqMiniInfo(g)}${bolSelo(bolDeG(g))}</span></div>
-        <div style="font-size:12.5px;${atras?'color:var(--red);font-weight:600':''}">${atras?'⚠ ':''}${fmtDataBR(g.data)}</div>
-        <div style="font-size:12.5px;font-weight:600" title="${g.extras?'Nota '+fmtBRL(g.base)+' · '+esc(liqExtrasTxt(g.itens.map(x=>x.liq).reduce((a,x)=>({juros:(+a.juros||0)+(+x.juros||0),multa:(+a.multa||0)+(+x.multa||0),desconto:(+a.desconto||0)+(+x.desconto||0)}),{})))+' = cobrança '+fmtBRL(g.valor):''}">${fmtBRL(g.valor)}${g.extras?' <span class="tag tag-gold" style="font-size:9px;padding:0 5px">J/M/D</span>':''}${g.obs?` <span title="${esc(g.obs)}" style="cursor:help">📝</span>`:''}</div>
-        <div style="font-size:11.5px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(g.cat)}">${esc(g.cat)}</div>
-        <button class="icon-btn" onclick="liqTogglePagoMulti('${g.ids.join(',')}',${g.idx})" title="${g.pago?'Desfazer a baixa':'Marcar como '+fLabel.toLowerCase()}${g.itens.length>1?' (todos os itens da nota)':''}" style="white-space:nowrap;width:auto;padding:0 10px;${g.pago?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${g.pago?'✓ ':'○ '}${fLabel}</button>
-        <button class="icon-btn mob-hide" title="Ver detalhes e a nota de origem" onclick="liqDetalhe(${gi})" style="font-size:16px;font-weight:700">›</button>
-      </div>`;}).join('')}
-    </div>`;
   return `<div class="card card-pad" style="max-width:1220px">
     <div class="section-head" style="flex-wrap:wrap;gap:10px"><div><div class="ttl">${isPagar?'Contas a Pagar':'Contas a Receber'}</div><div class="desc">Previsão do que ainda ${isPagar?'sai':'entra'}. Dar baixa registra o dinheiro no Fluxo de Caixa, sem lançar de novo no DRE.</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${isPagar&&bolPode()?`<button class="btn btn-primary btn-sm" onclick="bolBuscarModal()" title="Leia o boleto com o leitor de código de barras, com a câmera ou cole a linha digitável: o Flow acha de qual parcela ele é">▥ Ler boleto</button>`:''}<button class="btn btn-ghost btn-sm" onclick="cpImprimirModal('${isPagar?'pagar':'receber'}')" title="Lista de um dia ou período para imprimir ou salvar em PDF">🖨️ ${isPagar?'Imprimir pagamentos':'Imprimir recebimentos'}</button>${finPeriodoHTML()}</div></div>
@@ -6622,13 +6670,7 @@ function finContas(key){
     </div>
     ${finFiltroBarHTML()}
     ${isPagar?pagtoPendHTML(false):''}
-    ${blocoParcelas}
-    <div style="font-size:13px;font-weight:700;margin-bottom:3px">Contas avulsas</div>
-    <div style="font-size:11.5px;color:var(--muted);margin-bottom:9px">Compromissos que ainda não viraram lançamento.</div>
-    <div class="comp-row mob-head" style="grid-template-columns:${gC};font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 4px"><span>Descrição</span><span>Grupo</span><span>Subcategoria</span><span>Vencimento</span><span>Valor</span><span>Forma</span><span>${fLabel}</span><span></span></div>
-    ${linhas||`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhuma conta avulsa ${rng?'neste período':'neste mês'}${finFiltroAtivo()?' com esses filtros':''}.</div>`}
-    <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:8px">${icoPlus} Adicionar conta avulsa</button>
-    <div style="font-size:11.5px;color:var(--soft);margin-top:8px">Conta avulsa é o que <b>ainda não foi lançado</b> (ex.: aluguel do mês que vem). Ao marcar <b>${fLabel}</b>, ela entra no DRE e no Fluxo. As parcelas acima já estão no DRE e só movem o Fluxo.</div>
+    ${cpListaHTML(key,parc,all,noPer)}
   </div>`;
 }
 function pad2(n){return String(n).padStart(2,'0');}
