@@ -2931,10 +2931,11 @@ function gerenciarCategorias(t){catTab=t||catTab||'insumo';dbCats();DB.fin=DB.fi
   const tabs=(catTab==='prato')?[['prato','Pratos']]:[['insumo','Produtos'],['fornecedor','Fornecedores']];
   let body='';
   if(catTab==='fornecedor'){
-    const fs=DB.fin.fornecedores;
+    const fs=DB.fin.fornecedores;const docsNota=fornDocsDasNotas();
     body=`<div style="display:flex;gap:8px;margin-bottom:6px"><input class="input" id="cat_new" placeholder="Novo fornecedor..." onkeydown="if(event.key==='Enter')addCatItem()"><button class="btn btn-primary" style="padding:0 18px" onclick="addCatItem()">${icoPlus}</button></div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:13px">Os fornecedores ficam disponíveis ao cadastrar um insumo. A <b>condição de pagamento</b> é aplicada sozinha nos lançamentos desse fornecedor (ex.: 3x a cada 30 dias).</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:13px">Os fornecedores ficam disponíveis ao cadastrar um insumo. A <b>condição de pagamento</b> é aplicada sozinha nos lançamentos desse fornecedor (ex.: 3x a cada 30 dias). O <b>CNPJ</b> aparece na janela do boleto, para filtrar no DDA do banco; em cinza, o que veio das notas da Sefaz.</div>
     <div class="cat-scroll">${fs.length?fs.map(f=>`<div class="cat-row" style="flex-wrap:wrap;gap:8px"><span style="flex:1 1 150px;min-width:0">${esc(f.nome||'(sem nome)')}</span>
+      <input class="input" style="flex:0 1 178px;min-width:140px;padding:5px 8px;font-size:12.5px" inputmode="text" autocomplete="off" spellcheck="false" placeholder="${esc(docFmt(docsNota[(f.nome||'').trim().toLowerCase()]||'')||'CNPJ ou CPF')}" value="${esc(docFmt(f.cnpj||''))}" onchange="fornCnpjCampo('${f.id}',this)" aria-label="CNPJ de ${esc(f.nome||'')}">
       <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--soft)">Pagamento
         <select class="input" style="width:96px;padding:5px 7px" onchange="fornCondSet('${f.id}','condN',this.value)"><option value="">à vista</option>${Array.from({length:12},(_,k)=>k+1).map(n=>`<option value="${n}" ${(+f.condN||0)===n?'selected':''}>${n}x</option>`).join('')}</select>
         <select class="input" style="width:100px;padding:5px 7px" ${+f.condN>0?'':'disabled'} onchange="fornCondSet('${f.id}','condIv',this.value)">${[['30','30 dias'],['M','mensal'],['15','15 dias'],['7','7 dias'],['14','14 dias'],['21','21 dias'],['28','28 dias'],['45','45 dias'],['60','60 dias']].map(([v,l])=>`<option value="${v}" ${(f.condIv||'30')===v?'selected':''}>${l}</option>`).join('')}</select></span>
@@ -4686,6 +4687,72 @@ function liqIrParaNota(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l
   if(!finRangeAtivo()&&l.data)lancYM=ymOf(l.data);
   lancAba='feitos';finTab='lanc';viewFinanceiro();try{window.scrollTo(0,0);}catch(e){}
   toast(nfKey(l.nfe)?'Nota NF '+l.nfe+' em Lançamentos Realizados':'Lançamento de origem em Lançamentos Realizados');}
+/* ===== CNPJ do beneficiário e pagamento em lote pelo DDA (16/11/2026, pedido de cliente por áudio) =====
+   Quem paga pelo DDA do banco filtra os boletos por período e pelo CNPJ do beneficiário e paga vários de uma vez.
+   O Flow mostra o CNPJ do fornecedor na janela da parcela (com botão de copiar), lista os outros boletos em aberto dele
+   e deixa dar baixa em vários de uma vez. O CNPJ fica no cadastro do fornecedor (fin.fornecedores[].cnpj); quando não foi
+   informado, vem da chave das notas da Sefaz desse fornecedor. Aceita CPF e o CNPJ novo, com letras. */
+function docLimpo(s){return String(s==null?'':s).toUpperCase().replace(/[^0-9A-Z]/g,'');}
+function docValido(s){const d=docLimpo(s);
+  if(/^\d{11}$/.test(d)){if(/^(\d)\1+$/.test(d))return false;const dv=n=>{let t=0;for(let i=0;i<n;i++)t+=+d[i]*(n+1-i);const r=(t*10)%11;return r===10?0:r;};return dv(9)===+d[9]&&dv(10)===+d[10];}
+  if(/^[0-9A-Z]{12}\d{2}$/.test(d)){if(/^(.)\1+$/.test(d))return false;const dv=n=>{let t=0,p=n-7;for(let i=0;i<n;i++){t+=(d.charCodeAt(i)-48)*p--;if(p<2)p=9;}const r=t%11;return r<2?0:11-r;};return dv(12)===+d[12]&&dv(13)===+d[13];}
+  return false;}
+function docFmt(s){const d=docLimpo(s);return d.length===14?d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12):d.length===11?d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9):d;}
+function copiarTxt(t,msg){const ok=()=>toast(msg||'Copiado');const velho=()=>{const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;opacity:0;top:0;left:0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');ok();}catch(e){toast('Não foi possível copiar. Selecione e copie.');}ta.remove();};
+  try{if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(ok,velho);else velho();}catch(e){velho();}}
+function fornReg(nome){const n=(nome||'').trim().toLowerCase();if(!n)return null;return ((DB.fin&&DB.fin.fornecedores)||[]).find(x=>(x.nome||'').trim().toLowerCase()===n)||null;}
+// CNPJ do emitente pela chave das notas (posições 7 a 20). Série 890 a 899 é nota avulsa emitida pela própria Sefaz: o CNPJ da chave não é do fornecedor.
+function fornDocsDasNotas(){const m={};(DB.lancamentos||[]).forEach(l=>{const n=(l.fornecedor||'').trim().toLowerCase();if(!n||!l.nfeChave)return;const k=String(l.nfeChave).replace(/\D/g,'');if(k.length!==44)return;const serie=+k.slice(22,25);if(serie>=890&&serie<=899)return;const d=k.slice(6,20);if(!docValido(d))return;(m[n]=m[n]||{})[d]=((m[n]||{})[d]||0)+1;});
+  const out={};Object.keys(m).forEach(n=>{out[n]=Object.keys(m[n]).sort((a,b)=>m[n][b]-m[n][a])[0];});return out;}
+function fornDoc(nome,mapa){const f=fornReg(nome);if(f&&f.cnpj&&docValido(f.cnpj))return {doc:docLimpo(f.cnpj),fonte:'cadastro'};const d=(mapa||fornDocsDasNotas())[(nome||'').trim().toLowerCase()]||'';return d?{doc:d,fonte:'nota'}:{doc:'',fonte:''};}
+function fornDocSet(nome,doc){nome=(nome||'').trim();if(!nome)return false;const d=docLimpo(doc);if(d&&!docValido(d)){toast('CNPJ ou CPF inválido. Confira os números.',5000);return false;}
+  ensureFornecedor(nome);const f=fornReg(nome);if(!f)return false;if(d)f.cnpj=d;else delete f.cnpj;return true;}
+function fornCnpjCampo(id,el){const f=((DB.fin&&DB.fin.fornecedores)||[]).find(x=>x.id===id);if(!f)return;const d=docLimpo(el.value);
+  if(d&&!docValido(d)){toast('CNPJ ou CPF inválido. Confira os números.',5000);el.value=docFmt(f.cnpj||'');return;}
+  if(d)f.cnpj=d;else delete f.cnpj;el.value=docFmt(d);save();toast(d?'CNPJ guardado no fornecedor':'CNPJ removido');}
+let BEN_SEL=new Set(),BEN_FORN='',BEN_EDITA=false;
+function benNome(g){const l=g&&g.itens&&g.itens[0]&&g.itens[0].lanc;return (!l||g.vendas||grupoTipo(l.grupo)==='receita')?'':(l.fornecedor||'').trim();}
+function benAbertos(nome){const n=(nome||'').trim().toLowerCase();if(!n)return [];return bolGruposAbertos().filter(g=>!g.pago&&benNome(g).toLowerCase()===n).sort((a,b)=>(a.data||'').localeCompare(b.data||''));}
+function benAtual(){return (window._liqG||[]).find(x=>x.key===liqDetKey)||null;}
+function benSecG(g){return `<div id="benSec">${benSecHTML(g)}</div>`;}
+function benSecRender(){const el=document.getElementById('benSec');const g=benAtual();if(el&&g)el.innerHTML=benSecHTML(g);}
+function benSecHTML(g){const nome=benNome(g);if(!nome)return '';
+  if(BEN_FORN!==nome.toLowerCase()){BEN_FORN=nome.toLowerCase();BEN_SEL=new Set();BEN_EDITA=false;}
+  const fd=fornDoc(nome);const edita=bolPode();const hoje=hojeISO();
+  let h=bolH('Beneficiário · para achar no DDA do banco');
+  if(fd.doc&&!BEN_EDITA){
+    h+=`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:16px;font-weight:700;user-select:all">${esc(docFmt(fd.doc))}</div>
+        <button class="btn btn-primary btn-sm" onclick="copiarTxt('${esc(fd.doc)}','${docLimpo(fd.doc).length===11?'CPF':'CNPJ'} copiado')">Copiar ${docLimpo(fd.doc).length===11?'CPF':'CNPJ'}</button>
+        ${edita?`<button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="BEN_EDITA=true;benSecRender()">Alterar</button>`:''}</div>
+      ${fd.fonte==='nota'?`<div class="gp-mini" style="margin-top:6px">É o CNPJ de quem emitiu as notas de ${esc(nome)}. Se o boleto sai em nome de outra empresa, clique em Alterar.</div>`:''}`;
+  }else if(edita){
+    h+=`<div style="display:flex;gap:8px;flex-wrap:wrap"><input class="input" id="ben_doc" inputmode="text" autocomplete="off" spellcheck="false" placeholder="CNPJ ou CPF do beneficiário" value="${esc(docFmt(fd.doc))}" onkeydown="if(event.key==='Enter'){event.preventDefault();benSalvarDoc();}" style="flex:1 1 200px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px">
+        <button class="btn btn-primary btn-sm" onclick="benSalvarDoc()">Guardar</button>${BEN_EDITA?`<button class="btn btn-ghost btn-sm" onclick="BEN_EDITA=false;benSecRender()">Cancelar</button>`:''}</div>
+      <div class="gp-mini" style="margin-top:6px">Informe uma vez: fica guardado em ${esc(nome)} e aparece em todos os boletos dele.</div>`;
+  }else h+=`<div class="gp-mini">O CNPJ de ${esc(nome)} ainda não foi informado.</div>`;
+  const ab=window._benG=benAbertos(nome);
+  if(ab.length>1||(ab.length===1&&ab[0].key!==g.key)){
+    const sel=ab.filter(x=>BEN_SEL.has(x.key));const base=sel.length?sel:ab;const tot=base.reduce((s,x)=>s+x.valor,0);const de=base[0].data,ate=base[base.length-1].data;const pagto=podeFinPagto();
+    h+=`<div style="font-size:13px;font-weight:600;margin:16px 0 4px">${ab.length} boleto${ab.length>1?'s':''} em aberto deste fornecedor · ${fmtBRL(ab.reduce((s,x)=>s+x.valor,0))}</div>
+      <div class="gp-mini" style="margin-bottom:8px">No DDA, filtre de <b>${fmtDataBR(de)}</b> a <b>${fmtDataBR(ate)}</b> com o CNPJ acima para ver ${sel.length===1?'o boleto marcado':sel.length?'os '+sel.length+' marcados':'todos eles'} (${fmtBRL(tot)}) e pagar de uma vez.</div>
+      ${ab.map((x,i)=>{const l=x.itens[0].lanc;const venc=x.data<hoje;return `<div style="display:grid;grid-template-columns:${pagto?'26px ':''}1fr auto;gap:8px;align-items:center;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)">
+        ${pagto?`<input type="checkbox" ${BEN_SEL.has(x.key)?'checked':''} onchange="benMarca(${i},this.checked)" style="width:17px;height:17px" aria-label="Marcar este boleto">`:''}
+        <span ${x.key===g.key?'':`onclick="benAbrir(${i})" title="Abrir este boleto"`} style="min-width:0;${x.key===g.key?'font-weight:700':'cursor:pointer'}"><span style="${venc?'color:var(--red)':''}">${fmtDataBR(x.data)}</span>${l.nfe?' · NF '+esc(l.nfe):''}${x.n>1?' · '+(x.idx+1)+'/'+x.n:''}${x.key===g.key?' <span class="tag tag-navy" style="font-size:9px;padding:0 5px">ESTE</span>':''}${bolSelo(bolDeG(x))}</span>
+        <b style="white-space:nowrap">${fmtBRL(x.valor)}</b></div>`;}).join('')}
+      ${pagto?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px"><button class="btn btn-ghost btn-sm" onclick="benMarcaTodos()">${sel.length===ab.length?'Desmarcar todos':'Marcar todos'}</button>
+        <button class="btn btn-primary btn-sm" ${sel.length?'':'disabled style="opacity:.5"'} onclick="benBaixar()">Dar baixa ${sel.length?(sel.length===1?'no marcado':'nos '+sel.length+' marcados')+' · '+fmtBRL(sel.reduce((s,x)=>s+x.valor,0)):'nos marcados'}</button></div>`:''}`;
+  }
+  return h;}
+function benSalvarDoc(){const g=benAtual();const el=document.getElementById('ben_doc');if(!g||!el)return;const nome=benNome(g);const d=docLimpo(el.value);
+  if(!d&&!BEN_EDITA)return toast('Informe o CNPJ ou o CPF');if(!fornDocSet(nome,d))return;BEN_EDITA=false;save();benSecRender();toast(d?'CNPJ guardado em '+nome:'CNPJ removido de '+nome);}
+function benMarca(i,on){const x=(window._benG||[])[i];if(!x)return;if(on)BEN_SEL.add(x.key);else BEN_SEL.delete(x.key);benSecRender();}
+function benMarcaTodos(){const ab=window._benG||[];if(ab.length&&ab.every(x=>BEN_SEL.has(x.key)))BEN_SEL=new Set();else BEN_SEL=new Set(ab.map(x=>x.key));benSecRender();}
+function benAbrir(i){const x=(window._benG||[])[i];if(!x)return;const acha=()=>(window._liqG||[]).findIndex(y=>y.key===x.key);let j=acha();if(j<0){bolIrPara(x.data);j=acha();}if(j<0)return toast('Não encontrei esse boleto na lista');liqDetalhe(j);}
+function benBaixar(){if(!podeFinPagto())return toast('Só quem tem a permissão "definir pagamentos" dá baixa');const gs=(window._benG||[]).filter(x=>BEN_SEL.has(x.key)&&!x.pago);if(!gs.length)return toast('Marque os boletos que foram pagos');
+  const tot=gs.reduce((s,x)=>s+x.valor,0);if(!confirm('Dar baixa em '+gs.length+' boleto'+(gs.length>1?'s':'')+' como pago'+(gs.length>1?'s':'')+' hoje, somando '+fmtBRL(tot)+'?'))return;
+  const hoje=hojeISO();let n=0;gs.forEach(x=>{let mexeu=false;x.ids.forEach(id=>{const l=(DB.lancamentos||[]).find(y=>y.id===id);const q=l&&(l.liquidacoes||[])[x.idx];if(q&&!q.pago){q.pago=true;q.pagoEm=hoje;mexeu=true;}});if(mexeu)n++;});
+  BEN_SEL=new Set();save();viewFinanceiro();toast(n+' boleto'+(n>1?'s baixados, entraram':' baixado, entrou')+' no Fluxo de Caixa',5000);
+  const g=benAtual();if(g)liqDetalheRender(g);else closeModal();}
 function liqDetalheRender(g){const l=g.itens[0].lanc;const rec=grupoTipo(l.grupo)==='receita';
   const C=(t,v)=>`<div style="min-width:0"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;margin-bottom:2px">${t}</div><div style="font-size:13.5px;font-weight:600;overflow-wrap:anywhere">${v}</div></div>`;
   const G=x=>`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:12px 16px">${x}</div>`;
@@ -4709,7 +4776,7 @@ function liqDetalheRender(g){const l=g.itens[0].lanc;const rec=grupoTipo(l.grupo
   modal(`<div class="modal-head"><h3>${g.vendas?'Recebimento':'Parcela '+(g.idx+1)+' de '+g.n}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div style="font-size:15px;font-weight:700;margin-bottom:12px;overflow-wrap:anywhere">${esc(g.nome)}</div>
-    ${parcela}${g.vendas?'':bolSecG(g)}${meio}
+    ${parcela}${g.vendas?'':bolSecG(g)}${g.vendas?'':benSecG(g)}${meio}
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fechar</button>${podeFinPagto()?`<button class="btn ${g.pago?'btn-ghost':'btn-primary'}" onclick="liqDetalheBaixa()">${g.pago?'Desfazer a baixa':(rec?'Marcar como recebida':'Marcar como paga')}</button>`:''}</div>`,true);}
 function liqTogglePagoMulti(ids,idx){if(!podeFinPagto())return toast('Só quem tem a permissão "definir pagamentos" dá baixa');const ls=(''+ids).split(',').map(id=>(DB.lancamentos||[]).find(x=>x.id===id)).filter(Boolean);if(!ls.length)return;
@@ -9985,7 +10052,7 @@ function datasAnoCorrigir(){if(!podeFinNota())return toast('Sem permissão para 
   save();closeModal();viewFinanceiro();toast(n+' lançamento'+(n===1?' corrigido':'s corrigidos')+' para '+anoN,5000);}
 /* versão nova publicada: avisa quem ficou com a aba aberta (12/11: aba antiga quase estragou as fichas de dose).
    SÓ em atualização maior: VER_MAIOR sobe junto com o arquivo versao.json do site. Ajuste pequeno não mexe em nenhum dos dois e ninguém é avisado. */
-const VER_MAIOR='2026-11-12';
+const VER_MAIOR='2026-11-16';
 let VER_ETAG=null;
 async function verChecar(forcar){if(!forcar&&(!/^https?:$/.test(location.protocol)||/^(localhost|127\.|\[::1\])/.test(location.hostname)))return;
   try{if(VER_ETAG===null){VER_ETAG='';try{const h=await fetch(location.pathname+'?v='+Date.now(),{method:'HEAD',cache:'no-store'});if(h.ok)VER_ETAG=h.headers.get('etag')||h.headers.get('last-modified')||'';}catch(e){}}
@@ -9997,6 +10064,20 @@ function verAviso(){if(document.getElementById('verAviso'))return;const d=docume
   d.innerHTML='<span>Saiu uma versão nova do Flow.</span><button class="btn btn-sm" style="background:#fff;color:var(--navy);font-weight:700;border:0" onclick="verAtualizar()">Atualizar agora</button><button style="background:none;border:0;color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:0 4px" onclick="this.parentElement.remove()" aria-label="Depois" title="Depois">×</button>';
   document.body.appendChild(d);}
 setTimeout(verChecar,4000);setInterval(verChecar,10*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)verChecar();});
+/* novidades: aviso curto do que mudou numa atualização maior. Aparece uma vez por pessoa em cada aparelho, só para quem usa aquela parte, e some sozinho depois da data "ate". */
+const NOVIDADES=[{id:'2026-11-16-boletos-fornecedor',ate:'2026-12-20',titulo:'Novidade: boletos por fornecedor',
+  texto:'Em Contas a Pagar, abra um boleto. Agora aparecem o CNPJ do fornecedor para copiar e colar no DDA do banco, os outros boletos em aberto dele e a baixa de vários de uma vez.',
+  rotulo:'Abrir Contas a Pagar',pode:()=>podeFinPagto()||podeFinNota(),ir:()=>{finTab='pagar';go('financeiro');}}];
+function novChave(n){return 'flow_nov_'+n.id+'_'+String((PERFIL&&PERFIL.id)||'')+'_'+String(MEMBRO_NOME||'');}
+function novVista(n){try{return localStorage.getItem(novChave(n))==='1';}catch(e){return true;}}   // sem armazenamento no navegador, não insiste
+function novFechar(id,ir){const n=NOVIDADES.find(x=>x.id===id);const el=document.getElementById('novAviso');if(el)el.remove();if(!n)return;try{localStorage.setItem(novChave(n),'1');}catch(e){}if(ir){try{n.ir();}catch(e){}}}
+function novChecar(){try{if(document.getElementById('novAviso')||document.getElementById('verAviso'))return;if(!(CLOUD&&ORG&&ORG.id&&PERFIL)||ADMIN_MODE)return;
+  const hoje=hojeISO();const n=NOVIDADES.find(x=>hoje<=x.ate&&!novVista(x)&&x.pode());if(!n)return;
+  const d=document.createElement('div');d.id='novAviso';d.setAttribute('role','status');
+  d.style.cssText='position:fixed;left:50%;bottom:'+(ehMobile()?'calc(78px + env(safe-area-inset-bottom, 0px))':'18px')+';transform:translateX(-50%);z-index:1290;background:var(--navy);color:#fff;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.45;box-shadow:0 8px 28px rgba(0,0,0,.28);width:min(460px,calc(100vw - 24px))';
+  d.innerHTML='<div style="font-weight:700;font-size:14px;margin-bottom:4px">'+esc(n.titulo)+'</div><div style="opacity:.92">'+esc(n.texto)+'</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn btn-sm" style="background:#fff;color:var(--navy);font-weight:700;border:0" onclick="novFechar(\''+n.id+'\',true)">'+esc(n.rotulo)+'</button><button class="btn btn-sm" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.45)" onclick="novFechar(\''+n.id+'\')">Entendi</button></div>';
+  document.body.appendChild(d);}catch(e){}}
+setTimeout(novChecar,7000);setInterval(novChecar,30000);
 /* erros de tela: grava em app_erros para a Lidera ver (no máximo 8 por sessão, sem repetir o mesmo) */
 const ERR_VISTOS=new Set();let ERR_N=0;
 function errRegistrar(msg,origem,pilha){try{if(ERR_N>=8||typeof sb==='undefined'||!sb||typeof CLOUD==='undefined'||!CLOUD)return;msg=String(msg||'').slice(0,500);if(!msg)return;
