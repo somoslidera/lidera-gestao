@@ -2623,7 +2623,6 @@ function viewDashboard(){
       ${metaRef>0?`<div class="dsh-pe-body">
         ${dashArc(mPct,mCor)}
         <div class="dsh-pe-n">${fmtBRL(metaRef)}</div>
-        <div class="dsh-pe-sub">${fmtPct(mPct)} atingido · <b>${fmtBRL(metaRef/Math.max(1,MT.diasTrab))}</b> por dia de funcionamento</div>
         <div class="dsh-marcos"><div class="dsh-marcos-bar"><i style="width:${clamp(t.faturamento/escala*100,0,100)}%;background:${mCor}"></i>${marcos.map(([n,v,c])=>`<b style="left:${clamp(v/escala*100,0,100)}%;background:${c}" title="${n} ${fmtBRL(v)}"></b>`).join('')}</div><div class="dsh-marcos-leg">${marcos.map(([n,v,c])=>`<span><i style="background:${c}"></i>${n} <b>${fmtBRL(v)}</b></span>`).join('')}</div></div>
         <div class="dsh-pe-txt">${mTxt}</div>
       </div>
