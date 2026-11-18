@@ -997,6 +997,131 @@ body.dark .prm-chip{background:var(--card)}body.dark .prm-nav a:hover{background
 @media(max-width:1180px){.dsh-3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.dsh-3>.card:nth-child(2){grid-column:1/-1;min-height:220px}.dsh-fit{height:auto;grid-template-rows:auto auto}}
 @media(max-width:900px){.dsh-fit{height:auto}.dsh-3{grid-template-columns:1fr}.dsh-3>.card{overflow:visible}.dsh-chart{min-height:190px}.dsh-chart-cmv{min-height:170px}.dsh-kpis{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.dsh-fit,.dsh-kpis,.dsh-3{gap:10px}.dsh-kpis{grid-template-columns:1fr}.dsh-kpi{padding:12px 14px 10px}.dsh-kpi-val{font-size:24px}.dsh-kpi-top{flex-wrap:wrap}.dsh-kpi-foot{white-space:normal}.dsh-kpi-vis{margin-top:6px}.dsh-kpi-vis svg{height:24px!important}.dsh-pe-n{font-size:26px}}
+/* ===== Buffet do dia (registro diário: abertura, reposições, sobra e descarte) ===== */
+.bd-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.bd-bar .input{width:auto}
+.bd-nav{width:38px;height:38px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:19px;line-height:1;color:var(--muted);display:flex;align-items:center;justify-content:center}
+.bd-nav:hover{border-color:var(--soft)}
+.bd-sem{font-weight:700;color:var(--navy);margin-left:4px}
+.bd-sem::first-letter{text-transform:uppercase}
+.bd-bar-fim{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.bd-per{margin:0 6px 0 0}
+.bd-simul{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
+.bd-simul .input{width:96px}
+.bd-head,.bd-row{display:grid;grid-template-columns:minmax(180px,1.5fr) 92px minmax(230px,1.6fr) 92px 92px 118px 30px 34px;gap:8px;align-items:center}
+.bd-head{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;padding:0 0 8px;border-bottom:1px solid var(--line)}
+.bd-row{padding:8px 0;border-bottom:1px solid var(--line);transition:background .4s}
+.bd-row.bd-flash{background:rgba(164,138,87,.16)}
+.bd-c{min-width:0}
+.bd-l{display:none}
+.bd-num{text-align:right}
+.bd-reps-in{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.bd-chip{display:inline-flex;align-items:center;gap:3px;background:var(--blue-bg);color:var(--navy);border-radius:8px;padding:4px 4px 4px 9px;font-size:12.5px;font-weight:600}
+.bd-chip button{width:18px;height:18px;display:flex;align-items:center;justify-content:center;color:var(--soft)}
+.bd-chip button svg{width:11px;height:11px}
+.bd-add{display:inline-flex;gap:5px;align-items:center}
+.bd-add .input{width:62px;padding-left:8px;padding-right:8px}
+.bd-res{font-size:13px;line-height:1.3}
+.bd-res small{display:block;font-size:11px;color:var(--soft)}
+.bd-tot{display:flex;flex-wrap:wrap;gap:6px 22px;padding:14px 0 2px;font-size:13px}
+.bd-fech{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}
+.bd-fech>.bd-obs{grid-column:1/-1}
+.bd-mais{width:30px;height:36px;border-radius:9px;border:1px solid var(--line);color:var(--soft);font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
+.bd-mais.on{border-color:var(--gold);color:var(--gold)}
+.bd-extra{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px 14px;padding:2px 0 6px}
+.bd-extra label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--ink)}
+.bd-extra label>span:first-of-type{font-weight:400;color:var(--soft);font-size:11px;margin-top:-3px}
+.bd-extra .bd-num{width:110px}
+.bd-extra-o{flex:1 1 260px}
+.bd-hora{display:flex;gap:6px}
+.bd-hora .input{width:118px}
+.bdr-kick{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:6px}
+.bdr-list{margin:0;list-style:none}
+.bdr-list li{padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;line-height:1.55}
+.bdr-list li:last-child{border-bottom:0}
+.bdr-nota{font-size:12px;color:var(--soft);line-height:1.55;margin-top:10px}
+.bd-linha{display:grid;grid-template-columns:minmax(0,300px) 110px minmax(0,1fr);gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.bd-linha span{color:var(--muted)}
+.bd-linha small{font-size:11.5px;color:var(--soft)}
+.bd-mapa{margin-bottom:16px;padding:0}
+.bd-mapa>summary{list-style:none;cursor:pointer;padding:13px 18px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px}
+.bd-mapa>summary::-webkit-details-marker{display:none}
+.bd-mapa>summary::before{content:'▸';color:var(--soft);font-size:12px}
+.bd-mapa[open]>summary::before{content:'▾'}
+.bd-mapa>summary span{font-size:12px;font-weight:400;color:var(--soft)}
+.bd-mapa>div{padding:0 14px 14px}
+@media(max-width:1100px){.bd-head,.bd-row{grid-template-columns:minmax(150px,1.3fr) 80px minmax(200px,1.6fr) 80px 80px 100px 30px 34px}}
+@media(max-width:640px){
+  .bd-kpis{grid-template-columns:1fr 1fr!important;gap:10px}
+  .bd-kpis .kpi{display:block}
+  .bd-kpis .kpi .ic{display:none}
+  .bd-row{grid-template-columns:1fr 1fr 1fr;gap:8px 10px;padding:14px 0;position:relative;align-items:start}
+  .bd-row>.bd-prato{grid-column:1/-1;padding-right:92px}
+  .bd-row>.bd-reps{grid-column:2/-1}
+  .bd-row>.mini-del{position:absolute;right:0;top:33px}
+  .bd-row>.bd-mais{position:absolute;right:46px;top:33px;width:40px;height:40px}
+  .bd-extra{padding-top:4px}
+  .bd-extra label{flex:1 1 100%}
+  .bd-extra .bd-num,.bd-hora .input{width:auto;flex:1}
+  .bd-bar-fim{margin-left:0;flex:1 1 100%}
+  .bd-simul{margin-left:0;flex:1 1 100%}
+  .bd-per{flex:1 1 100%;margin:0}
+  .bd-l{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;margin-bottom:3px;white-space:nowrap}
+  .bd-num{text-align:left}
+  .bd-reps-in{min-width:0}
+  .bd-chip{font-size:14px;padding:3px 3px 3px 10px}
+  .bd-chip button{width:30px;height:30px}
+  .bd-chip button svg{width:13px;height:13px}
+  .bd-add{display:flex;flex:1 1 100%;min-width:0}
+  .bd-add .input{width:0;flex:1 1 0;min-width:0}
+  .bd-add .btn{flex:0 0 auto}
+  .bd-res{padding-top:1px}
+  .bd-fech{grid-template-columns:1fr 1fr}
+  .bd-linha{grid-template-columns:1fr auto}
+  .bd-linha small{grid-column:1/-1;margin-top:-4px}
+  .bd-mapa>summary span{display:none}
+}
+/* folha de cozinha do buffet (A4 deitado, para anotar à mão) */
+@media print{
+  @page buffetp{size:A4 landscape;margin:9mm}
+  body.print-buffet .sidebar,body.print-buffet .main,body.print-buffet #modalRoot,body.print-buffet #toastRoot{display:none!important}
+  body.print-buffet #printArea{display:block!important;padding:0;page:buffetp}
+  #printArea .bf{color:#000;font-family:'Inter',sans-serif}
+  #printArea .bf-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;border-bottom:2px solid #000;padding-bottom:6px}
+  #printArea .bf-rest{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700}
+  #printArea .bf-t{font-size:19px;font-weight:800;font-family:'Fraunces',Georgia,serif;line-height:1.15}
+  #printArea .bf-meta{font-size:11.5px;text-align:right;line-height:1.9;white-space:nowrap}
+  #printArea .bf-note{font-size:9.5px;color:#222;margin:5px 0 7px;line-height:1.45}
+  #printArea table.bf-tb{width:100%;border-collapse:collapse;table-layout:fixed}
+  #printArea table.bf-tb th{font-size:8.5px;text-transform:uppercase;letter-spacing:.3px;border:1px solid #000;padding:3px 4px;text-align:center;color:#000;background:none;font-weight:700;line-height:1.2;white-space:normal}
+  #printArea table.bf-tb th.bf-l{text-align:left}
+  #printArea table.bf-tb td{border:1px solid #666;height:7.3mm;padding:1px 5px;font-size:11px;color:#000;background:none}
+  #printArea table.bf-tb td.bf-n{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #printArea table.bf-tb td.bf-n small{font-weight:400;font-size:8.5px;color:#444;margin-left:6px}
+  #printArea table.bf-tb thead{display:table-header-group}
+  #printArea table.bf-tb tr{break-inside:avoid;page-break-inside:avoid}
+  #printArea .bf-fech{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:11px;margin-top:9px;break-inside:avoid}
+  #printArea .bdr .bdr-lead{font-size:11.5px;line-height:1.55;margin:0 0 12px;padding:8px 0 9px;border-bottom:1px solid #d7dbe5;color:#15233f}
+  #printArea .bdr .bdr-lead span{display:block;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:#A48A57;font-weight:700;margin-bottom:3px}
+  #printArea .bdr .bdr-nums{display:grid;grid-template-columns:repeat(4,1fr);margin:0 0 6px}
+  #printArea .bdr .bdr-nums>div{padding:1px 12px;border-left:1px solid #cfd4e0}
+  #printArea .bdr .bdr-nums>div:first-child{border-left:0;padding-left:0}
+  #printArea .bdr .bdr-nums b{display:block;font-family:'Fraunces',Georgia,serif;font-size:20px;color:#1D3573;line-height:1.15;font-weight:700}
+  #printArea .bdr .bdr-nums span{font-size:8.5px;color:#5a6577;text-transform:uppercase;letter-spacing:.4px}
+  #printArea .bdr .bdr-h{font-family:'Fraunces',Georgia,serif;font-size:13.5px;font-weight:700;color:#1D3573;margin:15px 0 5px;padding-bottom:3px;border-bottom:1px solid #A48A57;break-after:avoid;page-break-after:avoid}
+  #printArea .bdr .bdr-nota{font-size:9px;color:#5a6577;line-height:1.5;margin:5px 0 0}
+  #printArea .bdr .bdr-fonte{margin-top:14px;padding-top:6px;border-top:1px solid #d7dbe5;font-style:italic}
+  #printArea .bdr .bdr-list{margin:2px 0 0;padding:0;list-style:none}
+  #printArea .bdr .bdr-list li{font-size:10.5px;line-height:1.5;padding:4px 0;border-bottom:1px solid #e3e6ee;break-inside:avoid}
+  #printArea .bdr .rel-body table{font-size:9.5px}
+  #printArea .bdr .rel-body th{font-size:7.5px;padding:3px 5px}
+  #printArea .bdr .rel-body td{padding:3px 5px;font-size:9.5px;line-height:1.35}
+  #printArea .bdr .rel-foot{position:static;margin-top:14px}
+  #printArea .bdr .rel-body{padding-bottom:0}
+  #printArea .bdr .rel-body td.num,#printArea .bdr .rel-body th.num{white-space:nowrap}
+  #printArea .bdr .rel-body tfoot td{border-top:1px solid #1D3573;border-bottom:0;font-size:9.5px;padding:4px 5px}
+  #printArea .bdr td small{font-size:8px}
+}
 </style>
 </head>
 <body>
@@ -1160,7 +1285,7 @@ function seed(){
         {id:uid(),nome:'Marketing',valor:1500,grupo:'Admin e Mkt'}],
       provisoes:[{id:uid(),nome:'Reserva trabalhista (CLT)',valor:1400},{id:uid(),nome:'Depreciação equipamentos',valor:300}],
       funcionarios:[{id:uid(),nome:'Cozinheiro 1',cargo:'Cozinha',salario:2500},{id:uid(),nome:'Cozinheiro 2',cargo:'Cozinha',salario:4000}],
-      socios:[{id:uid(),nome:'Charles Simon',proLabore:10000},{id:uid(),nome:'Guilherme Emerim',proLabore:10000}],
+      socios:[{id:uid(),nome:'Sócio 1',proLabore:10000},{id:uid(),nome:'Sócio 2',proLabore:10000}],
       meiosPagamento:[{id:uid(),nome:'Banricompras Crédito',tipo:'Crédito',taxa:2.99},{id:uid(),nome:'Banricompras Débito',tipo:'Débito',taxa:1.99},{id:uid(),nome:'iFood',tipo:'Marketplace',taxa:27}],
       fornecedores:[{id:uid(),nome:'Distribuidora Central',contato:'(51) 99999-0000'},{id:uid(),nome:'Hortifruti do Zé',contato:'(51) 98888-0000'}],
       contasBancarias:[{id:uid(),nome:'Conta Corrente',saldo:12500}],
@@ -7997,7 +8122,7 @@ function viewConta(){
 
 /* ===================== MAPA DO BUFFET (nativo · usa nossas fichas) ===================== */
 const CMV_ALVO_BUFFET=0.30, REGRA_8020=0.80;
-let buffetSub='mapa', buffetSel=null, buffetDrag=null;
+let buffetSub=null, buffetSel=null, buffetDrag=null;
 function custoPorKgItem(item){ // custo de 1 Kg — funciona p/ ficha técnica ou preparado
   if(!item)return 0;
   if(item.tipo==='preparado'){const base=BASE[item.uni];const perBase=custoInsumoBase(item);return (base==='g'||base==='ml')?perBase*1000:perBase;}
@@ -8024,17 +8149,18 @@ function cubaCol(c,precoKg){
   return c.cmv<=CMV_ALVO_BUFFET?{bg:'rgba(30,158,106,.14)',br:'var(--green)',tx:'#147a4f'}:{bg:'rgba(210,72,63,.12)',br:'var(--red)',tx:'#9e342c'};
 }
 function viewBuffet(){
+  if(!DB.buffet)DB.buffet={precoVendaKg:'',cubas:[]};
+  if(!buffetSub)buffetSub=((DB.buffet.cubas||[]).length||Object.keys(bdDias()).length)?'dia':'mapa';   // quem já tem mapa ou registro cai no dia
+  if(buffetSub==='dia')return bdViewDia();
+  if(buffetSub==='hist')return bdViewHist();
   $('#topActions').innerHTML=`<button class="btn btn-ghost" onclick="imprimirTela()">🖨️ Imprimir</button>`;
   const d=buffetData(); const fichas=Object.values(DB.fichas).sort((a,b)=>a.nome.localeCompare(b.nome));
   const prepsBuffet=Object.values(DB.insumos).filter(i=>i.tipo==='preparado').sort((a,b)=>a.nome.localeCompare(b.nome));
   const pctOf=v=>fmtN(v*100,1)+'%';
   const sel=d.cubas.find(c=>c.id===buffetSel);
   $('#view').innerHTML=`
-  <div class="pill-filter" style="margin-bottom:16px">
-    <button class="${buffetSub==='mapa'?'on':''}" onclick="buffetSub='mapa';viewBuffet()">🗺️ Mapa do Buffet</button>
-    <button class="${buffetSub==='relatorio'?'on':''}" onclick="buffetSub='relatorio';viewBuffet()">📋 Relatório de itens</button>
-  </div>
-  <div class="kpi-grid">
+  ${buffetTabsHTML()}
+  <div class="kpi-grid bd-kpis">
     <div class="kpi"><div class="k-lbl">Itens no buffet</div><div class="k-val">${d.comF.length}</div><div class="k-sub" style="color:var(--soft)">${fmtN(d.totalPeso,d.totalPeso%1?1:0)} Kg montados</div></div>
     <div class="kpi"><div class="k-lbl">CMV médio do buffet</div><div class="k-val" style="color:${d.totalReceita>0?(d.cmvBuffet<=CMV_ALVO_BUFFET?'var(--green)':'var(--red)'):'inherit'}">${d.totalReceita>0?pctOf(d.cmvBuffet):'—'}</div><div class="k-sub" style="color:var(--soft)">${d.precoKg>0?'a '+fmtBRL(d.precoKg)+'/Kg':'defina o preço/Kg'}</div></div>
     <div class="kpi"><div class="k-lbl">Conformidade 80/20</div><div class="k-val" style="color:${d.comF.length?(d.conforme?'var(--green)':'var(--red)'):'inherit'}">${d.comF.length?pctOf(d.perc):'—'}</div><div class="k-sub" style="color:var(--soft)">${d.dentro}/${d.comF.length} itens na meta</div></div>
@@ -8052,6 +8178,10 @@ function viewBuffet(){
           <button class="btn btn-gold" onclick="buffetAddCuba()">+ Cuba</button>
         </div>
         <div style="font-size:11.5px;color:var(--soft);margin-top:10px;line-height:1.5">Meta de CMV por item: <b style="color:var(--gold)">≤ 30%</b> (${fmtBRL(d.precoKg*CMV_ALVO_BUFFET)}/Kg de custo).<br/>Regra 80/20: ao menos <b style="color:var(--gold)">80%</b> dos itens na meta. Arraste a cuba; a alça inferior direita redimensiona.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+          <label style="font-size:11.5px;font-weight:600">Quilo no fim de semana <span style="font-weight:400;color:var(--soft)">opcional</span><input class="input" type="number" step="0.01" style="margin-top:5px" value="${esc(d.b.precoVendaKgFds||'')}" placeholder="igual" onchange="DB.buffet.precoVendaKgFds=this.value;save();viewBuffet()"></label>
+          <label style="font-size:11.5px;font-weight:600">Preço do livre <span style="font-weight:400;color:var(--soft)">à vontade</span><input class="input" type="number" step="0.01" style="margin-top:5px" value="${esc(d.b.precoLivre||'')}" placeholder="opcional" onchange="DB.buffet.precoLivre=this.value;save();viewBuffet()"></label>
+        </div>
       </div>
       ${sel?`<div class="card card-pad" style="border-color:var(--gold)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:13px;color:var(--gold)">Cuba selecionada</b>
@@ -8114,6 +8244,486 @@ function buffetCubaMove(e){const d=buffetDrag;if(!d)return;const el=document.get
 function buffetCubaUp(){const d=buffetDrag;window.removeEventListener('pointermove',buffetCubaMove);window.removeEventListener('pointerup',buffetCubaUp);buffetDrag=null;if(!d)return;
   const c=(DB.buffet.cubas||[]).find(x=>x.id===d.id);if(c){if(d.mode==='move'&&d.nx!=null){c.x=d.nx;c.y=d.ny;}if(d.mode==='resize'&&d.nw!=null){c.w=d.nw;c.h=d.nh;}}
   save();viewBuffet();
+}
+
+/* ===================== BUFFET DO DIA (abertura, reposições, sobra e descarte; relatório por dia, semana, mês ou período) =====================
+   DB.buffetDias = { 'AAAA-MM-DD': { itens:[{id,c,f,n,lv,a,r:[],v,d,ck,z,o}], pk, pl, vnd, kgV, liv, mar, pes, eq, eqF, obs } }
+   Item: c = cuba do mapa (opcional) · f = ficha ou preparado · n = nome (cópia do nome da ficha, ou texto livre) · lv = prato escrito à mão
+         a = abertura (kg) · r = reposições (kg de cada vez) · v = sobrou e volta para reaproveitar · d = descartado
+         ck = custo por kg no dia (da ficha, ou digitado no prato escrito à mão) · z = hora em que a cuba acabou · o = observação
+   Dia:  pk = preço do quilo no dia · pl = preço do livre · vnd = venda de comida em R$ (caixa, sem bebidas) · kgV = kg vendido no quilo
+         liv = refeições no livre · mar = marmitas e PF · pes = clientes no total · eq = kg que a equipe comeu · eqF = comida da equipe feita à parte
+   O registro do dia NÃO tem "id" de propósito: assim a mesclagem entre aparelhos desce até cada prato (os itens têm id). */
+let bdData=null, bdMapaAberto=null, bdExtra={}, bdPer={tipo:'mes',ref:null,de:null,ate:null}, bdSim='';
+const BD_SEM=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+function bdDias(){if(!DB.buffetDias||typeof DB.buffetDias!=='object'||Array.isArray(DB.buffetDias))DB.buffetDias={};return DB.buffetDias;}
+function bdCurData(){return bdData||hojeISO();}
+function bdIso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function bdIsoAdd(iso,n){const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return bdIso(d);}
+function bdSem(iso){return BD_SEM[new Date(iso+'T12:00:00').getDay()]||'';}
+function bdCurto(iso){return fmtDataBR(iso).slice(0,5);}
+function bdN(v){return (v===''||v==null)?0:(+v||0);}
+function bdInp(v){return (v===''||v==null)?'':nNum(v);}
+function bdKg(v){v=+v||0;return (+v.toFixed(Math.abs(v)>=100?1:2)).toLocaleString('pt-BR')+' kg';}
+function bdKgN(v){v=+v||0;return v>0?(+v.toFixed(v>=100?1:3)).toLocaleString('pt-BR',{maximumFractionDigits:3}):'—';}
+function bdPct(v){return fmtN((+v||0)*100,1)+'%';}
+function bdHtml(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+/* peso digitado: aceita vírgula ou ponto e também "4x3,1" (4 travessas de 3,1 kg) */
+function bdNumIn(t){t=String(t==null?'':t).trim().toLowerCase();if(!t)return '';const m=t.split(/\s*[x×*]\s*/);
+  const v=m.length===2?parseNumBR(m[0])*parseNumBR(m[1]):parseNumBR(t);return Math.max(0,+(+v||0).toFixed(3));}
+function bdPk(iso){const b=DB.buffet||{},base=parseFloat(b.precoVendaKg)||0,fds=parseFloat(b.precoVendaKgFds)||0,w=new Date(iso+'T12:00:00').getDay();return (fds>0&&(w===0||w===6))?fds:base;}
+function bdPl(){return parseFloat((DB.buffet||{}).precoLivre)||0;}
+function bdRef(it){return it&&it.f?(DB.fichas[it.f]||DB.insumos[it.f]||null):null;}
+function bdNome(it){const r=bdRef(it);return r?r.nome:((it&&it.n)||'');}
+function bdCuba(it){return it&&it.c?((((DB.buffet||{}).cubas)||[]).find(c=>c.id===it.c)||null):null;}
+function bdCubasOrdem(){return (((DB.buffet||{}).cubas)||[]).slice().sort((a,b)=>(Math.round((a.y||0)/60)-Math.round((b.y||0)/60))||((a.x||0)-(b.x||0)));}
+function bdCusto(it,r){const ck=custoPorKgItem(r);it.ck=(isFinite(ck)&&ck>0)?+ck.toFixed(4):0;}
+function bdInsZero(ref){const out=[];if(!ref)return out;(ref.comps||[]).forEach(c=>{const i=DB.insumos[c&&c[0]];if(i&&(+c[1]||0)>0&&!(custoInsumoBase(i)>0)&&!out.includes(i.nome))out.push(i.nome);});return out;}
+function bdItemCalc(it,pk){
+  const a=bdN(it.a),reps=(it.r||[]).map(bdN).filter(x=>x>0),rep=reps.reduce((s,x)=>s+x,0),serv=a+rep,v=bdN(it.v),d=bdN(it.d),cons=serv-v-d;
+  const ref=bdRef(it);let ck=(it.ck!=null&&it.ck!=='')?+it.ck:(ref?custoPorKgItem(ref):0);if(!isFinite(ck)||ck<0)ck=0;
+  const cmv=(pk>0&&ck>0)?ck/pk:0;
+  return {it,nome:bdNome(it),ref,cat:ref?(ref.cat||'Sem categoria'):'Sem ficha',a,rep,reps,nRep:reps.length,serv,v,d,cons,ck,cmv,temCusto:ck>0,est:!ref&&ck>0,
+    ok:pk>0&&ck>0&&cmv<=CMV_ALVO_BUFFET,erro:cons<-0.0005,cServ:serv*ck,cDesc:d*ck,cSobra:v*ck,
+    repSobra:reps.length>0&&(v+d)>=0.8*reps[reps.length-1],zerou:serv>0&&v===0&&d===0};
+}
+/* Leituras do dia (as mesmas dos relatórios da consultoria):
+   A teórico = custo do montado ÷ (kg montado × preço do quilo) · B = custo só do que o cliente comeu ÷ venda · C real = B + descartado · D = C + almoço da equipe (ao custo médio do montado)
+   Venda: a informada (caixa); senão kg no quilo × preço + livres × preço do livre; senão, se houve sobra anotada, o peso consumido × preço do quilo. */
+function bdDiaCalc(iso){const dia=bdDias()[iso];if(!dia)return null;
+  const pk=(+dia.pk>0)?+dia.pk:bdPk(iso),pl=(+dia.pl>0)?+dia.pl:bdPl();
+  const itens=(dia.itens||[]).map(it=>bdItemCalc(it,pk));
+  const T={n:0,a:0,rep:0,nRep:0,serv:0,v:0,d:0,cons:0,cServ:0,cDesc:0,cSobra:0,erros:0,comCusto:0,dentro:0,servCusto:0};
+  itens.forEach(x=>{if(!x.nome&&!x.serv)return;T.n++;T.a+=x.a;T.rep+=x.rep;T.nRep+=x.nRep;T.serv+=x.serv;T.v+=x.v;T.d+=x.d;T.cons+=x.cons;T.cServ+=x.cServ;T.cDesc+=x.cDesc;T.cSobra+=x.cSobra;if(x.erro)T.erros++;
+    if(x.temCusto){T.comCusto++;T.servCusto+=x.serv;if(x.ok)T.dentro++;}});
+  const vnd=bdN(dia.vnd),kgV=bdN(dia.kgV),liv=bdN(dia.liv),mar=bdN(dia.mar),eq=bdN(dia.eq),eqFora=!!dia.eqF,pes=bdN(dia.pes)||(liv+mar);
+  const consPos=Math.max(0,T.cons),temSobra=(T.v+T.d)>0,soQuilo=kgV>0&&!liv&&!mar&&(!(vnd>0)||(pk>0&&vnd<=kgV*pk*1.25));
+  const cMedio=T.serv>0?T.cServ/T.serv:0,cEq=eq*cMedio,tira=eqFora?0:cEq;   // equipe que come do buffet já está no montado: sai de B e C e volta em D
+  const cCons=Math.max(0,T.cServ-T.cSobra-T.cDesc-tira),custoDia=Math.max(0,T.cServ-T.cSobra-tira);
+  let receita=0,recTipo='';
+  if(vnd>0){receita=vnd;recTipo='real';}
+  else if(kgV*pk+liv*pl>0){receita=kgV*pk+liv*pl;recTipo='est';}
+  else if(temSobra&&pk>0&&consPos>0){receita=Math.max(0,consPos-(eqFora?0:eq))*pk;recTipo='peso';}
+  const custoD=custoDia+cEq;
+  return Object.assign(T,{iso,dia,pk,pl,itens,vnd,kgV,liv,mar,pes,eq,eqFora,temSobra,soQuilo,consPos,cCons,custoDia,custoD,cMedio,cEq,receita,recTipo,
+    pDesc:T.serv>0?T.d/T.serv:0,
+    cmvMix:(pk>0&&T.servCusto>0)?T.cServ/(pk*T.servCusto):null,
+    cmvB:receita>0?cCons/receita:null,
+    cmvDia:(receita>0&&custoDia>0)?custoDia/receita:null,
+    cmvD:(receita>0&&eq>0)?custoD/receita:null,
+    foraBalanca:soQuilo?T.cons-kgV-(eqFora?0:eq):null,
+    gPessoa:pes>0?((soQuilo?kgV:Math.max(0,consPos-(eqFora?0:eq)))/pes*1000):null,
+    cRef:pes>0&&custoD>0?custoD/pes:null,
+    ticket:(pes>0&&receita>0&&recTipo!=='peso')?receita/pes:null});
+}
+/* Toda edição passa por aqui. Dia de hoje em diante acompanha o custo atual das fichas; dia passado guarda o custo de quando foi digitado. */
+function bdTocar(iso){const dia=bdDias()[iso];if(!dia)return;const vivo=iso>=hojeISO();
+  const pk=bdPk(iso),pl=bdPl();if(pk>0&&(vivo||!(+dia.pk>0)))dia.pk=pk;if(pl>0&&(vivo||!(+dia.pl>0)))dia.pl=pl;
+  (dia.itens||[]).forEach(it=>{const r=bdRef(it);if(!r)return;if(vivo||!it.n)it.n=r.nome;if(vivo||it.ck==null||it.ck==='')bdCusto(it,r);});
+  save();}
+function bdNovoItem(o){return Object.assign({id:uid(),c:'',f:'',n:'',a:'',r:[],v:'',d:''},o||{});}
+function bdCriar(modo,origem){const iso=bdCurData(),dias=bdDias();let itens=[];
+  if(modo==='mapa')itens=bdCubasOrdem().map(c=>bdNovoItem({c:c.id,f:(DB.fichas[c.fichaId]||DB.insumos[c.fichaId])?c.fichaId:'',a:parseFloat(c.pesoKg)||''}));
+  else if(modo==='copia'){const o=dias[origem];if(!o)return toast('Dia não encontrado');
+    itens=(o.itens||[]).filter(it=>bdNome(it)).map(it=>{const tem=!!bdRef(it);const n=bdNovoItem({c:it.c||'',f:tem?it.f:'',n:bdNome(it),a:it.a});if(!tem){n.lv=1;if(+it.ck>0)n.ck=+it.ck;}return n;});}
+  if(!itens.length)itens=[bdNovoItem()];
+  dias[iso]={itens};if((DB.buffet||{}).eqFora)dias[iso].eqF=1;bdTocar(iso);viewBuffet();}
+function bdApagarDia(){const iso=bdCurData();if(!bdDias()[iso])return;
+  if(!confirm('Apagar o registro do buffet de '+fmtDataBR(iso)+'? Não pode ser desfeito.'))return;
+  delete DB.buffetDias[iso];save();viewBuffet();}
+function bdIr(n){bdData=bdIsoAdd(bdCurData(),n);viewBuffet();}
+function bdItem(id){const dia=bdDias()[bdCurData()];return dia?((dia.itens||[]).find(x=>x.id===id)||null):null;}
+function bdAdd(){const iso=bdCurData(),dia=bdDias()[iso];if(!dia)return;dia.itens=dia.itens||[];const it=bdNovoItem();dia.itens.push(it);bdTocar(iso);viewBuffet();
+  setTimeout(()=>{const r=document.querySelector('#bd_row_'+it.id+' select');if(r){r.scrollIntoView({block:'center'});r.focus();}},60);}
+function bdDel(id){const iso=bdCurData(),dia=bdDias()[iso],it=bdItem(id);if(!dia||!it)return;
+  if((bdNome(it)||bdN(it.a)||(it.r||[]).length)&&!confirm('Tirar "'+(bdNome(it)||'este prato')+'" do buffet deste dia?'))return;
+  dia.itens=dia.itens.filter(x=>x.id!==id);bdTocar(iso);viewBuffet();}
+function bdSetPrato(id,val){const it=bdItem(id);if(!it)return;
+  if(val==='__livre'){it.f='';it.n='';it.lv=1;delete it.ck;bdExtra[id]=true;}
+  else{it.f=val;delete it.lv;const r=bdRef(it);if(r){it.n=r.nome;bdCusto(it,r);}else{it.n='';delete it.ck;}}
+  bdTocar(bdCurData());viewBuffet();
+  if(val==='__livre')setTimeout(()=>{const e=document.querySelector('#bd_row_'+id+' .bd-prato input');if(e)e.focus();},60);}
+function bdSetNome(id,val){const it=bdItem(id);if(!it)return;it.n=(val||'').trim();it.f='';it.lv=1;bdTocar(bdCurData());bdRefresh(id);}
+function bdLista(id){const it=bdItem(id);if(!it)return;delete it.lv;delete it.ck;it.n='';it.f='';bdTocar(bdCurData());viewBuffet();}
+function bdSet(id,campo,val,el){const it=bdItem(id);if(!it)return;it[campo]=bdNumIn(val);if(el)el.value=bdInp(it[campo]);bdTocar(bdCurData());bdRefresh(id);}
+/* hora em que a cuba acabou, observação do prato e custo por kg do prato escrito à mão */
+function bdSetExtra(id,campo,val,el){const it=bdItem(id);if(!it)return;const t=(val==null?'':String(val)).trim();
+  if(campo==='ck'){if(t==='')delete it.ck;else it.ck=Math.max(0,+parseNumBR(t).toFixed(4));if(el)el.value=it.ck!=null?nNum(+(+it.ck).toFixed(2)):'';}
+  else if(t)it[campo]=t;else delete it[campo];
+  bdTocar(bdCurData());bdRefresh(id);}
+function bdAcabou(id){const it=bdItem(id);if(!it)return;const d=new Date();it.z=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');bdExtra[id]=1;bdTocar(bdCurData());viewBuffet();}
+function bdMais(id){const it=bdItem(id);const aberto=(it&&(it.z||it.o))?bdExtra[id]!==false:!!bdExtra[id];bdExtra[id]=!aberto;viewBuffet();}
+function bdRepPadrao(it){const r=it.r||[],c=bdCuba(it);return bdN(r[r.length-1])||bdN(it.a)||(c?parseFloat(c.pesoKg)||0:0);}
+function bdRepAdd(id){const it=bdItem(id);if(!it)return;const el=document.getElementById('bd_rep_'+id);const t=el?(el.value||'').trim():'';
+  const k=t===''?bdRepPadrao(it):bdNumIn(t);if(!(k>0))return toast('Informe o peso da reposição em kg');
+  it.r=(it.r||[]).concat([k]);bdTocar(bdCurData());bdRefresh(id,true);
+  if(!ehMobile()){const e=document.getElementById('bd_rep_'+id);if(e)e.focus();}}   // no computador o cursor volta ao campo; no celular não, para o teclado não subir
+function bdRepDel(id,i){const it=bdItem(id);if(!it||!it.r)return;it.r=it.r.filter((_,j)=>j!==i);bdTocar(bdCurData());bdRefresh(id,true);}
+function bdSetDia(campo,val,el){const iso=bdCurData(),dia=bdDias()[iso];if(!dia)return;const t=(val==null?'':String(val)).trim();
+  if(campo==='obs'){if(t)dia.obs=t;else delete dia.obs;}
+  else if(campo==='eqF'){if(t==='1')dia.eqF=1;else delete dia.eqF;if(DB.buffet)DB.buffet.eqFora=t==='1';}   // a casa costuma repetir: o próximo dia já nasce igual
+  else{if(t==='')delete dia[campo];
+    else if(campo==='kgV'||campo==='eq')dia[campo]=bdNumIn(t);
+    else dia[campo]=Math.max(0,+parseNumBR(t).toFixed(campo==='vnd'?2:0));
+    if(el)el.value=bdInp(dia[campo]);}
+  bdTocar(iso);bdRefresh();}
+function bdFoco(id){const r=document.getElementById('bd_row_'+id);if(!r)return;r.scrollIntoView({block:'center',behavior:'smooth'});r.classList.add('bd-flash');setTimeout(()=>r.classList.remove('bd-flash'),1500);}
+function bdAbrirDia(iso){bdData=iso;buffetSub='dia';viewBuffet();}
+function bdRelDoDia(){bdPer={tipo:'dia',ref:bdCurData(),de:null,ate:null};buffetSub='hist';viewBuffet();}
+/* redesenha só os números (os campos ficam como estão, para não perder o foco ao passar de um para o outro) */
+function bdRefresh(id,reps){const c=bdDiaCalc(bdCurData());if(!c)return;
+  if(id){const x=c.itens.find(z=>z.it.id===id);if(x){const e=document.getElementById('bd_res_'+id);if(e)e.innerHTML=bdResHTML(x);
+    if(reps){const r=document.getElementById('bd_reps_'+id);if(r)r.innerHTML=bdRepsHTML(x.it);}}}
+  const set=(i,h)=>{const e=document.getElementById(i);if(e)e.innerHTML=h;};
+  set('bd_kpis',bdKpisHTML(c));set('bd_tot',bdTotHTML(c));set('bd_fech',bdFechHTML(c));set('bd_board',bdBoardHTML(c));}
+function bdResHTML(x){
+  if(!x.serv&&!x.v&&!x.d)return '<span style="color:var(--soft)">—</span>';
+  if(x.erro)return '<b style="color:var(--red)">confira os pesos</b><small>sobra e descarte passam do que foi montado</small>';
+  const rp=x.nRep?x.nRep+' reposiç'+(x.nRep===1?'ão':'ões'):'';
+  return `<b>${bdKg(x.cons)}</b>${x.d>0?`<small style="color:var(--red)">descarte ${x.temCusto?fmtBRL(x.cDesc):bdKg(x.d)}</small>`:(rp?`<small>${rp}</small>`:'')}`;}
+function bdRepsHTML(it){const r=it.r||[],p=bdRepPadrao(it);
+  return r.map((k,i)=>`<span class="bd-chip">${nNum(k)}<button title="Tirar esta reposição" onclick="bdRepDel('${it.id}',${i})">${icoX}</button></span>`).join('')
+    +`<span class="bd-add"><input class="input bd-num" id="bd_rep_${it.id}" inputmode="decimal" autocomplete="off" placeholder="${p>0?nNum(p):'kg'}" onkeydown="if(event.key==='Enter'){event.preventDefault();bdRepAdd('${it.id}')}"><button class="btn btn-ghost btn-sm" onclick="bdRepAdd('${it.id}')">+ Repor</button></span>`;}
+function bdKpisHTML(c){
+  const sub3=c.v>0?'sobrou '+bdKg(c.v)+' para reaproveitar':(c.gPessoa!=null?fmtN(c.gPessoa,0)+' g por cliente':'montado menos sobra e descarte');
+  return `<div class="kpi"><div class="k-lbl">Pratos no buffet</div><div class="k-val">${c.n}</div><div class="k-sub" style="color:var(--soft)">${bdKg(c.a)} na abertura</div></div>
+    <div class="kpi"><div class="k-lbl">Montado no dia</div><div class="k-val">${bdKg(c.serv)}</div><div class="k-sub" style="color:var(--soft)">${c.nRep} reposiç${c.nRep===1?'ão':'ões'}${c.rep>0?' ('+bdKg(c.rep)+')':''}</div></div>
+    <div class="kpi"><div class="k-lbl">Consumido</div><div class="k-val">${bdKg(c.consPos)}</div><div class="k-sub" style="color:var(--soft)">${sub3}</div></div>
+    <div class="kpi"><div class="k-lbl">Descartado</div><div class="k-val" style="color:${c.d>0?'var(--red)':'inherit'}">${bdKg(c.d)}</div><div class="k-sub" style="color:var(--soft)">${c.serv>0?bdPct(c.pDesc)+' do montado':'sem peso lançado'}${c.cDesc>0?' · '+fmtBRL(c.cDesc):''}</div></div>`;}
+function bdTotHTML(c){
+  let h=`<span>Abertura <b>${bdKg(c.a)}</b></span><span>Reposições <b>${bdKg(c.rep)}</b></span><span>Sobrou <b>${bdKg(c.v)}</b></span><span>Descartado <b style="color:${c.d>0?'var(--red)':'inherit'}">${bdKg(c.d)}</b></span><span>Consumido <b>${bdKg(c.consPos)}</b></span>${c.cServ>0?`<span>Custo do montado <b>${fmtBRL(c.cServ)}</b></span>`:''}`;
+  if(c.cmvMix!=null)h+=`<span style="flex:0 0 100%;color:var(--muted)">CMV teórico do que foi montado: <b style="color:${c.cmvMix<=CMV_ALVO_BUFFET?'var(--green)':'var(--red)'}">${bdPct(c.cmvMix)}</b> a ${fmtBRL(c.pk)}/kg · ${c.dentro} de ${c.comCusto} pratos dentro da meta de 30%</span>`;
+  if(c.erros)h+=`<span style="flex:0 0 100%;color:var(--red)">${c.erros} prato${c.erros===1?'':'s'} com sobra e descarte maiores que o montado. Confira os pesos.</span>`;
+  return h;}
+function bdRecTxt(c){return c.recTipo==='real'?'valor do caixa, informado':c.recTipo==='est'?('estimada: '+[c.kgV>0?bdKg(c.kgV)+' a '+fmtBRL(c.pk):'',c.liv>0?c.liv+' livres a '+fmtBRL(c.pl):''].filter(Boolean).join(' e ')):c.recTipo==='peso'?'estimada pelo peso consumido a '+fmtBRL(c.pk)+'/kg (informe o caixa para fechar o real)':'';}
+function bdFechHTML(c){const L=[],cor=v=>v<=CMV_ALVO_BUFFET?'var(--green)':'var(--red)';
+  if(c.receita>0)L.push(['Venda de comida do dia',fmtBRL(c.receita),bdRecTxt(c),'']);
+  if(c.cmvB!=null&&c.cCons>0)L.push(['CMV só do que o cliente comeu',bdPct(c.cmvB),'custo de '+fmtBRL(c.cCons)+', sem sobra, descarte'+(c.eq>0&&!c.eqFora?' e equipe':''),'']);
+  if(c.cmvDia!=null)L.push(['CMV real do buffet',bdPct(c.cmvDia),'o que o cliente comeu mais o descarte, '+fmtBRL(c.custoDia)+', sobre a venda',cor(c.cmvDia)]);
+  if(c.cmvD!=null)L.push(['Com o almoço da equipe',bdPct(c.cmvD),bdKg(c.eq)+(c.eqFora?' feitos à parte':' tirados do buffet')+', cerca de '+fmtBRL(c.cEq),cor(c.cmvD)]);
+  if(c.cmvDia!=null&&c.cmvDia>CMV_ALVO_BUFFET)L.push(['Venda para ficar em 30%',fmtBRL(c.custoDia/CMV_ALVO_BUFFET),'faltaram '+fmtBRL(c.custoDia/CMV_ALVO_BUFFET-c.receita)+(c.pk>0?', ou '+bdKg((c.custoDia/CMV_ALVO_BUFFET-c.receita)/c.pk)+' a mais no quilo':''),'']);
+  if(c.cRef!=null)L.push(['Custo por refeição',fmtBRL(c.cRef),c.pes+' refeições'+(c.ticket?', ticket médio de '+fmtBRL(c.ticket):''),'']);
+  if(c.gPessoa!=null)L.push(['Consumo por cliente',fmtN(c.gPessoa,0)+' g','','']);
+  if(c.foraBalanca!=null)L.push(['Saiu do buffet e não passou pela balança',bdKg(c.foraBalanca),c.foraBalanca<-0.05?'vendeu mais do que saiu do buffet: confira os pesos':((c.cons>0?bdPct(c.foraBalanca/c.cons)+' do consumido':'')+(c.eq>0&&!c.eqFora?', já sem a equipe':'')),c.foraBalanca<-0.05?'var(--red)':'']);
+  if(!L.length)return '<div style="font-size:12.5px;color:var(--soft)">Com a venda de comida (valor do caixa, ou kg vendido no quilo e refeições no livre), o Flow calcula o CMV real do dia, o custo por refeição e o consumo por cliente.</div>';
+  return L.map(l=>`<div class="bd-linha"><span>${l[0]}</span><b${l[3]?` style="color:${l[3]}"`:''}>${l[1]}</b><small>${l[2]}</small></div>`).join('');}
+function bdBoardHTML(c){const cubas=((DB.buffet||{}).cubas)||[];if(!cubas.length)return '';
+  const por={};c.itens.forEach(x=>{if(x.it.c)por[x.it.c]=x;});if(!Object.keys(por).length)return '';
+  const W=Math.max.apply(null,cubas.map(q=>(q.x||0)+(q.w||0)))+14,H=Math.max.apply(null,cubas.map(q=>(q.y||0)+(q.h||0)))+14;
+  return `<div class="scroll-x"><div style="position:relative;width:${W}px;height:${H}px;min-width:100%;border:1px solid var(--line);border-radius:12px;background:repeating-linear-gradient(0deg,var(--card) 0 39px,var(--bg) 39px 40px),repeating-linear-gradient(90deg,var(--card) 0 39px,var(--bg) 39px 40px)">`
+    +cubas.map(q=>{const x=por[q.id];const tem=x&&x.nome;
+      const col=!tem?{bg:'transparent',br:'var(--line)',tx:'var(--soft)'}:((x.temCusto&&c.pk>0)?(x.ok?{bg:'rgba(30,158,106,.14)',br:'var(--green)',tx:'#147a4f'}:{bg:'rgba(210,72,63,.12)',br:'var(--red)',tx:'#9e342c'}):{bg:'#EEF0F4',br:'var(--line)',tx:'var(--muted)'});
+      return `<div ${x?`onclick="bdFoco('${x.it.id}')"`:''} style="position:absolute;left:${q.x}px;top:${q.y}px;width:${q.w}px;height:${q.h}px;background:${col.bg};border:2px ${tem?'solid':'dashed'} ${col.br};border-radius:8px;display:flex;flex-direction:column;overflow:hidden;transform:rotate(${q.rot||0}deg);${x?'cursor:pointer':''}">
+        <div style="padding:3px 5px 0;font-size:9.5px;font-weight:700;line-height:1.15;color:${col.tx};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tem?bdHtml(x.nome):'fora hoje'}</div>
+        <div style="padding:0 5px 3px;flex:1;display:flex;align-items:flex-end;justify-content:space-between;gap:4px">${tem?`<span style="font-size:9px;color:var(--muted)">${nNum(+x.serv.toFixed(1))}Kg${x.d>0?` <b style="color:var(--red)">−${nNum(+x.d.toFixed(1))}</b>`:''}</span>${(x.temCusto&&c.pk>0)?`<span style="font-size:10px;font-weight:700;color:${col.tx}">${bdPct(x.cmv)}</span>`:''}`:''}</div></div>`;}).join('')
+    +'</div></div>';}
+function buffetTabsHTML(){const b=(k,t)=>`<button class="${buffetSub===k?'on':''}" onclick="buffetSub='${k}';viewBuffet()">${t}</button>`;
+  return `<div class="pill-filter" style="margin-bottom:16px">${b('dia','📅 Buffet do dia')}${b('hist','📈 Relatório')}${b('mapa','🗺️ Mapa do Buffet')}${b('relatorio','📋 Itens do mapa')}</div>`;}
+function bdOpcoesPratos(){const fichas=Object.values(DB.fichas||{}).sort((a,b)=>a.nome.localeCompare(b.nome));
+  const preps=Object.values(DB.insumos||{}).filter(i=>i.tipo==='preparado').sort((a,b)=>a.nome.localeCompare(b.nome));
+  return `<option value="">— escolha o prato —</option>${fichas.length?`<optgroup label="Fichas técnicas">${fichas.map(f=>`<option value="${f.id}">${bdHtml(f.nome)}</option>`).join('')}</optgroup>`:''}${preps.length?`<optgroup label="Preparados">${preps.map(p=>`<option value="${p.id}">${bdHtml(p.nome)}</option>`).join('')}</optgroup>`:''}<option value="__livre">✎ Outro prato (escrever o nome)</option>`;}
+function bdRowHTML(x,opts){const it=x.it,livre=!x.ref&&(it.lv||it.n);
+  const prato=livre?`<div style="display:flex;gap:6px"><input class="input" value="${bdHtml(it.n||'')}" placeholder="Nome do prato" onchange="bdSetNome('${it.id}',this.value)"><button class="btn btn-ghost btn-sm" style="flex:0 0 auto" title="Escolher da lista de fichas" onclick="bdLista('${it.id}')">Lista</button></div>`
+    :`<select class="input" onchange="bdSetPrato('${it.id}',this.value)">${x.ref?opts.replace('value="'+it.f+'"','value="'+it.f+'" selected'):opts}</select>`;
+  const num=(campo,ph)=>`<input class="input bd-num" inputmode="decimal" autocomplete="off" value="${bdInp(it[campo])}" placeholder="${ph}" onchange="bdSet('${it.id}','${campo}',this.value,this)">`;
+  const aberto=!!(it.z||it.o)?bdExtra[it.id]!==false:!!bdExtra[it.id];   // prato escrito à mão abre sozinho só na hora em que é criado
+  const extra=aberto?`<div class="bd-extra">
+      ${livre?`<label>Custo por kg <span>R$, se souber</span><input class="input bd-num" inputmode="decimal" autocomplete="off" value="${it.ck!=null&&it.ck!==''?nNum(+(+it.ck).toFixed(2)):''}" placeholder="0,00" onchange="bdSetExtra('${it.id}','ck',this.value,this)"></label>`:''}
+      <label>Acabou às <span>hora em que a cuba zerou</span><span class="bd-hora"><input class="input" type="time" value="${bdHtml(it.z||'')}" onchange="bdSetExtra('${it.id}','z',this.value)"><button class="btn btn-ghost btn-sm" onclick="bdAcabou('${it.id}')">Agora</button></span></label>
+      <label class="bd-extra-o">Observação <span>ex.: queimou, faltou, trocou por outro prato</span><input class="input" value="${bdHtml(it.o||'')}" placeholder="Opcional" onchange="bdSetExtra('${it.id}','o',this.value)"></label>
+    </div>`:'';
+  return `<div class="bd-row" id="bd_row_${it.id}">
+    <div class="bd-c bd-prato"><span class="bd-l">Prato</span>${prato}</div>
+    <div class="bd-c"><span class="bd-l">Abertura (kg)</span>${num('a','0')}</div>
+    <div class="bd-c bd-reps"><span class="bd-l">Reposições (kg)</span><div class="bd-reps-in" id="bd_reps_${it.id}">${bdRepsHTML(it)}</div></div>
+    <div class="bd-c"><span class="bd-l">Sobrou (kg)</span>${num('v','0')}</div>
+    <div class="bd-c"><span class="bd-l">Descartado (kg)</span>${num('d','0')}</div>
+    <div class="bd-c bd-res"><span class="bd-l">Consumido</span><div id="bd_res_${it.id}">${bdResHTML(x)}</div></div>
+    <button class="bd-mais${(it.z||it.o||(livre&&+it.ck>0))?' on':''}" title="${livre?'Custo por kg, hora em que acabou e observação':'Hora em que acabou e observação'}" onclick="bdMais('${it.id}')">⋯</button>
+    <button class="mini-del" title="Tirar do buffet deste dia" onclick="bdDel('${it.id}')">${icoX}</button>
+    ${extra}
+  </div>`;}
+function bdViewDia(){
+  const iso=bdCurData(),dias=bdDias(),dia=dias[iso],hj=hojeISO();
+  $('#topActions').innerHTML=`<button class="btn btn-gold" onclick="bdFolhaModal()">🖨️ Folha da cozinha</button>`;
+  const nav=`<div class="bd-bar">
+    <button class="bd-nav" title="Dia anterior" onclick="bdIr(-1)">‹</button>
+    <input class="input" type="date" value="${iso}" onchange="if(this.value){bdData=this.value;viewBuffet()}">
+    <button class="bd-nav" title="Dia seguinte" onclick="bdIr(1)">›</button>
+    ${iso!==hj?`<button class="btn btn-ghost btn-sm" onclick="bdData=null;viewBuffet()">Hoje</button>`:''}
+    <span class="bd-sem">${bdSem(iso)}${iso===hj?' · hoje':''}</span>
+    ${dia?`<span class="bd-bar-fim"><button class="btn btn-ghost btn-sm" onclick="bdRelDoDia()">📈 Relatório do dia</button><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="bdApagarDia()">Apagar o dia</button></span>`:''}
+  </div>`;
+  if(!dia){
+    const nCubas=(((DB.buffet||{}).cubas)||[]).length;
+    const regs=Object.keys(dias).filter(k=>((dias[k]||{}).itens||[]).some(it=>bdNome(it))).sort();
+    const sem=bdIsoAdd(iso,-7),temSem=regs.includes(sem);
+    const ult=regs.filter(k=>k<iso).pop()||regs[regs.length-1];
+    const bt=(cls,on,t)=>`<button class="btn ${cls}" style="justify-content:center;white-space:normal" onclick="${on}">${t}</button>`;
+    $('#view').innerHTML=buffetTabsHTML()+nav+`<div class="card card-pad" style="max-width:620px">
+      <div style="font-family:'Fraunces',serif;font-size:19px;font-weight:700;margin-bottom:4px">Buffet de ${bdSem(iso)}, ${fmtDataBR(iso)}</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5">Ainda não há registro neste dia. Monte os pratos do dia e depois anote a abertura, as reposições, o que sobrou e o que foi descartado.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${nCubas?bt('btn-primary',"bdCriar('mapa')",'Usar o mapa do buffet ('+nCubas+' cuba'+(nCubas===1?'':'s')+')'):''}
+        ${temSem?bt(nCubas?'btn-ghost':'btn-primary',"bdCriar('copia','"+sem+"')",'Repetir '+bdSem(sem)+' passada ('+bdCurto(sem)+')'):''}
+        ${ult&&ult!==sem?bt('btn-ghost',"bdCriar('copia','"+ult+"')",'Repetir o último dia registrado ('+bdSem(ult)+', '+bdCurto(ult)+')'):''}
+        ${regs.length>1?`<select class="input" onchange="if(this.value)bdCriar('copia',this.value)"><option value="">Copiar os pratos de outro dia…</option>${regs.slice().reverse().slice(0,90).map(k=>`<option value="${k}">${fmtDataBR(k)} · ${bdSem(k)}</option>`).join('')}</select>`:''}
+        ${bt((nCubas||temSem)?'btn-ghost':'btn-primary',"bdCriar('branco')",'Começar em branco')}
+      </div>
+      ${nCubas?'':'<div style="font-size:12px;color:var(--soft);margin-top:14px;line-height:1.5">Dica: monte o mapa do buffet uma vez, na aba Mapa do Buffet, para começar cada dia com as cubas já prontas.</div>'}
+    </div>`;
+    return;
+  }
+  const c=bdDiaCalc(iso),opts=bdOpcoesPratos(),board=bdBoardHTML(c);
+  const aberto=bdMapaAberto==null?!ehMobile():bdMapaAberto;
+  const campo=(k,l,h,ph)=>`<div class="field" style="margin:0"><label>${l}${h?` <span class="hint">${h}</span>`:''}</label><input class="input" inputmode="decimal" autocomplete="off" value="${bdInp(dia[k])}" placeholder="${ph}" onchange="bdSetDia('${k}',this.value,this)"></div>`;
+  $('#view').innerHTML=buffetTabsHTML()+nav+`
+  <div class="kpi-grid bd-kpis" id="bd_kpis">${bdKpisHTML(c)}</div>
+  ${board?`<details class="card bd-mapa" ${aberto?'open':''} ontoggle="bdMapaAberto=this.open"><summary>Mapa do dia <span>toque numa cuba para ir até o prato</span></summary><div id="bd_board">${board}</div></details>`:''}
+  <div class="card card-pad" style="margin-bottom:16px">
+    <div class="section-head" style="margin-bottom:12px"><div><div class="ttl">Pratos do dia</div><div style="font-size:12px;color:var(--soft);margin-top:2px">Pesos em kg, sem a cuba. Reposição em branco repete o último peso. Para travessa ou unidade, digite a conta: 4x3,1.</div></div><div><button class="btn btn-primary btn-sm" onclick="bdAdd()">${icoPlus} Prato</button></div></div>
+    <div class="bd-head mob-head"><span>Prato</span><span>Abertura (kg)</span><span>Reposições (kg)</span><span>Sobrou (kg)</span><span>Descartado (kg)</span><span>Consumido</span><span></span><span></span></div>
+    ${c.itens.map(x=>bdRowHTML(x,opts)).join('')}
+    <div class="bd-tot" id="bd_tot">${bdTotHTML(c)}</div>
+  </div>
+  <div class="card card-pad">
+    <div class="ttl" style="font-size:15px;font-weight:600;margin-bottom:4px">Fechamento do dia <span style="font-size:11.5px;color:var(--soft);font-weight:400">opcional</span></div>
+    <div style="font-size:12px;color:var(--soft);margin-bottom:12px;line-height:1.5">Preencha o que tiver. A venda de comida é o valor do caixa sem bebidas e doces; sem ela, o Flow estima pelo kg vendido e pelas refeições no livre.</div>
+    <div class="bd-fech">
+      ${campo('vnd','Venda de comida','R$','0,00')}
+      ${campo('kgV','Kg vendido no quilo','balança','0')}
+      ${campo('liv','Refeições no livre',c.pl>0?'a '+fmtBRL(c.pl):'à vontade','0')}
+      ${campo('mar','Marmitas e PF','quantidade','0')}
+      ${campo('pes','Clientes no total','pessoas',(c.liv+c.mar)>0?String(c.liv+c.mar):'0')}
+      <div class="field" style="margin:0"><label>Equipe comeu <span class="hint">kg</span></label><div style="display:flex;gap:6px"><input class="input" style="flex:0 0 78px" inputmode="decimal" autocomplete="off" value="${bdInp(dia.eq)}" placeholder="0" onchange="bdSetDia('eq',this.value,this)"><select class="input" onchange="bdSetDia('eqF',this.value)"><option value="">do buffet</option><option value="1" ${dia.eqF?'selected':''}>feito à parte</option></select></div></div>
+      <div class="field bd-obs" style="margin:0"><label>Observações</label><input class="input" value="${bdHtml(dia.obs||'')}" placeholder="Ex.: chuva, feriado, evento, faltou gás" onchange="bdSetDia('obs',this.value)"></div>
+    </div>
+    <div id="bd_fech" style="margin-top:14px">${bdFechHTML(c)}</div>
+  </div>`;
+}
+
+/* ---------- Relatório do buffet: mesmo roteiro dos relatórios da consultoria, gerado do que o cliente preencheu ---------- */
+function bdPeriodo(){const hj=hojeISO(),t=bdPer.tipo,ref=bdPer.ref||hj;
+  if(t==='dia')return {de:ref,ate:ref,rot:bdSem(ref)+', '+fmtDataBR(ref),tit:fmtDataBR(ref)};
+  if(t==='semana'){const w=new Date(ref+'T12:00:00').getDay(),de=bdIsoAdd(ref,-((w+6)%7)),ate=bdIsoAdd(de,6);return {de,ate,rot:'semana de '+bdCurto(de)+' a '+fmtDataBR(ate),tit:bdCurto(de)+' a '+fmtDataBR(ate)};}
+  if(t==='per'){let de=bdPer.de||(hj.slice(0,8)+'01'),ate=bdPer.ate||hj;if(ate<de){const x=de;de=ate;ate=x;}return {de,ate,rot:fmtDataBR(de)+' a '+fmtDataBR(ate),tit:fmtDataBR(de)+' a '+fmtDataBR(ate)};}
+  const ym=ref.slice(0,7),p=ym.split('-').map(Number),ult=new Date(p[0],p[1],0).getDate();return {de:ym+'-01',ate:ym+'-'+String(ult).padStart(2,'0'),rot:mesNomeYM(ym),tit:mesNomeYM(ym)};}
+function bdPerIr(n){const t=bdPer.tipo,ref=bdPer.ref||hojeISO();
+  if(t==='dia')bdPer.ref=bdIsoAdd(ref,n);else if(t==='semana')bdPer.ref=bdIsoAdd(ref,7*n);
+  else if(t==='mes'){const d=new Date(ref.slice(0,7)+'-15T12:00:00');d.setMonth(d.getMonth()+n);bdPer.ref=bdIso(d);}
+  viewBuffet();}
+function bdSimVal(){const v=parseNumBR(bdSim);return v>0?v:0;}
+function bdRel(de,ate){const dias=bdDias();
+  const cs=Object.keys(dias).filter(k=>k>=de&&k<=ate).sort().map(bdDiaCalc).filter(c=>c&&c.n>0);
+  const R={de,ate,cs,nd:cs.length,um:cs.length===1};
+  ['n','a','rep','nRep','serv','v','d','consPos','cServ','cDesc','cSobra','cCons','custoDia','eq','kgV','liv','mar','vnd','pes','servCusto','comCusto','dentro'].forEach(k=>{R[k]=cs.reduce((s,c)=>s+(+c[k]||0),0);});
+  R.cons=R.consPos;
+  const cv=cs.filter(c=>c.receita>0);R.cv=cv;R.receita=cv.reduce((s,c)=>s+c.receita,0);
+  R.vB=cv.reduce((s,c)=>s+c.cCons,0);R.vC=cv.reduce((s,c)=>s+c.custoDia,0);R.vD=cv.reduce((s,c)=>s+c.custoD,0);
+  R.temD=cv.some(c=>c.eq>0);R.cEq=cs.reduce((s,c)=>s+c.cEq,0);R.cEqFora=cs.reduce((s,c)=>s+(c.eqFora?c.cEq:0),0);
+  R.baseA=cs.reduce((s,c)=>s+c.pk*c.servCusto,0);R.pkMed=R.servCusto>0?R.baseA/R.servCusto:(cs[0]?cs[0].pk:0);
+  R.pkVaria=cs.some(c=>Math.abs(c.pk-cs[0].pk)>0.005);
+  R.cmvA=R.baseA>0?R.cServ/R.baseA:null;R.cmvB=R.receita>0?R.vB/R.receita:null;R.cmvC=(R.receita>0&&R.vC>0)?R.vC/R.receita:null;R.cmvD=(R.receita>0&&R.temD)?R.vD/R.receita:null;
+  R.nReal=cs.filter(c=>c.recTipo==='real').length;R.nEst=cs.filter(c=>c.recTipo==='est').length;R.nPeso=cs.filter(c=>c.recTipo==='peso').length;R.nSem=cs.filter(c=>!c.recTipo).length;
+  R.pesV=cv.reduce((s,c)=>s+c.pes,0);R.cRef=R.pesV>0?cv.filter(c=>c.pes>0).reduce((s,c)=>s+c.custoD,0)/R.pesV:null;
+  const cq=cs.filter(c=>c.foraBalanca!=null);R.fora=cq.length?cq.reduce((s,c)=>s+c.foraBalanca,0):null;R.foraCons=cq.reduce((s,c)=>s+c.consPos,0);
+  const P={},C={};
+  cs.forEach(c=>{const vistos={};c.itens.forEach(x=>{if(!x.nome)return;const k=x.ref?'f:'+x.it.f:'n:'+x.nome.trim().toLowerCase();
+    const p=P[k]||(P[k]={nome:x.nome,cat:x.cat,ref:x.ref,dias:0,a:0,rep:0,nRep:0,serv:0,v:0,d:0,cons:0,cServ:0,cDesc:0,cSobra:0,est:false,repSobra:0,zerou:0,zs:[],obs:[]});
+    if(!vistos[k]){vistos[k]=1;p.dias++;}
+    p.a+=x.a;p.rep+=x.rep;p.nRep+=x.nRep;p.serv+=x.serv;p.v+=x.v;p.d+=x.d;p.cons+=Math.max(0,x.cons);p.cServ+=x.cServ;p.cDesc+=x.cDesc;p.cSobra+=x.cSobra;if(x.est)p.est=true;
+    if(x.repSobra)p.repSobra++;if(x.zerou&&c.temSobra)p.zerou++;if(x.it.z)p.zs.push({iso:c.iso,z:x.it.z});if(x.it.o)p.obs.push({iso:c.iso,o:x.it.o});
+    const g=C[x.cat]||(C[x.cat]={nome:x.cat,serv:0,cServ:0,d:0,cDesc:0});g.serv+=x.serv;g.cServ+=x.cServ;g.d+=x.d;g.cDesc+=x.cDesc;});});
+  R.pratos=Object.values(P).map(p=>{p.ck=p.serv>0?p.cServ/p.serv:0;p.temCusto=p.cServ>0;p.insZero=bdInsZero(p.ref);return p;}).sort((a,b)=>(b.cServ-a.cServ)||(b.serv-a.serv));
+  R.cats=Object.values(C).filter(g=>g.serv>0).sort((a,b)=>b.cServ-a.cServ);
+  return R;}
+function bdRelSimReceita(R,sim){return R.cv.reduce((s,c)=>s+(c.recTipo==='peso'?(c.pk>0?c.receita*sim/c.pk:0):c.receita+c.kgV*(sim-c.pk)),0);}
+function bdRelLead(R){const f=[],h=bdHtml,quando=R.um?'de '+bdCurto(R.de):'do período';
+  if(R.cmvC!=null){f.push(`O CMV real do buffet ${quando} ficou em <b>${bdPct(R.cmvC)}</b>, ${R.cmvC<=CMV_ALVO_BUFFET?'dentro':'acima'} da meta de 30%${R.cmvA!=null?'; pelo mapa, o teórico é '+bdPct(R.cmvA):''}.`);
+    if(R.nPeso&&!R.nReal&&!R.nEst)f.push('A venda foi estimada pelo peso consumido, porque o caixa não foi informado.');
+    else if(R.nSem)f.push(`${R.nSem} dia${R.nSem===1?' ficou':'s ficaram'} de fora dessa conta por não ${R.nSem===1?'ter':'terem'} venda informada.`);}
+  else if(R.cmvA!=null)f.push(`Ainda não dá para fechar o CMV real ${quando}: falta a venda de comida. Pelo mapa, o CMV teórico é <b>${bdPct(R.cmvA)}</b>, com ${fmtBRL(R.cServ)} de custo em ${bdKg(R.serv)} montados.`);
+  else f.push(`Foram montados ${bdKg(R.serv)} ${quando}. Falta o preço do quilo ou o custo das fichas para calcular o CMV.`);
+  const top=R.pratos[0];if(top&&R.cServ>0&&top.cServ/R.cServ>=0.15)f.push(`O custo está concentrado em ${h(top.nome)} (${bdPct(top.cServ/R.cServ)} de tudo que foi montado).`);
+  if(R.d>0){const md=R.pratos.slice().sort((a,b)=>b.d-a.d)[0];f.push(`O descarte somou ${bdKg(R.d)} (${bdPct(R.d/R.serv)} do montado${R.cDesc>0?', '+fmtBRL(R.cDesc):''}); o maior volume foi ${h(md.nome)}.`);}
+  else if(R.v>0)f.push(`Voltaram ${bdKg(R.v)} para reaproveitar e nada foi descartado.`);
+  else f.push('Nenhuma sobra ou descarte foi anotado.');
+  return f.join(' ');}
+function bdRelNums(R){const real=R.cmvC!=null;
+  return [[bdKg(R.serv),'montado (abertura + reposição)'],[fmtBRL(R.cServ),'custo do montado'],[R.receita>0?fmtBRL(R.receita):'—',R.receita>0?('venda de comida'+(R.nReal===R.cv.length?'':' (com estimativa)')):'venda não informada'],
+    [real?bdPct(R.cmvC):(R.cmvA!=null?bdPct(R.cmvA):'—'),real?'CMV real do buffet':'CMV teórico do mapa',real?R.cmvC:R.cmvA]];}
+function bdRelAchados(R){const A=[],h=bdHtml,pk=R.pkMed,P=R.pratos.filter(p=>p.serv>0),lista=(arr,f)=>arr.map(f).join(', ');
+  const top=P[0];
+  if(top&&top.temCusto&&R.cServ>0)A.push(`<b>${h(top.nome)}:</b> ${bdPct(top.cServ/R.cServ)} do custo do que foi montado, a ${fmtBRL(top.ck)} por kg pronto.${pk>0?' Sozinho ocupa '+bdPct(top.ck/pk)+' do preço do quilo.':''} Qualquer ganho de margem começa aqui: porção, corte, rendimento real${top.rep>0?' e quanto ele pesa na reposição ('+bdKg(top.rep)+' repostos)':''}.`);
+  if(pk>0){const cc=P.filter(p=>p.temCusto).sort((a,b)=>b.ck-a.ck),ac=cc.filter(p=>p.ck/pk>CMV_ALVO_BUFFET);
+    if(ac.length)A.push(`<b>Acima de 30% do quilo:</b> ${lista(ac.slice(0,6),p=>h(p.nome)+' ('+bdPct(p.ck/pk)+')')}${ac.length>6?' e mais '+(ac.length-6):''}. ${cc.length-ac.length} de ${cc.length} pratos ficam dentro da meta.`);
+    if(cc.length>=2){const caro=cc[0],bar=cc[cc.length-1];A.push(`<b>Margem por quilo:</b> ${caro.ck>pk?'cada kg de '+h(caro.nome)+' custa '+fmtBRL(caro.ck-pk)+' a mais do que o preço do quilo':'cada kg de '+h(caro.nome)+' vendido no quilo deixa '+fmtBRL(pk-caro.ck)+' de margem bruta'}, contra ${fmtBRL(pk-bar.ck)} de margem em ${h(bar.nome)}.`);}}
+  if(R.cats.length>=2&&R.cServ>0){const porPeso=R.cats.slice().sort((a,b)=>b.serv-a.serv)[0],porCusto=R.cats[0];
+    if(porPeso!==porCusto)A.push(`<b>Peso e custo:</b> ${h(porPeso.nome)} é ${bdPct(porPeso.serv/R.serv)} do peso montado e só ${bdPct(porPeso.cServ/R.cServ)} do custo; ${h(porCusto.nome)} é ${bdPct(porCusto.serv/R.serv)} do peso e ${bdPct(porCusto.cServ/R.cServ)} do custo.`);}
+  const dd=P.filter(p=>p.d>0);
+  if(dd.length){const porKg=dd.slice().sort((a,b)=>b.d-a.d)[0],porRS=dd.slice().sort((a,b)=>b.cDesc-a.cDesc)[0];
+    A.push(`<b>Descarte:</b> ${h(porKg.nome)} foi o maior volume, ${bdKg(porKg.d)} (${bdPct(porKg.d/porKg.serv)} do que foi montado dele)${porRS!==porKg&&porRS.cDesc>0?'; em dinheiro, o maior foi '+h(porRS.nome)+', '+fmtBRL(porRS.cDesc):(porKg.cDesc>0?', '+fmtBRL(porKg.cDesc):'')}.`);}
+  const ss=P.filter(p=>p.serv>=1&&(p.v+p.d)/p.serv>=0.3).sort((a,b)=>(b.v+b.d)/b.serv-(a.v+a.d)/a.serv);
+  if(ss.length)A.push(`<b>Sobrou 30% ou mais:</b> ${lista(ss.slice(0,6),p=>h(p.nome)+' ('+bdPct((p.v+p.d)/p.serv)+')')}. É o principal ajuste de produção: abrir com menos e repor em levas menores.`);
+  const rs=P.filter(p=>p.repSobra>0).sort((a,b)=>b.repSobra-a.repSobra);
+  if(rs.length)A.push(`<b>Reposição que virou sobra:</b> ${lista(rs.slice(0,6),p=>h(p.nome)+(R.um?'':' ('+p.repSobra+' dia'+(p.repSobra===1?'':'s')+')'))}. A última reposição foi quase do tamanho do que sobrou.`);
+  const zs=P.filter(p=>p.zs.length);
+  if(zs.length)A.push(`<b>Acabou antes do fim:</b> ${lista(zs.slice(0,6),p=>h(p.nome)+' ('+p.zs.slice(0,4).map(z=>(R.um?'':bdCurto(z.iso)+' ')+'às '+h(z.z).replace(':','h')).join(', ')+')')}. Pode ter faltado na pista.`);
+  else{const zz=P.filter(p=>p.zerou>0&&p.temCusto).sort((a,b)=>b.ck-a.ck);
+    if(zz.length)A.push(`<b>Zeraram sem sobra:</b> ${lista(zz.slice(0,5),p=>h(p.nome))}. Sem o horário não dá para saber se faltou: vale marcar a hora em que a cuba acaba.`);}
+  if(R.eq>0)A.push(`<b>Almoço da equipe:</b> ${bdKg(R.eq)}${R.serv>0?' ('+bdPct(R.eq/R.serv)+' do montado)':''}, cerca de ${fmtBRL(R.cEq)} ao custo médio da comida montada. É a diferença entre as leituras C e D.`);
+  if(R.fora!=null&&R.foraCons>0&&R.fora/R.foraCons>0.05)A.push(`<b>Fora da balança:</b> ${bdKg(R.fora)} saíram das cubas e não passaram pela balança (${bdPct(R.fora/R.foraCons)} do consumido nos dias só de quilo). Entram aqui prova da cozinha, prato não pesado e erro de pesagem.`);
+  const dc=R.cs.filter(c=>c.cmvDia!=null);
+  if(dc.length>=2){const o=dc.slice().sort((a,b)=>b.cmvDia-a.cmvDia);A.push(`<b>Dias:</b> o maior CMV real foi em ${bdCurto(o[0].iso)} (${bdPct(o[0].cmvDia)}) e o menor em ${bdCurto(o[o.length-1].iso)} (${bdPct(o[o.length-1].cmvDia)}).`);}
+  return A;}
+function bdRelPend(R){const L=[],h=bdHtml,datas=a=>a.length>6?a.slice(0,6).map(bdCurto).join(', ')+' e mais '+(a.length-6):a.map(bdCurto).join(', '),em=a=>R.um?'':' em '+datas(a);
+  if(!(R.pkMed>0))L.push(['Definir o preço do quilo no Mapa do Buffet','Sem ele não há CMV por prato nem teórico']);
+  const sv=R.cs.filter(c=>!c.recTipo).map(c=>c.iso);if(sv.length)L.push(['Venda de comida'+em(sv)+': valor do caixa sem bebidas, ou kg vendido e refeições','Sem venda não existe CMV real, só custo de produção']);
+  const sp=R.cs.filter(c=>c.recTipo==='peso').map(c=>c.iso);if(sp.length)L.push(['Valor de comida no caixa'+em(sp),'Troca a venda estimada pelo peso pela venda real']);
+  const se=R.cs.filter(c=>c.recTipo==='est').map(c=>c.iso);if(se.length)L.push(['Valor de comida no caixa'+em(se),'Troca a estimativa (kg e livres pelo preço) pela venda real, com PF e marmita']);
+  const sc=R.pratos.filter(p=>p.serv>0&&!p.temCusto);if(sc.length)L.push(['Ficha técnica ou custo por kg de: '+sc.slice(0,8).map(p=>h(p.nome)).join(', ')+(sc.length>8?' e mais '+(sc.length-8):''),'Hoje entram a R$ 0,00: '+bdKg(sc.reduce((s,p)=>s+p.serv,0))+' sem custo no relatório']);
+  const iz={};R.pratos.forEach(p=>p.insZero.forEach(n=>{(iz[n]=iz[n]||[]).push(p.nome);}));const izk=Object.keys(iz);
+  if(izk.length)L.push(['Preço de compra de: '+izk.slice(0,8).map(n=>h(n)+' ('+h(iz[n][0])+(iz[n].length>1?' e mais '+(iz[n].length-1):'')+')').join(', ')+(izk.length>8?' e mais '+(izk.length-8):''),'A ficha calcula esse ingrediente a R$ 0,00 e o custo sai menor do que é']);
+  const es=R.pratos.filter(p=>p.est);if(es.length)L.push(['Ficha técnica de: '+es.slice(0,8).map(p=>h(p.nome)).join(', '),'O custo por kg foi digitado à mão (estimativa)']);
+  const ss=R.cs.filter(c=>!c.temSobra).map(c=>c.iso);if(ss.length)L.push(['Sobra e descarte de cada cuba'+em(ss),'Se nada sobrou, tudo certo; se não foi pesado, o consumido fica igual ao montado']);
+  const er=R.cs.filter(c=>c.erros>0).map(c=>c.iso);if(er.length)L.push(['Conferir os pesos'+em(er),'Há prato com sobra e descarte maiores que o montado']);
+  if(!(R.eq>0))L.push(['Peso do almoço da equipe','Separa o consumo interno da venda']);
+  if(R.pratos.some(p=>p.zerou>0)&&!R.pratos.some(p=>p.zs.length))L.push(['Hora em que cada cuba acaba','Mostra se faltou comida na pista']);
+  return L;}
+/* seções do relatório: cada uma com título, tabela (opcional), lista (opcional) e nota (opcional). Servem para a tela e para o PDF. */
+function bdRelSecs(R,sim){const S=[],h=bdHtml,pk=R.pkMed,um=R.um,brl=v=>v>0?fmtBRL(v):'—';
+  const bdKgN=v=>(+v||0)>0?fmtN(+v,um?3:1):'—';   // (sombra de propósito: dentro do relatório o peso tem casas fixas)
+  const cm=(ck,p)=>!(p>0&&ck>0)?'—':`<span${ck/p>CMV_ALVO_BUFFET?' style="color:var(--red);font-weight:700"':''}>${bdPct(ck/p)}</span>`;
+  const cv=v=>v==null?'—':`<span${v>CMV_ALVO_BUFFET?' style="color:var(--red);font-weight:700"':''}>${bdPct(v)}</span>`;
+  const pkTxt=R.pkVaria?'ao preço do quilo de cada dia':'a '+fmtBRL(pk)+' o quilo';
+  // 1. Resultado
+  {const recS=sim?bdRelSimReceita(R,sim):0,simA=sim&&R.servCusto>0?R.cServ/(sim*R.servCusto):null;
+    const ln=(t,custo,base,cmv,cmvS,b)=>`<tr${b?' style="font-weight:700"':''}><td>${t}</td><td class="num">${brl(custo)}</td><td class="num">${brl(base)}</td><td class="num">${cv(cmv)}</td>${sim?`<td class="num">${cv(cmvS)}</td>`:''}</tr>`;
+    let tb=`<table><thead><tr><th>Leitura</th><th class="num">Custo</th><th class="num">Venda</th><th class="num">CMV</th>${sim?`<th class="num">Quilo a ${fmtBRL(sim)}</th>`:''}</tr></thead><tbody>`
+      +ln('A · Teórico do mapa (tudo que foi montado, vendido '+pkTxt+')',R.cServ,R.baseA,R.cmvA,simA)
+      +ln('B · Só o que o cliente comeu (montado menos sobra, descarte'+(R.temD?' e equipe':'')+')',R.vB,R.receita,R.cmvB,recS>0?R.vB/recS:null)
+      +ln('C · CMV real do buffet (o que o cliente comeu mais o descarte)',R.vC,R.receita,R.cmvC,recS>0?R.vC/recS:null,true)
+      +(R.temD?ln('D · Com o almoço da equipe',R.vD,R.receita,R.cmvD,recS>0?R.vD/recS:null):'')
+      +'</tbody></table>';
+    const n=[];
+    if(R.receita>0){const o=[];if(R.nReal)o.push(R.nReal+' dia'+(R.nReal===1?'':'s')+' com o valor do caixa');if(R.nEst)o.push(R.nEst+' com venda estimada pelo kg vendido e pelas refeições no livre');if(R.nPeso)o.push(R.nPeso+' com venda estimada pelo peso consumido');
+      n.push('Venda de comida: '+(um?(R.nReal?'valor do caixa informado.':R.nEst?'estimada pelo kg vendido e pelas refeições no livre, ao preço cadastrado.':'estimada pelo peso consumido, ao preço do quilo.'):o.join('; ')+'.')+(R.nSem?' '+R.nSem+' dia'+(R.nSem===1?'':'s')+' sem venda '+(R.nSem===1?'fica':'ficam')+' fora das leituras B, C e D.':''));
+      if(R.cmvC!=null&&R.cmvC>CMV_ALVO_BUFFET){const meta=R.vC/CMV_ALVO_BUFFET;n.push('Para ficar em 30%, a venda de comida precisava ser de '+fmtBRL(meta)+': '+fmtBRL(meta-R.receita)+' a mais'+(pk>0?', ou '+bdKg((meta-R.receita)/pk)+' no quilo':'')+'.');}
+      if(R.cRef!=null)n.push('Custo por refeição: '+fmtBRL(R.cRef)+' ('+fmtN(R.pesV,0)+' refeições nos dias com venda).');
+      if(sim)n.push('Simulação: só o que é vendido por quilo muda de preço; livre, PF e marmita ficam como estão.');}
+    else n.push('Sem venda informada, só a leitura A (teórica) fecha. Informe no fechamento do dia o valor de comida do caixa, ou o kg vendido e as refeições.');
+    if(R.v>0)n.push('A sobra que voltou ('+bdKg(R.v)+', '+fmtBRL(R.cSobra)+') foi tirada do custo, porque vai ser vendida em outro dia.');
+    S.push({t:um?'Resultado do dia':'Resultado do período',tb,nota:n.join(' ')});}
+  // 2. Mapa por prato
+  {const P=R.pratos.filter(p=>p.serv>0),nC=P.filter(p=>p.temCusto).length,nD=pk>0?P.filter(p=>p.temCusto&&p.ck/pk<=CMV_ALVO_BUFFET).length:0;
+    const tb=`<table><thead><tr><th>Prato</th>${um?'':'<th class="num">Dias</th>'}<th class="num">Abertura</th><th class="num">Reposição</th><th class="num">Montado</th><th class="num">Sobrou</th><th class="num">Descarte</th><th class="num">R$/kg</th><th class="num">Custo</th><th class="num">% custo</th><th class="num">CMV${R.pkVaria?' no quilo':' a '+fmtN(pk,2)}</th>${sim?`<th class="num">CMV a ${fmtN(sim,2)}</th>`:''}</tr></thead>
+      <tbody>${P.map(p=>`<tr><td><b>${h(p.nome)}</b>${p.est?' <small style="color:var(--gold);font-weight:700;white-space:nowrap">est.</small>':''}${!p.temCusto?' <small style="color:var(--red)">sem custo</small>':''}</td>${um?'':`<td class="num">${p.dias}</td>`}<td class="num">${bdKgN(p.a)}</td><td class="num">${bdKgN(p.rep)}</td><td class="num"><b>${bdKgN(p.serv)}</b></td><td class="num">${bdKgN(p.v)}</td><td class="num"${p.d>0?' style="color:var(--red)"':''}>${bdKgN(p.d)}</td><td class="num">${p.temCusto?fmtBRL(p.ck):'—'}</td><td class="num">${brl(p.cServ)}</td><td class="num">${R.cServ>0&&p.cServ>0?bdPct(p.cServ/R.cServ):'—'}</td><td class="num">${cm(p.ck,pk)}</td>${sim?`<td class="num">${cm(p.ck,sim)}</td>`:''}</tr>`).join('')}</tbody>
+      <tfoot><tr style="font-weight:700"><td>Total</td>${um?'':`<td class="num">${R.nd}</td>`}<td class="num">${bdKgN(R.a)}</td><td class="num">${bdKgN(R.rep)}</td><td class="num">${bdKgN(R.serv)}</td><td class="num">${bdKgN(R.v)}</td><td class="num">${bdKgN(R.d)}</td><td class="num">${R.servCusto>0?fmtBRL(R.cServ/R.servCusto):'—'}</td><td class="num">${brl(R.cServ)}</td><td class="num">${R.cServ>0?'100%':'—'}</td><td class="num">${cv(R.cmvA)}</td>${sim?`<td class="num">${R.servCusto>0?cv(R.cServ/(sim*R.servCusto)):'—'}</td>`:''}</tr></tfoot></table>`;
+    S.push({t:um?'Mapa do dia por prato':'Mapa do período por prato',tb,nota:'Pesos em kg. Montado é a abertura mais as reposições. CMV do prato é o custo do quilo pronto sobre o preço do quilo'+(pk>0?'; dentro de 30%: '+nD+' de '+nC+' pratos com custo':'')+'.'+(P.some(p=>p.est)?' est. = custo por kg digitado à mão, sem ficha técnica.':'')+(um?'':' Nos dias somados, o R$/kg é a média ponderada pelo peso.')});}
+  // 3. Sobra e descarte
+  {const P=R.pratos.filter(p=>p.v+p.d>0).sort((a,b)=>(b.cDesc-a.cDesc)||(b.d-a.d)||(b.v-a.v));
+    if(P.length){const ob=P.some(p=>p.obs.length);
+      const tb=`<table><thead><tr><th>Prato</th><th class="num">Montado</th><th class="num">Voltou</th><th class="num">Descarte</th><th class="num">% do prato</th><th class="num">Custo do descarte</th>${ob?'<th>Observação</th>':''}</tr></thead>
+        <tbody>${P.map(p=>`<tr><td><b>${h(p.nome)}</b></td><td class="num">${bdKgN(p.serv)}</td><td class="num">${bdKgN(p.v)}</td><td class="num"${p.d>0?' style="color:var(--red)"':''}>${bdKgN(p.d)}</td><td class="num">${p.serv>0?bdPct((p.v+p.d)/p.serv):'—'}</td><td class="num">${brl(p.cDesc)}</td>${ob?`<td>${p.obs.slice(0,3).map(o=>(um?'':bdCurto(o.iso)+': ')+h(o.o)).join('; ')}</td>`:''}</tr>`).join('')}</tbody>
+        <tfoot><tr style="font-weight:700"><td>Total do buffet</td><td class="num">${bdKgN(R.serv)}</td><td class="num">${bdKgN(R.v)}</td><td class="num">${bdKgN(R.d)}</td><td class="num">${R.serv>0?bdPct((R.v+R.d)/R.serv):'—'}</td><td class="num">${brl(R.cDesc)}</td>${ob?'<td></td>':''}</tr></tfoot></table>`;
+      S.push({t:'Sobra e descarte',tb,nota:'Descarte de '+bdPct(R.serv>0?R.d/R.serv:0)+' do peso montado'+(R.cServ>0?' e '+bdPct(R.cDesc/R.cServ)+' do custo':'')+'. % do prato soma o que voltou e o que foi descartado.'});}}
+  // 4. Peso e custo por categoria
+  if(R.cats.length>=2&&R.cServ>0)S.push({t:'Peso e custo por categoria',tb:`<table><thead><tr><th>Categoria</th><th class="num">Montado (kg)</th><th class="num">% do peso</th><th class="num">Custo</th><th class="num">% do custo</th><th class="num">R$/kg</th><th class="num">Descarte (kg)</th></tr></thead><tbody>${R.cats.map(g=>`<tr><td><b>${h(g.nome)}</b></td><td class="num">${bdKgN(g.serv)}</td><td class="num">${bdPct(g.serv/R.serv)}</td><td class="num">${brl(g.cServ)}</td><td class="num">${bdPct(g.cServ/R.cServ)}</td><td class="num">${g.cServ>0?fmtBRL(g.cServ/g.serv):'—'}</td><td class="num">${bdKgN(g.d)}</td></tr>`).join('')}</tbody></table>`,nota:'Categoria da ficha técnica de cada prato.'});
+  // 5. Vendas, refeições e equipe
+  {const L=[];if(R.vnd>0)L.push(['Venda de comida informada (caixa)',fmtBRL(R.vnd)]);if(R.kgV>0)L.push(['Vendido no quilo',bdKg(R.kgV)]);if(R.liv>0)L.push(['Refeições no livre',fmtN(R.liv,0)]);if(R.mar>0)L.push(['Marmitas e PF',fmtN(R.mar,0)]);
+    if(R.pes>0)L.push(['Clientes no total',fmtN(R.pes,0)]);if(R.cRef!=null)L.push(['Custo por refeição',fmtBRL(R.cRef)]);if(R.pesV>0&&R.receita>0&&R.nPeso===0)L.push(['Ticket médio de comida',fmtBRL(R.receita/R.pesV)]);
+    if(R.pes>0)L.push(['Consumo por cliente',fmtN(Math.max(0,R.consPos-(R.cEqFora>0?0:R.eq))/R.pes*1000,0)+' g']);
+    if(R.eq>0)L.push(['Almoço da equipe',bdKg(R.eq)+', cerca de '+fmtBRL(R.cEq)]);
+    if(L.length)S.push({t:'Vendas, refeições e equipe',tb:`<table><tbody>${L.map(l=>`<tr><td>${l[0]}</td><td class="num"><b>${l[1]}</b></td></tr>`).join('')}</tbody></table>`,estreita:true});}
+  // 6. Dia a dia
+  if(!um)S.push({t:'Dia a dia',dias:true,tb:`<table><thead><tr><th>Dia</th><th class="num">Pratos</th><th class="num">Montado</th><th class="num">Sobrou</th><th class="num">Descarte</th><th class="num">% descarte</th><th class="num">Custo real</th><th class="num">Venda</th><th class="num">CMV real</th><th class="num">Refeições</th><th class="num">Custo por refeição</th></tr></thead>
+    <tbody>${R.cs.map(c=>`<tr style="cursor:pointer" onclick="bdAbrirDia('${c.iso}')"><td style="white-space:nowrap"><b>${bdCurto(c.iso)}</b> <span style="color:var(--soft)">${bdSem(c.iso).slice(0,3)}</span></td><td class="num">${c.n}</td><td class="num">${bdKgN(c.serv)}</td><td class="num">${bdKgN(c.v)}</td><td class="num"${c.d>0?' style="color:var(--red)"':''}>${bdKgN(c.d)}</td><td class="num">${c.serv>0&&c.d>0?bdPct(c.pDesc):'—'}</td><td class="num">${brl(c.custoDia)}</td><td class="num">${c.receita>0?fmtBRL(c.receita)+(c.recTipo!=='real'?'*':''):'—'}</td><td class="num">${cv(c.cmvDia)}</td><td class="num">${c.pes||'—'}</td><td class="num">${c.cRef!=null?fmtBRL(c.cRef):'—'}</td></tr>`).join('')}</tbody>
+    <tfoot><tr style="font-weight:700"><td style="white-space:nowrap">Total</td><td class="num"></td><td class="num">${bdKgN(R.serv)}</td><td class="num">${bdKgN(R.v)}</td><td class="num">${bdKgN(R.d)}</td><td class="num">${R.serv>0&&R.d>0?bdPct(R.d/R.serv):'—'}</td><td class="num">${brl(R.custoDia)}</td><td class="num">${brl(R.receita)}</td><td class="num">${cv(R.cmvC)}</td><td class="num">${R.pes?fmtN(R.pes,0):'—'}</td><td class="num">${R.cRef!=null?fmtBRL(R.cRef):'—'}</td></tr></tfoot></table>`,
+    nota:(R.nEst||R.nPeso)?'* venda estimada (sem o valor do caixa).':''});
+  // 7 e 8. Achados e pendências
+  const A=bdRelAchados(R);if(A.length)S.push({t:'Achados',lista:A});
+  const Pd=bdRelPend(R);if(Pd.length)S.push({t:'Para fechar o número real',tb:`<table><thead><tr><th>O que falta</th><th>O que muda</th></tr></thead><tbody>${Pd.map(l=>`<tr><td>${l[0]}</td><td>${l[1]}</td></tr>`).join('')}</tbody></table>`});
+  return S;}
+function bdPerBarHTML(p){const t=bdPer.tipo,ref=bdPer.ref||hojeISO();
+  const b=(k,l)=>`<button class="${t===k?'on':''}" onclick="bdPer.tipo='${k}';viewBuffet()">${l}</button>`;
+  const nav=n=>`<button class="bd-nav" title="${n<0?'Anterior':'Seguinte'}" onclick="bdPerIr(${n})">${n<0?'‹':'›'}</button>`;
+  let ctl='';
+  if(t==='dia')ctl=nav(-1)+`<input class="input" type="date" value="${ref}" onchange="if(this.value){bdPer.ref=this.value;viewBuffet()}">`+nav(1)+`<span class="bd-sem">${bdSem(ref)}</span>`;
+  else if(t==='semana')ctl=nav(-1)+`<input class="input" type="date" value="${ref}" onchange="if(this.value){bdPer.ref=this.value;viewBuffet()}">`+nav(1)+`<span class="bd-sem">${p.rot}</span>`;
+  else if(t==='mes')ctl=nav(-1)+`<input class="input" type="month" value="${ref.slice(0,7)}" onchange="if(this.value){bdPer.ref=this.value+'-01';viewBuffet()}">`+nav(1);
+  else ctl=`<input class="input" type="date" value="${p.de}" onchange="if(this.value){bdPer.de=this.value;viewBuffet()}"><span style="color:var(--soft);font-size:13px">a</span><input class="input" type="date" value="${p.ate}" onchange="if(this.value){bdPer.ate=this.value;viewBuffet()}">`;
+  return `<div class="bd-bar"><div class="pill-filter bd-per">${b('dia','Dia')}${b('semana','Semana')}${b('mes','Mês')}${b('per','Período')}</div>${ctl}
+    <label class="bd-simul">Simular o quilo a R$ <input class="input bd-num" inputmode="decimal" autocomplete="off" value="${bdHtml(bdSim)}" placeholder="opcional" onchange="bdSim=this.value;viewBuffet()"></label></div>`;}
+function bdViewHist(){
+  $('#topActions').innerHTML=`<button class="btn btn-gold" onclick="bdRelImprimir()">🖨️ Relatório em PDF</button>`;
+  const p=bdPeriodo(),R=bdRel(p.de,p.ate),barra=bdPerBarHTML(p);
+  if(!R.nd){$('#view').innerHTML=buffetTabsHTML()+barra+`<div class="card">${emptyState('Nenhum dia registrado em '+p.rot,'Registre o buffet de cada dia na aba Buffet do dia. O relatório é montado sozinho com o que for preenchido.',"bdData=null;buffetSub='dia';viewBuffet()")}</div>`;return;}
+  const sim=bdSimVal(),S=bdRelSecs(R,sim),N=bdRelNums(R);
+  $('#view').innerHTML=buffetTabsHTML()+barra+`
+  <div class="kpi-grid bd-kpis">${N.map(n=>`<div class="kpi"><div class="k-lbl">${n[1]}</div><div class="k-val"${n[2]!=null?` style="color:${n[2]<=CMV_ALVO_BUFFET?'var(--green)':'var(--red)'}"`:''}>${n[0]}</div></div>`).join('')}</div>
+  <div class="card card-pad" style="margin-bottom:16px"><div class="bdr-kick">Leitura em uma frase · ${p.rot} · ${R.nd} dia${R.nd===1?'':'s'} com registro</div><div style="font-size:14px;line-height:1.6">${bdRelLead(R)}</div></div>
+  ${S.map((s,i)=>`<div class="card" style="margin-bottom:16px${s.estreita?';max-width:560px':''}">
+    <div style="padding:16px 18px 6px;font-size:15px;font-weight:600">${i+1}. ${s.t}${s.dias?' <span style="font-size:12px;color:var(--soft);font-weight:400">toque no dia para abrir o registro</span>':''}</div>
+    ${s.tb?`<div class="scroll-x">${s.tb}</div>`:''}
+    ${s.lista?`<ul class="bdr-list" style="padding:0 18px">${s.lista.map(a=>`<li>${a}</li>`).join('')}</ul>`:''}
+    ${s.nota?`<div class="bdr-nota" style="padding:0 18px 14px">${s.nota}</div>`:'<div style="height:8px"></div>'}
+  </div>`).join('')}`;
+}
+function bdRelImprimir(){
+  if(document.querySelector('#modalRoot .modal'))return toast('Feche a janela aberta para imprimir');
+  const p=bdPeriodo(),R=bdRel(p.de,p.ate);if(!R.nd)return toast('Nenhum dia registrado neste período');
+  const sim=bdSimVal(),S=bdRelSecs(R,sim),N=bdRelNums(R),rest=(DB.conta&&DB.conta.restaurante)||'Restaurante',agora=new Date(),h=bdHtml;
+  let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
+  pa.innerHTML=`<div class="rel bdr"><div class="rel-head"><div><div class="rel-rest">${h(rest)}</div><div class="rel-t">CMV do Buffet · ${p.tit}</div></div>
+      <div class="rel-meta"><b>${R.um?bdSem(R.de):p.rot}</b><br>${R.nd} dia${R.nd===1?'':'s'} com registro${R.pkMed>0?' · quilo a '+(R.pkVaria?'preço de cada dia':fmtBRL(R.pkMed)):''}<br>Gerado em ${fmtDataBR(hojeISO())} ${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}${quemSou()?' · '+h(quemSou()):''}</div></div>
+    <div class="rel-body">
+      <p class="bdr-lead"><span>Leitura em uma frase</span>${bdRelLead(R)}</p>
+      <div class="bdr-nums">${N.map(n=>`<div><b>${n[0]}</b><span>${n[1]}</span></div>`).join('')}</div>
+      ${S.map((s,i)=>`<h2 class="bdr-h">${i+1}. ${s.t}</h2>${s.tb?`<div${s.estreita?' style="max-width:56%"':''}>${s.tb}</div>`:''}${s.lista?`<ul class="bdr-list">${s.lista.map(a=>`<li>${a}</li>`).join('')}</ul>`:''}${s.nota?`<p class="bdr-nota">${s.nota}</p>`:''}`).join('')}
+      <p class="bdr-nota bdr-fonte">Como o cálculo é feito: o custo de cada prato é o peso montado (abertura mais reposições) vezes o custo do quilo pronto da ficha técnica no Flow. O que voltou para reaproveitar sai do custo do dia; o que foi descartado continua nele. Fonte: pesos e vendas registrados pela casa em Buffet do dia.</p>
+    </div>
+    <div class="rel-foot"><span>${h(rest)} · CMV do Buffet · ${p.tit}</span><span>Flow by Lidera</span></div></div>`;
+  let maxCols=0;pa.querySelectorAll('table').forEach(t=>{const tr=t.querySelector('tr');if(tr)maxCols=Math.max(maxCols,tr.children.length);});
+  document.body.classList.add('print-rel');document.body.classList.toggle('print-rel-dense',maxCols>=12);
+  const fim=()=>{document.body.classList.remove('print-rel');document.body.classList.remove('print-rel-dense');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
+  window.addEventListener('afterprint',fim);window.print();setTimeout(fim,2500);
+}
+/* Folha de papel para a cozinha (A4 deitado): a equipe anota à mão e depois alguém passa para o Flow */
+function bdFolhaModal(){const iso=bdCurData(),dia=bdDias()[iso];
+  const nDia=dia?(dia.itens||[]).filter(it=>bdNome(it)).length:0;
+  const nMapa=(((DB.buffet||{}).cubas)||[]).filter(c=>DB.fichas[c.fichaId]||DB.insumos[c.fichaId]).length;
+  const b=(modo,t,s,prim)=>`<button class="btn ${prim?'btn-primary':'btn-ghost'}" style="justify-content:space-between;white-space:normal;text-align:left" onclick="closeModal();bdFolha('${modo}')"><span>${t}</span><span style="font-weight:400;opacity:.75;font-size:12px">${s}</span></button>`;
+  modal(`<div class="modal-head"><h3>Folha da cozinha</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.55">Folha em A4 deitado para deixar na cozinha. A equipe anota o peso que abre o buffet, cada reposição, o que sobrou, o que foi descartado e a hora em que a cuba acabou. Depois é só passar os números para o Flow, em Buffet do dia.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${nDia?b('dia','Com os pratos de '+fmtDataBR(iso),nDia+' prato'+(nDia===1?'':'s'),true):''}
+      ${nMapa?b('mapa','Com os pratos do mapa do buffet',nMapa+' prato'+(nMapa===1?'':'s'),!nDia):''}
+      ${b('branco','Em branco','para escrever os pratos à mão',!nDia&&!nMapa)}
+    </div>
+  </div>`);}
+function bdFolha(modo){
+  const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante',iso=bdCurData();let linhas=[];
+  if(modo==='dia'){const dia=bdDias()[iso];linhas=((dia&&dia.itens)||[]).filter(it=>bdNome(it)).map(it=>({n:bdNome(it),p:bdN(it.a)}));}
+  else if(modo==='mapa')linhas=bdCubasOrdem().map(c=>({c,r:DB.fichas[c.fichaId]||DB.insumos[c.fichaId]})).filter(x=>x.r).map(x=>({n:x.r.nome,p:parseFloat(x.c.pesoKg)||0}));
+  const total=Math.max(18,linhas.length+4);let rows='';
+  for(let i=0;i<total;i++){const l=linhas[i];rows+=`<tr><td class="bf-n">${l?bdHtml(l.n)+(l.p>0?`<small>previsto ${nNum(l.p)} kg</small>`:''):''}</td>${'<td></td>'.repeat(11)}</tr>`;}
+  let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
+  pa.innerHTML=`<div class="bf">
+    <div class="bf-head"><div><div class="bf-rest">${bdHtml(rest)}</div><div class="bf-t">Controle do Buffet do Dia</div></div>
+      <div class="bf-meta">${modo==='dia'?`Data: <b>${fmtDataBR(iso)}</b> (${bdSem(iso)})`:'Data: ____/____/______ &nbsp; Dia da semana: ______________'}<br>Responsável: ______________________________</div></div>
+    <div class="bf-note">Pese sempre sem a cuba (desconte o peso da cuba vazia). <b>Abertura:</b> o que entra no buffet antes de abrir. <b>Reposição:</b> o peso de cada cuba que sai da cozinha, uma por coluna. <b>Sobrou:</b> o que volta e será reaproveitado. <b>Descartado:</b> o que foi para o lixo. <b>Acabou às:</b> a hora em que a cuba zerou e não foi reposta.</div>
+    <table class="bf-tb">
+      <colgroup><col style="width:22%"><col style="width:7%"><col style="width:5.6%"><col style="width:5.6%"><col style="width:5.6%"><col style="width:5.6%"><col style="width:5.6%"><col style="width:5.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:6.6%"><col></colgroup>
+      <thead><tr><th rowspan="2" class="bf-l">Prato</th><th rowspan="2">Abertura (kg)</th><th colspan="6">Reposições (kg de cada vez)</th><th rowspan="2">Sobrou, volta (kg)</th><th rowspan="2">Descartado (kg)</th><th rowspan="2">Acabou às</th><th rowspan="2" class="bf-l">Observação</th></tr>
+        <tr><th>1ª</th><th>2ª</th><th>3ª</th><th>4ª</th><th>5ª</th><th>6ª</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="bf-fech"><span><b>Fechamento do dia</b> (o que tiver)</span><span>Venda de comida, sem bebidas: R$ __________</span><span>Kg vendido no quilo: ________</span><span>Refeições no livre: ______</span><span>Marmitas e PF: ______</span><span>Equipe comeu (kg): ______</span></div>
+  </div>`;
+  document.body.classList.add('print-buffet');
+  const fim=()=>{document.body.classList.remove('print-buffet');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
+  window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);
 }
 
 /* ===================== CONTROLE DE CMV (Real por contagem) ===================== */
@@ -11808,9 +12418,12 @@ function buildDemoDados(s){
     {custosFixos,funcionarios:s.funcionarios||[],socios:[],fornecedores:(s.fornecedores||[]).map(n=>({id:uid(),nome:n}))});
   fin.canais=[{id:'ifood',nome:'iFood',taxa:(fin.comissaoIfood!=null?fin.comissaoIfood:27),mix:s.mixIfood||0}];
   const buffet=s.buffet?{precoVendaKg:''+s.buffet.kg,cubas:(s.buffet.cubas||[]).map((cb,i)=>({id:uid(),fichaId:fIds[cb[0]]||'',pesoKg:''+cb[1],x:22+(i%5)*112,y:40+Math.floor(i/5)*98,w:104,h:74,rot:0}))}:{precoVendaKg:'',cubas:[]};
+  const buffetDias={};if(s.buffet&&buffet.cubas.length){for(let k=9;k>=1;k--){const iso=bdIsoAdd(hojeISO(),-k);if(new Date(iso+'T12:00:00').getDay()===0)continue;
+    let cons=0;const itens=buffet.cubas.map((c,i)=>{const a=+c.pesoKg||0,nr=(i+k)%3,v=((i+k)%4===0)?+(a*0.15).toFixed(1):'',d=((i*3+k)%5===0)?+(a*0.1).toFixed(1):'';cons+=a*(1+nr)-(+v||0)-(+d||0);return {id:uid(),c:c.id,f:c.fichaId,n:'',a,r:Array(nr).fill(a),v,d};});
+    const kgV=+(cons*0.94).toFixed(1);buffetDias[iso]={itens,pk:s.buffet.kg,kgV,pes:Math.round(kgV/0.48),eq:+(cons*0.04).toFixed(1)};if(k%2)buffetDias[iso].vnd=+(kgV*s.buffet.kg*1.04).toFixed(2);}}
   return {_demo:true,onboardingFeito:true,insumos,fichas,lancamentos:lanc,desperdicios,
     cmvRegistros:s.cmvReg?[{id:uid(),data:D(26),ei:s.cmvReg.ei,compras:s.cmvReg.compras,ef:s.cmvReg.ef,vendas:s.cmvReg.vendas}]:[],
-    fin,fat:{lancado:0,mixIfood:s.mixIfood||0},cmvAlvo:s.cmvAlvo||30,equipe:[],buffet,categorias:{},
+    fin,fat:{lancado:0,mixIfood:s.mixIfood||0},cmvAlvo:s.cmvAlvo||30,equipe:[],buffet,buffetDias,categorias:{},
     formasPagamento:['PIX','Cartão de Crédito','Cartão de Débito','Dinheiro','Ifood'],
     conta:{restaurante:s.nome,nome:'',email:'',telefone:'',cpf:'',nascimento:''}};
 }
