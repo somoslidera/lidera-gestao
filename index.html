@@ -394,12 +394,21 @@ body.dark .theme-toggle{background:#1A2540}
 body.dark .empty svg{opacity:.4}
 
 .print-only{display:none}
+/* moldura das folhas impressas: o @page fica com margem zero e estes espaçadores, que se repetem em toda página, fazem a margem */
+.folhapg{width:100%;border-collapse:collapse;table-layout:fixed;border:0}
+.folhapg>thead>tr>td,.folhapg>tfoot>tr>td{height:11mm;border:0!important;padding:0!important;background:none!important}
+.folhapg>tbody>tr>td{padding:0 10mm!important;border:0!important;vertical-align:top;background:none!important;height:auto!important;text-align:left;white-space:normal}
+.folhapg-rel>thead>tr>td,.folhapg-rel>tfoot>tr>td{height:12mm}
+.folhapg-rel-l>thead>tr>td,.folhapg-rel-l>tfoot>tr>td{height:10mm}
+.folhapg-ct>tbody>tr>td{padding:0 12mm!important}
+.folhapg-bf>thead>tr>td,.folhapg-bf>tfoot>tr>td,.folhapg-dp>thead>tr>td,.folhapg-dp>tfoot>tr>td{height:9mm}.folhapg-bf>tbody>tr>td,.folhapg-dp>tbody>tr>td{padding:0 9mm!important}
+.folhapg-chk>thead>tr>td,.folhapg-chk>tfoot>tr>td{height:6mm}.folhapg-chk>tbody>tr>td{padding:0 6mm!important}
 @media print{
   body.print-rel .sidebar,body.print-rel .main,body.print-rel #modalRoot,body.print-rel #toastRoot{display:none!important}
   body.print-rel #printArea{display:block!important;padding:0;page:relp;width:100%;max-width:100%;overflow:visible}
   @page{margin:12mm 10mm}
-  @page relp{size:A4 portrait;margin:12mm 10mm}
-  @page relp-l{size:A4 landscape;margin:10mm 10mm}
+  @page relp{size:A4 portrait;margin:0}
+  @page relp-l{size:A4 landscape;margin:0}
   body.print-rel.print-rel-l #printArea{page:relp-l}
   #printArea .rel,#printArea .rel-body{max-width:100%;overflow:visible}
   #printArea .rel-body .card,#printArea .rel-body .grid-2,#printArea .rel-body .kpi-grid,#printArea .rel-body [style*="grid-template-columns"]{max-width:100%;min-width:0}
@@ -416,15 +425,10 @@ body.dark .empty svg{opacity:.4}
   #printArea .rel-rest{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#A48A57;font-weight:700}
   #printArea .rel-t{font-size:20px;font-weight:800;font-family:'Fraunces',Georgia,serif;color:#1D3573;line-height:1.15}
   #printArea .rel-meta{font-size:10.5px;color:#5a6577;text-align:right;line-height:1.5}
-  #printArea .rel-foot{position:fixed;left:0;right:0;bottom:0;margin:0;border-top:1px solid #d7dbe5;padding-top:4px;font-size:9px;color:#8a93a5;display:flex;justify-content:space-between;background:#fff}
-  #printArea .rel-body{padding-bottom:18px}
-  #printArea .rel-body .card,#printArea .rel-body .kpi,#printArea .rel-body .dash-pill,#printArea .rel-body .fcard,#printArea .rel-body .eng-stat{border:1px solid #d7dbe5!important;border-radius:8px;background:#fff!important}
   #printArea .rel-body .kpi,#printArea .rel-body .dash-pill,#printArea .rel-body .fcard,#printArea .rel-body .eng-stat,#printArea .rel-body tr{break-inside:avoid;page-break-inside:avoid}
-  #printArea .rel-body .card{margin-bottom:10px;padding:10px 12px;break-inside:auto}
   #printArea .rel-body thead{display:table-header-group}
   #printArea .rel-body .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
   #printArea .rel-body .kpi-grid.kpi5{grid-template-columns:repeat(5,1fr)}
-  #printArea .rel-body .kpi{padding:8px 10px}#printArea .rel-body .kpi .ic{display:none}#printArea .rel-body .kpi .k-val{font-size:16px}
   #printArea .rel-body table{width:100%!important;border-collapse:collapse;font-size:10px;display:table!important;overflow:visible!important}
   #printArea .rel-body th{font-size:9px;text-transform:uppercase;letter-spacing:.3px;color:#5a6577;border-bottom:1px solid #1D3573;padding:4px 6px;text-align:left;background:#f3f5fa}
   #printArea .rel-body td{border-bottom:1px solid #e3e6ee;padding:4px 6px;vertical-align:top}
@@ -433,7 +437,6 @@ body.dark .empty svg{opacity:.4}
   #printArea .rel-body .pv{font-weight:600}
   #printArea .rel-body a{color:inherit;text-decoration:none}
   #printArea .rel-body .tag{border:1px solid #cfd4e0;border-radius:6px;padding:0 5px;font-size:9px}
-  #printArea .rel-body .alert{border:1px solid #e3c98a;background:#fff8e6;border-radius:6px;padding:6px 8px}
   #printArea .rel-body .empty,#printArea .rel-body .gp-search,#printArea .rel-body .prm-nav,#printArea .rel-body .prm-top,#printArea .rel-body .section-head>div+div{display:none!important}
   #printArea .rel-body .dsh-card{display:block;overflow:hidden;height:auto;break-inside:avoid}#printArea .rel-body .dsh-fit,#printArea .rel-body .dsh-3{display:block}#printArea .rel-body .dsh-3>.card{margin-bottom:10px}#printArea .rel-body .dsh-chart{display:block;height:170px;min-height:170px;flex:none;overflow:hidden}#printArea .rel-body .dsh-chart svg{width:100%!important;height:100%!important;display:block;aspect-ratio:auto!important}#printArea .rel-body .dsh-chart-cmv{height:150px;min-height:150px;max-width:380px;margin:0 auto}
   #printArea .rel-body .dsh-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}#printArea .rel-body .dsh-kpi{padding:8px 10px}#printArea .rel-body .dsh-kpi-val{font-size:17px}#printArea .rel-body .dsh-arc{width:150px;margin:0 auto}#printArea .rel-body .dsh-pe-n{font-size:22px}#printArea .rel-body .dsh-card{padding:10px 12px;margin-bottom:8px}#printArea .rel-body .dsh-fit{gap:8px}#printArea .rel-body .dsh-vazio{padding:20px 0}
@@ -442,6 +445,42 @@ body.dark .empty svg{opacity:.4}
   #printArea .rel-body svg{max-width:100%}
   #printArea .rel-body [style*="max-height"]{max-height:none!important;overflow:visible!important}
   #printArea .rel-body .dsh-fit{height:auto!important}
+  /* relatório sem caixas: cada bloco separado por um filete, números em linha */
+  #printArea .rel-body .card,#printArea .rel-body .fcard,#printArea .rel-body .dsh-card{border:0!important;border-top:1px solid #d7dbe5!important;border-radius:0!important;background:none!important;padding:10px 0 0!important;margin:0 0 14px!important;overflow:visible!important}
+  #printArea .rel-body>.card:first-child,#printArea .rel-body .card .card{border-top:0!important;padding-top:0!important}
+  #printArea .rel-body .card>.card-pad,#printArea .rel-body .card-pad .card-pad{padding:0!important}
+  #printArea .rel-body .card:not(:has(table)),#printArea .rel-body [style*="position:relative"],#printArea .rel-body .fcard{break-inside:avoid;page-break-inside:avoid}
+  #printArea .rel-body .kpi-grid{gap:10px 0;margin:0 0 14px}
+  #printArea .rel-body .dash-pill{border:0!important;border-left:1px solid #cfd4e0!important;border-radius:0!important;background:none!important;padding:1px 12px!important}
+  #printArea .rel-body .kpi,#printArea .rel-body .dsh-kpi{display:block!important;border:0!important;border-left:1px solid #cfd4e0!important;border-radius:0!important;background:none!important;padding:1px 12px!important;min-width:0}
+  #printArea .rel-body .kpi-grid>.kpi:nth-child(4n+1),#printArea .rel-body .dsh-kpis>.dsh-kpi:nth-child(4n+1){border-left:0!important;padding-left:0!important}
+  #printArea .rel-body .kpi-grid.kpi5>.kpi:nth-child(4n+1){border-left:1px solid #cfd4e0!important;padding-left:12px!important}
+  #printArea .rel-body .kpi-grid.kpi5>.kpi:nth-child(5n+1){border-left:0!important;padding-left:0!important}
+  #printArea .rel-body .kpi .ic{display:none!important}
+  #printArea .rel-body .kpi .k-lbl{font-size:8.5px;letter-spacing:.4px;text-transform:uppercase;color:#5a6577;white-space:normal;overflow:visible}
+  #printArea .rel-body .kpi .k-val{font-size:17px;line-height:1.2;white-space:normal;overflow:visible;text-overflow:clip}
+  #printArea .rel-body .kpi .k-sub{font-size:9px;white-space:normal;overflow:visible;text-overflow:clip}
+  #printArea .rel-body .eng-stat{border:0!important;border-radius:0!important;background:none!important;padding:2px 0 2px 14px!important;min-height:0;break-inside:avoid}
+  #printArea .rel-body .eng-dica{display:block!important;background:none!important;border:0!important;border-radius:0!important;padding:0!important;margin:0 0 14px!important}
+  #printArea .rel-body .matrix-wrap{display:block!important}
+  #printArea .rel-body .matrix-wrap>div:first-child{position:relative;width:62%;margin:0 auto 16px;break-inside:avoid;page-break-inside:avoid}
+  #printArea .rel-body .matrix{border-radius:0!important;border:1px solid #cfd4e0!important;break-inside:avoid;page-break-inside:avoid}
+  #printArea .rel-body .axis-label-y{display:none}
+  #printArea .rel-body .dsh-kpi-foot,#printArea .rel-body .dsh-kpi .lbl{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+  #printArea .rel-body .alert{display:block;border:0!important;border-radius:0!important;background:none!important;padding:0!important;margin:0 0 10px!important;font-size:10.5px;line-height:1.5;color:#15233f}
+  #printArea .rel-body .alert>svg,#printArea .rel-body .alert>.ic{display:none}
+  #printArea .rel-body td,#printArea .rel-body td *{text-overflow:clip!important}
+  #printArea .rel-body td [style*="text-overflow"],#printArea .rel-body td[style*="text-overflow"]{white-space:normal!important;overflow:visible!important;max-width:none!important}
+  #printArea .rel-body .folha-scroll{overflow:visible!important}
+  #printArea .rel-body .folha-scroll table th:first-child,#printArea .rel-body .folha-scroll table td:first-child{position:static;box-shadow:none!important;background:none}
+  #printArea .rel-body tr:has(>td[colspan]:only-child),#printArea .rel-body tr:has(>th[colspan]:only-child){break-after:avoid;page-break-after:avoid}
+  #printArea .rel-body summary{list-style:none}#printArea .rel-body summary::-webkit-details-marker{display:none}
+  #printArea .rel-body div[style*="border:1px solid var(--line)"][style*="border-radius"]:not(.cuba):not(.matrix){border:0!important;border-left:1px solid #cfd4e0!important;border-radius:0!important;background:none!important;padding:1px 12px!important}
+  #printArea .rel-body .legend .li{border:0!important;border-bottom:1px solid #e3e6ee!important;border-radius:0!important;padding:5px 0!important}
+  #printArea .rel-body .comp-row{border:0!important;border-bottom:1px solid #e3e6ee!important;border-radius:0!important;background:none!important;padding:4px 0!important;break-inside:avoid;page-break-inside:avoid;gap:8px}
+  #printArea .rel-body .comp-row *{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+  #printArea .rel-body .comp-row .tag{white-space:nowrap!important}
+  #printArea .rel-body tr.folha-sub{break-before:avoid;page-break-before:avoid}
 }
 @media print{
   body,body.dark{--bg:#fff;--card:#fff;--ink:#15191f;--muted:#555;--soft:#888;--line:#cccccc;background:#fff!important;color:#15191f!important}
@@ -563,9 +602,9 @@ body.dark .wiz-foot{background:#0E1626}
 /* folha de contagem de estoque (impressão em 2 colunas) */
 #printArea{display:none}
 @media print{
-  @page contagemp{margin:0 0 14mm}
+  @page contagemp{size:A4 portrait;margin:0}
   body.print-contagem .sidebar,body.print-contagem .main,body.print-contagem #modalRoot,body.print-contagem #toastRoot{display:none!important}
-  body.print-contagem #printArea{display:block!important;padding:12mm;page:contagemp}
+  body.print-contagem #printArea{display:block!important;padding:0;page:contagemp}
   #printArea{color:#000;font-family:'Inter',sans-serif}
   #printArea .ct-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding-bottom:6px}
   #printArea .ct-note{font-size:10.5px;color:#444;margin:6px 0 9px}
@@ -660,7 +699,7 @@ body.dark .ins-rm{background:rgba(210,72,63,.16)}
 @media print{
   @page despp{size:A4 landscape;margin:0}
   body.print-desp .sidebar,body.print-desp .main,body.print-desp #modalRoot,body.print-desp #toastRoot{display:none!important}
-  body.print-desp #printArea{display:block!important;padding:9mm;page:despp}
+  body.print-desp #printArea{display:block!important;padding:0;page:despp}
   #printArea .dp{color:#15233f;font-family:'Inter',sans-serif;border:1px solid #d7dbe5;border-radius:8px;overflow:hidden}
   #printArea .dp *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #printArea .dp-bar{background:#1D3573;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
@@ -675,7 +714,7 @@ body.dark .ins-rm{background:rgba(210,72,63,.16)}
   #printArea table.dp-tb td{border:1px solid #cfd4e0;height:6.4mm;padding:1px 6px}
   #printArea table.dp-tb tbody tr:nth-child(even) td{background:#f4f6fa}
   #printArea .dp-legend{font-size:9px;color:#5a6577;padding:7px 18px;border-top:1px solid #e3e6ee}
-  #printArea .dp{page-break-inside:avoid;break-inside:avoid}
+  #printArea .dp-form{page-break-inside:avoid;break-inside:avoid}
 }
 
 /* cabeçalho de tabela clicável (ordenação) */
@@ -1082,8 +1121,55 @@ body.dark .prm-chip{background:var(--card)}body.dark .prm-nav a:hover{background
   .bd-mapa>summary span{display:none}
 }
 /* folha de cozinha do buffet (A4 deitado, para anotar à mão) */
+
+/* ===== Mapa do Buffet: bancada escura e cubas de inox (vista de cima) ===== */
+.bf-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:18px}
+.bf-board{position:relative;border-radius:18px;overflow:hidden;background:radial-gradient(1100px 520px at 16% -12%,#2c3b66 0%,#1b2542 48%,#121a2e 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),inset 0 1px 0 rgba(255,255,255,.12)}
+.bf-board::before{content:'';position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(rgba(255,255,255,.085) 1px,transparent 1.3px);background-size:24px 24px;background-position:12px 12px}
+.bf-board::after{content:'';position:absolute;inset:9px;border:1px solid rgba(194,168,117,.26);border-radius:11px;pointer-events:none}
+.bf-cap{position:absolute;top:19px;left:24px;z-index:1;font-size:9.5px;letter-spacing:2.2px;text-transform:uppercase;color:#C9B07F;font-weight:700;pointer-events:none;white-space:nowrap}
+.bf-cap small{font-size:11px;letter-spacing:.2px;text-transform:none;font-weight:500;color:rgba(255,255,255,.55);margin-left:10px}
+.bf-vazio{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:rgba(255,255,255,.62);font-size:13.5px;line-height:1.6;pointer-events:none}
+.bf-vazio b{color:#C9B07F}
+.bf-leg{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;font-size:12px;color:var(--muted);margin:0 2px 10px}
+.bf-leg span{display:inline-flex;align-items:center;gap:6px}
+.bf-leg i{width:12px;height:12px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(20,30,55,.14)}
+.bf-leg .l-ok{background:#bfe3cf}.bf-leg .l-alto{background:#f1c4bf}.bf-leg .l-neu{background:#e2e6ec}
+.bf-leg .bf-dica{color:var(--soft);margin-left:auto}
+.cuba{position:absolute;z-index:1;border-radius:11px;padding:4px;touch-action:none;container-type:size;background:linear-gradient(145deg,#fcfdfe 0%,#cbd1dc 27%,#f4f6f9 52%,#b1b9c7 79%,#e7eaf0 100%);box-shadow:0 10px 18px -9px rgba(0,0,0,.7),0 2px 4px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.6)}
+.cuba.mov{cursor:grab}.cuba.mov:active{cursor:grabbing}
+.cuba-in{position:relative;height:100%;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:2px;padding:6px 7px 5px;background:linear-gradient(180deg,#f2f4f7,#e0e4eb);box-shadow:inset 0 2px 5px rgba(20,30,55,.34),inset 0 -1px 0 rgba(255,255,255,.75)}
+.cuba.ok .cuba-in{background:linear-gradient(180deg,#eaf7f0,#cdeada)}
+.cuba.alto .cuba-in{background:linear-gradient(180deg,#fdeeed,#f5d0cc)}
+.cuba-n{font-size:10.5px;font-weight:700;line-height:1.18;letter-spacing:-.1px;color:#14213d;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.cuba-f{display:flex;align-items:flex-end;justify-content:space-between;gap:4px;min-height:0}
+.cuba-kg{font-size:9.5px;font-weight:600;color:#55607a;white-space:nowrap;min-width:0;overflow:hidden}
+.cuba-kg b{color:#C0392F;font-weight:700}
+.cuba-cmv{flex:none;margin-left:auto;font-size:10px;font-weight:700;line-height:1;padding:3px 6px;border-radius:20px;color:#fff;background:#1E9E6A;white-space:nowrap}
+.cuba.alto .cuba-cmv{background:#D2483F}
+.cuba.vazia .cuba-n{color:#8a93a5;font-weight:600}
+.cuba.fora{opacity:.45}.cuba.fora .cuba-n{color:#7c869b;font-weight:600}
+.cuba.sel{z-index:2;box-shadow:0 0 0 2px #C9B07F,0 0 0 6px rgba(201,176,127,.3),0 14px 24px -9px rgba(0,0,0,.75)}
+.cuba.toque{cursor:pointer}
+.cuba-rs{position:absolute;right:0;bottom:0;width:20px;height:20px;cursor:nwse-resize;touch-action:none}
+.cuba-rs::after{content:'';position:absolute;right:2px;bottom:2px;width:9px;height:9px;border-right:3px solid #C9B07F;border-bottom:3px solid #C9B07F;border-radius:0 0 9px 0;opacity:0;transition:opacity .15s}
+.cuba:hover .cuba-rs::after,.cuba.sel .cuba-rs::after{opacity:1}
+@container (max-height:54px){.cuba-n{-webkit-line-clamp:1}.cuba-kg{display:none}.cuba-in{padding:4px 6px}}
+@container (max-width:78px){.cuba-n{font-size:9.5px}.cuba-kg{display:none}.cuba-cmv{font-size:9px;padding:2px 5px}}
+@container (min-width:150px) and (min-height:96px){.cuba-n{font-size:13px}.cuba-kg{font-size:11px}.cuba-cmv{font-size:12px;padding:4px 9px}.cuba-in{padding:9px 10px 8px}}
+@media(max-width:640px){.bf-leg .bf-dica{margin-left:0;flex:1 1 100%}}
 @media print{
-  @page buffetp{size:A4 landscape;margin:9mm}
+  #printArea .bf-scroll{overflow:visible}
+  #printArea .bf-board{background:#fff!important;box-shadow:none!important;border:1px solid #cfd4e0;border-radius:0;break-inside:avoid;page-break-inside:avoid;overflow:visible}
+  #printArea .bf-board::before,#printArea .bf-board::after{display:none}
+  #printArea .bf-cap{display:none}
+  #printArea .cuba{box-shadow:none!important;border:1px solid #8f98ab;background:#e9ecf1}
+  #printArea .cuba-in{box-shadow:none;border:1px solid #c3c9d6}
+  #printArea .cuba-rs{display:none}
+  #printArea .bf-leg{font-size:10px;margin:8px 0 0}
+}
+@media print{
+  @page buffetp{size:A4 landscape;margin:0}
   body.print-buffet .sidebar,body.print-buffet .main,body.print-buffet #modalRoot,body.print-buffet #toastRoot{display:none!important}
   body.print-buffet #printArea{display:block!important;padding:0;page:buffetp}
   #printArea .bf{color:#000;font-family:'Inter',sans-serif}
@@ -1116,7 +1202,6 @@ body.dark .prm-chip{background:var(--card)}body.dark .prm-nav a:hover{background
   #printArea .bdr .rel-body table{font-size:9.5px}
   #printArea .bdr .rel-body th{font-size:7.5px;padding:3px 5px}
   #printArea .bdr .rel-body td{padding:3px 5px;font-size:9.5px;line-height:1.35}
-  #printArea .bdr .rel-foot{position:static;margin-top:14px}
   #printArea .bdr .rel-body{padding-bottom:0}
   #printArea .bdr .rel-body td.num,#printArea .bdr .rel-body th.num{white-space:nowrap}
   #printArea .bdr .rel-body tfoot td{border-top:1px solid #1D3573;border-bottom:0;font-size:9.5px;padding:4px 5px}
@@ -2115,7 +2200,7 @@ function chkInjectPrintCss(){
   const st=document.createElement('style');st.id='chkPrintCss';st.textContent=`
   #chkPrintArea{display:none}
   @media print{
-    @page chklist{size:A4 landscape;margin:6mm}
+    @page chklist{size:A4 landscape;margin:0}
     body.print-chk .sidebar,body.print-chk .topbar,body.print-chk .main,body.print-chk #modalRoot,body.print-chk #toastRoot,body.print-chk .backdrop,body.print-chk #adminScreen,body.print-chk #authScreen,body.print-chk #wizScreen,body.print-chk #formAdminScreen{display:none!important}
     body.print-chk #chkPrintArea{display:block!important;page:chklist}
   }
@@ -2152,6 +2237,8 @@ function chkInjectPrintCss(){
   #chkPrintArea .chk-leg{display:flex;gap:15px;align-items:center;margin-top:9px;font-size:9px;color:#40506e;flex-wrap:wrap}
   #chkPrintArea .chk-leg i{font-style:normal;font-weight:800;margin-right:3px}
   #chkPrintArea .chk-leg .chk-note{margin-left:auto;color:#93a0b8;font-style:italic}
+  #chkPrintArea .chk-obs{margin-top:9px;font-size:9px;color:#40506e;break-inside:avoid}
+  #chkPrintArea .chk-obs i{display:block;height:19px;border-bottom:.5px solid #9aa6bd}
   `;document.head.appendChild(st);
 }
 function chkImprimir(){
@@ -2175,7 +2262,7 @@ function chkImprimir(){
   }).join('');
   const html=`<div class="chk-doc">
      <div class="chk-head">
-       <div><div class="chk-brand">Flow · by Lidera</div><div class="chk-title"><h1>CHECKLIST</h1></div><div class="chk-setor">${esc(cl.setor)}</div></div>
+       <div><div class="chk-title"><h1>CHECKLIST</h1></div><div class="chk-setor">${esc(cl.setor)}</div></div>
        <div class="chk-meta"><div><span>Restaurante</span><b>${esc(nome)}</b></div><div><span>${periodoTit}</span><b>${periodoLbl}</b></div><div><span>Periodicidade</span><b>${esc(cl.periodicidade||'Diária')}</b></div></div>
      </div>
      <table class="chk-grid${semanal?' sem':''}"><thead><tr><th class="c-n">Nº</th><th class="c-t" style="text-align:left;padding-left:8px">TAREFA</th>${dayHead}</tr></thead><tbody>${rows}</tbody></table>
@@ -2186,9 +2273,10 @@ function chkImprimir(){
        <span><i style="color:#8391a8">–</i>SN · Sem necessidade</span>
        <span class="chk-note">Justifique registros diferentes de OK nas observações.</span>
      </div>
+     <div class="chk-obs"><b>Observações</b><i></i><i></i></div>
    </div>`;
   let area=document.getElementById('chkPrintArea');if(!area){area=document.createElement('div');area.id='chkPrintArea';document.body.appendChild(area);}
-  area.innerHTML=html;chkInjectPrintCss();document.body.classList.add('print-chk');
+  area.innerHTML=pgWrap(html,'chk');chkInjectPrintCss();document.body.classList.add('print-chk');
   setTimeout(()=>{window.print();setTimeout(()=>document.body.classList.remove('print-chk'),500);},80);
 }
 
@@ -2236,18 +2324,18 @@ function cargoCss(){
   #jdPrintArea *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   #jdPrintArea{font-family:'Inter',system-ui,Arial,sans-serif;color:#16233f}
   #jdPrintArea .jd-page{width:100%;border-collapse:collapse}
-  #jdPrintArea .jd-page>thead>tr>td,#jdPrintArea .jd-page>tfoot>tr>td{height:14mm;border:0;padding:0}
+  #jdPrintArea .jd-page>thead>tr>td,#jdPrintArea .jd-page>tfoot>tr>td{height:12mm;border:0;padding:0}
   #jdPrintArea .jd-page>tbody>tr>td{padding:0 15mm;border:0;vertical-align:top}
   #jdPrintArea .jd-print-head{text-align:center;border-bottom:3px solid #A48A57;padding-bottom:11px;margin-bottom:16px}
   #jdPrintArea .jd-print-brand{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#A48A57;font-weight:700}
   #jdPrintArea .jd-print-t{font-size:10.5px;letter-spacing:3px;color:#8391a8;margin-top:7px}
   #jdPrintArea .jd-print-cargo{font-size:26px;font-weight:800;font-family:'Fraunces',Georgia,serif;color:#1D3573;line-height:1.1}
   #jdPrintArea .jd-print-tag{font-size:12px;color:#6b7890;margin-top:1px}
-  #jdPrintArea h2{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#1D3573;border-bottom:2px solid #A48A57;padding-bottom:3px;margin:12px 0 7px;font-weight:800;break-after:avoid}
-  #jdPrintArea h3{font-size:12.5px;color:#7A5F2E;margin:10px 0 4px;font-weight:700;break-after:avoid}
+  #jdPrintArea h2{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#1D3573;border-bottom:2px solid #A48A57;padding-bottom:3px;margin:10px 0 6px;font-weight:800;break-after:avoid}
+  #jdPrintArea h3{font-size:12.5px;color:#7A5F2E;margin:8px 0 3px;font-weight:700;break-after:avoid}
   #jdPrintArea p{font-size:11.5px;line-height:1.45;margin:5px 0}
   #jdPrintArea .jd-data{break-after:avoid;margin:10px 0 2px}
-  #jdPrintArea ul,#jdPrintArea ol{margin:3px 0 8px;padding-left:18px}
+  #jdPrintArea ul,#jdPrintArea ol{margin:3px 0 6px;padding-left:18px}
   #jdPrintArea li{font-size:11px;line-height:1.36;margin-bottom:2px}
   #jdPrintArea .jd-aviso{background:#faf6ee;border:.5px solid #e0d3b4;border-left:3px solid #A48A57;border-radius:6px;padding:7px 10px;font-size:10.5px;line-height:1.4;margin:6px 0 10px;break-inside:avoid}
   #jdPrintArea .jd-tela{display:none}
@@ -2391,7 +2479,7 @@ function cargoImprimir(){
   cargoCss();
   const nome=(DB.conta&&DB.conta.restaurante)||'Restaurante';
   const area=document.getElementById('jdPrintArea')||(()=>{const a=document.createElement('div');a.id='jdPrintArea';document.body.appendChild(a);return a;})();
-  area.innerHTML=`<table class="jd-page"><thead><tr><td></td></tr></thead><tfoot><tr><td></td></tr></tfoot><tbody><tr><td><div class="jd-print-head"><div class="jd-print-brand">${esc(nome)} · Flow by Lidera</div><div class="jd-print-t">Descrição de Cargo</div><div class="jd-print-cargo">${esc(c.cargo)}</div>${c.tag?`<div class="jd-print-tag">${esc(c.tag)}</div>`:''}</div><div class="jd-print-body">${c.html}</div></td></tr></tbody></table>`;
+  area.innerHTML=`<table class="jd-page"><thead><tr><td></td></tr></thead><tfoot><tr><td></td></tr></tfoot><tbody><tr><td><div class="jd-print-head"><div class="jd-print-brand">${esc(nome)}</div><div class="jd-print-t">Descrição de Cargo</div><div class="jd-print-cargo">${esc(c.cargo)}</div>${c.tag?`<div class="jd-print-tag">${esc(c.tag)}</div>`:''}</div><div class="jd-print-body">${c.html}</div></td></tr></tbody></table>`;
   document.body.classList.add('print-jd');
   setTimeout(()=>{window.print();setTimeout(()=>document.body.classList.remove('print-jd'),500);},80);
 }
@@ -2459,7 +2547,7 @@ function popImprimir(){
   cargoCss();
   const nome=(DB.conta&&DB.conta.restaurante)||'Restaurante';
   const area=document.getElementById('jdPrintArea')||(()=>{const a=document.createElement('div');a.id='jdPrintArea';document.body.appendChild(a);return a;})();
-  area.innerHTML=`<table class="jd-page"><thead><tr><td></td></tr></thead><tfoot><tr><td></td></tr></tfoot><tbody><tr><td><div class="jd-print-head"><div class="jd-print-brand">${esc(nome)} · Flow by Lidera</div><div class="jd-print-t">Procedimento Operacional Padronizado</div><div class="jd-print-cargo">${esc(p.cargo)}</div>${p.tag?`<div class="jd-print-tag">${esc(p.tag)}</div>`:''}</div><div class="jd-print-body">${p.html}</div></td></tr></tbody></table>`;
+  area.innerHTML=`<table class="jd-page"><thead><tr><td></td></tr></thead><tfoot><tr><td></td></tr></tfoot><tbody><tr><td><div class="jd-print-head"><div class="jd-print-brand">${esc(nome)}</div><div class="jd-print-t">Procedimento Operacional Padronizado</div><div class="jd-print-cargo">${esc(p.cargo)}</div>${p.tag?`<div class="jd-print-tag">${esc(p.tag)}</div>`:''}</div><div class="jd-print-body">${p.html}</div></td></tr></tbody></table>`;
   document.body.classList.add('print-jd');
   setTimeout(()=>{window.print();setTimeout(()=>document.body.classList.remove('print-jd'),500);},80);
 }
@@ -2572,7 +2660,8 @@ const icoSun=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 function applyTheme(t){document.body.classList.toggle('dark',t==='dark');try{localStorage.setItem('flow_theme',t);}catch(e){}const b=document.getElementById('themeBtn');if(b)b.innerHTML=t==='dark'?icoSun:icoMoon;const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',t==='dark'?'#0E1626':'#1D3573');}
 function toggleTheme(){applyTheme(document.body.classList.contains('dark')?'light':'dark');}
 
-function toast(msg,ms){const el=document.createElement('div');el.className='toast';el.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>${msg}`;$('#toastRoot').appendChild(el);setTimeout(()=>{el.style.opacity='0';el.style.transition='.3s';setTimeout(()=>el.remove(),300);},ms||2200);}
+function toastHtml(msg,ms){toast(msg,ms,true);}   // só para mensagem com marcação nossa; o texto digitado dentro dela tem de vir com esc()
+function toast(msg,ms,html){const el=document.createElement('div');el.className='toast';el.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>${html?msg:esc(msg)}`;$('#toastRoot').appendChild(el);setTimeout(()=>{el.style.opacity='0';el.style.transition='.3s';setTimeout(()=>el.remove(),300);},ms||2200);}
 function modal(html,wide,noBg){$('#modalRoot').innerHTML=`<div class="modal-overlay"${noBg?'':' onclick="if(event.target===this)closeModal()"'}><div class="modal ${wide?'wide':''}">${html}</div></div>`;}
 function closeModal(){$('#modalRoot').innerHTML='';}
 const icoX=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
@@ -2767,12 +2856,12 @@ function viewInsumos(){
   if(!cats.includes(insumoFiltro))insumoFiltro='Todos';
   const filt=applySort('insumos',insumoFiltro==='Todos'?list:list.filter(i=>i.cat===insumoFiltro));
   $('#view').innerHTML=`
-  <div class="section-head"><select class="input" style="max-width:220px" onchange="insumoFiltro=this.value;viewInsumos()">${cats.map(c=>`<option ${c===insumoFiltro?'selected':''}>${c}</option>`).join('')}</select>
+  <div class="section-head"><select class="input" style="max-width:220px" onchange="insumoFiltro=this.value;viewInsumos()">${cats.map(c=>`<option ${c===insumoFiltro?'selected':''}>${esc(c)}</option>`).join('')}</select>
     <input class="input" id="prodBusca" value="${esc(buscaProd)}" style="max-width:240px" placeholder="🔎 Buscar produto..." oninput="buscaProd=this.value;filtrarLinhas(this,'#insumosTbody')"></div>
   <div class="card">${list.length?`<div class="scroll-x"><table class="tc">
     <thead><tr>${thS('insumos','Produto','nome')}${thS('insumos','Categoria','grupo')}${thS('insumos','Subcategoria','sub')}${thS('insumos','Fornecedor','fornecedor')}${thS('insumos','Valor','preco',1)}${thS('insumos','Quantidade','qtd',1)}${thS('insumos','Custo por unidade','custo',1)}${thS('insumos','Estoque','noEstoque',1)}<th></th></tr></thead>
     <tbody id="insumosTbody">${filt.map(i=>`
-      <tr><td><b>${i.nome}</b></td>
+      <tr><td><b>${esc(i.nome)}</b></td>
       <td>${i.grupo?`<span class="tag tag-gray">${esc(i.grupo)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
       <td>${(i.sub||i.cat)?`<span style="font-size:12.5px">${esc(i.sub||i.cat)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
       <td>${i.fornecedor?`<span style="font-size:12.5px">${esc(i.fornecedor)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
@@ -2909,7 +2998,7 @@ function renderInsCompList(){
   const el=$('#insCompList'); if(!el)return;
   el.innerHTML=draftInsComps.length?draftInsComps.map((row,idx)=>{const ins=DB.insumos[row[0]];return`
     <div class="comp-row" style="grid-template-columns:1fr 86px 80px 32px">
-      <select class="input" onchange="draftInsComps[${idx}][0]=this.value;updInsPreview();renderInsCompList()"><option value="">— insumo —</option>${opts.map(o=>`<option value="${o.id}" ${o.id===row[0]?'selected':''}>${o.nome}${o.tipo==='preparado'?' (prep.)':''}</option>`).join('')}</select>
+      <select class="input" onchange="draftInsComps[${idx}][0]=this.value;updInsPreview();renderInsCompList()"><option value="">— insumo —</option>${opts.map(o=>`<option value="${o.id}" ${o.id===row[0]?'selected':''}>${esc(o.nome)}${o.tipo==='preparado'?' (prep.)':''}</option>`).join('')}</select>
       <input class="input" type="number" step="0.001" value="${row[1]||''}" placeholder="qtd" oninput="draftInsComps[${idx}][1]=parseFloat(this.value)||0;insCompCost(${idx});updInsPreview()">
       <div class="ccost"><span id="ic_cst${idx}">${fmtBRL(ins?custoInsumoBase(ins)*(row[1]||0):0)}</span><div style="font-size:10px;color:var(--soft)">${ins?bSym(ins.uni):''}</div></div>
       <button class="mini-del" onclick="draftInsComps.splice(${idx},1);renderInsCompList();updInsPreview()">${icoX}</button>
@@ -3556,7 +3645,7 @@ function viewFichas(){
   const avisoPend=pendRec.size?`<div class="alert alert-red" style="align-items:center;flex-wrap:wrap;margin-bottom:14px">${icoWarn}<div style="flex:1 1 240px;min-width:0">${nOrfRec?`<b>${nOrfRec} receita${nOrfRec>1?'s':''} com ingrediente apagado.</b> O produto saiu do cadastro e a linha parou de contar no custo. Confira se falta substituto ou se é só tirar a linha antiga.`:''}${nOrfRec&&nUniRec?' ':''}${nUniRec?`<b>${nUniRec} receita${nUniRec>1?'s':''}</b> com quantidade lançada em unidade diferente da do produto.`:''}</div><button class="btn btn-primary btn-sm" style="flex:0 0 auto" onclick="fichasPendModal()">Ver e corrigir</button></div>`:'';
   const temAlgo=cards!=='';
   $('#view').innerHTML=`${avisoPend}
-  <div class="section-head"><div class="pill-filter">${cats.map(c=>`<button class="${c===fichaFiltro?'on':''}" ${(c==='Sem estoque de saída'||(c==='Com pendência'&&c!==fichaFiltro))?'style="color:var(--red)"':''} onclick="fichaFiltro='${c}';viewFichas()">${c}${c==='Sem estoque de saída'?' ('+semArm+')':''}${c==='Com pendência'?' ('+pendRec.size+')':''}</button>`).join('')}</div>
+  <div class="section-head"><div class="pill-filter">${cats.map(c=>`<button class="${c===fichaFiltro?'on':''}" ${(c==='Sem estoque de saída'||(c==='Com pendência'&&c!==fichaFiltro))?'style="color:var(--red)"':''} onclick="fichaFiltro=${esc(JSON.stringify(c))};viewFichas()">${esc(c)}${c==='Sem estoque de saída'?' ('+semArm+')':''}${c==='Com pendência'?' ('+pendRec.size+')':''}</button>`).join('')}</div>
     <input class="input" id="fichaBusca" value="${esc(buscaFicha)}" style="max-width:260px" placeholder="🔎 Buscar ficha por nome..." oninput="buscaFicha=this.value;filtrarCards(this,'#fgrid')"></div>
   ${temAlgo?`<div class="fgrid" id="fgrid">${cards}</div>`:emptyState('Nenhuma ficha técnica','Monte seus pratos a partir dos insumos.','editFicha()')}`;
   if(buscaFicha){const _e=$('#fichaBusca');if(_e)filtrarCards(_e,'#fgrid');}
@@ -4116,7 +4205,7 @@ function imprimirFicha(){
   const custo=$('#f_nome')?fichaCustoAtual():(custoFicha(f)+(f.custoEmbalagem||0));
   const ings=(f.comps||[]).map(c=>{const cid=c[0],q=c[1];const ins=DB.insumos[cid];if(!ins)return compApagadoLinhaPrint(c);
     const fc=ins.fc||ins.fatorCorrecao||1;const u=bSym(ins.uni);
-    return `<tr><td>${esc(ins.nome)}</td><td>${(q||0)} ${u}</td><td>${fc.toFixed(2)}</td><td>${(Math.round((q||0)*fc*1000)/1000)} ${u}</td></tr>`;}).join('');
+    return `<tr><td>${esc(ins.nome)}</td><td>${nNum(q||0)} ${u}</td><td>${fc.toFixed(2).replace('.',',')}</td><td>${nNum(Math.round((q||0)*fc*1000)/1000)} ${u}</td></tr>`;}).join('');
   const passos=(f.modoPreparo||[]).filter(s=>(s||'').trim());
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
   pa.innerHTML=`<table class="fp-page"><thead><tr><td></td></tr></thead><tfoot><tr><td></td></tr></tfoot><tbody><tr><td><div class="fp">
@@ -4147,7 +4236,7 @@ function imprimirPreparado(id){
     :base;
   if(!f||!f.nome)return toast('Informe o nome do preparado antes de imprimir');
   const ings=(f.comps||[]).map(c=>{const cid=c[0],q=c[1];const ins=DB.insumos[cid];if(!ins)return compApagadoLinhaPrint(c);const fc=ins.fc||ins.fatorCorrecao||1;const u=bSym(ins.uni);
-    return `<tr><td>${esc(ins.nome)}${ins.tipo==='preparado'?' <span style="color:#777;font-size:11px">(preparado)</span>':''}</td><td>${nNum(q||0)} ${u}</td><td>${fc.toFixed(2)}</td><td>${nNum(Math.round((q||0)*fc*1000)/1000)} ${u}</td></tr>`;}).join('');
+    return `<tr><td>${esc(ins.nome)}${ins.tipo==='preparado'?' <span style="color:#777;font-size:11px">(preparado)</span>':''}</td><td>${nNum(q||0)} ${u}</td><td>${fc.toFixed(2).replace('.',',')}</td><td>${nNum(Math.round((q||0)*fc*1000)/1000)} ${u}</td></tr>`;}).join('');
   const passos=(f.modoPreparo||[]).filter(x=>(x||'').trim());
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
   pa.innerHTML=`<table class="fp-page"><thead><tr><td></td></tr></thead><tfoot><tr><td></td></tr></tfoot><tbody><tr><td><div class="fp">
@@ -4259,8 +4348,8 @@ function viewEngenharia(){
     </div>`).join('')}
   </div>
 
-  <div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(164,138,87,.14),rgba(29,53,115,.06));border:1px solid var(--line);border-radius:14px;padding:13px 16px;margin-bottom:20px">
-    <div style="width:34px;height:34px;border-radius:10px;background:var(--navy);color:var(--gold-soft);display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto">✦</div>
+  <div class="eng-dica" style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(164,138,87,.14),rgba(29,53,115,.06));border:1px solid var(--line);border-radius:14px;padding:13px 16px;margin-bottom:20px">
+    <div class="no-print" style="width:34px;height:34px;border-radius:10px;background:var(--navy);color:var(--gold-soft);display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto">✦</div>
     <div style="font-size:13px;line-height:1.5">${foraMeta.length
       ?(porMC?`<b>${foraMeta.length}</b> ${foraMeta.length===1?'item deixa':'itens deixam'} menos que a MC média de <b>${fmtBRL(corte)}</b> por prato. Comece pelos <b style="color:${colorOf('Populares')}">Populares</b> (vendem muito) para o maior ganho.`
               :`<b>${foraMeta.length}</b> ${foraMeta.length===1?'item está':'itens estão'} com CMV acima da meta de <b>${fmtPct(corte)}</b>. Comece pelos <b style="color:${colorOf('Populares')}">Populares</b> (vendem muito) para o maior ganho.`)
@@ -4276,7 +4365,7 @@ function viewEngenharia(){
         <div class="quad q-dog" style="bottom:0;left:0;top:auto;right:auto;align-items:flex-end"><div><div class="ql" style="color:var(--red)">▼ Críticos</div><div class="qd">${QUAD['Críticos']}</div></div></div>
         <div class="quad q-horse" style="bottom:0;right:0;top:auto;left:auto;justify-content:flex-end;text-align:right;align-items:flex-end"><div><div class="ql" style="color:var(--navy);justify-content:flex-end">● Populares</div><div class="qd">${QUAD.Populares}</div></div></div>
         <div class="axis-v"></div><div class="axis-h"></div><div class="axis-mid">${porMC?'MC média '+fmtBRL(corte):'meta '+fmtPct(corte)}</div>
-        ${arr.map(x=>`<div class="dot" style="left:${px(x.pop)}%;top:${py(val(x))}%;background:${colorOf(x.classe)}" title="${x.f.nome} · ${x.classe}&#10;Vendas: ${x.pop} · ${porMC?'MC: '+fmtBRL(x.marg)+' por prato':'CMV: '+fmtPct(x.cmv)}">${x.n}</div>`).join('')}
+        ${arr.map(x=>`<div class="dot" style="left:${px(x.pop)}%;top:${py(val(x))}%;background:${colorOf(x.classe)}" title="${esc(x.f.nome)} · ${x.classe}&#10;Vendas: ${x.pop} · ${porMC?'MC: '+fmtBRL(x.marg)+' por prato':'CMV: '+fmtPct(x.cmv)}">${x.n}</div>`).join('')}
       </div>
       <div class="axis-label">Popularidade (vendas/mês) →</div>
       <div class="axis-label-y">${porMC?'Rentabilidade · maior MC ↑':'Eficiência · menor CMV ↑'}</div>
@@ -4287,7 +4376,7 @@ function viewEngenharia(){
       <div style="display:flex;flex-direction:column;gap:11px">${ranked.map(x=>`
         <div style="display:flex;align-items:center;gap:11px">
           <span class="eng-rank" style="background:${colorOf(x.classe)}">${x.n}</span>
-          <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.f.nome}</div>
+          <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.f.nome)}</div>
             <div style="font-size:11px;color:var(--soft)">${x.pop} vendas/mês${porMC?' · '+fmtBRL(x.marg*x.pop)+'/mês':''}</div></div>
           <div style="text-align:right;flex:0 0 auto"><div style="font-weight:700;font-size:15px;font-family:'Fraunces',serif;color:${porMC?(x.marg>=corte?'var(--green)':'var(--red)'):cmvCorRef(x.cmv)}">${fmtVal(val(x))}</div>
             <span class="tag ${engTag(x.classe)}" style="margin-top:2px">${x.classe}</span></div>
@@ -4715,7 +4804,7 @@ function bolAplicar(txt,avisar){const b=bolLer(txt);
   const antes=bolAlvoRec(false);const dup=bolOndeEsta(b.cod,antes&&antes.id);
   if(dup.length&&!confirm('Este boleto já está vinculado a:\n'+dup.map(bolNomeRec).join('\n')+'\n\nVincular também aqui?'))return false;
   const r=bolAlvoRec(true);if(!r)return false;r.linha=b.linha;r.cod=b.cod;r.em=hojeISO();r.por=quemSou();save();bolSecRender();
-  const cf=bolConfere(b,bolAlvoInfo());toast(cf.ok?'Boleto vinculado · '+esc(b.emissor)+(b.valor>0?' · '+fmtBRL(b.valor):''):'Boleto vinculado, mas '+esc(cf.msgs[0]),cf.ok?undefined:6000);return true;}
+  const cf=bolConfere(b,bolAlvoInfo());toastHtml(cf.ok?'Boleto vinculado · '+esc(b.emissor)+(b.valor>0?' · '+fmtBRL(b.valor):''):'Boleto vinculado, mas '+esc(cf.msgs[0]),cf.ok?undefined:6000);return true;}
 function bolRemoverLinha(){const r=bolAlvoRec(false);if(!r||!confirm('Remover a linha digitável? Os anexos continuam.'))return;delete r.linha;delete r.cod;bolLimpaVazio(r);save();bolSecRender();}
 function bolCopiarTxt(t){const ok=()=>toast('Linha digitável copiada');const velho=()=>{const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;opacity:0;top:0;left:0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');ok();}catch(e){toast('Não foi possível copiar. Selecione os números e copie.');}ta.remove();};
   try{if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(ok,velho);else velho();}catch(e){velho();}}
@@ -4756,7 +4845,7 @@ async function bolAbrirAnexo(id){const r=bolAlvoRec(false);const x=r&&(r.anexos|
   const w=window.open('about:blank','_blank');   // abre já no clique: depois da espera o navegador bloquearia a aba
   try{const s=await sb.storage.from(BOL_BUCKET).createSignedUrl(x.path,600);if(s.error||!s.data||!s.data.signedUrl)throw new Error((s.error&&s.error.message)||'arquivo não encontrado');
     if(w)w.location.href=s.data.signedUrl;else window.location.href=s.data.signedUrl;}
-  catch(e){if(w)w.close();const m=(e&&e.message)||''+e;toast(/not.?found|não encontrado/i.test(m)?'Este anexo não está mais disponível. Os arquivos são apagados 2 anos depois do pagamento.':'Não foi possível abrir o anexo: '+esc(m),7000);}}
+  catch(e){if(w)w.close();const m=(e&&e.message)||''+e;toast(/not.?found|não encontrado/i.test(m)?'Este anexo não está mais disponível. Os arquivos são apagados 2 anos depois do pagamento.':'Não foi possível abrir o anexo: '+m,7000);}}
 async function bolRemoverAnexo(id){const r=bolAlvoRec(false);const i=r?(r.anexos||[]).findIndex(a=>a.id===id):-1;if(i<0)return;const x=r.anexos[i];
   if(!confirm('Apagar o anexo "'+(x.nome||'arquivo')+'"? Não dá para desfazer.'))return;
   try{if(bolNuvem())await sb.storage.from(BOL_BUCKET).remove([x.path]);}catch(e){}
@@ -5215,7 +5304,7 @@ function viewDRE(){
       <table class="dre-table"><tbody>
         <tr style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--soft)"><td style="padding:4px 13px"></td><td class="num" style="padding:4px 13px">R$</td><td class="num" style="padding:4px 13px">% receita</td>${mob?'':'<td class="num" style="padding:4px 13px;white-space:nowrap">Ref. PLL</td>'}</tr>
         ${(function(){const colR=dreCollapsed.has('__rec__');return `<tr class="grp" onclick="dreToggle('__rec__')" style="cursor:pointer"><td><span style="display:inline-block;width:12px;color:var(--muted)">${colR?'▸':'▾'}</span> Receita Bruta</td><td class="num">${fmtBRL(rec)}</td><td class="num" style="color:var(--soft)">${rec?'100%':'—'}</td>${mob?'':'<td></td>'}</tr>`
-          +(colR?'':recGrupos.map(g=>Object.entries(d.receita[g]).map(([s,v])=>`<tr class="ind"><td>${s}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${pctTxt(v)}</td>${mob?'':'<td></td>'}</tr>`).join('')).join(''));})()}
+          +(colR?'':recGrupos.map(g=>Object.entries(d.receita[g]).map(([s,v])=>`<tr class="ind"><td>${esc(s)}</td><td class="num">${fmtBRL(v)}</td><td class="num" style="color:var(--soft)">${pctTxt(v)}</td>${mob?'':'<td></td>'}</tr>`).join('')).join(''));})()}
         ${centros.map(c=>{const p=pct(c.total);const st=dreCentroStatus(c,p,!!rec);const ab=dreOpen.has(c.id);const varios=new Set(c.itens.map(x=>x.g)).size>1;
           return `<tr class="dre-cat" onclick="dreToggleCentro('${c.id}')" style="cursor:pointer" title="${c.itens.length?'Clique para ver o que compõe este centro':'Nenhum lançamento neste centro no mês'}"><td style="font-size:11px;letter-spacing:.5px;color:var(--gold);text-transform:uppercase;font-weight:700;padding:10px 13px 8px"><span style="display:inline-block;width:12px;color:var(--muted)">${c.itens.length?(ab?'▾':'▸'):''}</span> ${c.nome}${mob?`<div style="font-size:10.5px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted);margin:2px 0 0 15px"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${st.cor};margin-right:4px"></span>ref. ${c.ref}</div>`:''}</td><td class="num" style="font-weight:700;color:${c.total?'var(--red)':'var(--soft)'}">${fmtBRL(-c.total)}</td><td class="num" style="font-weight:700;color:${st.cor}">${pctTxt(c.total)}</td>${mob?'':`<td class="num" style="font-size:11.5px;color:var(--muted);white-space:nowrap" title="${st.txt}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${st.cor};margin-right:5px"></span>${c.ref}</td>`}</tr>`
           +(ab&&c.id==='cmv'&&cs2.bebidas>0?`<tr class="ind" style="font-weight:600"><td>Cozinha (produção)</td><td class="num" style="color:var(--red)">${fmtBRL(-cs2.cozinha)}</td><td class="num" style="color:var(--soft)">${pctTxt(cs2.cozinha)}</td>${mob?'':'<td></td>'}</tr><tr class="ind" style="font-weight:600"><td>Bebidas e revenda <span class="gp-mini" title="Compras de produtos marcados como revenda ou da subcategoria Bebidas">revenda + subcategoria Bebidas</span></td><td class="num" style="color:var(--red)">${fmtBRL(-cs2.bebidas)}</td><td class="num" style="color:var(--soft)">${pctTxt(cs2.bebidas)}</td>${mob?'':'<td></td>'}</tr><tr class="ind"><td colspan="${mob?3:4}" style="font-size:10.5px;color:var(--soft);padding:6px 13px 2px">Por subcategoria</td></tr>`:'')
@@ -6463,7 +6552,7 @@ function finList(key,cols){
   const grid=cols.map(c=>c.w||'1fr').join(' ')+' 34px';
   return `${arr.length?arr.map((row,i)=>`<div class="comp-row" style="grid-template-columns:${grid};align-items:center">
     ${cols.map(c=>{
-      if(c.type==='select')return `<select class="input" onchange="DB.fin['${key}'][${i}]['${c.f}']=this.value;save()">${c.opts.map(o=>`<option ${row[c.f]===o?'selected':''}>${o}</option>`).join('')}</select>`;
+      if(c.type==='select')return `<select class="input" onchange="DB.fin['${key}'][${i}]['${c.f}']=this.value;save()">${c.opts.map(o=>`<option ${row[c.f]===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
       if(c.type==='check')return `<button class="icon-btn" onclick="DB.fin['${key}'][${i}]['${c.f}']=!DB.fin['${key}'][${i}]['${c.f}'];save();viewFinanceiro()" title="${c.ph||''}" style="${row[c.f]?'background:var(--green-bg);color:var(--green);border-color:var(--green)':''}">${row[c.f]?'✓':'○'}</button>`;
       if(c.type==='money')return `<div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" value="${fmtMoneyInput(row[c.f]||0)}" oninput="DB.fin['${key}'][${i}]['${c.f}']=moneyMask(this);finTouch()"></div>`;
       return `<input class="input" ${c.type==='num'?'type="number" step="0.01"':c.type==='date'?'type="date"':''} value="${c.type==='num'?(row[c.f]||''):((row[c.f]==null?'':row[c.f]).toString().replace(/"/g,'&quot;'))}" placeholder="${c.ph||(c.type==='num'?'0':'')}" oninput="DB.fin['${key}'][${i}]['${c.f}']=${c.type==='num'?'parseFloat(this.value)||0':'this.value'};finTouch()">`;
@@ -7051,12 +7140,12 @@ function cpImprimir(){const c=cpImpLer();const ls=cpLinhasPeriodo(c.de,c.ate,c.m
   pa.innerHTML=`<div class="dp">
     <div class="dp-bar"><div><div class="dp-t">${titulo}</div><div class="dp-sub">${rec?'CONTAS A RECEBER':'CONTAS A PAGAR'}${c.modo==='abertas'?' · SÓ EM ABERTO':c.modo==='pagas'?(rec?' · SÓ RECEBIDAS':' · SÓ PAGAS'):''}</div></div><div class="dp-rest">${esc(rest)}</div></div>
     <div class="dp-gold"></div>
-    <div class="dp-meta"><span><b>${ls.length}</b> conta${ls.length>1?'s':''}</span><span><b>Total:</b> ${fmtBRL(tot)}</span>${c.modo==='todas'?`<span><b>Em aberto:</b> ${fmtBRL(ab)}</span><span><b>${rec?'Já recebido':'Já pago'}:</b> ${fmtBRL(pg)}</span>`:''}<span style="margin-left:auto">Gerado em ${fmtDataBR(hojeISO())} ${new Date().toTimeString().slice(0,5)}</span></div>
+    <div class="dp-meta"><span><b>${ls.length}</b> conta${ls.length>1?'s':''}</span><span><b>Total:</b> ${fmtBRL(tot)}</span>${c.modo==='todas'?`<span><b>Em aberto:</b> ${fmtBRL(ab)}</span><span><b>${rec?'Já recebido':'Já pago'}:</b> ${fmtBRL(pg)}</span>`:''}</div>
     <table class="dp-tb"><thead><tr><th style="width:62px">${rec?'Previsto':'Vencimento'}</th><th style="width:18%">${rec?'Origem':'Fornecedor'}</th><th>Descrição</th><th style="width:58px">NF nº</th><th style="width:48px;text-align:center">Parcela</th><th style="width:13%">Forma</th><th style="width:78px;text-align:right">Valor</th><th style="width:40px;text-align:center">${rec?'Receb.':'Pago'}</th></tr></thead>
     <tbody>${rows}<tr><td colspan="6" style="text-align:right;font-weight:800;background:#1D3573;color:#fff;border-color:#1D3573">TOTAL</td><td style="text-align:right;font-weight:800;background:#1D3573;color:#fff;border-color:#1D3573">${fmtBRL(tot)}</td><td style="background:#1D3573;border-color:#1D3573"></td></tr></tbody></table>
     <div class="dp-note">${rec?'Recebíveis vêm das vendas lançadas por meio de recebimento (já no DRE); contas avulsas são valores a receber ainda não lançados. Marque a caixa ao receber e dê baixa no Flow.':'Parcelas vêm das compras lançadas (já no DRE); contas avulsas são compromissos ainda não lançados. Marque a caixa ao pagar e dê baixa no Flow.'}</div>
   </div>`;
-  closeModal();document.body.classList.add('print-desp');
+  pa.innerHTML=pgWrap(pa.innerHTML,'dp');closeModal();document.body.classList.add('print-desp');
   const fim=()=>{document.body.classList.remove('print-desp');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);}
 function gerarRecorrentesMes(ym){
@@ -7201,7 +7290,7 @@ function finVisao(t){
       <div class="section-head"><div><div class="ttl">Próximos vencimentos</div><div class="desc">Contas a pagar em aberto</div></div></div>
       ${venc.length?venc.slice(0,8).map(x=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
         <div style="width:42px;text-align:center"><div style="font-size:15px;font-weight:700;font-family:'Fraunces',serif;line-height:1">${(x.vencimento||'').split('-')[2]||'—'}</div><div style="font-size:9.5px;color:var(--soft)">${fmtData(x.vencimento).split('/')[1]?'/'+fmtData(x.vencimento).split('/')[1]:''}</div></div>
-        <div style="flex:1"><div style="font-size:13px;font-weight:600">${x.descricao||'—'}</div><div style="font-size:11px;color:var(--soft)">${x.categoria||''}</div></div>
+        <div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(x.descricao||'—')}</div><div style="font-size:11px;color:var(--soft)">${esc(x.categoria||'')}</div></div>
         <div style="font-size:13.5px;font-weight:700;color:var(--red)">${fmtBRL(x.valor)}</div></div>`).join(''):`<div style="font-size:13px;color:var(--soft);padding:8px 0">Nenhum vencimento em aberto.</div>`}
     </div>
   </div>`;
@@ -8171,7 +8260,7 @@ function fecharVideo(){const ov=document.getElementById('vidOverlay');if(ov)ov.r
 
 /* ===================== CONFIGURAÇÕES / CONTA ===================== */
 let contaTab='conta';
-function esc(s){return (s==null?'':s).toString().replace(/"/g,'&quot;');}
+function esc(s){return (s==null?'':s).toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}   // texto digitado nunca vira marcação
 function exportDados(){const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='lidera-gestao-dados.json';a.click();toast('Dados exportados');}
 function importarBackup(input){const f=input&&input.files&&input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d||!d.insumos||!d.fichas)throw 0;DB=d;save();renderFoot();go('dashboard');toast('Backup importado com sucesso');}catch(e){toast('Arquivo inválido, selecione um backup do Lidera Gestão');}};rd.readAsText(f);}
 function comecarVazio(){if(!confirm('Isto apaga tudo e inicia o app vazio, sem dados de exemplo. Deseja continuar?'))return;
@@ -8243,6 +8332,16 @@ function buffetData(){
   const dentro=comF.filter(c=>c.ok).length, perc=comF.length?dentro/comF.length:0;
   return {b,precoKg,cubas,comF,totalCusto,totalReceita,totalPeso,cmvBuffet,dentro,perc,conforme:perc>=REGRA_8020};
 }
+/* ---- desenho do mapa: uma cuba (vista de cima) e a bancada; o mapa base e o mapa do dia usam o mesmo ---- */
+function buffetNormCubas(){   // giro antigo (rot 90/270 virava o texto de lado): passa a ser a própria cuba em pé, com o texto reto
+  (((DB.buffet||{}).cubas)||[]).forEach(c=>{const r=((+c.rot||0)%360+360)%360;if(r===90||r===270){const w=+c.w||104,h=+c.h||74;c.x=Math.max(0,Math.round((+c.x||0)+(w-h)/2));c.y=Math.max(0,Math.round((+c.y||0)+(h-w)/2));c.w=h;c.h=w;}if(c.rot)c.rot=0;});}
+function cubaHTML(o){return `<div ${o.id?`id="cuba_${o.id}" `:''}class="cuba ${o.cls||''}" ${o.attrs||''} style="left:${+o.x||0}px;top:${+o.y||0}px;width:${+o.w||104}px;height:${+o.h||74}px"${o.dica?` title="${bdHtml(o.dica)}"`:''}><div class="cuba-in"><div class="cuba-n">${o.nome}</div><div class="cuba-f"><span class="cuba-kg">${o.kg||''}</span>${o.cmv?`<span class="cuba-cmv">${o.cmv}</span>`:''}</div></div>${o.rs?`<div class="cuba-rs" onpointerdown="event.stopPropagation();buffetCubaDown(event,'${o.id}','resize')"></div>`:''}</div>`;}
+function buffetArea(cubas){let w=0,h=0;(cubas||[]).forEach(q=>{w=Math.max(w,(+q.x||0)+(+q.w||0));h=Math.max(h,(+q.y||0)+(+q.h||0));});return {w,h};}
+function buffetLegenda(dica){return `<div class="bf-leg"><span><i class="l-ok"></i>CMV dentro de 30%</span><span><i class="l-alto"></i>CMV acima de 30%</span><span><i class="l-neu"></i>Sem prato ou sem preço do quilo</span>${dica?`<span class="bf-dica no-print">${dica}</span>`:''}</div>`;}
+/* impressão do mapa: só a bancada, do tamanho das cubas, ampliada para ocupar a folha deitada */
+function prMapa(clone){const b=clone.querySelector('.bf-board');if(!b)return;const a=buffetArea((DB.buffet||{}).cubas);const W=a.w+24,H=a.h+24;
+  const g=clone.querySelector('.buffet-grid');if(g)g.style.display='block';
+  b.removeAttribute('id');b.style.cssText='position:relative;width:'+W+'px;height:'+H+'px;zoom:'+Math.max(.5,Math.min(1.7,1040/W,520/H)).toFixed(3);}
 function cubaCol(c,precoKg){
   if(!c.ficha||precoKg<=0)return{bg:'#EEF0F4',br:'var(--line)',tx:'var(--muted)'};
   return c.cmv<=CMV_ALVO_BUFFET?{bg:'rgba(30,158,106,.14)',br:'var(--green)',tx:'#147a4f'}:{bg:'rgba(210,72,63,.12)',br:'var(--red)',tx:'#9e342c'};
@@ -8254,7 +8353,7 @@ function viewBuffet(){
   if(buffetSub==='sem')return bdViewSem();
   if(buffetSub==='hist')return bdViewHist();
   $('#topActions').innerHTML=`<button class="btn btn-ghost" onclick="imprimirTela()">🖨️ Imprimir</button>`;
-  const d=buffetData(); const fichas=Object.values(DB.fichas).sort((a,b)=>a.nome.localeCompare(b.nome));
+  buffetNormCubas();const d=buffetData();const area=buffetArea(d.cubas); const fichas=Object.values(DB.fichas).sort((a,b)=>a.nome.localeCompare(b.nome));
   const prepsBuffet=Object.values(DB.insumos).filter(i=>i.tipo==='preparado').sort((a,b)=>a.nome.localeCompare(b.nome));
   const pctOf=v=>fmtN(v*100,1)+'%';
   const sel=d.cubas.find(c=>c.id===buffetSel);
@@ -8269,15 +8368,15 @@ function viewBuffet(){
   ${d.comF.length?`<div class="alert alert-${d.conforme?'green':'red'}" style="margin-bottom:16px">${d.conforme?icoOk:icoWarn}<div>${d.conforme?`Buffet equilibrado: <b>${pctOf(d.perc)}</b> dos pratos com CMV dentro de 30%. Regra 80/20 atendida.`:`Apenas <b>${pctOf(d.perc)}</b> dos pratos estão na meta de 30%. Para cumprir o 80/20, ajuste pratos de CMV alto (proteínas) ou reduza a porção deles no buffet.`}</div></div>`:''}
 
   ${buffetSub==='mapa'?`
-  <div style="display:grid;grid-template-columns:280px 1fr;gap:18px" class="buffet-grid">
-    <div>
+  <div style="display:grid;grid-template-columns:280px minmax(0,1fr);gap:18px" class="buffet-grid">
+    <div class="no-print">
       <div class="card card-pad" style="margin-bottom:14px">
         <label style="display:block;font-size:13px;font-weight:600;margin-bottom:7px">Preço de venda do buffet <span class="hint">R$/Kg</span></label>
         <div style="display:flex;gap:8px">
           <input class="input" type="number" step="0.01" value="${esc(d.b.precoVendaKg)}" placeholder="89,90" onchange="DB.buffet.precoVendaKg=this.value;save();viewBuffet()" style="flex:1">
           <button class="btn btn-gold" onclick="buffetAddCuba()">+ Cuba</button>
         </div>
-        <div style="font-size:11.5px;color:var(--soft);margin-top:10px;line-height:1.5">Meta de CMV por item: <b style="color:var(--gold)">≤ 30%</b> (${fmtBRL(d.precoKg*CMV_ALVO_BUFFET)}/Kg de custo).<br/>Regra 80/20: ao menos <b style="color:var(--gold)">80%</b> dos itens na meta. Arraste a cuba; a alça inferior direita redimensiona.</div>
+        <div style="font-size:11.5px;color:var(--soft);margin-top:10px;line-height:1.5">Meta de CMV por item: <b style="color:var(--gold)">≤ 30%</b> (${fmtBRL(d.precoKg*CMV_ALVO_BUFFET)}/Kg de custo).<br/>Regra 80/20: ao menos <b style="color:var(--gold)">80%</b> dos itens na meta. Arraste a cuba para mover; puxe o canto inferior direito para mudar o tamanho.</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
           <label style="font-size:11.5px;font-weight:600">Quilo no fim de semana <span style="font-weight:400;color:var(--soft)">opcional</span><input class="input" type="number" step="0.01" style="margin-top:5px" value="${esc(d.b.precoVendaKgFds||'')}" placeholder="igual" onchange="DB.buffet.precoVendaKgFds=this.value;save();viewBuffet()"></label>
           <label style="font-size:11.5px;font-weight:600">Preço do livre <span style="font-weight:400;color:var(--soft)">à vontade</span><input class="input" type="number" step="0.01" style="margin-top:5px" value="${esc(d.b.precoLivre||'')}" placeholder="opcional" onchange="DB.buffet.precoLivre=this.value;save();viewBuffet()"></label>
@@ -8295,39 +8394,29 @@ function viewBuffet(){
         </div>`:'<div style="font-size:12px;color:var(--soft)">Selecione um prato para ver o custo.</div>'}
       </div>`:`<div class="card card-pad" style="font-size:12.5px;color:var(--muted)">Clique numa cuba no mapa para editá-la, ou adicione uma nova com <b>+ Cuba</b>.</div>`}
     </div>
-    <div>
-      <div style="display:flex;gap:16px;font-size:12px;color:var(--muted);margin-bottom:8px">
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:3px;background:rgba(30,158,106,.5)"></span>CMV ≤ 30%</span>
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:3px;background:rgba(210,72,63,.5)"></span>CMV &gt; 30%</span>
-        <span style="color:var(--soft)">Arraste as cubas · alça inferior direita redimensiona</span>
-      </div>
-      <div id="buffetBoard" onpointerdown="buffetDeselect(event)" style="position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;height:calc(100vh - 330px);min-height:520px;background:repeating-linear-gradient(0deg,var(--card) 0 39px,var(--bg) 39px 40px),repeating-linear-gradient(90deg,var(--card) 0 39px,var(--bg) 39px 40px)">
-        <div style="position:absolute;top:10px;left:14px;font-size:11px;color:var(--soft);pointer-events:none">Vista superior do buffet · ${d.cubas.length} cuba(s)</div>
-        ${d.cubas.length===0?`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--soft);pointer-events:none"><div><div style="font-size:34px;margin-bottom:6px">🍽️</div>Adicione cubas com <b>+ Cuba</b><br/>e monte seu buffet como na realidade</div></div>`:''}
-        ${d.cubas.map(c=>{const col=cubaCol(c,d.precoKg);const s=c.id===buffetSel;return`
-          <div id="cuba_${c.id}" onpointerdown="buffetCubaDown(event,'${c.id}','move')" style="position:absolute;left:${c.x}px;top:${c.y}px;width:${c.w}px;height:${c.h}px;background:${col.bg};border:2px solid ${s?'var(--gold)':col.br};border-radius:8px;cursor:grab;display:flex;flex-direction:column;overflow:hidden;transform:rotate(${c.rot||0}deg);box-shadow:${s?'0 0 0 2px rgba(164,138,87,.3)':'0 1px 3px rgba(0,0,0,.08)'};touch-action:none">
-            <div style="padding:3px 5px 0;font-size:9.5px;font-weight:700;line-height:1.15;color:${col.tx};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.ficha?c.ficha.nome:'vazia'}</div>
-            <div style="padding:0 5px 3px;flex:1;display:flex;align-items:flex-end;justify-content:space-between;gap:4px">
-              ${c.ficha?`<span style="font-size:9px;color:var(--muted)">${c.peso}Kg</span>${d.precoKg>0?`<span style="font-size:10px;font-weight:700;color:${col.tx}">${pctOf(c.cmv)}</span>`:''}`:''}
-            </div>
-            <div onpointerdown="event.stopPropagation();buffetCubaDown(event,'${c.id}','resize')" style="position:absolute;bottom:0;right:0;width:14px;height:14px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,${s?'var(--gold)':col.br} 50%);touch-action:none"></div>
-          </div>`;}).join('')}
-      </div>
+    <div style="min-width:0">
+      ${buffetLegenda('Arraste para mover · puxe o canto para mudar o tamanho')}
+      <div class="bf-scroll"><div id="buffetBoard" class="bf-board" onpointerdown="buffetDeselect(event)" style="height:calc(100vh - 330px);min-height:${Math.max(520,area.h+44)}px;min-width:${area.w+32}px">
+        <div class="bf-cap">Vista superior do buffet<small>${d.cubas.length} cuba${d.cubas.length===1?'':'s'}${d.totalPeso>0?' · '+fmtN(d.totalPeso,d.totalPeso%1?1:0)+' kg':''}</small></div>
+        ${d.cubas.length===0?`<div class="bf-vazio"><div>Adicione cubas com <b>+ Cuba</b><br>e monte o buffet como ele é na casa</div></div>`:''}
+        ${d.cubas.map(c=>cubaHTML({id:c.id,x:c.x,y:c.y,w:c.w,h:c.h,rs:1,cls:'mov '+(!c.ficha?'vazia':(d.precoKg>0?(c.ok?'ok':'alto'):''))+(c.id===buffetSel?' sel':''),attrs:`onpointerdown="buffetCubaDown(event,'${c.id}','move')"`,nome:c.ficha?bdHtml(c.ficha.nome):'cuba vazia',dica:c.ficha?c.ficha.nome:'',kg:c.ficha&&c.peso?fmtN(c.peso,c.peso%1?1:0)+' kg':'',cmv:(c.ficha&&d.precoKg>0)?pctOf(c.cmv):''})).join('')}
+      </div></div>
     </div>
   </div>`:`
   ${d.comF.length===0?`<div class="card">${emptyState('Buffet vazio','Adicione cubas e selecione pratos na aba Mapa do Buffet.','buffetSub=&#39;mapa&#39;;viewBuffet()')}</div>`:`
   <div class="card"><div class="scroll-x"><table>
     <thead><tr><th>Prato</th><th>Categoria</th><th class="num">Qtd</th><th class="num">Custo/Kg</th><th class="num">Custo</th><th class="num">CMV</th></tr></thead>
-    <tbody>${d.comF.map(c=>`<tr><td><b>${c.ficha.nome}</b></td><td><span class="tag tag-gray">${c.ficha.cat}</span></td><td class="num">${c.peso?fmtN(c.peso,c.peso%1?1:0)+' Kg':'—'}</td><td class="num">${fmtBRL(c.ckg)}</td><td class="num">${fmtBRL(c.custo)}</td><td class="num">${d.precoKg>0?`<span class="tag ${c.ok?'tag-green':'tag-red'}">${pctOf(c.cmv)}</span>`:'—'}</td></tr>`).join('')}</tbody>
+    <tbody>${d.comF.map(c=>`<tr><td><b>${esc(c.ficha.nome)}</b></td><td><span class="tag tag-gray">${esc(c.ficha.cat)}</span></td><td class="num">${c.peso?fmtN(c.peso,c.peso%1?1:0)+' Kg':'—'}</td><td class="num">${fmtBRL(c.ckg)}</td><td class="num">${fmtBRL(c.custo)}</td><td class="num">${d.precoKg>0?`<span class="tag ${c.ok?'tag-green':'tag-red'}">${pctOf(c.cmv)}</span>`:'—'}</td></tr>`).join('')}</tbody>
     <tfoot><tr style="border-top:2px solid var(--navy);font-weight:700"><td colspan="4" style="padding:12px 13px">Total (${d.comF.length} itens)</td><td class="num" style="padding:12px 13px">${fmtBRL(d.totalCusto)}</td><td class="num" style="padding:12px 13px">${d.totalReceita>0?pctOf(d.cmvBuffet):'—'}</td></tr></tfoot>
   </table></div></div>`}`}`;
 }
-function buffetAddCuba(){const n=(DB.buffet.cubas||[]).length;DB.buffet.cubas=DB.buffet.cubas||[];
-  DB.buffet.cubas.push({id:uid(),fichaId:'',pesoKg:'3',rot:0,x:24+(n%8)*26,y:46+(n%8)*26,w:104,h:74});
+function buffetAddCuba(){DB.buffet.cubas=DB.buffet.cubas||[];const cs=DB.buffet.cubas,W=112,H=80;const bw=Math.max(420,(document.getElementById('buffetBoard')||{}).clientWidth||900);
+  let x=28,y=56,achou=false;for(let r=0;r<60&&!achou;r++)for(let k=0;28+k*120+W<=bw-20;k++){const px=28+k*120,py=56+r*88;if(!cs.some(c=>px<(+c.x||0)+(+c.w||0)+4&&px+W+4>(+c.x||0)&&py<(+c.y||0)+(+c.h||0)+4&&py+H+4>(+c.y||0))){x=px;y=py;achou=true;break;}}
+  cs.push({id:uid(),fichaId:'',pesoKg:'3',rot:0,x,y,w:W,h:H});
   buffetSel=DB.buffet.cubas[DB.buffet.cubas.length-1].id;save();viewBuffet();}
 function buffetUpdCuba(id,patch){const c=(DB.buffet.cubas||[]).find(x=>x.id===id);if(c)Object.assign(c,patch);save();}
 function buffetDelCuba(id){DB.buffet.cubas=(DB.buffet.cubas||[]).filter(x=>x.id!==id);if(buffetSel===id)buffetSel=null;save();viewBuffet();}
-function buffetRot(id){const c=(DB.buffet.cubas||[]).find(x=>x.id===id);if(c){c.rot=((c.rot||0)+90)%360;save();viewBuffet();}}
+function buffetRot(id){const c=(DB.buffet.cubas||[]).find(x=>x.id===id);if(c){const w=+c.w||104,h=+c.h||74;c.x=Math.max(0,Math.round((+c.x||0)+(w-h)/2));c.y=Math.max(0,Math.round((+c.y||0)+(h-w)/2));c.w=h;c.h=w;c.rot=0;save();viewBuffet();}}   // girar = a cuba fica em pé (troca largura por altura), o texto continua reto
 function buffetDeselect(e){if(e.target&&e.target.id==='buffetBoard'){buffetSel=null;viewBuffet();}}
 function buffetCubaDown(e,id,mode){
   e.stopPropagation();e.preventDefault();buffetSel=id;
@@ -8338,8 +8427,9 @@ function buffetCubaDown(e,id,mode){
 }
 function buffetCubaMove(e){const d=buffetDrag;if(!d)return;const el=document.getElementById('cuba_'+d.id);if(!el)return;
   const dx=e.clientX-d.sx,dy=e.clientY-d.sy;
-  if(d.mode==='move'){const x=Math.max(0,Math.min(d.bw-d.ow,d.ox+dx)),y=Math.max(0,Math.min(d.bh-d.oh,d.oy+dy));el.style.left=Math.round(x)+'px';el.style.top=Math.round(y)+'px';d.nx=Math.round(x);d.ny=Math.round(y);}
-  else{const w=Math.max(44,Math.min(d.bw-d.ox,d.ow+dx)),h=Math.max(34,Math.min(d.bh-d.oy,d.oh+dy));el.style.width=Math.round(w)+'px';el.style.height=Math.round(h)+'px';d.nw=Math.round(w);d.nh=Math.round(h);}
+  const g=v=>Math.round(v/4)*4;
+  if(d.mode==='move'){const x=g(Math.max(0,Math.min(d.bw-d.ow,d.ox+dx))),y=g(Math.max(0,Math.min(d.bh-d.oh,d.oy+dy)));el.style.left=x+'px';el.style.top=y+'px';d.nx=x;d.ny=y;}
+  else{const w=g(Math.max(56,Math.min(d.bw-d.ox,d.ow+dx))),h=g(Math.max(44,Math.min(d.bh-d.oy,d.oh+dy)));el.style.width=w+'px';el.style.height=h+'px';d.nw=w;d.nh=h;}
 }
 function buffetCubaUp(){const d=buffetDrag;window.removeEventListener('pointermove',buffetCubaMove);window.removeEventListener('pointerup',buffetCubaUp);buffetDrag=null;if(!d)return;
   const c=(DB.buffet.cubas||[]).find(x=>x.id===d.id);if(c){if(d.mode==='move'&&d.nx!=null){c.x=d.nx;c.y=d.ny;}if(d.mode==='resize'&&d.nw!=null){c.w=d.nw;c.h=d.nh;}}
@@ -8507,15 +8597,13 @@ function bdFechHTML(c){const L=[],cor=v=>v<=CMV_ALVO_BUFFET?'var(--green)':'var(
   if(c.foraBalanca!=null)L.push(['Saiu do buffet e não passou pela balança',bdKg(c.foraBalanca),c.foraBalanca<-0.05?'vendeu mais do que saiu do buffet: confira os pesos':((c.cons>0?bdPct(c.foraBalanca/c.cons)+' do consumido':'')+(c.eq>0&&!c.eqFora?', já sem a equipe':'')),c.foraBalanca<-0.05?'var(--red)':'']);
   if(!L.length)return '<div style="font-size:12.5px;color:var(--soft)">Com a venda de comida (valor do caixa, ou kg vendido no quilo e refeições no livre), o Flow calcula o CMV real do dia, o custo por refeição e o consumo por cliente.</div>';
   return L.map(l=>`<div class="bd-linha"><span>${l[0]}</span><b${l[3]?` style="color:${l[3]}"`:''}>${l[1]}</b><small>${l[2]}</small></div>`).join('');}
-function bdBoardHTML(c){const cubas=((DB.buffet||{}).cubas)||[];if(!cubas.length)return '';
+function bdBoardHTML(c){buffetNormCubas();const cubas=((DB.buffet||{}).cubas)||[];if(!cubas.length)return '';
   const por={};c.itens.forEach(x=>{if(x.it.c)por[x.it.c]=x;});if(!Object.keys(por).length)return '';
-  const W=Math.max.apply(null,cubas.map(q=>(q.x||0)+(q.w||0)))+14,H=Math.max.apply(null,cubas.map(q=>(q.y||0)+(q.h||0)))+14;
-  return `<div class="scroll-x"><div style="position:relative;width:${W}px;height:${H}px;min-width:100%;border:1px solid var(--line);border-radius:12px;background:repeating-linear-gradient(0deg,var(--card) 0 39px,var(--bg) 39px 40px),repeating-linear-gradient(90deg,var(--card) 0 39px,var(--bg) 39px 40px)">`
-    +cubas.map(q=>{const x=por[q.id];const tem=x&&x.nome;
-      const col=!tem?{bg:'transparent',br:'var(--line)',tx:'var(--soft)'}:((x.temCusto&&c.pk>0)?(x.ok?{bg:'rgba(30,158,106,.14)',br:'var(--green)',tx:'#147a4f'}:{bg:'rgba(210,72,63,.12)',br:'var(--red)',tx:'#9e342c'}):{bg:'#EEF0F4',br:'var(--line)',tx:'var(--muted)'});
-      return `<div ${x?`onclick="bdFoco('${x.it.id}')"`:''} style="position:absolute;left:${q.x}px;top:${q.y}px;width:${q.w}px;height:${q.h}px;background:${col.bg};border:2px ${tem?'solid':'dashed'} ${col.br};border-radius:8px;display:flex;flex-direction:column;overflow:hidden;transform:rotate(${q.rot||0}deg);${x?'cursor:pointer':''}">
-        <div style="padding:3px 5px 0;font-size:9.5px;font-weight:700;line-height:1.15;color:${col.tx};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tem?bdHtml(x.nome):'fora hoje'}</div>
-        <div style="padding:0 5px 3px;flex:1;display:flex;align-items:flex-end;justify-content:space-between;gap:4px">${tem?`<span style="font-size:9px;color:var(--muted)">${nNum(+x.serv.toFixed(1))}Kg${x.d>0?` <b style="color:var(--red)">−${nNum(+x.d.toFixed(1))}</b>`:''}</span>${(x.temCusto&&c.pk>0)?`<span style="font-size:10px;font-weight:700;color:${col.tx}">${bdPct(x.cmv)}</span>`:''}`:''}</div></div>`;}).join('')
+  const a=buffetArea(cubas);
+  return buffetLegenda('')+`<div class="bf-scroll"><div class="bf-board" style="width:${a.w+28}px;height:${a.h+28}px;min-width:100%">`
+    +cubas.map(q=>{const x=por[q.id];const tem=x&&x.nome;const medido=tem&&x.temCusto&&c.pk>0;
+      return cubaHTML({x:q.x,y:q.y,w:q.w,h:q.h,cls:(tem?(medido?(x.ok?'ok':'alto'):''):'fora')+(x?' toque':''),attrs:x?`onclick="bdFoco('${x.it.id}')"`:'',nome:tem?bdHtml(x.nome):'fora hoje',dica:tem?x.nome:'',
+        kg:tem?nNum(+x.serv.toFixed(1))+' kg'+(x.d>0?` <b>−${nNum(+x.d.toFixed(1))}</b>`:''):'',cmv:medido?bdPct(x.cmv):''});}).join('')
     +'</div></div>';}
 function buffetTabsHTML(){const b=(k,t)=>`<button class="${buffetSub===k?'on':''}" onclick="buffetSub='${k}';viewBuffet()">${t}</button>`;
   return `<div class="pill-filter tabs" style="margin-bottom:16px">${b('dia','📅 Buffet do dia')}${b('sem','🗓️ Semana')}${b('hist','📈 Relatório')}${b('mapa','🗺️ Mapa do Buffet')}${b('relatorio','📋 Itens do mapa')}</div>`;}
@@ -8776,14 +8864,14 @@ function bdRelImprimir(){
   const sim=bdSimVal(),S=bdRelSecs(R,sim),N=bdRelNums(R),rest=(DB.conta&&DB.conta.restaurante)||'Restaurante',agora=new Date(),h=bdHtml;
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
   pa.innerHTML=`<div class="rel bdr"><div class="rel-head"><div><div class="rel-rest">${h(rest)}</div><div class="rel-t">CMV do Buffet · ${p.tit}</div></div>
-      <div class="rel-meta"><b>${R.um?bdSem(R.de):p.rot}</b><br>${R.nd} dia${R.nd===1?'':'s'} com registro${R.pkMed>0?' · quilo a '+(R.pkVaria?'preço de cada dia':fmtBRL(R.pkMed)):''}<br>Gerado em ${fmtDataBR(hojeISO())} ${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}${quemSou()?' · '+h(quemSou()):''}</div></div>
+      <div class="rel-meta"><b>${R.um?bdSem(R.de):p.rot}</b><br>${R.nd} dia${R.nd===1?'':'s'} com registro${R.pkMed>0?' · quilo a '+(R.pkVaria?'preço de cada dia':fmtBRL(R.pkMed)):''}</div></div>
     <div class="rel-body">
       <p class="bdr-lead"><span>Leitura em uma frase</span>${bdRelLead(R)}</p>
       <div class="bdr-nums">${N.map(n=>`<div><b>${n[0]}</b><span>${n[1]}</span></div>`).join('')}</div>
       ${S.map((s,i)=>`<h2 class="bdr-h">${i+1}. ${s.t}</h2>${s.tb?`<div${s.estreita?' style="max-width:56%"':''}>${s.tb}</div>`:''}${s.lista?`<ul class="bdr-list">${s.lista.map(a=>`<li>${a}</li>`).join('')}</ul>`:''}${s.nota?`<p class="bdr-nota">${s.nota}</p>`:''}`).join('')}
       <p class="bdr-nota bdr-fonte">Como o cálculo é feito: o custo de cada prato é o peso montado (abertura mais reposições) vezes o custo do quilo pronto da ficha técnica no Flow. O que voltou para reaproveitar sai do custo do dia; o que foi descartado continua nele. Fonte: pesos e vendas registrados pela casa em Buffet do dia.</p>
-    </div>
-    <div class="rel-foot"><span>${h(rest)} · CMV do Buffet · ${p.tit}</span><span>Flow by Lidera</span></div></div>`;
+    </div></div>`;
+  pa.innerHTML=pgWrap(pa.innerHTML,'rel');
   let maxCols=0;pa.querySelectorAll('table').forEach(t=>{const tr=t.querySelector('tr');if(tr)maxCols=Math.max(maxCols,tr.children.length);});
   document.body.classList.add('print-rel');document.body.classList.toggle('print-rel-dense',maxCols>=12);
   const fim=()=>{document.body.classList.remove('print-rel');document.body.classList.remove('print-rel-dense');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
@@ -8822,7 +8910,7 @@ function bdFolha(modo){
     </table>
     <div class="bf-fech"><span><b>Fechamento do dia</b> (o que tiver)</span><span>Venda de comida, sem bebidas: R$ __________</span><span>Kg vendido no quilo: ________</span><span>Refeições no livre: ______</span><span>Marmitas e PF: ______</span><span>Equipe comeu (kg): ______</span></div>
   </div>`;
-  document.body.classList.add('print-buffet');
+  pa.innerHTML=pgWrap(pa.innerHTML,'bf');document.body.classList.add('print-buffet');
   const fim=()=>{document.body.classList.remove('print-buffet');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);
 }
@@ -9032,7 +9120,7 @@ function bdSemImprimir(){
         <tr><td class="bf-n">Pratos no dia</td>${S.dia.map((g,j)=>vis[j]?`<td class="bf-c">${g.p>0?L.filter(l=>((S.cel[l.key]||{})[g.iso]||{}).p>0).length:''}</td>`:'').join('')}<td></td></tr></tfoot>
     </table>
   </div>`;
-  document.body.classList.add('print-buffet');
+  pa.innerHTML=pgWrap(pa.innerHTML,'bf');document.body.classList.add('print-buffet');
   const fim=()=>{document.body.classList.remove('print-buffet');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);
 }
@@ -9191,7 +9279,7 @@ function despNome(tipo,id){if(tipo==='ficha')return (DB.fichas[id]||{}).nome||'�
 function despSearch(){const q=($('#desp_search').value||'').trim().toLowerCase();const box=$('#desp_results');if(!box)return;
   if(!q){box.innerHTML='';return;}
   const ms=despItensFlat().filter(it=>it.nome.toLowerCase().includes(q)).slice(0,8);
-  box.innerHTML=ms.length?`<div class="ins-results" style="position:absolute;left:0;right:0;top:100%;z-index:30;margin-top:4px">${ms.map(it=>`<div onclick="despPick('${it.tipo}','${it.id}')">${esc(it.nome)} <span style="float:right;color:var(--soft)">${it.grupo}</span></div>`).join('')}</div>`:`<div class="ins-results" style="position:absolute;left:0;right:0;top:100%;z-index:30;margin-top:4px"><div style="color:var(--soft)">Nada encontrado.</div></div>`;}
+  box.innerHTML=ms.length?`<div class="ins-results" style="position:absolute;left:0;right:0;top:100%;z-index:30;margin-top:4px">${ms.map(it=>`<div onclick="despPick('${it.tipo}','${it.id}')">${esc(it.nome)} <span style="float:right;color:var(--soft)">${esc(it.grupo)}</span></div>`).join('')}</div>`:`<div class="ins-results" style="position:absolute;left:0;right:0;top:100%;z-index:30;margin-top:4px"><div style="color:var(--soft)">Nada encontrado.</div></div>`;}
 function despPick(tipo,id){despSel={tipo,id,nome:despNome(tipo,id)};const s=$('#desp_search');if(s)s.value=despSel.nome;const r=$('#desp_results');if(r)r.innerHTML='';despRefresh();const q=$('#desp_qtd');if(q)q.focus();}
 function despRefresh(){const u=despSel?despUnitItem(despSel.tipo,despSel.id):{sym:'—',custo:0};const qty=parseFloat($('#desp_qtd')?.value)||0;
   const us=$('#desp_uni');if(us)us.textContent=u.sym;const cu=$('#desp_cu');if(cu)cu.textContent=fmtBRLp(u.custo);const ct=$('#desp_ct');if(ct)ct.textContent=fmtBRL(u.custo*qty);}
@@ -9205,7 +9293,7 @@ function renderDespDraft(){const el=$('#desp_draft');if(!el)return;
   const tot=draftDesp.reduce((s,d)=>s+(d.custoTotal||0),0);
   el.innerHTML=draftDesp.length?`<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:4px">
     ${draftDesp.map((d,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px">
-      <b style="flex:1">${esc(d.nome)}</b><span style="color:var(--soft)">${nNum(d.qtd)} ${d.unidade}</span>
+      <b style="flex:1">${esc(d.nome)}</b><span style="color:var(--soft)">${nNum(d.qtd)} ${esc(d.unidade)}</span>
       <span style="color:var(--muted)">${esc(d.motivo||'')}</span><b style="color:var(--red);min-width:80px;text-align:right">${fmtBRL(d.custoTotal)}</b>
       <button class="mini-del" onclick="despDelDraft(${i})">${icoX}</button></div>`).join('')}
     <div style="display:flex;justify-content:space-between;padding:10px 12px;background:var(--bg);font-weight:700"><span>Total do lançamento (${draftDesp.length} ${draftDesp.length===1?'item':'itens'})</span><span style="color:var(--red)">${fmtBRL(tot)}</span></div></div>
@@ -9282,7 +9370,7 @@ function imprimirDesperdicio(){
   const motivos=(DB.despMotivos&&DB.despMotivos.length)?DB.despMotivos:DESP_MOTIVOS;
   let rows='';for(let i=0;i<21;i++)rows+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
-  pa.innerHTML=`<div class="dp">
+  pa.innerHTML=`<div class="dp dp-form">
     <div class="dp-bar"><div><div class="dp-t">Controle de Desperdícios</div></div>
       <div class="dp-rest">${esc(rest)}</div></div>
     <div class="dp-gold"></div>
@@ -9291,7 +9379,7 @@ function imprimirDesperdicio(){
     <table class="dp-tb"><thead><tr><th style="width:70px">Data</th><th>Produto / Insumo</th><th style="width:80px">Qtd</th><th style="width:150px">Motivo da Perda</th><th style="width:120px">Responsável</th><th>Ação Corretiva</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="dp-legend"><b>Motivos:</b> ${motivos.map(esc).join(' · ')}</div>
   </div>`;
-  document.body.classList.add('print-desp');
+  pa.innerHTML=pgWrap(pa.innerHTML,'dp');document.body.classList.add('print-desp');
   const fim=()=>{document.body.classList.remove('print-desp');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);
 }
@@ -9496,7 +9584,7 @@ function imprimirContagem(cat){
     </div>
     <div class="ct-note">Anote a quantidade contada de cada item. Depois, registre no app em <b>Estoque &gt; Atual</b>.</div>
     <div class="count-cols">${body}</div>`;
-  document.body.classList.add('print-contagem');
+  pa.innerHTML=pgWrap(pa.innerHTML,'ct');document.body.classList.add('print-contagem');
   const fim=()=>{document.body.classList.remove('print-contagem');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);
   window.print();
@@ -9549,13 +9637,13 @@ function viewEstoque(){
     </div>
     ${estAlertasHTML(items)}`:`<div class="card card-pad" style="padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--muted)">Saldo de <b>${armazensPermitidos().map(a=>esc(a.nome)).join(', ')}</b>. Só os produtos liberados para o seu setor aparecem aqui; a contagem e a requisição usam a mesma lista.</div>`}
     <div class="section-head no-print" style="flex-wrap:wrap;gap:10px"><div class="pill-filter" style="margin:0">${[['todos','Todos'],['cmv','Só CMV'],['fora','Fora do CMV']].map(([k,l])=>`<button class="${estoqueCmvF===k?'on':''}" onclick="estoqueCmvF='${k}';viewEstoque()">${l}</button>`).join('')}</div>
-      <select class="input" style="max-width:220px" onchange="estoqueFiltro=this.value;viewEstoque()">${cats.map(c=>`<option ${c===estoqueFiltro?'selected':''}>${c}</option>`).join('')}</select>
+      <select class="input" style="max-width:220px" onchange="estoqueFiltro=this.value;viewEstoque()">${cats.map(c=>`<option ${c===estoqueFiltro?'selected':''}>${esc(c)}</option>`).join('')}</select>
       <input class="input" id="estBusca" value="${esc(buscaEst)}" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="buscaEst=this.value;filtrarLinhas(this,'#estoqueTbody')"></div>
     <div class="card"><div class="scroll-x"><table class="tc">
       <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Ideal','min',1)}${thS('estoque','Crítico','crit',1)}${estMultiArm()?armazensPermitidos().map(a=>`<th class="num" title="Saldo em ${esc(a.nome)}">${esc(a.nome)}</th>`).join('')+(souDoPrincipal()?thS('estoque','Total','atual',1):''):thS('estoque','Atual','atual',1)}<th class="num" title="Dias de estoque pelo consumo dos últimos 30 dias (vendas baixadas, perdas e saídas)">Cobertura</th>${thS('estoque','Categoria','grupo')}${thS('estoque','Subcategoria','sub')}${thS('estoque','Fornecedor','fornecedor')}${podeVerValores()?thS('estoque','Custo médio','custo',1):''}${podeVerValores()&&estSubprodutos().length?`<th class="num" title="Subprodutos com porção definida no cadastro: custo médio × tamanho da porção">Custo por porção</th>`:''}${thS('estoque','Unid.','uni',1)}</tr></thead>
       <tbody id="estoqueTbody">${filt.map(x=>`
         <tr>
-          <td><a onclick="estKardex('${x.ins.id}')" title="Ver o kardex (histórico de entradas e saídas)" style="font-weight:700;cursor:pointer">${x.nome}</a>${x.ins.tipo==='preparado'?'<div style="font-size:11px;color:var(--gold);font-weight:600">subproduto</div>':''}</td>
+          <td><a onclick="estKardex('${x.ins.id}')" title="Ver o kardex (histórico de entradas e saídas)" style="font-weight:700;cursor:pointer">${esc(x.nome)}</a>${x.ins.tipo==='preparado'?'<div style="font-size:11px;color:var(--gold);font-weight:600">subproduto</div>':''}</td>
           <td class="num">${souDoPrincipal()?`<input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${x.min||''}" placeholder="0" title="Estoque ideal: quanto você quer ter depois de comprar" oninput="DB.insumos['${x.ins.id}'].estoqueMin=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()">`:`<span style="color:var(--muted)">${x.min?estQ(x.min):'—'}</span>`}</td>
           <td class="num">${souDoPrincipal()?`<input class="input" type="number" step="0.01" style="width:74px;text-align:right;${x.crit>0&&x.atual<=x.crit?'border-color:var(--red);color:var(--red);font-weight:700':''}" value="${x.crit||''}" placeholder="—" title="Estoque crítico (ponto de pedido): ao chegar aqui, entra na lista de compras. Vazio = usa o ideal como hoje." oninput="DB.insumos['${x.ins.id}'].estoqueCrit=parseFloat(this.value)||0;finTouch()" onchange="viewEstoque()">`:`<span style="color:${x.crit>0&&x.atual<=x.crit?'var(--red)':'var(--muted)'}">${x.crit?estQ(x.crit):'—'}</span>`}</td>
           ${estMultiArm()?armazensPermitidos().map(a=>{const v=estSaldoArm(x.ins,a.id);return `<td class="num" style="${v<-0.0005?'color:var(--red);font-weight:700':''}" title="${v<-0.0005?'Saldo negativo: saiu mais do que entrou neste armazém':''}">${v?estQ(v):'<span style=\"color:var(--soft)\">—</span>'}</td>`;}).join('')+(souDoPrincipal()?`<td class="num"><b>${estQ(x.atual)}</b></td>`:''):`<td class="num"><b>${estQ(x.atual)}</b></td>`}
@@ -9581,7 +9669,7 @@ function viewEstoque(){
   ${estTabsHTML()}
   <div class="print-only" style="margin-bottom:14px">
     <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700">Lista de Compras</div>
-    <div style="font-size:13px;color:#555">${(DB.conta&&DB.conta.restaurante)||'Restaurante'} · ${hoje} · por ${AG.rot}${LC.sel.length?' · '+LC.sel.map(esc).join(', '):''}</div>
+    <div style="font-size:13px;color:#555">${esc((DB.conta&&DB.conta.restaurante)||'Restaurante')} · ${hoje} · por ${AG.rot}${LC.sel.length?' · '+LC.sel.map(esc).join(', '):''}</div>
   </div>
   ${comprarList.length===0?`<div class="card">${emptyState('Nada a comprar','Todos os insumos estão no nível mínimo ou acima. Faça a contagem para atualizar.','estoqueTab=&#39;contagem&#39;;viewEstoque()')}</div>`:`
   <div class="card card-pad no-print" style="margin-bottom:16px">
@@ -9601,7 +9689,7 @@ function viewEstoque(){
         <thead><tr><th>Produto</th><th class="num">Un.</th><th class="num" title="Estoque ideal (quanto ter depois da compra)">Ideal</th><th class="num" title="Ponto de pedido">Crítico</th><th class="num">Atual</th><th class="num">Necessid.</th><th class="num">Qtd a pedir</th>${podeVerValores()?'<th class="num">Custo un.</th><th class="num">Total previsto</th>':''}</tr></thead>
         <tbody>${arr.sort((a,b)=>a.nome.localeCompare(b.nome)).map(x=>`
           <tr>
-            <td><b>${x.nome}</b>${x.prazoRep?`<div class="gp-mini" title="Prazo de reposição cadastrado no produto">fornecedor entrega em ${x.prazoRep} dia${x.prazoRep>1?'s':''}</div>`:''}${souDoPrincipal()?lcFornSelectHTML(x.ins):''}</td><td class="num">${uSym(x.uni)}</td><td class="num">${fmtN(x.min,x.min%1?2:0)}</td><td class="num" style="${x.crit>0?'color:var(--red);font-weight:600':'color:var(--soft)'}">${x.crit>0?fmtN(x.crit,x.crit%1?2:0):'—'}</td><td class="num">${fmtN(x.atual,x.atual%1?2:0)}</td>
+            <td><b>${esc(x.nome)}</b>${x.prazoRep?`<div class="gp-mini" title="Prazo de reposição cadastrado no produto">fornecedor entrega em ${x.prazoRep} dia${x.prazoRep>1?'s':''}</div>`:''}${souDoPrincipal()?lcFornSelectHTML(x.ins):''}</td><td class="num">${uSym(x.uni)}</td><td class="num">${fmtN(x.min,x.min%1?2:0)}</td><td class="num" style="${x.crit>0?'color:var(--red);font-weight:600':'color:var(--soft)'}">${x.crit>0?fmtN(x.crit,x.crit%1?2:0):'—'}</td><td class="num">${fmtN(x.atual,x.atual%1?2:0)}</td>
             <td class="num">${fmtN(x.necessidade,x.necessidade%1?2:0)}${x.sugerido!==x.necessidade&&insEmb(x.ins)?`<div class="gp-mini" title="Arredondado para ${esc(insEmb(x.ins).nome)} de ${fmtN(insEmb(x.ins).qtd)}">${fmtN(x.sugerido,x.sugerido%1?2:0)} em ${esc(insEmb(x.ins).nome)}</div>`:''}</td>
             <td class="num"><input class="input no-print" type="number" step="0.01" style="width:78px;text-align:right" value="${x.qtdPedir}" oninput="DB.insumos['${x.ins.id}'].qtdPedir=this.value;finTouch()" onchange="viewEstoque()"><span class="print-only">${fmtN(x.qtdPedir,x.qtdPedir%1?2:0)}</span></td>
             ${podeVerValores()?`<td class="num">${fmtBRL(x.custo)}</td><td class="num"><b>${fmtBRL(x.totalPrevisto)}</b></td>`:''}
@@ -9951,9 +10039,9 @@ function estMovModal(tipo,insId,manter){tipo=tipo||'saida';const multi=estMultiA
     <div class="grid-2">
       <div class="field"><label>Data</label><input type="date" class="input" id="em_data" value="${d.data}" onchange="estMovDraft.data=this.value"></div>
       ${multi?`<div class="field"><label>Armazém${tipo==='ajuste'?' <span class="hint">o novo saldo vale para este armazém</span>':''}</label>${estArmSelect('em_arm',d.arm,`onchange="estMovDraft.arm=this.value;estMovDraft.armManual=true;estMovLer();estMovLinhas()"`)}</div>`
-        :motivos?`<div class="field"><label>Motivo</label><select class="input" id="em_motivo" onchange="estMovDraft.motivo=this.value">${motivos.map(m=>`<option ${m===d.motivo?'selected':''}>${m}</option>`).join('')}</select></div>`:'<div></div>'}
+        :motivos?`<div class="field"><label>Motivo</label><select class="input" id="em_motivo" onchange="estMovDraft.motivo=this.value">${motivos.map(m=>`<option ${m===d.motivo?'selected':''}>${esc(m)}</option>`).join('')}</select></div>`:'<div></div>'}
     </div>
-    ${multi&&motivos?`<div class="field"><label>Motivo</label><select class="input" id="em_motivo" onchange="estMovDraft.motivo=this.value">${motivos.map(m=>`<option ${m===d.motivo?'selected':''}>${m}</option>`).join('')}</select></div>`:''}
+    ${multi&&motivos?`<div class="field"><label>Motivo</label><select class="input" id="em_motivo" onchange="estMovDraft.motivo=this.value">${motivos.map(m=>`<option ${m===d.motivo?'selected':''}>${esc(m)}</option>`).join('')}</select></div>`:''}
     ${tipo==='perda'?`<div style="font-size:11.5px;color:var(--soft);margin:-4px 0 10px">Perda registrada aqui não aparece no módulo Desperdícios. Para relatório de perdas, prefira lançar lá.</div>`:''}
     ${tipo==='ajuste'?`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Ajuste acerta o saldo para o valor informado e registra a diferença. Para conferir o estoque inteiro, use a <b>Contagem física</b>.</div>`:''}
     <div id="em_head" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700;display:grid;grid-template-columns:${estMovCols(tipo)};gap:6px;padding:0 0 4px"><span>Produto</span><span style="text-align:right">${tipo==='ajuste'?'Novo saldo':'Qtd'}</span>${tipo==='entrada'&&podeVerValores()?'<span style="text-align:right">Custo un.</span>':''}<span></span></div>
@@ -10095,7 +10183,7 @@ async function estTransfUnidade(d,itens){const destId=(d.para||'').slice(4);cons
   t.itens=lin.map(x=>({insumoId:x.ins.id,q:x.q,custo:x.custo}));estTransfs().push(t);
   if(t.fin&&total>0){estEnsureSubTransf();DB.lancamentos=DB.lancamentos||[];DB.lancamentos.push({id:uid(),data:t.data,grupo:'CMV',sub:SUB,descricao:'Transferência para '+paraNome+' · '+lin.length+' item(ns)',valor:-total,forma:'',transfId:t.id});}
   const outras=estUnidadesDestino().filter(x=>x.id!==destId);estTransfUltima={de:t.de,itens:lin.map(x=>({insumoId:x.ins.id,q:x.q})),fin:t.fin};
-  estTransfDraft=null;save();closeModal();viewEstoque();toast(lin.length+' item(ns) transferido(s) para '+paraNome+(t.fin?' · custo lançado nas duas unidades':'')+(outras.length?` <a onclick="estTransfRepetir()" style="color:var(--gold-soft);font-weight:700;margin-left:8px;cursor:pointer">Repetir para outra unidade</a>`:''),outras.length?9000:4000);}
+  estTransfDraft=null;save();closeModal();viewEstoque();toastHtml(lin.length+' item(ns) transferido(s) para '+esc(paraNome)+(t.fin?' · custo lançado nas duas unidades':'')+(outras.length?` <a onclick="estTransfRepetir()" style="color:var(--gold-soft);font-weight:700;margin-left:8px;cursor:pointer">Repetir para outra unidade</a>`:''),outras.length?9000:4000);}
 let estTransfUltima=null;
 function estTransfRepetir(){if(!estTransfUltima)return;const outras=estUnidadesDestino();estTransfModal('',{de:estTransfUltima.de,para:outras.length?'org:'+outras[0].id:EST_ARM_PRINCIPAL,itens:estTransfUltima.itens.map(x=>({insumoId:x.insumoId,q:x.q})),obs:'',fin:estTransfUltima.fin!==false});}
 
@@ -10255,7 +10343,7 @@ function opImprimir(id){const o=estOrdens().find(x=>x.id===id);if(!o)return;cons
     ${linhasProd}
     ${ins.length?`<div class="cg" style="margin-top:12px">Insumos necessários${valores?'':''}</div><div class="count-cols">${body}</div>`:''}
     <div class="ct-note" style="margin-top:12px;border-top:1px solid #ccc;padding-top:6px">Ao voltar da produção, registre o produzido no Flow (Estoque › Produção › Ordens de produção) para dar entrada no estoque do preparado.</div>`;
-  document.body.classList.add('print-contagem');
+  pa.innerHTML=pgWrap(pa.innerHTML,'ct');document.body.classList.add('print-contagem');
   const fim=()=>{document.body.classList.remove('print-contagem');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);}
 function opSecaoHTML(){const subs=estSubprodutos();if(!subs.length)return '';const todas=estOrdens().filter(o=>o.status!=='cancelada').sort((a,b)=>(b.data||'').localeCompare(a.data||'')||(b.criadoEm||'').localeCompare(a.criadoEm||''));const abertas=todas.filter(o=>o.status!=='concluida');const concl=todas.filter(o=>o.status==='concluida').slice(0,10);
@@ -10495,7 +10583,7 @@ function estReqImprimir(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)re
     <div class="ct-note">Sai de <b>${esc(estArmNome(r.de))}</b> para <b>${esc(estArmNome(r.para))}</b>. ${itens.length} item(ns). Marque a caixa ao separar cada item.${r.obs?' Obs.: '+esc(r.obs):''}</div>
     <div class="count-cols">${body}</div>
     ${pratos?`<div class="ct-note" style="margin-top:10px;border-top:1px solid #ccc;padding-top:6px">Previsão de pratos: ${pratos}</div>`:''}`;
-  document.body.classList.add('print-contagem');
+  pa.innerHTML=pgWrap(pa.innerHTML,'ct');document.body.classList.add('print-contagem');
   const fim=()=>{document.body.classList.remove('print-contagem');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);}
 function estReqSet(id,k,v){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;r[k]=v;save();if(k==='de'||k==='para')viewEstoque();}
@@ -10659,14 +10747,30 @@ function bellListaHTML(ms){const h=ms.slice(0,30).map(n=>`<div class="bi ${notif
   return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px"><b style="font-size:13px">Notificações</b>${ms.some(n=>!notifLida(n))?`<a class="gp-link" style="font-size:12px" onclick="bellLerTodas()">marcar todas como lidas</a>`:''}</div>${h||'<div class="bi" style="color:var(--soft);cursor:default">Nada por aqui.</div>'}`;}
 function notifQuando(iso){if(!iso)return '';const d=new Date(iso);const dif=(Date.now()-d.getTime())/60000;if(dif<1)return 'agora';if(dif<60)return Math.round(dif)+' min';if(dif<60*24)return Math.round(dif/60)+' h';return fmtDataBR(iso.slice(0,10))+' '+iso.slice(11,16);}
 /* Imprime (ou salva em PDF) a tela atual: clona o conteúdo, troca campos por texto e põe cabeçalho com restaurante, tela, período e data */
+/* ---- apoio das impressões ---- */
+function pgWrap(html,tipo){return '<table class="folhapg'+(tipo?' folhapg-'+tipo:'')+'"><thead><tr><td></td></tr></thead><tfoot><tr><td></td></tr></tfoot><tbody><tr><td>'+html+'</td></tr></tbody></table>';}
+function prLimpo(t){return (t||'').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}️‍]/gu,'').replace(/\s+/g,' ').trim();}
+/* tira da cópia o que só serve na tela: ajuda recolhida, avisos que pedem um clique, filtros sem escolha */
+function prEnxuga(clone){
+  clone.querySelectorAll('details:not([open]),.ux-ajuda,.prm-chips,.bd-bar,.fz-row,.fin-per').forEach(x=>x.remove());
+  clone.querySelectorAll('.alert').forEach(a=>{if(a.querySelector('button,a,.btn'))a.remove();});
+  clone.querySelectorAll('[data-ff]').forEach(el=>{if(!el.value)el.remove();});
+  clone.querySelectorAll('select').forEach(el=>{const o=el.options[el.selectedIndex];if(o&&!o.value&&/^(tod[oa]s?|qualquer)\b/i.test(o.textContent.trim()))el.remove();});
+  clone.querySelectorAll('.pill-filter button.on').forEach(b=>{b.textContent=prLimpo(b.textContent);});
+}
+/* caixas que ficaram vazias depois da limpeza somem */
+function prVazios(clone){for(let k=0;k<3;k++)clone.querySelectorAll('.card,.kpi-grid,.grid-2,.scroll-x').forEach(c=>{if(!c.textContent.trim()&&!c.querySelector('img,svg,canvas,.cuba'))c.remove();});}
 function imprimirTela(){const view=document.getElementById('view');if(!view)return;
   if(document.querySelector('#modalRoot .modal'))return toast('Feche a janela aberta para imprimir a tela');
-  const abaEl=view.querySelector('.pill-filter button.on');const aba=abaEl?abaEl.textContent.trim():'';
+  if(current==='formacao')return toast('Esta tela não tem versão para impressão');
+  if(current==='buffet'&&buffetSub==='hist'&&typeof bdRelImprimir==='function'&&Object.keys(bdDias()).length)return bdRelImprimir();   // o relatório do buffet tem folha própria
+  const abaEl=view.querySelector('.pill-filter button.on');let aba=abaEl?prLimpo(abaEl.textContent):'';
   const mesEl=view.querySelector('input[type=month]');const perSel=view.querySelector('#topActions select, select[onchange*="periodo"]');
   const topMes=document.querySelector('#topActions input[type=month]');const topSel=document.querySelector('#topActions select');
   let periodo='';if(mesEl&&mesEl.value)periodo=mesNomeYM(mesEl.value);else if(topMes&&topMes.value)periodo=mesNomeYM(topMes.value);else if(topSel){const o=topSel.options[topSel.selectedIndex];periodo=o?o.textContent.trim():'';}
   if(current==='financeiro'&&typeof finRangeAtivo==='function'&&finRangeAtivo())periodo=fmtDataBR(finDe)+' a '+fmtDataBR(finAte);
   const clone=view.cloneNode(true);
+  prEnxuga(clone);
   // gráficos desenhados em canvas não sobrevivem ao clone: copia o desenho como imagem
   {const orig=view.querySelectorAll('canvas'),cl=clone.querySelectorAll('canvas');orig.forEach((c,i)=>{const d=cl[i];if(!d)return;try{const img=document.createElement('img');img.src=c.toDataURL('image/png');img.style.cssText='width:100%;max-width:100%;height:auto;display:block';d.replaceWith(img);}catch(e){}});}
   clone.querySelectorAll('.no-print,button,.pill-filter,.row-actions,.icon-btn,.mini-del,.btn,.dd,datalist,script,style,.money-pre,.prm-nav,.prm-top,.gp-search,.bell-pop,.fcard-acts,a.gp-link,.dsh-pe-base a').forEach(x=>x.remove());
@@ -10686,11 +10790,14 @@ function imprimirTela(){const view=document.getElementById('view');if(!view)retu
     if(el.classList.contains('money-inp')&&t)t='R$ '+t;
     const sp=document.createElement('span');sp.className='pv';sp.textContent=t||'—';el.replaceWith(sp);});
   clone.querySelectorAll('.print-only').forEach(x=>{x.style.display='block';});
-  const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';const titulo=(document.getElementById('pageTitle')||{}).textContent||'';
+  prVazios(clone);
+  const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';const titulo=prLimpo((document.getElementById('pageTitle')||{}).textContent||'');if(aba===titulo)aba='';
+  const mapa=(current==='buffet'&&buffetSub==='mapa');if(mapa)prMapa(clone);
   let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
   const agora=new Date();
-  pa.innerHTML=`<div class="rel"><div class="rel-head"><div><div class="rel-rest">${esc(rest)}</div><div class="rel-t">${esc(titulo)}${aba?' · '+esc(aba):''}</div></div><div class="rel-meta">${periodo?'<b>'+esc(periodo)+'</b><br>':''}Gerado em ${fmtDataBR(hojeISO())} ${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}${quemSou()?' · '+esc(quemSou()):''}</div></div><div class="rel-body">${clone.innerHTML}</div><div class="rel-foot"><span>${esc(rest)} · ${esc(titulo)}${aba?' · '+esc(aba):''}</span><span>Flow by Lidera</span></div></div>`;
-  document.body.classList.add('print-rel');document.body.classList.toggle('print-rel-l',paisagem);document.body.classList.toggle('print-rel-dense',maxCols>=12);
+  pa.innerHTML=`<div class="rel"><div class="rel-head"><div><div class="rel-rest">${esc(rest)}</div><div class="rel-t">${esc(titulo)}${aba?' · '+esc(aba):''}</div></div><div class="rel-meta">${periodo?'<b>'+esc(periodo)+'</b>':fmtDataBR(hojeISO())}</div></div><div class="rel-body">${clone.innerHTML}</div></div>`;
+  pa.innerHTML=pgWrap(pa.innerHTML,(paisagem||mapa)?'rel-l':'rel');
+  document.body.classList.add('print-rel');document.body.classList.toggle('print-rel-l',paisagem||mapa);document.body.classList.toggle('print-rel-dense',maxCols>=12);
   const fim=()=>{document.body.classList.remove('print-rel');document.body.classList.remove('print-rel-l');document.body.classList.remove('print-rel-dense');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);window.print();setTimeout(fim,2500);}
 document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&!e.shiftKey&&!e.altKey&&(e.key==='p'||e.key==='P')){const v=document.getElementById('view');if(!v||!v.offsetParent||document.body.classList.contains('print-rel'))return;if(document.querySelector('#modalRoot .modal'))return;e.preventDefault();try{imprimirTela();}catch(err){}}});
@@ -10712,7 +10819,7 @@ async function cloudPoll(){try{if(!CLOUD||!sb||!ORG||ADMIN_MODE||CLOUD_CONFLICT|
     const {data,error}=await sb.from('organizacoes').select('atualizado_em').eq('id',ORG.id).maybeSingle();if(error||!data||!data.atualizado_em||data.atualizado_em===CLOUD_TS)return;
     if(SAVE_STATE!=='saved')return;const r=await sb.from('organizacoes').select('dados,atualizado_em').eq('id',ORG.id).maybeSingle();if(r.error||!r.data||!r.data.dados||!r.data.dados.insumos)return;
     const antes=notifMinhas().filter(n=>!notifLida(n)).length;DB=r.data.dados;CLOUD_TS=r.data.atualizado_em;CLOUD_BASE=_cloneDB(DB);normData();renderBell();
-    const novas=notifMinhas().filter(n=>!notifLida(n)).length;if(novas>antes){const n=notifMinhas()[0];toast('🔔 '+esc(n.titulo),5000);}
+    const novas=notifMinhas().filter(n=>!notifLida(n)).length;if(novas>antes){const n=notifMinhas()[0];toast('🔔 '+n.titulo,5000);}
     if(!document.querySelector('#modalRoot .modal')&&ROUTES[current]&&['estoque','dashboard'].includes(current))ROUTES[current].render();}catch(e){}}
 let CLOUD_TS=null, SAVE_STATE='idle', SAVE_RETRY=0, CLOUD_CONFLICT=false, CLOUD_BASE=null, _mergeHouve=false;
 let IS_SUPER=false, MY_UID=null, MY_LIMITE=5, CONSULTORES=[], adminConsFiltro='';
@@ -12242,7 +12349,7 @@ function gpAgendaHTML(list){const h=hojeISO(),em7=diasSoma(h,7),em30=diasSoma(h,
 function gpRefresh(){renderAdminMain();renderAdminList();}
 async function gpConcluir(orgId,taskId){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const p=projEnsure(o);const t=p.tarefas.find(x=>x.id===taskId);if(!t)return;
   if(!projPodeMarcar(p,t))return toast('Etapa bloqueada: '+projBloqueioMsg(p,t.fase).toLowerCase());
-  t.feito=true;t.feitoEm=hojeISO();const av=projAvancarSePortao(p);if(av)toast('Portão fechado: '+av+' aberta');gpRefresh();toast('Tarefa concluída: '+esc(t.titulo.slice(0,50))+`<a onclick="gpDesfazer('${orgId}','${taskId}')" style="color:var(--gold-soft);font-weight:700;margin-left:10px;cursor:pointer">Desfazer</a>`,5000);await adminSaveKeys(o,['_projeto']);}
+  t.feito=true;t.feitoEm=hojeISO();const av=projAvancarSePortao(p);if(av)toast('Portão fechado: '+av+' aberta');gpRefresh();toastHtml('Tarefa concluída: '+esc(t.titulo.slice(0,50))+`<a onclick="gpDesfazer('${orgId}','${taskId}')" style="color:var(--gold-soft);font-weight:700;margin-left:10px;cursor:pointer">Desfazer</a>`,5000);await adminSaveKeys(o,['_projeto']);}
 async function gpDesfazer(orgId,taskId){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const t=projEnsure(o).tarefas.find(x=>x.id===taskId);if(!t)return;t.feito=false;t.feitoEm='';gpRefresh();toast('Tarefa reaberta');await adminSaveKeys(o,['_projeto']);}
 async function gpConfirmarReuniao(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const r=gpCrm(o).reunioes.find(x=>x.id===rid);if(!r)return;
   r.realizada=true;r.editado=true;gpRefresh();toast('Reunião confirmada. Registre o resumo quando puder.');await adminSaveKeys(o,['_crm']);gpReuniaoModal(orgId,rid);}
@@ -12334,8 +12441,8 @@ async function gpReuniaoSalvar(orgId,rid){const o=ADMIN_ORGS.find(x=>x.id===orgI
   await adminSaveKeys(o,keys);
   if(querGoogle){const g=await gpAgendaGoogle(o,r,r.gcalId?'atualizar':'criar',gOpts);
     if(g&&g.ok){if(g.eventId)r.gcalId=g.eventId;if(g.calendarId)r.gcalCal=g.calendarId;r.links=Object.assign({},r.links||{},g.link?{evento:g.link}:{},g.meet?{meet:g.meet}:{});if(g.registros)r.meetCfg=g.registros;gpRefresh();await adminSaveKeys(o,['_crm']);
-      const ag=gcalAgendas().find(a=>a.id===r.gcalCal);toast('No Google Agenda'+(ag?' ('+esc(ag.nome)+')':'')+(g.meet?' com Meet':'')+(gOpts.convidar&&(gOpts.convidados||[]).length?' · convite enviado':''),3500);
-      if(g.registros&&g.registros.ok===false)toast('Evento criado, mas a sala do Meet NÃO ficou como pedido: '+esc(g.registros.motivo||'erro')+'. Abra o evento no Google Agenda e confira as opções do Meet.',9000);
+      const ag=gcalAgendas().find(a=>a.id===r.gcalCal);toast('No Google Agenda'+(ag?' ('+ag.nome+')':'')+(g.meet?' com Meet':'')+(gOpts.convidar&&(gOpts.convidados||[]).length?' · convite enviado':''),3500);
+      if(g.registros&&g.registros.ok===false)toast('Evento criado, mas a sala do Meet NÃO ficou como pedido: '+(g.registros.motivo||'erro')+'. Abra o evento no Google Agenda e confira as opções do Meet.',9000);
       else if(g.registros&&g.registros.ok){const liga=[g.registros.gravar&&'gravação',g.registros.transcrever&&'transcrição',g.registros.notas&&'anotações do Gemini',g.registros.moderacao&&'gerenciamento de organizadores'].filter(Boolean);toast('Sala do Meet conferida: '+(liga.length?liga.join(', ')+' ligados':'sem registros automáticos')+'.',6000);}}
     else toast('Ficou só no Flow: '+((g&&g.motivo)||'erro')+'. Use o botão "Criar no Google Agenda" na linha do tempo.');}}
 async function gpReuniaoDel(orgId,rid){if(!confirm('Excluir esta reunião do histórico?'))return;const o=ADMIN_ORGS.find(x=>x.id===orgId);if(!o)return;const crm=gpCrm(o);
