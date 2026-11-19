@@ -2488,6 +2488,7 @@ function normData(){
   DB.desperdicios=DB.desperdicios||[];
   DB.despMotivos=(DB.despMotivos&&DB.despMotivos.length)?DB.despMotivos:DESP_MOTIVOS.slice();
   DB.formasPagamento=(DB.formasPagamento&&DB.formasPagamento.length)?DB.formasPagamento:FORMAS_DEFAULT.slice();
+  if(!f._permutaForma){if(!DB.formasPagamento.some(x=>/^permuta/i.test((''+x).trim())))DB.formasPagamento.push('Permuta');f._permutaForma=true;}
   // migra contas a pagar/receber p/ grupo+subcategoria (lançamento automático ao pagar/receber)
   (f.contasPagar||[]).forEach(c=>{if(c.grupo==null){c.grupo='Despesas Gerais';c.sub=c.categoria||((DB.categorias['Despesas Gerais']||{subs:[]}).subs[0]||'');}});
   (f.contasReceber||[]).forEach(c=>{if(c.grupo==null){c.grupo='Receita';c.sub=c.categoria||'Outras Receitas';}});
@@ -4372,7 +4373,7 @@ function finFiltroBarHTML(){const fl=lancFiltro;const grupos=ordPt(Object.keys(D
     ${txt('sub','Subcategoria',150)}${txt('desc','Descrição',170)}${txt('fornecedor','Fornecedor',150)}${txt('nf','NF nº',110)}
     <select class="input" data-ff="forma" style="max-width:150px;padding:6px 8px;font-size:12.5px" onchange="lancSetFiltro('forma',this.value)"><option value="">Todas as formas</option>${formas.map(x=>`<option ${x===fl.forma?'selected':''}>${esc(x)}</option>`).join('')}</select>
     ${ativo?`<a class="gp-link" style="font-size:12px" onclick="lancLimparFiltro()">Limpar filtros ✕</a>`:''}</div>`;}
-function liqDoPeriodo(tipo,de,ate){const out=[];(DB.lancamentos||[]).forEach(l=>{if(!Array.isArray(l.liquidacoes)||!l.liquidacoes.length)return;const ehRec=grupoTipo(l.grupo)==='receita';if((tipo==='receber')!==ehRec)return;
+function liqDoPeriodo(tipo,de,ate){const out=[];(DB.lancamentos||[]).forEach(l=>{if(!Array.isArray(l.liquidacoes)||!l.liquidacoes.length||ehPermuta(l))return;const ehRec=grupoTipo(l.grupo)==='receita';if((tipo==='receber')!==ehRec)return;
   l.liquidacoes.forEach((x,idx)=>{if(!x||!x.data)return;if(x.data>=de&&x.data<=ate)out.push({lanc:l,idx,liq:x});});});return out.sort((a,b)=>(a.liq.data||'').localeCompare(b.liq.data||''));}
 function lancSetFiltro(k,v){lancFiltro[k]=v;lancRefreshTabela();}
 function lancSetFiltroData(v){lancFiltro.data=v;const nym=v?ymOf(v):null;if(!finRangeAtivo()&&nym&&nym!==curYM()){lancYM=nym;viewFinanceiro();}else{lancRefreshTabela();}}
@@ -4478,7 +4479,7 @@ function prmSepHTML(){const on=sepAtivo();return `<div class="card card-pad" sty
     <label style="display:flex;gap:12px;align-items:flex-start;cursor:pointer"><input type="checkbox" ${on?'checked':''} onchange="prmSepSet(this.checked)" style="width:18px;height:18px;margin-top:2px;accent-color:var(--navy)"><div><div style="font-weight:600;font-size:13.5px">Separar fiscal e financeiro</div><div style="font-size:12.5px;color:var(--muted);margin-top:2px">Ligado: quem lança a nota pode deixar o pagamento para depois. A nota entra no DRE na hora e fica em <b>Contas a Pagar › Notas aguardando definição de pagamento</b> até o financeiro informar forma, boletos e vencimentos. Desligado (padrão): tudo no mesmo lançamento, como sempre.</div>
       <div style="font-size:12px;color:var(--soft);margin-top:6px">As permissões ficam em Equipe: "Financeiro: lançar notas (fiscal)" e "Financeiro: definir pagamentos (financeiro)". Perfis prontos: Fiscal e Financeiro.</div></div></label></div>`;}
 /* liquidações de um lançamento; sem elas, uma só, à vista */
-function liqDe(l){if(!l||l.pagtoPendente)return [];const src=(l&&Array.isArray(l.liquidacoes))?l.liquidacoes:[];
+function liqDe(l){if(!l||l.pagtoPendente||ehPermuta(l))return [];const src=(l&&Array.isArray(l.liquidacoes))?l.liquidacoes:[];
   const arr=[];src.forEach((x,idx)=>{if(x&&x.data)arr.push({data:x.data,valor:liqCobr(x),base:+x.valor||0,extras:liqExtras(x),obs:x.obs||'',pago:!!x.pago,idx,lanc:l});});
   if(arr.length)return arr;
   return [{data:l.data,valor:liqValor(l,+l.valor||0),pago:true,idx:null,lanc:l}];}   // à vista: já liquidado
@@ -4488,7 +4489,7 @@ function liqDe(l){if(!l||l.pagtoPendente)return [];const src=(l&&Array.isArray(l
 function liqDoMes(tipo,ym){ // tipo: 'pagar' | 'receber'
   const out=[];
   (DB.lancamentos||[]).forEach(l=>{
-    if(!Array.isArray(l.liquidacoes)||!l.liquidacoes.length)return;      // à vista nao vira conta
+    if(!Array.isArray(l.liquidacoes)||!l.liquidacoes.length||ehPermuta(l))return;      // à vista nao vira conta; permuta também não
     const ehRec=grupoTipo(l.grupo)==='receita';
     if((tipo==='receber')!==ehRec)return;
     l.liquidacoes.forEach((x,idx)=>{if(!x||!x.data)return;
@@ -4950,6 +4951,7 @@ function liqEmAberto(ate){return liqTodas().filter(x=>!x.pago&&x.data&&x.data<=a
    Se nada se aplicar, deixa sem liquidacoes = à vista.                     */
 function aplicarLiquidacoes(l,cond){
   if(!l||!(+l.valor>0))return l;
+  if(ehPermuta(l)){delete l.liquidacoes;return l;}   // permuta não tem parcela nem vencimento
   const ehRec=grupoTipo(l.grupo)==='receita';
   if(ehRec){
     const m=meioDoLanc(l);
@@ -5222,7 +5224,7 @@ function meioReaplicar(i){const m=meiosRec()[i];if(!m)return;let n=0;
   save();viewFinanceiro();toast(n?n+' venda(s) de '+m.nome+' com a data de recebimento recalculada':'Nenhuma venda em aberto desse meio');}
 function receitaEhBruta(){return (DB.fin||{}).receitaBruta!==false;}   // padrão: ligado
 /* acha o meio de um lançamento: pelo id gravado; senão pelo nome (sub ou forma) */
-function meioDoLanc(l){if(!l)return null;
+function meioDoLanc(l){if(!l||ehPermuta(l))return null;   // permuta não é meio de recebimento: sem taxa e sem prazo
   if(l.meioId){const m=meioPorId(l.meioId);if(m)return m;}
   const nm=x=>(''+(x||'')).trim().toLowerCase();
   const cand=[nm(l.sub),nm(l.forma)].filter(Boolean);
@@ -5242,7 +5244,7 @@ function taxaMediaRec(){const ms=meiosRec().filter(m=>meioTaxa(m)>0);if(!ms.leng
 function taxaInfo(L){const m=meioDoLanc(L);return m?{pct:meioTaxa(m),sub:TAXA_SUB}:null;}
 function ensureTaxaSubs(){const g=DB.categorias&&DB.categorias['Despesas Financeiras'];if(!g)return;['Taxa de Débito','Taxa de Crédito','Taxa de PIX'].forEach(s=>{if(!g.subs.includes(s))g.subs.push(s);});}
 function syncTaxaLanc(L){ // lançamento automático de taxa desativado: apenas remove taxa antiga vinculada
-  if(!L)return;DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromTaxa!==L.id);
+  if(!L)return;if(ehPermuta(L)){delete L.liquidacoes;delete L.meioId;}DB.lancamentos=(DB.lancamentos||[]).filter(l=>l.fromTaxa!==L.id);
 }
 function syncAllTaxas(){ // lançamento automático de taxa desativado: apenas limpa as taxas automáticas existentes
   DB.lancamentos=(DB.lancamentos||[]).filter(l=>!l.autoTaxa);
@@ -5342,6 +5344,7 @@ function lancarModal(manterRascunho){if(!manterRascunho){lmEdit=null;lmObs='';lm
     <div style="${ehMobile()?'':'overflow-x:auto'}"><div style="${ehMobile()?'':'min-width:1420px'}">
       <div class="mob-hide" style="display:grid;grid-template-columns:${LM_GC};gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);padding:0 2px 5px"><span>Data</span><span style="grid-column:span 2">Categoria › Subcategoria</span><span>Descrição</span><span>NF nº</span><span>Produto</span><span>Fornecedor</span><span>Valor</span><span>Qtd</span><span style="text-align:right">Total</span><span>Forma</span><span>Parcelas</span><span></span></div>
       <div id="lm_rows"></div>
+      <div id="lm_perm"></div>
     </div></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn btn-ghost btn-sm" onclick="lmAddRow()">${icoPlus} ${ehMobile()?'Adicionar item':'Adicionar linha'}</button>${(sepAtivo()&&!editando)?`<div class="gp-seg" title="Com fiscal e financeiro separados, a nota pode ser lançada agora e o pagamento definido depois pelo financeiro"><button class="${lmPagtoModo==='agora'?'on':''}" ${podeFinPagto()?'':'disabled'} onclick="lmPagtoSet('agora')">Pagamento agora</button><button class="${lmPagtoModo==='depois'?'on':''}" onclick="lmPagtoSet('depois')">Deixar para o financeiro</button></div>`:''}<span id="lm_parc_wrap" style="display:${(sepAtivo()&&!editando&&lmPagtoModo==='depois')?'none':'inline-flex'};gap:8px;align-items:center"><button class="btn btn-ghost btn-sm" onclick="lmNotaParcelar()" title="Parcela o total da nota. Cada item recebe a sua fatia e o Contas a Pagar mostra a nota inteira.">Parcelar a nota</button><span id="lm_nota_parc" style="font-size:11.5px;color:var(--muted)"></span></span></div>
@@ -5370,13 +5373,13 @@ function renderLmRowsMobile(el){const grupos=ordPt(Object.keys(DB.categorias));c
      ${L('Descrição',lmDescCel(r,i))}
      ${L('NF nº',`<input class="input" value="${esc(r.nf||'')}" placeholder="número da nota" oninput="lancDraft[${i}].nf=this.value">`)}
      ${L('Produto',lmProdutoCel(r,i))}
-     ${L('Fornecedor',`<input class="input" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value" onchange="lmNotaAutoCond()">`)}
+     ${L('Fornecedor',`<input class="input" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value" onchange="lmNotaAutoCond();lmPermutaRefresh()">`)}
      <div style="display:grid;grid-template-columns:1fr 84px;gap:8px">
        ${L('Valor',`<div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="decimal" value="${r.vunStr||''}" placeholder="0,00" title="Valor unitário (aceita até 4 casas, ex.: 106,1604)" oninput="lmVunInput(${i},this)" onblur="lmVunBlur(${i},this)"></div>`)}
        <div><span style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft);font-weight:700">Qtd</span><input class="input" type="number" step="0.001" min="0" value="${r.qtd||1}" style="text-align:center;margin-top:4px" oninput="lancDraft[${i}].qtd=parseFloat(this.value)||0;lmRecalc(${i})"></div>
      </div>
      ${L('Total',`<div id="lm_tot_${i}" style="font-weight:700;font-size:16px;color:var(--navy)">${fmtBRL(lmTotalLinha(r))}</div>`)}
-     ${L('Forma',`<select class="input" onchange="lancDraft[${i}].forma=this.value"><option value="" ${!r.forma?'selected':''}>—</option>${formas.map(x=>`<option ${x===r.forma?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
+     ${L('Forma',`<select class="input" onchange="lancDraft[${i}].forma=this.value;lmPermutaRefresh()"><option value="" ${!r.forma?'selected':''}>—</option>${formas.map(x=>`<option ${x===r.forma?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
      ${L('Parcelas',lmParcelasCel(r,i))}
    </div>`).join('');lmAtualizaTotal();}
 function renderLmRows(){const el=$('#lm_rows');if(!el)return;
@@ -5388,11 +5391,11 @@ function renderLmRows(){const el=$('#lm_rows');if(!el)return;
      ${lmDescCel(r,i)}
      <input class="input" style="min-width:0" value="${esc(r.nf||'')}" placeholder="nº" title="Número da nota fiscal" oninput="lancDraft[${i}].nf=this.value">
      ${lmProdutoCel(r,i)}
-     <input class="input" style="min-width:0" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value" onchange="lmNotaAutoCond()">
+     <input class="input" style="min-width:0" list="lm_forn" value="${esc(r.fornecedor)}" placeholder="opcional" oninput="lancDraft[${i}].fornecedor=this.value" onchange="lmNotaAutoCond();lmPermutaRefresh()">
      <div class="money-wrap" style="min-width:0"><span class="money-pre">R$</span><input class="input money-inp" inputmode="decimal" value="${r.vunStr||''}" placeholder="0,00" title="Valor unitário (aceita até 4 casas, ex.: 106,1604)" oninput="lmVunInput(${i},this)" onblur="lmVunBlur(${i},this)"></div>
      <input class="input" style="min-width:0;text-align:center" type="number" step="0.001" min="0" value="${r.qtd||1}" title="Quantidade${r.uni?' ('+esc(r.uni)+')':''}" oninput="lancDraft[${i}].qtd=parseFloat(this.value)||0;lmRecalc(${i})">
      <div id="lm_tot_${i}" title="Total = quantidade × valor unitário" style="min-width:0;text-align:right;font-weight:600;font-size:13px;color:var(--ink);padding:9px 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${fmtBRL(lmTotalLinha(r))}</div>
-     <select class="input" style="min-width:0" onchange="lancDraft[${i}].forma=this.value"><option value="" ${!r.forma?'selected':''}>—</option>${formas.map(x=>`<option ${x===r.forma?'selected':''}>${esc(x)}</option>`).join('')}</select>
+     <select class="input" style="min-width:0" onchange="lancDraft[${i}].forma=this.value;lmPermutaRefresh()"><option value="" ${!r.forma?'selected':''}>—</option>${formas.map(x=>`<option ${x===r.forma?'selected':''}>${esc(x)}</option>`).join('')}</select>
      ${lmParcelasCel(r,i)}
      <button class="btn btn-ghost btn-sm" title="Remover linha" style="color:var(--red);padding:6px 6px;${lancDraft.length>1?'':'visibility:hidden'}" onclick="lmRemoveRow(${i})">${icoX}</button>
    </div>`).join('');lmAtualizaTotal();}
@@ -5400,7 +5403,7 @@ function lmAplicarTodas(campo,valor){
   if(campo==='grupo'){lancDraft.forEach(r=>{r.grupo=valor;const subs=((DB.categorias[valor]||{subs:[]}).subs)||[];if(!lmFuzzyFind(subs,r.sub))r.sub='';});const subsHtml=`<option value="">Subcategoria…</option>`+ordPt(((DB.categorias[valor]||{subs:[]}).subs)||[]).map(s=>`<option>${esc(s)}</option>`).join('');['#lm_bulk_sub','#lm_bulkm_sub'].forEach(q=>{const bs=$(q);if(bs)bs.innerHTML=subsHtml;});}
   else{lancDraft.forEach(r=>{r[campo]=valor;});}
   renderLmRows();if(campo==='fornecedor')lmNotaAutoCond();}
-function lmAtualizaTotal(){const el=$('#lm_total');if(!el)return;const t=lancDraft.reduce((s,r)=>s+lmTotalLinha(r),0);if(document.activeElement!==el)el.value=fmtMoneyInput(t);
+function lmAtualizaTotal(){try{lmPermutaRefresh();}catch(e){}const el=$('#lm_total');if(!el)return;const t=lancDraft.reduce((s,r)=>s+lmTotalLinha(r),0);if(document.activeElement!==el)el.value=fmtMoneyInput(t);
   const pi=$('#lm_nota_parc');if(pi)pi.innerHTML=lmNotaParcInfo();}
 /* Total da nota editado à mão (imposto, frete, desconto): a diferença é rateada proporcionalmente entre os itens */
 function lmSetTotal(){const alvo=moneyVal('lm_total');const rows=lancDraft.filter(r=>lmTotalLinha(r)>0);const atual=+rows.reduce((s,r)=>s+lmTotalLinha(r),0).toFixed(2);
@@ -5966,7 +5969,8 @@ function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
   lmEdit=null;save();closeModal();viewFinanceiro();
   toast('Nota atualizada · '+n+' item(ns)'+(novos?' · '+novos+' novo(s)':'')+(remov.length?' · '+remov.length+' excluído(s)':'')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':'')+lmSemConvMsg(semConv));}
 function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
-  if(!lmDatasConferir())return;   // ano digitado ou lido errado deixava o lançamento fora do DRE (572 casos em 15 clientes)
+  if(!lmDatasConferir())return;
+  if(!lmPermutaOk())return;   // ano digitado ou lido errado deixava o lançamento fora do DRE (572 casos em 15 clientes)
   if(lmEdit)return lancarModalSalvarEdicao();
   lmNotaAutoCond(true); // condição padrão do fornecedor, se a nota ficou sem parcelas
   const nfGeradas=lmNumerarSemNF(lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo));
@@ -5990,10 +5994,11 @@ function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
       if(nv.fornecedor){ins.fornecedor=nv.fornecedor;delete ins.fornecedorCompra;}}
     if(nv.fornecedor)ensureFornecedor(nv.fornecedor);
     const _m=meioDoLanc(nv);if(_m)nv.meioId=_m.id;
-    if(pendPagto&&grupoTipo(nv.grupo)!=='receita'){nv.pagtoPendente=true;nv.forma='';delete nv.liquidacoes;pendTot+=valor;if(!pendNomes.includes(liqNome(nv)))pendNomes.push(liqNome(nv));}
+    if(pendPagto&&grupoTipo(nv.grupo)!=='receita'&&!ehPermutaForma(nv.forma)){nv.pagtoPendente=true;nv.forma='';delete nv.liquidacoes;pendTot+=valor;if(!pendNomes.includes(liqNome(nv)))pendNomes.push(liqNome(nv));}
     else if(r.parcelasLista&&r.parcelasLista.length){
       nv.liquidacoes=r.parcelasLista.map(x=>Object.assign({data:x.data,valor:+x.valor||0,pago:false},liqExtrasDe(x)));
     } else aplicarLiquidacoes(nv,{parcelas:r.parcelas,vencimento:r.vencimento});
+    if(ehPermuta(nv)){delete nv.liquidacoes;delete nv.meioId;}
     DB.lancamentos.push(nv);n++;lastYM=ymOf(nv.data);});
   if(!n)return toast('Preencha ao menos um item com categoria e valor');
   if(pendNomes.length){try{notificar({perm:'fin_pagto'},'Nota aguardando definição de pagamento',pendNomes.join(' · ')+' · '+fmtBRL(pendTot));}catch(e){}setTimeout(()=>{try{pagtoNavBadge();renderBell();}catch(e){}},50);}
@@ -6060,6 +6065,7 @@ function editLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!
 function saveLancamento(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)return closeModal();
   {const _d=($('#el_data')||{}).value||'';if(_d&&_d!==l.data&&dataForaDoComum(_d)&&!confirm('A data '+fmtDataBR(_d)+' está fora do comum e o lançamento ficaria fora do DRE deste ano. Salvar assim mesmo?'))return;}
   const valor=moneyVal('el_valor');if(!valor)return toast('Informe o valor');
+  if(ehPermutaForma(($('#el_forma')||{}).value)&&!((($('#el_fornecedor')||{}).value)||'').trim())return toast('Lançamento em permuta precisa do fornecedor: é pelo nome dele que o saldo é controlado');
   const nfAntes=l.nfe||'',fornAntes=l.fornecedor||'';const irmaos=nfKey(nfAntes)?notaItens(nfAntes,fornAntes).filter(x=>x.id!==id):[];
   l.data=$('#el_data').value||l.data;l.grupo=$('#el_grupo').value;l.sub=$('#el_sub').value||'';l.descricao=($('#el_desc').value||'').trim();l.nfe=($('#el_nfe')?($('#el_nfe').value||'').trim():(l.nfe||''));l.fornecedor=($('#el_fornecedor')?($('#el_fornecedor').value||'').trim():(l.fornecedor||''));l.valor=valor;l.forma=$('#el_forma').value||'';{const ob=(($('#el_obs')||{}).value||'').trim();if(ob)l.obs=ob;else delete l.obs;}
   if(irmaos.length&&nfKey(l.nfe)&&nfKey(l.nfe)!==nfKey(nfAntes)&&confirm('Esta nota tem mais '+irmaos.length+(irmaos.length===1?' item':' itens')+' com o número '+nfAntes+'.\n\nAplicar o novo número ('+l.nfe+') a todos, para continuarem agrupados?'))irmaos.forEach(x=>{x.nfe=l.nfe;});
@@ -6393,12 +6399,12 @@ function finList(key,cols){
     <button class="mini-del" onclick="DB.fin['${key}'].splice(${i},1);save();viewFinanceiro()">${icoX}</button></div>`).join(''):`<div style="font-size:13px;color:var(--soft);padding:6px 0 4px">Nenhum registro.</div>`}
   <button class="btn btn-ghost btn-sm" onclick="finAdd('${key}')" style="margin-top:6px">${icoPlus} Adicionar</button>`;
 }
-function finTabsHTML(tabs){tabs=finTabsPermitidas(tabs||[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['conc','Conciliação'],['custosfixos','Custos Fixos'],['param','Parâmetros']]);
+function finTabsHTML(tabs){tabs=finTabsPermitidas(tabs||[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],...(permutaTem()?[['permuta','Permutas']]:[]),['fluxo','Fluxo de Caixa'],['dre','DRE'],['conc','Conciliação'],['custosfixos','Custos Fixos'],['param','Parâmetros']]);
   if(tabs.length<2)return '';
   return `<div class="pill-filter tabs" style="margin-bottom:18px">${tabs.map(([k,l])=>`<button class="${finTab===k?'on':''}" onclick="finTab='${k}';viewFinanceiro()">${l}</button>`).join('')}</div>`;}
 function viewFinanceiro(){finTabAjustar();
   const t=totaisGerais(finTab==='visao'?periodoRange():undefined);
-  const tabs=[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],['fluxo','Fluxo de Caixa'],['dre','DRE'],['conc','Conciliação'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
+  const tabs=[['visao','Visão Geral'],['lanc','Lançamentos'],['pagar','Contas a Pagar'],['receber','Contas a Receber'],...(permutaTem()?[['permuta','Permutas']]:[]),['fluxo','Fluxo de Caixa'],['dre','DRE'],['conc','Conciliação'],['custosfixos','Custos Fixos'],['param','Parâmetros']];
   const legado={categorias:'categorias',formas:'formas',meios:'recebimento'};if(legado[finTab]){paramSec=legado[finTab];finTab='param';}   // abas antigas viraram seções de Parâmetros
   const tabsHTML=finTabsHTML(tabs);
   if(finTab==='dre'){viewDRE();return;}   // o DRE mesmo recoloca as abas (ver viewDRE), inclusive ao trocar o mês ou abrir/fechar grupos
@@ -6410,6 +6416,7 @@ function viewFinanceiro(){finTabAjustar();
   else if(finTab==='visao')body=finVisao(t);
   else if(finTab==='pagar')body=finContas('contasPagar');
   else if(finTab==='receber')body=finContas('contasReceber');
+  else if(finTab==='permuta')body=finPermutas();
   else if(finTab==='param')body=finParamCompleto();
   $('#view').innerHTML=certAvisoHTML()+tabsHTML+body;setTimeout(certChecar,150);
 }
@@ -8958,6 +8965,67 @@ function bdSemImprimir(){
   const fim=()=>{document.body.classList.remove('print-buffet');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);
 }
+
+/* ===================== PERMUTA COM FORNECEDOR =====================
+   O fornecedor entrega mercadoria e recebe em refeições. A nota de compra é lançada com a forma "Permuta" e vira crédito do fornecedor;
+   cada refeição dele é lançada como receita, também na forma "Permuta" e com o mesmo fornecedor, e vai dando baixa no saldo.
+   Lançamento em permuta NÃO mexe no caixa (fica fora do Fluxo, do saldo e das Contas a Pagar/Receber), mas continua no DRE pela data.
+   Nada novo é gravado no lançamento: a permuta é reconhecida pela forma e o saldo é calculado na leitura, por nome de fornecedor. */
+const PERMUTA='Permuta';
+let permSel=null;
+function ehPermutaForma(f){return /^permuta/i.test((''+(f==null?'':f)).trim());}
+function ehPermuta(l){return !!l&&!l.pagtoPendente&&ehPermutaForma(l.forma);}
+function permNome(n){return (''+(n==null?'':n)).trim().toLowerCase();}
+function permutaFormaNome(){return (DB.formasPagamento||[]).find(ehPermutaForma)||PERMUTA;}
+function permutaTem(){return (DB.lancamentos||[]).some(ehPermuta);}
+function permutaSaldos(excl){const M={};(DB.lancamentos||[]).forEach(l=>{if(!ehPermuta(l)||(excl&&excl.has(l.id)))return;const k=permNome(l.fornecedor)||'?';
+    const p=M[k]||(M[k]={key:k,nome:(l.fornecedor||'').trim()||'Sem fornecedor informado',compra:0,consumo:0,movs:[],ult:''});
+    const v=+l.valor||0;if(grupoTipo(l.grupo)==='receita')p.consumo+=v;else p.compra+=v;p.movs.push(l);if((l.data||'')>p.ult)p.ult=l.data||'';});
+  return Object.values(M).map(p=>{p.saldo=+(p.compra-p.consumo).toFixed(2);return p;}).sort((a,b)=>(b.saldo-a.saldo)||a.nome.localeCompare(b.nome));}
+function permutaSaldoDe(nome,excl){const k=permNome(nome);if(!k)return 0;const p=permutaSaldos(excl).find(x=>x.key===k);return p?p.saldo:0;}
+/* aviso dentro do formulário de lançamento: o que a permuta faz com o saldo de cada fornecedor do rascunho */
+function lmPermutaRefresh(){const el=document.getElementById('lm_perm');if(!el)return;
+  const todas=(typeof lancDraft!=='undefined'&&lancDraft?lancDraft:[]).filter(r=>ehPermutaForma(r.forma));
+  if(!todas.length){el.innerHTML='';return;}
+  const excl=new Set(lancDraft.map(r=>r._id).filter(Boolean)),G={};let semForn=0;
+  todas.forEach(r=>{const nome=(r.fornecedor||'').trim();if(!nome){semForn++;return;}const k=permNome(nome),g=G[k]||(G[k]={nome,compra:0,consumo:0}),v=lmTotalLinha(r)||0;
+    if(grupoTipo(r.grupo)==='receita')g.consumo+=v;else g.compra+=v;});
+  const L=Object.keys(G).map(k=>{const g=G[k],base=permutaSaldoDe(g.nome,excl),dep=+(base+g.compra-g.consumo).toFixed(2),p=[];
+    if(g.compra>0)p.push('compra de <b>'+fmtBRL(g.compra)+'</b> vira crédito em refeições');if(g.consumo>0)p.push('consumo de <b>'+fmtBRL(g.consumo)+'</b> dá baixa no saldo');
+    return `<div>Permuta com <b>${bdHtml(g.nome)}</b>: ${p.length?p.join(' e ')+'. ':''}Saldo de ${fmtBRL(base)}${(g.compra||g.consumo)?' passa para <b style="color:'+(dep<0?'var(--red)':'inherit')+'">'+fmtBRL(dep)+'</b>':''}.${dep<0?' O fornecedor consumiu mais do que entregou.':''}</div>`;});
+  if(semForn)L.push(`<div style="color:var(--red)">Informe o fornecedor ${semForn===1?'na linha':'nas linhas'} em permuta: é pelo nome dele que o saldo é controlado.</div>`);
+  el.innerHTML=`<div style="margin-top:10px;padding:9px 12px;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;font-size:12.5px;line-height:1.55;display:grid;gap:3px">${L.join('')}<div style="color:var(--soft);font-size:11.5px">Lançamento em permuta não entra no caixa nem em Contas a Pagar ou Receber. No DRE ele continua, pela data.</div></div>`;}
+function lmPermutaOk(){const falta=(lancDraft||[]).some(r=>lmTotalLinha(r)&&r.grupo&&ehPermutaForma(r.forma)&&!(r.fornecedor||'').trim());
+  if(falta){toast('Lançamento em permuta precisa do fornecedor: é pelo nome dele que o saldo é controlado');return false;}return true;}
+function permutaLancar(nome,receita){lmEdit=null;lmObs='';lmNfe=null;lmPagtoModo=podeFinPagto()?'agora':'depois';
+  const r=Object.assign(lmBlank(),{fornecedor:nome||'',forma:permutaFormaNome()});
+  if(receita){const g=Object.keys(DB.categorias||{}).find(x=>grupoTipo(x)==='receita');if(g){r.grupo=g;const sb=((DB.categorias[g]||{}).subs||[]).find(ehPermutaForma);if(sb)r.sub=sb;}r.desc='Refeição em permuta';}
+  lancDraft=[r];lancarModal(true);}
+function finPermutas(){const ps=permutaSaldos(),h=bdHtml;
+  if(!ps.length)return `<div class="card card-pad" style="max-width:640px"><div class="ttl" style="font-size:15px;font-weight:600;margin-bottom:6px">Permutas com fornecedores</div><div style="font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:14px">Nenhum lançamento em permuta ainda. Lance a nota de compra com a forma <b>${h(permutaFormaNome())}</b> e o valor vira crédito do fornecedor em refeições. Depois, cada refeição dele é lançada como receita, na mesma forma e com o mesmo fornecedor, e vai dando baixa no saldo.</div><button class="btn btn-primary btn-sm" onclick="permutaLancar('',false)">${icoPlus} Lançar compra em permuta</button></div>`;
+  const aComp=ps.filter(p=>p.saldo>0).reduce((s,p)=>s+p.saldo,0),aFavor=ps.filter(p=>p.saldo<0).reduce((s,p)=>s-p.saldo,0),compra=ps.reduce((s,p)=>s+p.compra,0),consumo=ps.reduce((s,p)=>s+p.consumo,0);
+  const sel=ps.find(p=>p.key===permSel),q=x=>(''+x).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+  const bts=p=>`<button class="btn btn-ghost btn-sm" onclick="permSel=${p.key===permSel?'null':"'"+q(p.key)+"'"};viewFinanceiro()">${p.key===permSel?'Fechar':'Extrato'}</button>${p.key==='?'?'':` <button class="btn btn-primary btn-sm" onclick="permutaLancar('${q(p.nome)}',true)">Lançar consumo</button>`}`;
+  let extrato='';
+  if(sel){const G=[];const idx={};
+    sel.movs.slice().sort((a,b)=>(a.data||'').localeCompare(b.data||'')).forEach(l=>{const rec=grupoTipo(l.grupo)==='receita',nk=nfKey(l.nfe);const k=(!rec&&nk)?l.data+'|'+nk:'#'+l.id;
+      let g=idx[k];if(!g){g=idx[k]={data:l.data,rec,nfe:l.nfe||'',desc:l.descricao||'',n:0,v:0,id:l.id};G.push(g);}g.n++;g.v+=+l.valor||0;if(g.n>1)g.desc='';});
+    let acc=0;
+    extrato=`<div class="card" style="margin-top:16px"><div style="padding:16px 18px 6px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div style="font-size:15px;font-weight:600">Extrato da permuta · ${h(sel.nome)}</div><div style="font-size:12px;color:var(--soft);margin-top:2px">Compras somam no saldo; refeições consumidas dão baixa. Toque no movimento para abrir o lançamento.</div></div><button class="btn btn-ghost btn-sm" onclick="permSel=null;viewFinanceiro()">Fechar extrato</button></div>
+      <div class="scroll-x"><table><thead><tr><th>Data</th><th>Movimento</th><th>Nota ou descrição</th><th class="num">Compra</th><th class="num">Consumo</th><th class="num">Saldo</th></tr></thead>
+      <tbody>${G.map(g=>{acc=+(acc+(g.rec?-g.v:g.v)).toFixed(2);return `<tr style="cursor:pointer" onclick="editLancamento('${g.id}')"><td style="white-space:nowrap">${fmtDataBR(g.data)}</td><td>${g.rec?'Refeição consumida':'Compra em permuta'}</td><td>${g.nfe?'NF '+h(g.nfe)+(g.n>1?' · '+g.n+' itens':''):''}${g.nfe&&g.desc?' · ':''}${h(g.desc)}</td><td class="num">${g.rec?'':fmtBRL(g.v)}</td><td class="num">${g.rec?fmtBRL(g.v):''}</td><td class="num"><b${acc<0?' style="color:var(--red)"':''}>${fmtBRL(acc)}</b></td></tr>`;}).join('')}</tbody></table></div></div>`;}
+  return `<div class="kpi-grid bd-kpis">
+      <div class="kpi"><div class="k-lbl">Saldo a compensar em refeições</div><div class="k-val">${fmtBRL(aComp)}</div><div class="k-sub" style="color:var(--soft)">${ps.filter(p=>p.saldo>0).length} fornecedor${ps.filter(p=>p.saldo>0).length===1?'':'es'} com crédito</div></div>
+      <div class="kpi"><div class="k-lbl">Comprado em permuta</div><div class="k-val">${fmtBRL(compra)}</div><div class="k-sub" style="color:var(--soft)">notas lançadas na forma permuta</div></div>
+      <div class="kpi"><div class="k-lbl">Consumido em refeições</div><div class="k-val">${fmtBRL(consumo)}</div><div class="k-sub" style="color:var(--soft)">${compra>0?fmtN(consumo/compra*100,0)+'% do que foi comprado':'receitas na forma permuta'}</div></div>
+      <div class="kpi"><div class="k-lbl">A favor do restaurante</div><div class="k-val" style="color:${aFavor>0?'var(--red)':'inherit'}">${fmtBRL(aFavor)}</div><div class="k-sub" style="color:var(--soft)">${aFavor>0?'fornecedor consumiu mais do que entregou':'ninguém consumiu além do saldo'}</div></div>
+    </div>
+    <div class="card"><div style="padding:16px 18px 6px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><div style="font-size:15px;font-weight:600">Saldo por fornecedor</div><div style="font-size:12px;color:var(--soft);margin-top:2px">Permuta não passa pelo caixa: fica fora do Fluxo e das Contas a Pagar e a Receber, e entra no DRE como compra e como venda.</div></div><button class="btn btn-ghost btn-sm no-print" onclick="permutaLancar('',false)">${icoPlus} Compra em permuta</button></div>
+      <div class="scroll-x"><table><thead><tr><th>Fornecedor</th><th class="num">Comprado</th><th class="num">Consumido</th><th class="num">Saldo disponível</th><th>Último movimento</th><th class="mob-hide"></th></tr></thead>
+      <tbody>${ps.map(p=>`<tr${p.key===permSel?' style="background:var(--bg)"':''}><td><b>${h(p.nome)}</b>${p.key==='?'?'<div style="font-size:11.5px;color:var(--red)">abra o lançamento e informe o fornecedor</div>':''}<div class="mob-only no-print"><div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap">${bts(p)}</div></div></td><td class="num">${fmtBRL(p.compra)}</td><td class="num">${fmtBRL(p.consumo)}</td><td class="num"><b style="color:${p.saldo<0?'var(--red)':(p.saldo>0?'var(--green)':'inherit')}">${fmtBRL(p.saldo)}</b></td><td style="white-space:nowrap">${p.ult?fmtDataBR(p.ult):'—'}</td>
+        <td style="white-space:nowrap;text-align:right" class="no-print mob-hide">${bts(p)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr style="border-top:2px solid var(--navy);font-weight:700"><td style="padding:12px 13px">Total</td><td class="num" style="padding:12px 13px">${fmtBRL(compra)}</td><td class="num" style="padding:12px 13px">${fmtBRL(consumo)}</td><td class="num" style="padding:12px 13px">${fmtBRL(compra-consumo)}</td><td></td><td class="mob-hide"></td></tr></tfoot></table></div></div>
+    ${extrato}`;}
 
 /* ===================== CONTROLE DE CMV (Real por contagem) ===================== */
 const MESES_PT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
