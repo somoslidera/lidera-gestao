@@ -1122,6 +1122,27 @@ body.dark .prm-chip{background:var(--card)}body.dark .prm-nav a:hover{background
   #printArea .bdr .rel-body tfoot td{border-top:1px solid #1D3573;border-bottom:0;font-size:9.5px;padding:4px 5px}
   #printArea .bdr td small{font-size:8px}
 }
+/* ===== Programação da semana (buffet) ===== */
+.bds-tb{min-width:780px}
+.bds-tb th.bds-d{text-align:center;min-width:78px;white-space:nowrap;padding-left:4px;padding-right:4px}
+.bds-tb th.bds-d.on{color:var(--gold)}
+.bds-tb th.bds-d.off{opacity:.6}
+.bds-ac{display:block;margin:4px auto 0;font-size:11px;border:1px solid var(--line);border-radius:7px;padding:2px 4px;background:var(--card);color:var(--muted);max-width:76px;text-transform:none;font-weight:400;letter-spacing:0}
+.bds-tb td.bds-c{text-align:center;padding:6px 4px;vertical-align:top}
+.scroll-x tbody td .input.bds-in{width:68px;text-align:center;padding:7px 4px}
+.bds-tb td small{display:block;font-size:10.5px;color:var(--soft);line-height:1.3;margin-top:2px}
+.bds-tb td.bds-n{min-width:170px}
+.bds-tb th.num,.bds-tb td.num{padding-left:8px;padding-right:10px}
+.bds-tb tfoot td{font-size:12.5px;padding:8px 13px;border-top:1px solid var(--line);white-space:nowrap}
+.bds-tb tfoot td.bds-c{padding:8px 4px}
+.bds-tb tfoot tr:first-child td{border-top:2px solid var(--navy)}
+@media(max-width:640px){.bds-tb td.bds-n{min-width:150px}.scroll-x tbody td .input.bds-in{width:66px}.bds-ac{font-size:13px;padding:7px 4px;max-width:84px}.bds-tb th.bds-d{min-width:86px}}
+@media print{
+  #printArea table.bf-sem td.bf-c{text-align:center;font-size:12px}
+  #printArea table.bf-sem tr.bf-cat td{height:5.6mm;font-size:8.5px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;border-left:0;border-right:0;padding-top:3px}
+  #printArea table.bf-sem tfoot td{border:1px solid #000;font-weight:700}
+  #printArea table.bf-sem th{font-size:9px}
+}
 </style>
 </head>
 <body>
@@ -8151,6 +8172,7 @@ function viewBuffet(){
   if(!DB.buffet)DB.buffet={precoVendaKg:'',cubas:[]};
   if(!buffetSub)buffetSub=((DB.buffet.cubas||[]).length||Object.keys(bdDias()).length)?'dia':'mapa';   // quem já tem mapa ou registro cai no dia
   if(buffetSub==='dia')return bdViewDia();
+  if(buffetSub==='sem')return bdViewSem();
   if(buffetSub==='hist')return bdViewHist();
   $('#topActions').innerHTML=`<button class="btn btn-ghost" onclick="imprimirTela()">🖨️ Imprimir</button>`;
   const d=buffetData(); const fichas=Object.values(DB.fichas).sort((a,b)=>a.nome.localeCompare(b.nome));
@@ -8283,7 +8305,7 @@ function bdItemCalc(it,pk){
   const ref=bdRef(it);let ck=(it.ck!=null&&it.ck!=='')?+it.ck:(ref?custoPorKgItem(ref):0);if(!isFinite(ck)||ck<0)ck=0;
   const cmv=(pk>0&&ck>0)?ck/pk:0;
   return {it,nome:bdNome(it),ref,cat:ref?(ref.cat||'Sem categoria'):'Sem ficha',a,rep,reps,nRep:reps.length,serv,v,d,cons,ck,cmv,temCusto:ck>0,est:!ref&&ck>0,
-    ok:pk>0&&ck>0&&cmv<=CMV_ALVO_BUFFET,erro:cons<-0.0005,cServ:serv*ck,cDesc:d*ck,cSobra:v*ck,
+    p:bdN(it.p),ok:pk>0&&ck>0&&cmv<=CMV_ALVO_BUFFET,erro:cons<-0.0005,cServ:serv*ck,cDesc:d*ck,cSobra:v*ck,
     repSobra:reps.length>0&&(v+d)>=0.8*reps[reps.length-1],zerou:serv>0&&v===0&&d===0};
 }
 /* Leituras do dia (as mesmas dos relatórios da consultoria):
@@ -8324,7 +8346,7 @@ function bdNovoItem(o){return Object.assign({id:uid(),c:'',f:'',n:'',a:'',r:[],v
 function bdCriar(modo,origem){const iso=bdCurData(),dias=bdDias();let itens=[];
   if(modo==='mapa')itens=bdCubasOrdem().map(c=>bdNovoItem({c:c.id,f:(DB.fichas[c.fichaId]||DB.insumos[c.fichaId])?c.fichaId:'',a:parseFloat(c.pesoKg)||''}));
   else if(modo==='copia'){const o=dias[origem];if(!o)return toast('Dia não encontrado');
-    itens=(o.itens||[]).filter(it=>bdNome(it)).map(it=>{const tem=!!bdRef(it);const n=bdNovoItem({c:it.c||'',f:tem?it.f:'',n:bdNome(it),a:it.a});if(!tem){n.lv=1;if(+it.ck>0)n.ck=+it.ck;}return n;});}
+    itens=bdItensCopia(o);}
   if(!itens.length)itens=[bdNovoItem()];
   dias[iso]={itens};if((DB.buffet||{}).eqFora)dias[iso].eqF=1;bdTocar(iso);viewBuffet();}
 function bdApagarDia(){const iso=bdCurData();if(!bdDias()[iso])return;
@@ -8376,7 +8398,7 @@ function bdRefresh(id,reps){const c=bdDiaCalc(bdCurData());if(!c)return;
   const set=(i,h)=>{const e=document.getElementById(i);if(e)e.innerHTML=h;};
   set('bd_kpis',bdKpisHTML(c));set('bd_tot',bdTotHTML(c));set('bd_fech',bdFechHTML(c));set('bd_board',bdBoardHTML(c));}
 function bdResHTML(x){
-  if(!x.serv&&!x.v&&!x.d)return '<span style="color:var(--soft)">—</span>';
+  if(!x.serv&&!x.v&&!x.d)return x.p>0?'<small>previsto '+bdKg(x.p)+'</small>':'<span style="color:var(--soft)">—</span>';
   if(x.erro)return '<b style="color:var(--red)">confira os pesos</b><small>sobra e descarte passam do que foi montado</small>';
   const rp=x.nRep?x.nRep+' reposiç'+(x.nRep===1?'ão':'ões'):'';
   return `<b>${bdKg(x.cons)}</b>${x.d>0?`<small style="color:var(--red)">descarte ${x.temCusto?fmtBRL(x.cDesc):bdKg(x.d)}</small>`:(rp?`<small>${rp}</small>`:'')}`;}
@@ -8391,6 +8413,7 @@ function bdKpisHTML(c){
     <div class="kpi"><div class="k-lbl">Descartado</div><div class="k-val" style="color:${c.d>0?'var(--red)':'inherit'}">${bdKg(c.d)}</div><div class="k-sub" style="color:var(--soft)">${c.serv>0?bdPct(c.pDesc)+' do montado':'sem peso lançado'}${c.cDesc>0?' · '+fmtBRL(c.cDesc):''}</div></div>`;}
 function bdTotHTML(c){
   let h=`<span>Abertura <b>${bdKg(c.a)}</b></span><span>Reposições <b>${bdKg(c.rep)}</b></span><span>Sobrou <b>${bdKg(c.v)}</b></span><span>Descartado <b style="color:${c.d>0?'var(--red)':'inherit'}">${bdKg(c.d)}</b></span><span>Consumido <b>${bdKg(c.consPos)}</b></span>${c.cServ>0?`<span>Custo do montado <b>${fmtBRL(c.cServ)}</b></span>`:''}`;
+  {const pv=c.itens.reduce((s,x)=>s+(x.p||0),0);if(pv>0)h+=`<span>Previsto <b>${bdKg(pv)}</b></span>`;}
   if(c.cmvMix!=null)h+=`<span style="flex:0 0 100%;color:var(--muted)">CMV teórico do que foi montado: <b style="color:${c.cmvMix<=CMV_ALVO_BUFFET?'var(--green)':'var(--red)'}">${bdPct(c.cmvMix)}</b> a ${fmtBRL(c.pk)}/kg · ${c.dentro} de ${c.comCusto} pratos dentro da meta de 30%</span>`;
   if(c.erros)h+=`<span style="flex:0 0 100%;color:var(--red)">${c.erros} prato${c.erros===1?'':'s'} com sobra e descarte maiores que o montado. Confira os pesos.</span>`;
   return h;}
@@ -8417,7 +8440,7 @@ function bdBoardHTML(c){const cubas=((DB.buffet||{}).cubas)||[];if(!cubas.length
         <div style="padding:0 5px 3px;flex:1;display:flex;align-items:flex-end;justify-content:space-between;gap:4px">${tem?`<span style="font-size:9px;color:var(--muted)">${nNum(+x.serv.toFixed(1))}Kg${x.d>0?` <b style="color:var(--red)">−${nNum(+x.d.toFixed(1))}</b>`:''}</span>${(x.temCusto&&c.pk>0)?`<span style="font-size:10px;font-weight:700;color:${col.tx}">${bdPct(x.cmv)}</span>`:''}`:''}</div></div>`;}).join('')
     +'</div></div>';}
 function buffetTabsHTML(){const b=(k,t)=>`<button class="${buffetSub===k?'on':''}" onclick="buffetSub='${k}';viewBuffet()">${t}</button>`;
-  return `<div class="pill-filter" style="margin-bottom:16px">${b('dia','📅 Buffet do dia')}${b('hist','📈 Relatório')}${b('mapa','🗺️ Mapa do Buffet')}${b('relatorio','📋 Itens do mapa')}</div>`;}
+  return `<div class="pill-filter" style="margin-bottom:16px">${b('dia','📅 Buffet do dia')}${b('sem','🗓️ Semana')}${b('hist','📈 Relatório')}${b('mapa','🗺️ Mapa do Buffet')}${b('relatorio','📋 Itens do mapa')}</div>`;}
 function bdOpcoesPratos(){const fichas=Object.values(DB.fichas||{}).sort((a,b)=>a.nome.localeCompare(b.nome));
   const preps=Object.values(DB.insumos||{}).filter(i=>i.tipo==='preparado').sort((a,b)=>a.nome.localeCompare(b.nome));
   return `<option value="">— escolha o prato —</option>${fichas.length?`<optgroup label="Fichas técnicas">${fichas.map(f=>`<option value="${f.id}">${bdHtml(f.nome)}</option>`).join('')}</optgroup>`:''}${preps.length?`<optgroup label="Preparados">${preps.map(p=>`<option value="${p.id}">${bdHtml(p.nome)}</option>`).join('')}</optgroup>`:''}<option value="__livre">✎ Outro prato (escrever o nome)</option>`;}
@@ -8451,7 +8474,7 @@ function bdViewDia(){
     <button class="bd-nav" title="Dia seguinte" onclick="bdIr(1)">›</button>
     ${iso!==hj?`<button class="btn btn-ghost btn-sm" onclick="bdData=null;viewBuffet()">Hoje</button>`:''}
     <span class="bd-sem">${bdSem(iso)}${iso===hj?' · hoje':''}</span>
-    ${dia?`<span class="bd-bar-fim"><button class="btn btn-ghost btn-sm" onclick="bdRelDoDia()">📈 Relatório do dia</button><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="bdApagarDia()">Apagar o dia</button></span>`:''}
+    ${dia?`<span class="bd-bar-fim"><button class="btn btn-ghost btn-sm" onclick="bdCopiarModal()">📋 Copiar cardápio</button><button class="btn btn-ghost btn-sm" onclick="bdRelDoDia()">📈 Relatório do dia</button><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="bdApagarDia()">Apagar o dia</button></span>`:''}
   </div>`;
   if(!dia){
     const nCubas=(((DB.buffet||{}).cubas)||[]).length;
@@ -8513,7 +8536,7 @@ function bdPerIr(n){const t=bdPer.tipo,ref=bdPer.ref||hojeISO();
   viewBuffet();}
 function bdSimVal(){const v=parseNumBR(bdSim);return v>0?v:0;}
 function bdRel(de,ate){const dias=bdDias();
-  const cs=Object.keys(dias).filter(k=>k>=de&&k<=ate).sort().map(bdDiaCalc).filter(c=>c&&c.n>0);
+  const hj=hojeISO(),cs=Object.keys(dias).filter(k=>k>=de&&k<=ate&&k<=hj).sort().map(bdDiaCalc).filter(c=>c&&c.n>0&&c.serv>0);
   const R={de,ate,cs,nd:cs.length,um:cs.length===1};
   ['n','a','rep','nRep','serv','v','d','consPos','cServ','cDesc','cSobra','cCons','custoDia','eq','kgV','liv','mar','vnd','pes','servCusto','comCusto','dentro'].forEach(k=>{R[k]=cs.reduce((s,c)=>s+(+c[k]||0),0);});
   R.cons=R.consPos;
@@ -8703,7 +8726,7 @@ function bdFolhaModal(){const iso=bdCurData(),dia=bdDias()[iso];
   </div>`);}
 function bdFolha(modo){
   const rest=(DB.conta&&DB.conta.restaurante)||'Restaurante',iso=bdCurData();let linhas=[];
-  if(modo==='dia'){const dia=bdDias()[iso];linhas=((dia&&dia.itens)||[]).filter(it=>bdNome(it)).map(it=>({n:bdNome(it),p:bdN(it.a)}));}
+  if(modo==='dia'){const dia=bdDias()[iso];linhas=((dia&&dia.itens)||[]).filter(it=>bdNome(it)).map(it=>({n:bdNome(it),p:bdN(it.p)||bdN(it.a)}));}
   else if(modo==='mapa')linhas=bdCubasOrdem().map(c=>({c,r:DB.fichas[c.fichaId]||DB.insumos[c.fichaId]})).filter(x=>x.r).map(x=>({n:x.r.nome,p:parseFloat(x.c.pesoKg)||0}));
   const total=Math.max(18,linhas.length+4);let rows='';
   for(let i=0;i<total;i++){const l=linhas[i];rows+=`<tr><td class="bf-n">${l?bdHtml(l.n)+(l.p>0?`<small>previsto ${nNum(l.p)} kg</small>`:''):''}</td>${'<td></td>'.repeat(11)}</tr>`;}
@@ -8719,6 +8742,217 @@ function bdFolha(modo){
       <tbody>${rows}</tbody>
     </table>
     <div class="bf-fech"><span><b>Fechamento do dia</b> (o que tiver)</span><span>Venda de comida, sem bebidas: R$ __________</span><span>Kg vendido no quilo: ________</span><span>Refeições no livre: ______</span><span>Marmitas e PF: ______</span><span>Equipe comeu (kg): ______</span></div>
+  </div>`;
+  document.body.classList.add('print-buffet');
+  const fim=()=>{document.body.classList.remove('print-buffet');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
+  window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);
+}
+
+/* ---------- Copiar cardápio e programação da semana ----------
+   Cada prato do dia ganha "p" = quantidade prevista (kg a preparar no dia). A semana é só outra forma de ver e editar os mesmos DB.buffetDias:
+   o que é programado aqui já nasce no Buffet do dia e na folha da cozinha. Dia futuro não entra no relatório (só dia até hoje e com peso montado). */
+let bdSemRef=null, bdSemPend=[], bdSemLin=[], bdSemD=[], bdSemVis=[], bdSemPrev=null;
+const BD_DOW=['dom','seg','ter','qua','qui','sex','sáb'];
+function bdSemKey(it){if(bdRef(it))return 'f:'+it.f;const n=bdNome(it).trim().toLowerCase();return n?'n:'+n:'';}
+function bdTemPeso(it){return !!(bdN(it.a)||(it.r||[]).some(x=>bdN(x)>0)||bdN(it.v)||bdN(it.d));}
+function bdTemPratos(iso){const d=bdDias()[iso];return !!(d&&(d.itens||[]).some(it=>bdNome(it)));}
+function bdDiaTemFech(d){return !!(d&&(d.vnd||d.kgV||d.liv||d.mar||d.pes||d.eq||d.obs));}
+function bdProxAberto(iso){const ab=diasTrabalho();let k=iso;for(let i=0;i<8;i++){k=bdIsoAdd(k,1);if(ab.includes(new Date(k+'T12:00:00').getDay()))return k;}return bdIsoAdd(iso,1);}
+/* pratos de um dia prontos para nascer em outro: vão o prato, a abertura e o previsto (o previsto do dia de origem ou, se não havia, o que foi montado nele) */
+function bdItensCopia(o){return ((o&&o.itens)||[]).filter(it=>bdNome(it)).map(it=>{const tem=!!bdRef(it),n=bdNovoItem({c:it.c||'',f:tem?it.f:'',n:bdNome(it),a:it.a});
+  if(!tem){n.lv=1;if(+it.ck>0)n.ck=+it.ck;}
+  const p=bdN(it.p)||bdItemCalc(it,0).serv;if(p>0)n.p=+p.toFixed(3);return n;});}
+function bdCopiarDia(orig,dest){const dias=bdDias(),o=dias[orig];if(!o||orig===dest)return false;const novos=bdItensCopia(o);if(!novos.length)return false;
+  const ant=dias[dest]||{};dias[dest]=Object.assign({},ant,{itens:novos});if(!ant.itens&&(DB.buffet||{}).eqFora)dias[dest].eqF=1;bdTocar(dest);return true;}
+function bdCopiarModal(){const iso=bdCurData(),dias=bdDias(),dia=dias[iso];if(!dia)return;
+  const regs=Object.keys(dias).filter(k=>k!==iso&&bdTemPratos(k)).sort().reverse().slice(0,120),prox=bdProxAberto(iso),sem=bdIsoAdd(iso,7);
+  const resto=bdSemDias(iso).filter(k=>k>iso&&diasTrabalho().includes(new Date(k+'T12:00:00').getDay())&&!bdTemPratos(k));
+  modal(`<div class="modal-head"><h3>Copiar cardápio</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
+  <div class="modal-body">
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px">Levar o cardápio de ${bdCurto(iso)} para outro dia</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px;line-height:1.5">Vão os pratos, a abertura e a quantidade prevista. Reposições, sobra e descarte não são copiados. Depois é só abrir o dia e trocar o que muda.</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px"><input class="input" type="date" id="bd_cop_para" value="${prox}"><button class="btn btn-primary" style="flex:0 0 auto" onclick="bdCopiarPara(document.getElementById('bd_cop_para').value)">Copiar</button></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <button class="btn btn-ghost btn-sm" onclick="bdCopiarPara('${prox}')">${bdSem(prox)}, ${bdCurto(prox)}</button>
+      <button class="btn btn-ghost btn-sm" onclick="bdCopiarPara('${sem}')">${bdSem(sem)} que vem, ${bdCurto(sem)}</button>
+      ${resto.length?`<button class="btn btn-ghost btn-sm" onclick="bdCopiarResto()">Dias vazios desta semana (${resto.length})</button>`:''}
+    </div>
+    ${regs.length?`<div style="border-top:1px solid var(--line);margin:18px 0 14px"></div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px">Trazer para ${bdCurto(iso)} o cardápio de outro dia</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px;line-height:1.5">Troca os pratos deste dia pelos do dia escolhido.</div>
+    <div style="display:flex;gap:8px"><select class="input" id="bd_cop_de">${regs.map(k=>`<option value="${k}">${fmtDataBR(k)} · ${bdSem(k)}</option>`).join('')}</select><button class="btn btn-ghost" style="flex:0 0 auto" onclick="bdCopiarDe(document.getElementById('bd_cop_de').value)">Trazer</button></div>`:''}
+  </div>`);}
+function bdCopiarPara(dest){const iso=bdCurData();if(!dest)return toast('Escolha o dia');if(dest===iso)return toast('Escolha um dia diferente');
+  if(bdTemPratos(dest)&&!confirm(bdSem(dest)+', '+fmtDataBR(dest)+', já tem pratos. Trocar pelos de '+bdCurto(iso)+'? Os pesos já lançados naquele dia são apagados.'))return;
+  if(!bdCopiarDia(iso,dest))return toast('Este dia não tem pratos para copiar');
+  closeModal();toast('Cardápio copiado para '+bdSem(dest)+', '+bdCurto(dest));}
+function bdCopiarResto(){const iso=bdCurData();const alvo=bdSemDias(iso).filter(k=>k>iso&&diasTrabalho().includes(new Date(k+'T12:00:00').getDay())&&!bdTemPratos(k));
+  let n=0;alvo.forEach(k=>{if(bdCopiarDia(iso,k))n++;});closeModal();toast(n?('Cardápio copiado para '+n+' dia'+(n===1?'':'s')+' desta semana'):'Nenhum dia vazio nesta semana');}
+function bdCopiarDe(orig){const iso=bdCurData(),dia=bdDias()[iso];if(!orig)return;
+  if(dia&&(dia.itens||[]).some(it=>bdNome(it)&&bdTemPeso(it))&&!confirm('Trocar os pratos de '+bdCurto(iso)+' pelos de '+bdCurto(orig)+'? Os pesos já lançados neste dia são apagados.'))return;
+  if(!bdCopiarDia(orig,iso))return toast('O dia escolhido não tem pratos');
+  closeModal();viewBuffet();toast('Cardápio de '+bdCurto(orig)+' trazido para este dia');}
+
+function bdSemDias(ref){const r=ref||hojeISO(),w=new Date(r+'T12:00:00').getDay(),de=bdIsoAdd(r,-((w+6)%7));return [0,1,2,3,4,5,6].map(i=>bdIsoAdd(de,i));}
+function bdSemLinhasDe(D){const dias=bdDias(),seen={},out=[];
+  D.forEach(iso=>{const d=dias[iso];if(!d)return;(d.itens||[]).forEach(it=>{const k=bdSemKey(it);if(!k||seen[k])return;seen[k]=1;const r=bdRef(it);let ck=r?custoPorKgItem(r):(+it.ck||0);if(!isFinite(ck)||ck<0)ck=0;
+    out.push({key:k,f:r?it.f:'',n:bdNome(it),lv:r?0:1,ck,cat:r?(r.cat||'Sem categoria'):'Sem ficha'});});});
+  return out.sort((a,b)=>a.cat.localeCompare(b.cat)||a.n.localeCompare(b.n));}
+function bdSemCalc(D,lin){const dias=bdDias(),hj=hojeISO(),cel={};
+  const dia=D.map(iso=>({iso,pk:(iso<hj&&dias[iso]&&+dias[iso].pk>0)?+dias[iso].pk:bdPk(iso),n:0,p:0,cPrev:0,pCusto:0,serv:0,cServ:0}));
+  D.forEach(iso=>{const d=dias[iso];if(!d)return;(d.itens||[]).forEach(it=>{const k=bdSemKey(it);if(!k)return;const x=bdItemCalc(it,0);
+    const c=(cel[k]=cel[k]||{})[iso]||(cel[k][iso]={p:0,serv:0,cServ:0});c.p+=bdN(it.p);if(iso<=hj){c.serv+=x.serv;c.cServ+=x.cServ;}});});
+  const T={n:0,p:0,cPrev:0,pCusto:0,base:0,serv:0,cServ:0},cats={};
+  lin.forEach(l=>{l.tp=0;l.tc=0;if(!l.key)return;D.forEach((iso,j)=>{const c=(cel[l.key]||{})[iso];if(!c)return;const g=dia[j];g.n++;
+    if(c.p>0){l.tp+=c.p;l.tc+=c.p*l.ck;g.p+=c.p;g.cPrev+=c.p*l.ck;if(l.ck>0)g.pCusto+=c.p;const q=cats[l.cat]||(cats[l.cat]={nome:l.cat,p:0,c:0});q.p+=c.p;q.c+=c.p*l.ck;}
+    g.serv+=c.serv;g.cServ+=c.cServ;});});
+  dia.forEach(g=>{T.p+=g.p;T.cPrev+=g.cPrev;T.pCusto+=g.pCusto;T.base+=g.pk*g.pCusto;T.serv+=g.serv;T.cServ+=g.cServ;if(g.p>0)T.n++;});
+  T.cmv=T.base>0?T.cPrev/T.base:null;
+  return {D,dia,cel,T,cats:Object.values(cats).sort((a,b)=>b.c-a.c)};}
+/* média do que foi montado de cada prato nos 90 dias antes da semana: referência de quanto programar */
+function bdSemMedias(antes){const dias=bdDias(),hj=hojeISO(),lim=bdIsoAdd(antes,-90),M={};
+  Object.keys(dias).forEach(iso=>{if(iso>hj||iso>=antes||iso<lim)return;const v={};(dias[iso].itens||[]).forEach(it=>{const k=bdSemKey(it);if(!k)return;const s=bdItemCalc(it,0).serv;if(s>0)v[k]=(v[k]||0)+s;});
+    Object.keys(v).forEach(k=>{const m=M[k]||(M[k]={d:0,s:0});m.d++;m.s+=v[k];});});
+  return M;}
+function bdSemIr(n){bdSemRef=bdIsoAdd(bdSemDias(bdSemRef)[0],7*n);bdSemPend=[];viewBuffet();}
+function bdSemAdd(){const p={pend:1,id:uid(),key:'',f:'',n:'',lv:0,ck:0,cat:''};bdSemPend.push(p);viewBuffet();
+  setTimeout(()=>{const e=document.querySelector('#bds_p_'+p.id+' select');if(e){e.scrollIntoView({block:'center'});e.focus();}},60);}
+function bdSemPendDel(id){bdSemPend=bdSemPend.filter(p=>p.id!==id);viewBuffet();}
+function bdSemEscolhe(id,val){const p=bdSemPend.find(x=>x.id===id);if(!p)return;
+  if(val==='__livre'){p.lv=1;p.cat='Sem ficha';}
+  else{const r=DB.fichas[val]||DB.insumos[val];if(!r)return;let ck=custoPorKgItem(r);if(!isFinite(ck)||ck<0)ck=0;p.f=val;p.key='f:'+val;p.n=r.nome;p.ck=ck;p.cat=r.cat||'Sem categoria';}
+  viewBuffet();setTimeout(()=>{const e=document.querySelector('#bds_p_'+id+' input');if(e)e.focus();},60);}
+function bdSemPendNome(id,val){const p=bdSemPend.find(x=>x.id===id);if(!p)return;const n=(val||'').trim();p.n=n;p.key=n?'n:'+n.toLowerCase():'';
+  if(p.key&&bdSemLin.some(l=>l!==p&&l.key===p.key)){toast('Esse prato já está na semana');bdSemPend=bdSemPend.filter(x=>x!==p);}
+  viewBuffet();}
+function bdSemPendCusto(id,val){const p=bdSemPend.find(x=>x.id===id);if(!p)return;p.ck=Math.max(0,+parseNumBR(val).toFixed(4))||0;viewBuffet();}
+function bdSemSet(i,iso,val,el){const l=bdSemLin[i];if(!l||!l.key){if(el)el.value='';return toast('Escolha o prato primeiro');}
+  const dias=bdDias(),hj=hojeISO(),v=bdNumIn(val);let dia=dias[iso];
+  const its=dia?(dia.itens||[]).filter(it=>bdSemKey(it)===l.key):[];
+  if(!(v>0)){its.forEach(it=>{delete it.p;});
+    if(dia){dia.itens=(dia.itens||[]).filter(it=>!(bdSemKey(it)===l.key&&(iso>hj||!bdTemPeso(it))));if(!dia.itens.length&&!bdDiaTemFech(dia))delete dias[iso];}
+    if(el)el.value='';}
+  else{if(!dia)dia=dias[iso]={itens:[]};dia.itens=dia.itens||[];let it=its[0];
+    if(!it){it=bdNovoItem({f:l.f||'',n:l.n});if(l.lv){it.lv=1;if(l.ck>0)it.ck=l.ck;}dia.itens.push(it);}
+    it.p=v;its.slice(1).forEach(x=>{delete x.p;});if(el)el.value=nNum(v);}
+  if(dias[iso])bdTocar(iso);else save();
+  bdSemRefresh();}
+function bdSemLimparDia(iso){const dias=bdDias(),d=dias[iso],hj=hojeISO();if(!d)return;
+  (d.itens||[]).forEach(it=>{delete it.p;});d.itens=(d.itens||[]).filter(it=>!(iso>hj||!bdTemPeso(it)));
+  if(!d.itens.length&&!bdDiaTemFech(d)){delete dias[iso];save();}else bdTocar(iso);}
+function bdSemDiaAcao(iso,val){if(!val)return;
+  if(val==='abrir')return bdAbrirDia(iso);
+  if(val==='limpar'){if(!bdDias()[iso])return;if(!confirm('Limpar o que foi programado para '+bdSem(iso)+', '+bdCurto(iso)+'? O que já tem peso lançado no dia continua.'))return;bdSemLimparDia(iso);return viewBuffet();}
+  if(val.slice(0,2)==='c:'){const orig=val.slice(2);
+    if(bdTemPratos(iso)&&!confirm('Trocar o cardápio de '+bdSem(iso)+', '+bdCurto(iso)+', pelo de '+bdCurto(orig)+'?'))return;
+    if(!bdCopiarDia(orig,iso))toast('O dia escolhido não tem pratos');viewBuffet();}}
+function bdSemCopiarAnterior(){const D=bdSemDias(bdSemRef);let n=0;D.forEach(iso=>{if(!bdTemPratos(iso)&&bdCopiarDia(bdIsoAdd(iso,-7),iso))n++;});
+  viewBuffet();toast(n?('Cardápio da semana anterior copiado para '+n+' dia'+(n===1?'':'s')):'Nada para copiar: a semana anterior não tem cardápio, ou os dias desta já estão preenchidos');}
+function bdSemDoMapa(){const D=bdSemDias(bdSemRef),ab=diasTrabalho(),dias=bdDias(),cubas=bdCubasOrdem().filter(c=>DB.fichas[c.fichaId]||DB.insumos[c.fichaId]);if(!cubas.length)return toast('Monte o mapa do buffet primeiro');
+  let n=0;D.forEach(iso=>{if(!ab.includes(new Date(iso+'T12:00:00').getDay())||bdTemPratos(iso))return;
+    const ant=dias[iso]||{};dias[iso]=Object.assign({},ant,{itens:cubas.map(c=>{const kg=parseFloat(c.pesoKg)||0;const it=bdNovoItem({c:c.id,f:c.fichaId,a:kg||''});if(kg>0)it.p=kg;return it;})});bdTocar(iso);n++;});
+  viewBuffet();toast(n?('Mapa do buffet aplicado em '+n+' dia'+(n===1?'':'s')):'Os dias desta semana já têm cardápio');}
+function bdSemLimpar(){const D=bdSemDias(bdSemRef);if(!D.some(k=>bdDias()[k]))return toast('Não há nada programado nesta semana');
+  if(!confirm('Limpar tudo o que foi programado nesta semana? O que já tem peso lançado nos dias passados continua.'))return;
+  D.forEach(bdSemLimparDia);bdSemPend=[];viewBuffet();}
+function bdSemKpisHTML(S){const T=S.T,P=bdSemPrev,dd=S.dia.filter(g=>g.cPrev>0).sort((a,b)=>b.cPrev-a.cPrev);
+  const nome=g=>BD_DOW[new Date(g.iso+'T12:00:00').getDay()]+' '+bdCurto(g.iso);
+  const ant=P?(P.T.cServ>0?P.T.cServ:P.T.cPrev):0,antTxt=P&&P.T.cServ>0?'custo do que foi montado':'custo previsto';
+  const dif=ant>0&&T.cPrev>0?(T.cPrev-ant)/ant:null;
+  return `<div class="kpi"><div class="k-lbl">Custo previsto da semana</div><div class="k-val">${fmtBRL(T.cPrev)}</div><div class="k-sub" style="color:var(--soft)">${bdKg(T.p)} em ${T.n} dia${T.n===1?'':'s'}</div></div>
+    <div class="kpi"><div class="k-lbl">CMV teórico previsto</div><div class="k-val" style="color:${T.cmv==null?'inherit':(T.cmv<=CMV_ALVO_BUFFET?'var(--green)':'var(--red)')}">${T.cmv==null?'—':bdPct(T.cmv)}</div><div class="k-sub" style="color:var(--soft)">${T.pCusto>0?'custo médio de '+fmtBRL(T.cPrev/T.pCusto)+' por kg':'sem custo ou preço do quilo'}</div></div>
+    <div class="kpi"><div class="k-lbl">Dia mais caro</div><div class="k-val">${dd.length?nome(dd[0]):'—'}</div><div class="k-sub" style="color:var(--soft)">${dd.length?fmtBRL(dd[0].cPrev)+(dd.length>1?' · mais barato: '+nome(dd[dd.length-1])+', '+fmtBRL(dd[dd.length-1].cPrev):''):'programe ao menos um dia'}</div></div>
+    <div class="kpi"><div class="k-lbl">Semana anterior</div><div class="k-val">${ant>0?fmtBRL(ant):'—'}</div><div class="k-sub" style="color:var(--soft)">${ant>0?(antTxt+(dif!=null?' · esta semana '+bdPct(Math.abs(dif))+(dif>=0?' acima':' abaixo'):'')):'sem registro'}</div></div>`;}
+function bdSemFootHTML(S){const vis=bdSemVis,T=S.T,mx=Math.max.apply(null,S.dia.map(g=>g.cPrev).concat([0]));
+  const ln=(t,f,tot,cst)=>`<tr><td>${t}</td>${S.dia.map((g,j)=>vis[j]?`<td class="bds-c">${f(g)}</td>`:'').join('')}<td class="num">${tot||''}</td><td></td><td class="num">${cst||''}</td></tr>`;
+  let h=ln('Pratos no dia',g=>g.n||'—')
+    +ln('Previsto (kg)',g=>g.p>0?`<b>${nNum(+g.p.toFixed(1))}</b>`:'—',T.p>0?`<b>${nNum(+T.p.toFixed(1))}</b>`:'')
+    +ln('Custo previsto',g=>g.cPrev>0?`<b${g.cPrev===mx&&S.dia.filter(q=>q.cPrev>0).length>1?' style="color:var(--red)"':''}>${fmtBRL(g.cPrev)}</b>`:'—','',T.cPrev>0?`<b>${fmtBRL(T.cPrev)}</b>`:'')
+    +ln('Custo por kg',g=>g.pCusto>0?fmtBRL(g.cPrev/g.pCusto):'—','',T.pCusto>0?fmtBRL(T.cPrev/T.pCusto):'')
+    +ln('CMV teórico',g=>(g.pCusto>0&&g.pk>0)?`<span style="font-weight:700;color:${g.cPrev/(g.pk*g.pCusto)<=CMV_ALVO_BUFFET?'var(--green)':'var(--red)'}">${bdPct(g.cPrev/(g.pk*g.pCusto))}</span>`:'—','',T.cmv!=null?`<b>${bdPct(T.cmv)}</b>`:'');
+  if(T.serv>0)h+=ln('Montado de fato (kg)',g=>g.serv>0?nNum(+g.serv.toFixed(1)):'—',nNum(+T.serv.toFixed(1)))+ln('Custo do montado',g=>g.cServ>0?fmtBRL(g.cServ):'—','',T.cServ>0?fmtBRL(T.cServ):'');
+  return h;}
+function bdSemCatHTML(S){const T=S.T;if(S.cats.length<2||!(T.cPrev>0))return '';
+  return `<div style="padding:16px 18px 6px;font-size:15px;font-weight:600">Peso e custo previstos por categoria</div><div class="scroll-x"><table><thead><tr><th>Categoria</th><th class="num">Previsto (kg)</th><th class="num">% do peso</th><th class="num">Custo</th><th class="num">% do custo</th><th class="num">R$/kg</th></tr></thead><tbody>${S.cats.map(g=>`<tr><td><b>${bdHtml(g.nome)}</b></td><td class="num">${nNum(+g.p.toFixed(1))}</td><td class="num">${bdPct(g.p/T.p)}</td><td class="num">${g.c>0?fmtBRL(g.c):'—'}</td><td class="num">${bdPct(g.c/T.cPrev)}</td><td class="num">${g.c>0?fmtBRL(g.c/g.p):'—'}</td></tr>`).join('')}</tbody></table></div><div style="height:8px"></div>`;}
+/* redesenha só totais e indicadores: os campos ficam como estão, para digitar a semana inteira com Tab sem perder o foco */
+function bdSemRefresh(){const S=bdSemCalc(bdSemD,bdSemLin),set=(i,h)=>{const e=document.getElementById(i);if(e)e.innerHTML=h;};
+  bdSemLin.forEach((l,i)=>{set('bds_rt_'+i,l.tp>0?`<b>${nNum(+l.tp.toFixed(1))}</b>`:'—');set('bds_rc_'+i,l.tc>0?fmtBRL(l.tc):'—');});
+  set('bds_kpis',bdSemKpisHTML(S));set('bds_foot',bdSemFootHTML(S));set('bds_cat',bdSemCatHTML(S));}
+function bdViewSem(){
+  const D=bdSemDias(bdSemRef),hj=hojeISO(),ab=diasTrabalho(),h=bdHtml;
+  $('#topActions').innerHTML=`<button class="btn btn-gold" onclick="bdSemImprimir()">🖨️ Cardápio para a cozinha</button>`;
+  let lin=bdSemLinhasDe(D);const tem={};lin.forEach(l=>{tem[l.key]=1;});
+  bdSemPend=bdSemPend.filter(p=>!(p.key&&tem[p.key]));lin=lin.concat(bdSemPend);bdSemLin=lin;bdSemD=D;
+  const S=bdSemCalc(D,lin),M=bdSemMedias(D[0]);
+  {const Dp=D.map(k=>bdIsoAdd(k,-7));bdSemPrev=bdSemCalc(Dp,bdSemLinhasDe(Dp));if(!(bdSemPrev.T.cPrev>0||bdSemPrev.T.cServ>0))bdSemPrev=null;}
+  const vis=D.map((iso,j)=>ab.includes(new Date(iso+'T12:00:00').getDay())||S.dia[j].n>0);bdSemVis=vis;
+  const estaSem=D.includes(hj),antTem=D.some(k=>bdTemPratos(bdIsoAdd(k,-7)));
+  const barra=`<div class="bd-bar">
+    <button class="bd-nav" title="Semana anterior" onclick="bdSemIr(-1)">‹</button>
+    <input class="input" type="date" value="${D[0]}" onchange="if(this.value){bdSemRef=this.value;bdSemPend=[];viewBuffet()}">
+    <button class="bd-nav" title="Semana seguinte" onclick="bdSemIr(1)">›</button>
+    ${estaSem?'':`<button class="btn btn-ghost btn-sm" onclick="bdSemRef=null;bdSemPend=[];viewBuffet()">Esta semana</button>`}
+    <span class="bd-sem">semana de ${bdCurto(D[0])} a ${fmtDataBR(D[6])}${estaSem?' · atual':''}</span>
+    <span class="bd-bar-fim no-print">${antTem?`<button class="btn btn-ghost btn-sm" onclick="bdSemCopiarAnterior()">Copiar a semana anterior</button>`:''}${lin.some(l=>l.key)?`<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="bdSemLimpar()">Limpar a semana</button>`:''}</span>
+  </div>`;
+  if(!lin.length){const nCubas=(((DB.buffet||{}).cubas)||[]).filter(c=>DB.fichas[c.fichaId]||DB.insumos[c.fichaId]).length;
+    const bt=(cls,on,t)=>`<button class="btn ${cls}" style="justify-content:center;white-space:normal" onclick="${on}">${t}</button>`;
+    $('#view').innerHTML=buffetTabsHTML()+barra+`<div class="card card-pad" style="max-width:620px">
+      <div style="font-family:'Fraunces',serif;font-size:19px;font-weight:700;margin-bottom:4px">Programar a semana</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.55">Monte o cardápio de cada dia com a quantidade a preparar. O Flow mostra o custo previsto por dia e da semana, compara com a semana anterior e imprime o cardápio para a cozinha. O que for programado aqui já aparece no Buffet do dia.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${antTem?bt('btn-primary','bdSemCopiarAnterior()','Copiar o cardápio da semana anterior'):''}
+        ${nCubas?bt(antTem?'btn-ghost':'btn-primary','bdSemDoMapa()','Começar pelo mapa do buffet ('+nCubas+' prato'+(nCubas===1?'':'s')+' em cada dia de funcionamento)'):''}
+        ${bt((antTem||nCubas)?'btn-ghost':'btn-primary','bdSemAdd()','Começar em branco, prato por prato')}
+      </div></div>`;
+    return;}
+  const dataDia=k=>fmtDataBR(k).slice(0,5);
+  const opts=lin.some(l=>l.pend&&!l.key&&!l.lv)?(()=>{const fichas=Object.values(DB.fichas||{}).filter(f=>!tem['f:'+f.id]).sort((a,b)=>a.nome.localeCompare(b.nome)),preps=Object.values(DB.insumos||{}).filter(i=>i.tipo==='preparado'&&!tem['f:'+i.id]).sort((a,b)=>a.nome.localeCompare(b.nome));
+    return `<option value="">— escolha o prato —</option>${fichas.length?`<optgroup label="Fichas técnicas">${fichas.map(f=>`<option value="${f.id}">${h(f.nome)}</option>`).join('')}</optgroup>`:''}${preps.length?`<optgroup label="Preparados">${preps.map(p=>`<option value="${p.id}">${h(p.nome)}</option>`).join('')}</optgroup>`:''}<option value="__livre">✎ Outro prato (escrever o nome)</option>`;})():'';
+  const th=D.map((iso,j)=>{if(!vis[j])return '';const w=new Date(iso+'T12:00:00').getDay(),ant=bdIsoAdd(iso,-7);
+    const outros=D.filter(k=>k!==iso&&bdTemPratos(k));
+    return `<th class="bds-d${iso===hj?' on':''}${ab.includes(w)?'':' off'}"><div>${BD_DOW[w]} ${dataDia(iso)}</div><select class="bds-ac no-print" title="Ações do dia" onchange="const v=this.value;this.value='';bdSemDiaAcao('${iso}',v)"><option value="">ações</option><option value="abrir">Abrir o dia</option>${(outros.length||bdTemPratos(ant))?`<optgroup label="Copiar o cardápio de">${outros.map(k=>`<option value="c:${k}">${BD_DOW[new Date(k+'T12:00:00').getDay()]} ${dataDia(k)}</option>`).join('')}${bdTemPratos(ant)?`<option value="c:${ant}">${BD_DOW[w]} passada, ${dataDia(ant)}</option>`:''}</optgroup>`:''}<option value="limpar">Limpar o programado</option></select></th>`;}).join('');
+  const linhas=lin.map((l,i)=>{const m=l.key&&M[l.key];
+    let nome;
+    if(l.pend&&!l.key&&!l.lv)nome=`<div style="display:flex;gap:6px" id="bds_p_${l.id}"><select class="input" onchange="bdSemEscolhe('${l.id}',this.value)">${opts}</select><button class="mini-del" title="Tirar esta linha" onclick="bdSemPendDel('${l.id}')">${icoX}</button></div>`;
+    else if(l.pend&&l.lv)nome=`<div style="display:flex;gap:6px" id="bds_p_${l.id}"><input class="input" value="${h(l.n)}" placeholder="Nome do prato" onchange="bdSemPendNome('${l.id}',this.value)"><input class="input bd-num" style="flex:0 0 84px" inputmode="decimal" value="${l.ck>0?nNum(+l.ck.toFixed(2)):''}" placeholder="R$/kg" title="Custo por kg, se souber" onchange="bdSemPendCusto('${l.id}',this.value)"><button class="mini-del" title="Tirar esta linha" onclick="bdSemPendDel('${l.id}')">${icoX}</button></div>`;
+    else nome=`<b>${h(l.n)}</b><small>${h(l.cat)}${m?' · média de '+nNum(+(m.s/m.d).toFixed(1))+' kg por dia':''}${l.pend?' · digite a quantidade em algum dia':''}</small>`;
+    return `<tr><td class="bds-n">${nome}</td>${D.map((iso,j)=>{if(!vis[j])return '';const c=l.key?(S.cel[l.key]||{})[iso]:null;
+      return `<td class="bds-c"><input class="input bd-num bds-in" inputmode="decimal" autocomplete="off" value="${c&&c.p>0?nNum(c.p):''}" ${l.key?'':'disabled'} onchange="bdSemSet(${i},'${iso}',this.value,this)">${c&&c.serv>0?`<small${c.p>0&&Math.abs(c.serv-c.p)/c.p>0.2?' style="color:var(--red)"':''}>fez ${nNum(+c.serv.toFixed(1))}</small>`:''}</td>`;}).join('')}
+      <td class="num" id="bds_rt_${i}">${l.tp>0?`<b>${nNum(+l.tp.toFixed(1))}</b>`:'—'}</td><td class="num">${l.ck>0?fmtBRL(l.ck):'<span style="color:var(--red)">sem custo</span>'}</td><td class="num" id="bds_rc_${i}">${l.tc>0?fmtBRL(l.tc):'—'}</td></tr>`;}).join('');
+  $('#view').innerHTML=buffetTabsHTML()+barra+`
+  <div class="kpi-grid bd-kpis" id="bds_kpis">${bdSemKpisHTML(S)}</div>
+  <div class="card" style="margin-bottom:16px">
+    <div style="padding:16px 18px 6px"><div style="font-size:15px;font-weight:600">Cardápio da semana</div><div style="font-size:12px;color:var(--soft);margin-top:2px;line-height:1.5">Digite quantos kg de cada prato vão ser preparados em cada dia; em branco, o prato não entra naquele dia. O custo vem da ficha técnica. O que for programado aqui já aparece no Buffet do dia e na folha da cozinha.</div></div>
+    <div class="scroll-x"><table class="bds-tb">
+      <thead><tr><th>Prato</th>${th}<th class="num">Semana (kg)</th><th class="num">R$/kg</th><th class="num">Custo</th></tr></thead>
+      <tbody>${linhas}</tbody>
+      <tfoot id="bds_foot">${bdSemFootHTML(S)}</tfoot>
+    </table></div>
+    <div class="no-print" style="padding:12px 18px 16px"><button class="btn btn-primary btn-sm" onclick="bdSemAdd()">${icoPlus} Prato</button></div>
+  </div>
+  <div class="card" id="bds_cat">${bdSemCatHTML(S)}</div>`;
+}
+/* cardápio da semana para a cozinha (A4 deitado, sem custos): prato por dia, em kg a preparar */
+function bdSemImprimir(){
+  if(document.querySelector('#modalRoot .modal'))return toast('Feche a janela aberta para imprimir');
+  const D=bdSemDias(bdSemRef),lin=bdSemLinhasDe(D),S=bdSemCalc(D,lin),ab=diasTrabalho(),h=bdHtml,rest=(DB.conta&&DB.conta.restaurante)||'Restaurante';
+  const L=lin.filter(l=>l.tp>0);if(!L.length)return toast('Programe ao menos um prato com quantidade para imprimir');
+  const vis=D.map((iso,j)=>S.dia[j].p>0||ab.includes(new Date(iso+'T12:00:00').getDay())),nv=vis.filter(Boolean).length;
+  let corpo='',cat=null;
+  L.forEach(l=>{if(l.cat!==cat){cat=l.cat;corpo+=`<tr class="bf-cat"><td colspan="${nv+2}">${h(cat)}</td></tr>`;}
+    corpo+=`<tr><td class="bf-n">${h(l.n)}</td>${D.map((iso,j)=>{if(!vis[j])return '';const c=(S.cel[l.key]||{})[iso];return `<td class="bf-c">${c&&c.p>0?nNum(+c.p.toFixed(2)):''}</td>`;}).join('')}<td class="bf-c"><b>${nNum(+l.tp.toFixed(1))}</b></td></tr>`;});
+  let pa=document.getElementById('printArea');if(!pa){pa=document.createElement('div');pa.id='printArea';document.body.appendChild(pa);}
+  pa.innerHTML=`<div class="bf">
+    <div class="bf-head"><div><div class="bf-rest">${h(rest)}</div><div class="bf-t">Cardápio da semana</div></div>
+      <div class="bf-meta"><b>${bdCurto(D[0])} a ${fmtDataBR(D[6])}</b><br>Quantidade a preparar, em kg de comida pronta</div></div>
+    <div class="bf-note">Cada coluna é um dia. O número é quanto preparar daquele prato no dia; em branco, o prato não entra. O que for de fato para o buffet é anotado na folha do dia.</div>
+    <table class="bf-tb bf-sem">
+      <thead><tr><th class="bf-l" style="width:${nv>5?26:32}%">Prato</th>${D.map((iso,j)=>vis[j]?`<th>${BD_SEM[new Date(iso+'T12:00:00').getDay()].replace('-feira','')}<br>${bdCurto(iso)}</th>`:'').join('')}<th style="width:9%">Semana (kg)</th></tr></thead>
+      <tbody>${corpo}</tbody>
+      <tfoot><tr><td class="bf-n">Total do dia (kg)</td>${S.dia.map((g,j)=>vis[j]?`<td class="bf-c"><b>${g.p>0?nNum(+g.p.toFixed(1)):''}</b></td>`:'').join('')}<td class="bf-c"><b>${nNum(+S.T.p.toFixed(1))}</b></td></tr>
+        <tr><td class="bf-n">Pratos no dia</td>${S.dia.map((g,j)=>vis[j]?`<td class="bf-c">${g.p>0?L.filter(l=>((S.cel[l.key]||{})[g.iso]||{}).p>0).length:''}</td>`:'').join('')}<td></td></tr></tfoot>
+    </table>
   </div>`;
   document.body.classList.add('print-buffet');
   const fim=()=>{document.body.classList.remove('print-buffet');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
