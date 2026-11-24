@@ -2816,7 +2816,7 @@ function viewDashboard(){
   const mTxt=metaRef<=0?'':t.faturamento>=metaRef?`Meta ${MT.realista?'realista':'mínima'} batida${MT.desafiador>t.faturamento?`: faltam <b>${fmtBRL(MT.desafiador-t.faturamento)}</b> para a desafiadora`:MT.desafiador?' e a desafiadora também':''}.`
     :MT.diasTrabRest>0?`Faltam <b>${fmtBRL(mFalta)}</b>: <b>${fmtBRL(mFalta/MT.diasTrabRest)}</b> por dia nos ${MT.diasTrabRest} dias de funcionamento que restam${porDiaTrab>0?`. No ritmo atual (${fmtBRL(porDiaTrab)}/dia) o período fecha em <b>${fmtBRL(projecao)}</b>`:''}.`
     :`Período encerrado em ${fmtPct(mPct)} da meta.`;
-  const CS=metaCompraSemana();
+  const CS=metaCompraSemana();const VS=vendasSemana();
   const margemCor=cen.lucro<0?'var(--red)':cen.lucroPct>=reguaLucro()?'var(--green)':'var(--amber)';
   const despPct=t.faturamento>0?cen.desp/t.faturamento*100:0;
   const cmvItens=[{n:'Teórico',v:cmvTeorico},{n:'Real',v:cmvRealP},{n:'Lançado',v:cmvLanc}];
@@ -2836,10 +2836,10 @@ function viewDashboard(){
       <div class="dsh-kpi-vis">${t.faturamento>0?dashBullet(Math.max(cen.lucroPct,0),reguaLucro(),margemCor):''}</div>
     </div>
     <div class="dsh-kpi">
-      <div class="dsh-kpi-top"><span class="lbl">${cmvRealP!=null?'CMV real':cmvLanc!=null?'CMV lançado':'CMV teórico'}</span><span class="chip soft">meta ${fmtPct(cmvMeta)}</span></div>
-      <div class="dsh-kpi-val" style="color:${cmvCorRef(cmvHead)}">${fmtPct(cmvHead)}</div>
-      <div class="dsh-kpi-foot">${cmvRef!=null?`teórico ${fmtPct(cmvTeorico)} · diferença <b style="color:${cmvGap<=2?'var(--green)':cmvGap<=5?'var(--amber)':'var(--red)'}">${(cmvGap>=0?'+':'')+fmtN(cmvGap,1)} p.p.</b>`:'pelas fichas técnicas'}</div>
-      <div class="dsh-kpi-vis">${dashBullet(cmvHead,cmvMeta,cmvCorRef(cmvHead),cmvRef!=null?cmvTeorico:null)}</div>
+      <div class="dsh-kpi-top"><span class="lbl">Vendas da semana</span><span class="chip soft">${VS.rot}</span></div>
+      <div class="dsh-kpi-val">${fmtBRL(VS.v)}</div>
+      <div class="dsh-kpi-foot" title="Receitas lançadas de ${fmtDataBR(VS.de)} a ${fmtDataBR(VS.ate)} (segunda a domingo). É a base da meta de compra da semana. Semana passada: ${fmtBRL(VS.vAnt)}">${VS.vAnt>0?`semana passada <b>${fmtMil(VS.vAnt)}</b>`:VS.v>0?'segunda a domingo':'lance as vendas da semana'}</div>
+      <div class="dsh-kpi-vis">${VS.v>0&&VS.dias.length>1?dashSpark(VS.dias,120,34,'var(--navy)'):''}</div>
     </div>
     <div class="dsh-kpi">
       <div class="dsh-kpi-top"><span class="lbl">Compra da semana</span><span class="chip soft">CMV alvo ${fmtPct(CS.alvo)}</span></div>
@@ -5307,6 +5307,13 @@ function metaCompraSemana(){const S=semanaAtual();const ls=DB.lancamentos||[];co
   if(!(vSem>0)&&vAnt>0&&dAnt>0&&dSem!==dAnt){base=vAnt*dSem/dAnt;fonte+=' ajustado para '+dSem+(dSem===1?' dia':' dias')+' de funcionamento';}
   const ferTxt=fer.map(x=>x.nome+(x.abre?' (abre)':' (fechado)')).join(', ');
   return {S,vSem,vAnt,cSem,alvo,base,meta:base*alvo/100,fonte,ult,dSem,dAnt,fer,ferTxt};}
+/* Vendas da semana (seg a dom): a MESMA base da meta de compra (metaCompraSemana), para Vendas × CMV alvo = Compra da semana */
+function vendasSemana(){const S=semanaAtual();const ls=DB.lancamentos||[];
+  const soma=(de,a)=>ls.filter(l=>l.data>=de&&l.data<=a&&grupoTipo(l.grupo)==='receita').reduce((s,l)=>s+(+l.valor||0),0);
+  const v=soma(S.de,S.ate),vAnt=soma(diasSoma(S.de,-7),diasSoma(S.de,-1));
+  const dias=[];for(let d=S.de;d<=S.ate;d=diasSoma(d,1))dias.push(soma(d,d));let ult=-1;dias.forEach((x,i)=>{if(x>0||S.de<=S.hoje&&diasSoma(S.de,i)<=S.hoje)ult=i;});
+  const dm=iso=>iso.slice(8,10)+'/'+iso.slice(5,7);
+  return {de:S.de,ate:S.ate,rot:dm(S.de)+' a '+dm(S.ate),v,vAnt,dias:dias.slice(0,ult+1)};}
 function reguaCentros(){const o=reguaPLL();return DRE_CENTROS.map(c=>{const x=Object.assign({},c,o[c.id]||{});
   if(x.min!=null&&!(x.min>=0))delete x.min;if(!(x.max>0))x.max=c.max;
   x.ref=x.min!=null?fmtN(x.min,x.min%1?1:0)+'% a '+fmtN(x.max,x.max%1?1:0)+'%':'≤ '+fmtN(x.max,x.max%1?1:0)+'%';return x;});}
