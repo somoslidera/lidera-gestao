@@ -2838,14 +2838,14 @@ function viewDashboard(){
     <div class="dsh-kpi">
       <div class="dsh-kpi-top"><span class="lbl">Vendas da semana</span><span class="chip soft">${VS.rot}</span></div>
       <div class="dsh-kpi-val">${fmtBRL(VS.v)}</div>
-      <div class="dsh-kpi-foot" title="Receitas lançadas de ${fmtDataBR(VS.de)} a ${fmtDataBR(VS.ate)} (segunda a domingo). É a base da meta de compra da semana. Semana passada: ${fmtBRL(VS.vAnt)}">${VS.vAnt>0?`semana passada <b>${fmtMil(VS.vAnt)}</b>`:VS.v>0?'segunda a domingo':'lance as vendas da semana'}</div>
+      <div class="dsh-kpi-foot" title="Receitas lançadas de ${fmtDataBR(VS.de)} a ${fmtDataBR(VS.ate)} (terça a segunda, a semana de compras). Semana passada (${ddmm(VS.antIni)} a ${ddmm(VS.antFim)}): ${fmtBRL(VS.vAnt)}, base da meta de compra desta semana">${VS.vAnt>0?`semana passada <b>${fmtMil(VS.vAnt)}</b>`:VS.v>0?'segunda a domingo':'lance as vendas da semana'}</div>
       <div class="dsh-kpi-vis">${VS.v>0&&VS.dias.length>1?dashSpark(VS.dias,120,34,'var(--navy)'):''}</div>
     </div>
     <div class="dsh-kpi">
       <div class="dsh-kpi-top"><span class="lbl">Compra da semana</span><span class="chip soft" title="CMV alvo">alvo ${fmtN(CS.alvo,CS.alvo%1?1:0)}%</span></div>
       <div class="dsh-kpi-val">${CS.meta>0?fmtBRL(CS.meta):'—'}</div>
-      <div class="dsh-kpi-foot" title="${CS.meta>0?'Meta = '+esc(CS.fonte)+' × CMV alvo de '+fmtPct(CS.alvo)+'. Comprado = notas do grupo CMV da semana.':'Lance as vendas da semana para o Flow calcular quanto comprar.'}${CS.ferTxt?' Feriado: '+esc(CS.ferTxt):''}">${CS.meta>0?`comprado <b style="color:${CS.cSem>CS.meta?'var(--red)':'var(--green)'}">${fmtBRL(CS.cSem)}</b> · ${fmtPct(CS.cSem/CS.meta*100)}${CS.ferTxt?' · feriado':''}`:'lance as vendas da semana'}</div>
-      <div class="dsh-kpi-vis">${CS.meta>0?dashBullet(CS.cSem,CS.meta,CS.cSem>CS.meta?'var(--red)':'var(--gold)'):''}</div>
+      <div class="dsh-kpi-foot" title="${CS.meta>0?`Meta fixa da semana ${ddmm(CS.S.ini)} a ${ddmm(CS.S.fim)} (terça a segunda): vendeu de ${ddmm(CS.S.antIni)} a ${ddmm(CS.S.antFim)} ${fmtBRL(CS.vendasBase)} × CMV alvo ${fmtPct(CS.alvo)}. Comprou ${fmtBRL(CS.comprado)} (lançamentos de CMV de terça até hoje); ${CS.saldo>=0?'pode comprar':'passou'} ${fmtBRL(Math.abs(CS.saldo))}.`:'Sem vendas lançadas na semana passada ('+ddmm(CS.S.antIni)+' a '+ddmm(CS.S.antFim)+'): a meta de compra é o vendido na semana anterior × CMV alvo.'}">${CS.meta>0?`comprou <b style="color:${CP_COR_FLOW[CS.status]}">${fmtBRL(CS.comprado)}</b> · ${fmtPct(CS.usoPct)}`:CS.comprado>0?`comprou ${fmtBRL(CS.comprado)} · sem base`:'sem vendas na semana passada'}</div>
+      <div class="dsh-kpi-vis">${CS.meta>0?dashBullet(CS.comprado,CS.meta,CP_COR_FLOW[CS.status]):''}</div>
     </div>
   </div>
   <div class="dsh-3">
@@ -5296,24 +5296,24 @@ function prmMetasFatHTML(){const ano=metasAnoSel;const cfg=metasAno(ano);const d
   </div>`;}
 /* meta de compra da semana: o que foi vendido na semana × CMV alvo (ou a última apuração de CMV, se houver) */
 function semanaAtual(){const h=hojeISO();const d=new Date(h+'T12:00:00');const dow=(d.getDay()+6)%7;const seg=new Date(d);seg.setDate(d.getDate()-dow);const dom=new Date(seg);dom.setDate(seg.getDate()+6);const iso=x=>x.toISOString().slice(0,10);return {de:iso(seg),ate:iso(dom),hoje:h};}
-function metaCompraSemana(){const S=semanaAtual();const ls=DB.lancamentos||[];const vend=de=>ls.filter(l=>l.data>=de.de&&l.data<=de.ate&&grupoTipo(l.grupo)==='receita').reduce((s,l)=>s+(+l.valor||0),0);
-  const comp=de=>ls.filter(l=>l.data>=de.de&&l.data<=de.ate&&l.grupo==='CMV').reduce((s,l)=>s+(+l.valor||0),0);
-  const ant={de:diasSoma(S.de,-7),ate:diasSoma(S.de,-1)};const vSem=vend(S),vAnt=vend(ant),cSem=comp(S);
-  const regs=cmvRegsFechadas().filter(r=>r.data).sort((a,b)=>b.data.localeCompare(a.data));const ult=regs[0]||null;
-  const alvo=cmvAlvoRef();
-  // feriados: a semana com feriado fechado tem menos dias de venda; quando a base é a semana passada, ajusta pela proporção de dias de funcionamento
-  const dSem=diasTrabEntre(S.de,S.ate),dAnt=diasTrabEntre(ant.de,ant.ate);const fer=feriadosEntre(S.de,S.ate);
-  let base=vSem>0?vSem:vAnt;let fonte=vSem>0?'vendido nesta semana':vAnt>0?'vendido na semana passada':'';
-  if(!(vSem>0)&&vAnt>0&&dAnt>0&&dSem!==dAnt){base=vAnt*dSem/dAnt;fonte+=' ajustado para '+dSem+(dSem===1?' dia':' dias')+' de funcionamento';}
-  const ferTxt=fer.map(x=>x.nome+(x.abre?' (abre)':' (fechado)')).join(', ');
-  return {S,vSem,vAnt,cSem,alvo,base,meta:base*alvo/100,fonte,ult,dSem,dAnt,fer,ferTxt};}
-/* Vendas da semana (seg a dom): a MESMA base da meta de compra (metaCompraSemana), para Vendas × CMV alvo = Compra da semana */
-function vendasSemana(){const S=semanaAtual();const ls=DB.lancamentos||[];
+/* semana de compras = a do dashboard de controle da Lidera: TERÇA a SEGUNDA (fecha na segunda, já com o fim de semana) */
+function semanaCompras(h){h=h||hojeISO();const d=new Date(h+'T12:00:00');const ini=diasSoma(h,-((d.getDay()+5)%7));
+  return {ini,fim:diasSoma(ini,6),antIni:diasSoma(ini,-7),antFim:diasSoma(ini,-1),hoje:h};}
+const ddmm=iso=>iso?iso.slice(8,10)+'/'+iso.slice(5,7):'';
+/* meta de compra da semana = regra do dashboard de controle: vendido na semana anterior (ter–seg) × CMV alvo, fixa a semana inteira;
+   comprado = lançamentos do grupo CMV de terça até hoje */
+function metaCompraSemana(){const S=semanaCompras();const ls=DB.lancamentos||[];const soma=f=>ls.filter(f).reduce((s,l)=>s+(+l.valor||0),0);
+  const alvo=cmvAlvoRef();const vendasBase=soma(l=>l.data>=S.antIni&&l.data<=S.antFim&&grupoTipo(l.grupo)==='receita');const meta=vendasBase*alvo/100;
+  const ate=S.hoje<S.fim?S.hoje:S.fim;const comprado=soma(l=>l.grupo==='CMV'&&l.data>=S.ini&&l.data<=ate);const saldo=meta-comprado;
+  const status=meta<=0?(comprado>0?'semBase':'semDado'):comprado>meta?'estourou':comprado>=meta*0.85?'limite':'dentro';
+  return {S,alvo,vendasBase,meta,comprado,saldo,usoPct:meta>0?comprado/meta*100:null,status};}
+/* Vendas da semana: receitas da semana de compras (ter–seg); a semana passada é a base da meta de compra */
+function vendasSemana(){const S=semanaCompras();const ls=DB.lancamentos||[];
   const soma=(de,a)=>ls.filter(l=>l.data>=de&&l.data<=a&&grupoTipo(l.grupo)==='receita').reduce((s,l)=>s+(+l.valor||0),0);
-  const v=soma(S.de,S.ate),vAnt=soma(diasSoma(S.de,-7),diasSoma(S.de,-1));
-  const dias=[];for(let d=S.de;d<=S.ate;d=diasSoma(d,1))dias.push(soma(d,d));let ult=-1;dias.forEach((x,i)=>{if(x>0||S.de<=S.hoje&&diasSoma(S.de,i)<=S.hoje)ult=i;});
-  const dm=iso=>iso.slice(8,10)+'/'+iso.slice(5,7);
-  return {de:S.de,ate:S.ate,rot:(S.de.slice(5,7)===S.ate.slice(5,7)?S.de.slice(8,10):dm(S.de))+' a '+dm(S.ate),v,vAnt,dias:dias.slice(0,ult+1)};}
+  const v=soma(S.ini,S.fim),vAnt=soma(S.antIni,S.antFim);
+  const dias=[];for(let d=S.ini;d<=S.fim;d=diasSoma(d,1))dias.push(soma(d,d));let ult=-1;dias.forEach((x,i)=>{if(x>0||diasSoma(S.ini,i)<=S.hoje)ult=i;});
+  return {de:S.ini,ate:S.fim,rot:(S.ini.slice(5,7)===S.fim.slice(5,7)?S.ini.slice(8,10):ddmm(S.ini))+' a '+ddmm(S.fim),v,vAnt,antIni:S.antIni,antFim:S.antFim,dias:dias.slice(0,ult+1)};}
+const CP_COR_FLOW={estourou:'var(--red)',limite:'var(--amber)',dentro:'var(--green)',semBase:'var(--muted)',semDado:'var(--muted)'};
 function reguaCentros(){const o=reguaPLL();return DRE_CENTROS.map(c=>{const x=Object.assign({},c,o[c.id]||{});
   if(x.min!=null&&!(x.min>=0))delete x.min;if(!(x.max>0))x.max=c.max;
   x.ref=x.min!=null?fmtN(x.min,x.min%1?1:0)+'% a '+fmtN(x.max,x.max%1?1:0)+'%':'≤ '+fmtN(x.max,x.max%1?1:0)+'%';return x;});}
