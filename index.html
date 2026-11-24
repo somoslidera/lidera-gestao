@@ -1056,7 +1056,7 @@ body.dark .prm-chip{background:var(--card)}body.dark .prm-nav a:hover{background
 .dsh-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
 .dsh-kpi{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px 14px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px;min-width:0;position:relative;overflow:hidden}
 .dsh-kpi-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.dsh-kpi .lbl{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.dsh-kpi .lbl{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}.dsh-kpi-top{height:22px;flex-wrap:nowrap!important;min-width:0}.dsh-kpi-top .lbl{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;min-width:0}.dsh-kpi-top>:not(.lbl){flex-shrink:0}@media (min-width:821px) and (max-width:1365px){.dsh-kpi .lbl{font-size:10px;letter-spacing:.3px}.dsh-kpi-top .chip,.dsh-kpi-top .dsh-delta{font-size:10px;padding-left:6px;padding-right:6px}}
 .dsh-kpi .chip,.dsh-delta{font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap}
 .dsh-kpi .chip.soft{background:var(--bg);color:var(--muted)}.dsh-kpi .chip.down{background:var(--red-bg);color:var(--red)}
 .dsh-delta.up{background:var(--green-bg);color:var(--green)}.dsh-delta.down{background:var(--red-bg);color:var(--red)}
@@ -2842,9 +2842,9 @@ function viewDashboard(){
       <div class="dsh-kpi-vis">${VS.v>0&&VS.dias.length>1?dashSpark(VS.dias,120,34,'var(--navy)'):''}</div>
     </div>
     <div class="dsh-kpi">
-      <div class="dsh-kpi-top"><span class="lbl">Compra da semana</span><span class="chip soft">CMV alvo ${fmtPct(CS.alvo)}</span></div>
+      <div class="dsh-kpi-top"><span class="lbl">Compra da semana</span><span class="chip soft" title="CMV alvo">alvo ${fmtN(CS.alvo,CS.alvo%1?1:0)}%</span></div>
       <div class="dsh-kpi-val">${CS.meta>0?fmtBRL(CS.meta):'—'}</div>
-      <div class="dsh-kpi-foot">${CS.meta>0?`comprado <b style="color:${CS.cSem>CS.meta?'var(--red)':'var(--green)'}">${fmtBRL(CS.cSem)}</b> · ${fmtPct(CS.cSem/CS.meta*100)} · ${CS.fonte}${CS.ferTxt?' · feriado: '+esc(CS.ferTxt):''}`:'lance as vendas da semana para o Flow calcular quanto comprar'+(CS.ferTxt?' · feriado: '+esc(CS.ferTxt):'')}</div>
+      <div class="dsh-kpi-foot" title="${CS.meta>0?'Meta = '+esc(CS.fonte)+' × CMV alvo de '+fmtPct(CS.alvo)+'. Comprado = notas do grupo CMV da semana.':'Lance as vendas da semana para o Flow calcular quanto comprar.'}${CS.ferTxt?' Feriado: '+esc(CS.ferTxt):''}">${CS.meta>0?`comprado <b style="color:${CS.cSem>CS.meta?'var(--red)':'var(--green)'}">${fmtBRL(CS.cSem)}</b> · ${fmtPct(CS.cSem/CS.meta*100)}${CS.ferTxt?' · feriado':''}`:'lance as vendas da semana'}</div>
       <div class="dsh-kpi-vis">${CS.meta>0?dashBullet(CS.cSem,CS.meta,CS.cSem>CS.meta?'var(--red)':'var(--gold)'):''}</div>
     </div>
   </div>
@@ -5313,7 +5313,7 @@ function vendasSemana(){const S=semanaAtual();const ls=DB.lancamentos||[];
   const v=soma(S.de,S.ate),vAnt=soma(diasSoma(S.de,-7),diasSoma(S.de,-1));
   const dias=[];for(let d=S.de;d<=S.ate;d=diasSoma(d,1))dias.push(soma(d,d));let ult=-1;dias.forEach((x,i)=>{if(x>0||S.de<=S.hoje&&diasSoma(S.de,i)<=S.hoje)ult=i;});
   const dm=iso=>iso.slice(8,10)+'/'+iso.slice(5,7);
-  return {de:S.de,ate:S.ate,rot:dm(S.de)+' a '+dm(S.ate),v,vAnt,dias:dias.slice(0,ult+1)};}
+  return {de:S.de,ate:S.ate,rot:(S.de.slice(5,7)===S.ate.slice(5,7)?S.de.slice(8,10):dm(S.de))+' a '+dm(S.ate),v,vAnt,dias:dias.slice(0,ult+1)};}
 function reguaCentros(){const o=reguaPLL();return DRE_CENTROS.map(c=>{const x=Object.assign({},c,o[c.id]||{});
   if(x.min!=null&&!(x.min>=0))delete x.min;if(!(x.max>0))x.max=c.max;
   x.ref=x.min!=null?fmtN(x.min,x.min%1?1:0)+'% a '+fmtN(x.max,x.max%1?1:0)+'%':'≤ '+fmtN(x.max,x.max%1?1:0)+'%';return x;});}
