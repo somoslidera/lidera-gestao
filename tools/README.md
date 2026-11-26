@@ -32,6 +32,18 @@ Configuração do projeto no Cloudflare Pages, ligado a este repo:
 
 A produção de verdade continua no GitHub Pages (`flow.somoslidera.com.br`). O Cloudflare **nunca** recebe o `CNAME` e nunca fala com o banco.
 
+## Como abrir a revisão de nota sem a Sefaz
+
+A tela **Novo lançamento** com itens da nota (aviso âmbar "CX ≠ kg", Padrão de compra, desvincular e vincular) normalmente vem das notas da Sefaz, que dependem do servidor. No preview, sem banco, dá para chegar nela pela nota de teste:
+
+1. Financeiro → Lançamentos → **Importar NF-e (XML ou PDF)** → escolha `tools/fixtures/nfe-demo-troca.xml`.
+2. A nota é fictícia: o fornecedor é de demonstração, com CNPJ zerado, e o único item é COCO RALADO 24X100G, em CX. A natureza "TROCA DE MERCADORIA" faz o Flow abrir a **tela de revisão** em vez de importar direto.
+3. Se o caso pedir uma compra, troque o tipo para **Compra** no topo.
+
+Uma nota sem natureza de troca ou bonificação importa direto, sem passar pela revisão.
+
+Para gravar uma demonstração, rode o roteiro antes no Playwright, contra o preview, e só depois grave.
+
 ## Quando o build falha
 
 O `preview_build.py` procura trechos exatos do `index.html` e do `pdv/index.html`, como `const SUPA_URL='…'` e `DEMO=QS.has('demo')||`. Se alguém mudar essas linhas, o build para com a mensagem "O código mudou". Ajuste o padrão no script. Não desligue a conferência.

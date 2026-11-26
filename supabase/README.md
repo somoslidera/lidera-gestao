@@ -17,6 +17,7 @@ As outras funções do Flow continuam fora do git por enquanto e entram nos pró
 
 ## Regras
 
+- **Revisão de segurança antes de entrar no repo.** Função nova, ou mudança em quem pode chamar o quê, só entra depois de alguém conferir: quem chama, com qual `orgId` e com qual papel (dono, membro da equipe, consultor, admin). O repo é público, então um problema encontrado vai direto aos responsáveis, nunca para issue ou PR.
 - **Nenhum valor de segredo no código.** Tudo vem de `Deno.env.get(...)`, configurado em *Edge Functions → Secrets* no painel do Supabase.
 - Mudou uma função? O PR traz o código, e o deploy acontece **depois** do merge, a partir da `main`:
   ```bash
