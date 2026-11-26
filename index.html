@@ -5727,10 +5727,14 @@ function lmPadraoCompraModal(i){const r=lancDraft[i];const ins=r&&DB.insumos[r.i
 function lmPadraoCompraSalvar(i,modo,todas){const r=lancDraft[i];const ins=r&&DB.insumos[r.insumoId];if(!ins)return lmVoltarLanc();
   const alvo=x=>x===r||(todas&&x.insumoId===ins.id);   // antes valia para TODAS as linhas do produto e uma sobrescrevia a outra
   const nome=($('#pc_emb_nome').value||'').trim(),per=parseFloat($('#pc_emb_qtd').value)||0;if(!nome||!(per>0))return toast('Informe a embalagem e quanto ela contém');
-  if(modo==='prod'){ins.embNome=nome;ins.embQtd=per;lancDraft.forEach(x=>{if(alvo(x)){x.embLanc=null;if(!x.uni||x.uni==='un')x.uni=nome;}});save();lancarModal(true);toast('Padrão de compra salvo no produto: '+nome+' com '+per+' '+uSym(ins.uni));return;}
-  lancDraft.forEach(x=>{if(alvo(x)){x.embLanc={nome,qtd:per};if(!x.uni||x.uni==='un')x.uni=nome;}});
+  if(modo==='prod'){ins.embNome=nome;ins.embQtd=per;lancDraft.forEach(x=>{if(alvo(x)){lmGuardaUni(x);x.embLanc=null;if(!x.uni||x.uni==='un')x.uni=nome;}});save();lancarModal(true);toast('Padrão de compra salvo no produto: '+nome+' com '+per+' '+uSym(ins.uni));return;}
+  lancDraft.forEach(x=>{if(alvo(x)){lmGuardaUni(x);x.embLanc={nome,qtd:per};if(!x.uni||x.uni==='un')x.uni=nome;}});
   lancarModal(true);toast('Só nesta nota: '+nome+' com '+per+' '+uSym(ins.uni)+'. O produto não mudou.');}
-function lmDesvincular(i){const r=lancDraft[i];if(!r)return;r.insumoId='';if(r.descOrig)r.desc=r.descOrig;renderLmRows();}
+/* guarda a unidade que veio na nota antes de ela virar o nome da embalagem, para o desvincular conseguir desfazer */
+function lmGuardaUni(x){if(x&&x.uniOrig===undefined)x.uniOrig=x.uni||'';}
+function lmDesvincular(i){const r=lancDraft[i];if(!r)return;r.insumoId='';if(r.descOrig)r.desc=r.descOrig;
+  r.embLanc=null;if(r.uniOrig!==undefined){r.uni=r.uniOrig;delete r.uniOrig;}   // sem isso a embalagem errada voltava junto no novo vínculo (issue #5)
+  renderLmRows();}
 function lmVoltarLanc(){lancarModal(true);}
 function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
   nfeEnsureCats();lancDraft.forEach(x=>{delete x._lpAtivo;});r._lpAtivo=true;
@@ -5787,11 +5791,11 @@ function lmVincularModal(i){const r=lancDraft[i];if(!r)return;
 function lmAplicarVinculo(i,insId){const r=lancDraft[i],ins=DB.insumos[insId];if(!r||!ins)return 0;
   const alvo=lmNorm(r.descOrig||r.desc);
   // a linha clicada SEMPRE vincula — mesmo sem descrição (é o caso do lançamento manual)
-  r.insumoId=insId;if(r.fromIA)r.desc=ins.nome;const _e=insEmb(ins);if(!r.uni||(_e&&r.uni==='un'))r.uni=_e?_e.nome:ins.uni;let n=1;
+  r.insumoId=insId;if(r.fromIA)r.desc=ins.nome;const _e=insEmb(ins);lmGuardaUni(r);if(!r.uni||(_e&&r.uni==='un'))r.uni=_e?_e.nome:ins.uni;let n=1;
   // só linhas da mesma nota se propagam: no manual cada linha é independente
   if(alvo&&r.fromIA)lancDraft.forEach((x,j)=>{if(j===i||x.insumoId||!x.fromIA)return;
     const xd=lmNorm(x.descOrig||x.desc);
-    if(xd&&xd===alvo){x.insumoId=insId;x.desc=ins.nome;if(!x.uni||(_e&&x.uni==='un'))x.uni=_e?_e.nome:ins.uni;n++;}});
+    if(xd&&xd===alvo){x.insumoId=insId;x.desc=ins.nome;lmGuardaUni(x);if(!x.uni||(_e&&x.uni==='un'))x.uni=_e?_e.nome:ins.uni;n++;}});
   // memoriza o apelido para as próximas notas
   const orig=(r.descOrig||'').trim();
   if(orig&&lmNorm(orig)!==lmNorm(ins.nome)){ins.apelidos=ins.apelidos||[];
@@ -5833,9 +5837,9 @@ function lmSalvarNovoProduto(i){const r=lancDraft[i];if(!r)return lmVoltarLanc()
   // a linha clicada sempre vincula; as outras linhas da MESMA nota com descrição idêntica
   // vinculam junto (mantém "AGUA ... C/" e "AGUA ... S/" separadas)
   const alvo=lmNorm(orig||r.desc);
-  r.insumoId=nid;if(r.fromIA)r.desc=nome;if(!r.qtd)r.qtd=embQtd>0?+(qtd/embQtd).toFixed(3):qtd;if(!r.uni||(embQtd>0&&r.uni==='un'))r.uni=embQtd>0?embNome:uni;if(forn&&!r.fornecedor)r.fornecedor=forn;let n=1;
+  r.insumoId=nid;if(r.fromIA)r.desc=nome;lmGuardaUni(r);if(!r.qtd)r.qtd=embQtd>0?+(qtd/embQtd).toFixed(3):qtd;if(!r.uni||(embQtd>0&&r.uni==='un'))r.uni=embQtd>0?embNome:uni;if(forn&&!r.fornecedor)r.fornecedor=forn;let n=1;
   if(alvo&&r.fromIA)lancDraft.forEach((x,j)=>{if(j===i||x.insumoId||!x.fromIA)return;const xd=lmNorm(x.descOrig||x.desc);
-    if(xd&&xd===alvo){x.insumoId=nid;x.desc=nome;if(!x.qtd)x.qtd=qtd;if(!x.uni||(embQtd>0&&x.uni==='un'))x.uni=embQtd>0?embNome:uni;if(forn&&!x.fornecedor)x.fornecedor=forn;n++;}});
+    if(xd&&xd===alvo){x.insumoId=nid;x.desc=nome;lmGuardaUni(x);if(!x.qtd)x.qtd=qtd;if(!x.uni||(embQtd>0&&x.uni==='un'))x.uni=embQtd>0?embNome:uni;if(forn&&!x.fornecedor)x.fornecedor=forn;n++;}});
   save();lancarModal(true);
   toast(n>1?('Produto cadastrado · '+n+' linhas vinculadas'):'Produto cadastrado e vinculado');}
 /* ---- Parcelamento com vencimentos livres (30/60/90, 15/30/45, ou datas soltas) ----
