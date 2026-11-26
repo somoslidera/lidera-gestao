@@ -1582,6 +1582,16 @@ function revendaNomeQtd(nome,uni){const b=BASE[uni];const s=String(nome||'');let
   if(b==='ml'){m=s.match(/(\d+(?:[.,]\d+)?)\s*(ml|lts?|litros?|l)\b/i);if(m){const v=parseFloat(m[1].replace(',','.'));const q=/^ml$/i.test(m[2])?v:v*1000;return q>=20&&q<=20000?q:0;}return /\blitro\b/i.test(s)?1000:0;}
   if(b==='g'){m=s.match(/(\d+(?:[.,]\d+)?)\s*(kg|grs?|g)\b/i);if(m){const v=parseFloat(m[1].replace(',','.'));const q=/^kg$/i.test(m[2])?v*1000:v;return q>=5&&q<=50000?q:0;}}
   return 0;}
+/* Sugestão do Padrão de compra: quanto UMA embalagem da nota contém, em unidade-base, lendo a descrição.
+   Entende "quantidade × tamanho" ("24X100G" = 2400 g, "6 x 2L" = 12000 ml); sem multiplicador, usa revendaNomeQtd.
+   Devolve {q, n, v, u}: q = total em unidade-base, n = multiplicador (1 se não houver), v/u = tamanho escrito. Só para a sugestão. */
+function embNomeQtd(nome,uni){const b=BASE[uni];const s=String(nome||'');
+  if(b==='g'||b==='ml'){const re=b==='g'?/(\d{1,4})\s*[xX]\s*(\d+(?:[.,]\d+)?)\s*(kg|grs?|g)\b/i:/(\d{1,4})\s*[xX]\s*(\d+(?:[.,]\d+)?)\s*(ml|lts?|litros?|l)\b/i;
+    const m=s.match(re);
+    if(m){const n=parseInt(m[1],10),v=parseFloat(m[2].replace(',','.')),u=m[3].toLowerCase();
+      const um=b==='g'?(/^kg$/.test(u)?v*1000:v):(/^ml$/.test(u)?v:v*1000);const q=n*um;
+      if(n>=2&&q>0&&q<=200000)return {q,n,v,u:b==='g'?(/^kg$/.test(u)?'kg':'g'):(/^ml$/.test(u)?'ml':'L')};}}
+  const q=revendaNomeQtd(s,uni);return q>0?{q,n:1,v:0,u:''}:null;}
 // quanto UMA unidade vendida contém, em unidade-base: produto em un = 1; em ml/L/g/kg = a embalagem; sem embalagem, o que o nome diz; 0 = não se sabe
 function revendaQtdBase(ins){if(!ins)return 1;const u=ins.uni||'un';if((BASE[u]||'un')==='un')return 1;const e=insEmb(ins);if(e)return e.qtd*(TO_BASE[u]||1);return revendaNomeQtd(ins.nome,u);}
 function revendaSemConteudo(ins){return !!(ins&&ins.revenda&&!(revendaQtdBase(ins)>0));}
@@ -5704,7 +5714,9 @@ function lmPadraoCompraModal(i){const r=lancDraft[i];const ins=r&&DB.insumos[r.i
   // mesmo produto em mais de uma linha (ex.: macarrão de 500 g e de 1.500 g na mesma nota): cada linha tem a sua embalagem
   const outras=lancDraft.filter((x,k)=>k!==i&&x.insumoId===ins.id);const txt=x=>String((x&&(x.descOrig||x.desc))||'').trim().toLowerCase();
   const mesmaDesc=outras.length>0&&outras.every(x=>txt(x)===txt(r));
-  const doNome=(()=>{try{const q=revendaNomeQtd(r.descOrig||r.desc||'',ins.uni);return q>0?+(q/(TO_BASE[ins.uni]||1)).toFixed(3):0;}catch(e){return 0;}})();   // "MACARRAO 1500G" → 1500 g (ou 1,5 kg)
+  const _sug=(()=>{try{return embNomeQtd(r.descOrig||r.desc||'',ins.uni);}catch(e){return null;}})();   // "MACARRAO 1500G" → 1500 g · "24X100G" → 24 × 100 g (issue #15)
+  const doNome=_sug?+(_sug.q/(TO_BASE[ins.uni]||1)).toFixed(3):0;
+  const contaSug=(_sug&&_sug.n>1)?` (${_sug.n} × ${_sug.v.toLocaleString('pt-BR',{maximumFractionDigits:3})} ${_sug.u} = ${doNome.toLocaleString('pt-BR',{maximumFractionDigits:3})} ${uSym(ins.uni)})`:'';
   const sugQtd=(r.embLanc&&r.embLanc.qtd)||doNome||ins.embQtd||'';
   modal(`<div class="modal-head"><h3>Padrão de compra · ${esc(ins.nome)}</h3><button class="x" onclick="lmVoltarLanc()">${icoX}</button></div>
   <div class="modal-body">
@@ -5714,7 +5726,7 @@ function lmPadraoCompraModal(i){const r=lancDraft[i];const ins=r&&DB.insumos[r.i
       <div class="field"><label>Você compra em</label><input class="input" id="pc_emb_nome" list="emb_dl" value="${esc((r.embLanc&&r.embLanc.nome)||ins.embNome||'')}" placeholder="pé, pacote, caixa…"></div>
       <div class="field"><label>Cada uma tem <span class="hint">${uSym(ins.uni)}</span></label><input class="input" id="pc_emb_qtd" type="number" step="0.001" min="0" value="${sugQtd}" placeholder="Ex.: 400"></div>
     </div>
-    ${(doNome&&!(r.embLanc&&r.embLanc.qtd))?`<div class="gp-mini" style="margin:-4px 0 10px">Sugestão tirada da descrição desta linha: <b>${esc(r.descOrig||r.desc||'')}</b>. Confira.</div>`:''}
+    ${(doNome&&!(r.embLanc&&r.embLanc.qtd))?`<div class="gp-mini" style="margin:-4px 0 10px">Sugestão tirada da descrição desta linha: <b>${esc(r.descOrig||r.desc||'')}</b>${esc(contaSug)}. Confira.</div>`:''}
     ${outras.length?`<label style="display:flex;gap:9px;align-items:flex-start;cursor:pointer;font-size:12.5px;margin:0 0 12px"><input type="checkbox" id="pc_todas" ${mesmaDesc?'checked':''} style="margin-top:2px;width:15px;height:15px;accent-color:var(--navy);flex:0 0 auto"><span>Usar a mesma embalagem ${outras.length>1?'nas outras <b>'+outras.length+'</b> linhas':'na <b>outra linha</b>'} deste produto nesta nota.${mesmaDesc?'':' <span style="color:var(--muted)">Deixe desmarcado se elas vieram em tamanhos diferentes.</span>'}</span></label>`:''}
     <div class="field" style="margin-top:4px"><label>Vale para</label>
       <div style="display:grid;gap:8px">
