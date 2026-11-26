@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe versao="4.00" Id="NFe00000000000000000000000000000000000000000001">
+      <ide>
+        <natOp>TROCA DE MERCADORIA</natOp>
+        <nNF>1002</nNF>
+        <dhEmi>2026-11-26T09:00:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>00000000000000</CNPJ>
+        <xNome>FORNECEDOR DEMONSTRACAO LTDA</xNome>
+      </emit>
+      <det nItem="1">
+        <prod>
+          <cProd>DEMO02</cProd>
+          <xProd>COCO RALADO 24X100G CX 24</xProd>
+          <CFOP>5102</CFOP>
+          <uCom>CX</uCom>
+          <qCom>1.0000</qCom>
+          <vUnCom>144.99</vUnCom>
+          <vProd>144.99</vProd>
+        </prod>
+      </det>
+      <total>
+        <ICMSTot>
+          <vNF>144.99</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+</nfeProc>
