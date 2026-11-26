@@ -5,3 +5,5 @@ tools/smoke/node_modules/
 tools/smoke/prints/
 __pycache__/
 .DS_Store
+# backup local de teste (tools/backup/backup.sh com BACKUP_SO_LOCAL=1)
+_backup/
