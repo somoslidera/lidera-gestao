@@ -1,0 +1,7 @@
+# preview montado por tools/preview_build.py
+_site/
+# smoke (Playwright)
+tools/smoke/node_modules/
+tools/smoke/prints/
+__pycache__/
+.DS_Store

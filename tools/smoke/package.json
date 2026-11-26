@@ -1,0 +1,12 @@
+{
+  "name": "flow-smoke",
+  "private": true,
+  "type": "module",
+  "description": "Smoke do preview do Flow (Playwright). Não faz parte do site publicado.",
+  "scripts": {
+    "smoke": "python3 ../preview_build.py && node smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.48.2"
+  }
+}
