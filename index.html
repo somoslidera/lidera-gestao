@@ -11704,7 +11704,7 @@ function datasAnoCorrigir(){if(!podeFinNota())return toast('Sem permissão para 
   save();closeModal();viewFinanceiro();toast(n+' lançamento'+(n===1?' corrigido':'s corrigidos')+' para '+anoN,5000);}
 /* versão nova publicada: avisa quem ficou com a aba aberta (12/11: aba antiga quase estragou as fichas de dose).
    SÓ em atualização maior: VER_MAIOR sobe junto com o arquivo versao.json do site. Ajuste pequeno não mexe em nenhum dos dois e ninguém é avisado. */
-const VER_MAIOR='2026-11-16';
+const VER_MAIOR='2026-11-27';
 let VER_ETAG=null;
 async function verChecar(forcar){if(!forcar&&(!/^https?:$/.test(location.protocol)||/^(localhost|127\.|\[::1\])/.test(location.hostname)))return;
   try{if(VER_ETAG===null){VER_ETAG='';try{const h=await fetch(location.pathname+'?v='+Date.now(),{method:'HEAD',cache:'no-store'});if(h.ok)VER_ETAG=h.headers.get('etag')||h.headers.get('last-modified')||'';}catch(e){}}
