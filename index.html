@@ -3034,8 +3034,8 @@ function editInsumo(id){
     </div>
     <div class="field" style="margin-top:12px"><label>Estoque e compras <span class="hint">opcional</span></label>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
-        <div><div class="gp-mini" style="margin-bottom:3px" title="Quanto você quer ter depois de comprar">Estoque ideal</div><input class="input" id="i_estmin" type="number" step="0.001" min="0" value="${i.estoqueMin||''}" ${podeIdeal()?'':'disabled title="Só o administrador altera o ideal"'} placeholder="0" style="text-align:right"></div>
-        <div><div class="gp-mini" style="margin-bottom:3px" title="Ponto de pedido: ao chegar aqui, entra na lista de compras">Estoque crítico</div><input class="input" id="i_estcrit" type="number" step="0.001" min="0" value="${i.estoqueCrit||''}" ${podeIdeal()?'':'disabled title="Só o administrador altera o crítico"'} placeholder="—" style="text-align:right"></div>
+        <div><div class="gp-mini" style="margin-bottom:3px" title="Quanto você quer ter depois de comprar">Estoque ideal</div><input class="input" id="i_estmin" type="number" step="0.001" min="0" value="${i.estoqueMin||''}" ${podeIdeal()?'':'disabled title="Só o administrador (ou quem tem a permissão Alterar estoque ideal e crítico) altera o ideal"'} placeholder="0" style="text-align:right"></div>
+        <div><div class="gp-mini" style="margin-bottom:3px" title="Ponto de pedido: ao chegar aqui, entra na lista de compras">Estoque crítico</div><input class="input" id="i_estcrit" type="number" step="0.001" min="0" value="${i.estoqueCrit||''}" ${podeIdeal()?'':'disabled title="Só o administrador (ou quem tem a permissão Alterar estoque ideal e crítico) altera o crítico"'} placeholder="—" style="text-align:right"></div>
         <div><div class="gp-mini" style="margin-bottom:3px" title="Quantos dias o fornecedor leva para entregar">Reposição (dias)</div><input class="input" id="i_prazorep" type="number" step="1" min="0" value="${i.prazoRep||''}" placeholder="—" style="text-align:right"></div>
       </div>
       <div style="font-size:11.5px;color:var(--soft);margin-top:5px">Ideal = quanto comprar (ex.: 72 cervejas por semana). Crítico = quando comprar (ex.: 20): o item só entra na lista ao chegar no crítico, sugerindo ideal menos saldo. Sem crítico, a lista usa o ideal como mínimo, como sempre foi.</div></div>
@@ -9731,7 +9731,7 @@ function estDerivDetTxt(x){const d=x.derivDet||[];if(!d.length)return '';const u
 
 /* Posição e lista de compras: ideal e crítico de porcionado em porções */
 function estIdealVal(x,k){const v=k==='min'?x.min:x.crit;if(!v)return '';return estEhPorc(x.ins)?estNPorc(x.ins,v):v;}
-function estIdealSet(id,campo,v){if(!podeIdeal())return toast('Só o administrador altera o ideal e o crítico');const ins=DB.insumos[id];if(!ins)return;const n=parseFloat(v)||0;ins[campo]=estEhPorc(ins)?opQtdUni(ins,n):n;finTouch();}
+function estIdealSet(id,campo,v){if(!podeIdeal())return toast('Sem permissão para alterar o ideal e o crítico. Peça ao administrador: Equipe → seu acesso → Alterar estoque ideal e crítico');const ins=DB.insumos[id];if(!ins)return;const n=parseFloat(v)||0;ins[campo]=estEhPorc(ins)?opQtdUni(ins,n):n;finTouch();}
 function estAtualCel(x){return estEhPorc(x.ins)?estQP(x.ins,x.atual):estQ(x.atual);}
 
 /* contagem: porcionado contado em porções; busca e categoria filtram sem perder o que já foi digitado */

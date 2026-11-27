@@ -73,7 +73,7 @@ async function rodar(largura) {
       const cmp = document.querySelector("#i_estmin"); if (cmp) { cmp.disabled = false; cmp.value = "55"; }
       saveInsumo(ins.id);
       const depoisCadastro = DB.insumos[ins.id].estoqueMin;
-      closeModal && closeModal();
+      typeof closeModal === 'function' && closeModal();
       return { campos, depoisPosicao, trav, depoisCadastro, podeIdeal: podeIdeal() };
     }, { perms, nivel, sub });
     checa(r.podeIdeal === pode, `${largura} ${nome}: podeIdeal()=${r.podeIdeal}, esperado ${pode}`);
