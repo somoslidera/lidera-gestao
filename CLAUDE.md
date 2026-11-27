@@ -10,7 +10,7 @@ Quem usa é dono de restaurante e a equipe dele, e **a maioria usa pelo celular*
 
 ## Regras que valem sempre
 
-1. **Não existe homologação.** O `index.html` deste repo fala com o banco de **produção**. Para testar, use `tools/` (preview sem banco, veja `tools/README.md`). Nunca teste gravando na produção.
+1. **Não existe homologação com banco.** A homologação é no link de preview do PR, com dados de demonstração (passo 5 abaixo). O `index.html` deste repo fala com o banco de **produção**. Para testar, use `tools/` (preview sem banco, veja `tools/README.md`). Nunca teste gravando na produção.
 2. **Tudo por PR**, a partir de uma branch. Ninguém faz push direto na `main`.
 3. **Merge na `main` é deploy em produção.** O GitHub Pages publica a `main` em `flow.somoslidera.com.br` em poucos minutos. Antes de clicar em Merge, teste no link de preview do PR.
 4. **Mudança de tela anexa um print do preview em 390 px** no PR. O ERP inteiro é responsivo (veja "Celular" abaixo).
@@ -23,9 +23,9 @@ Quem usa é dono de restaurante e a equipe dele, e **a maioria usa pelo celular*
 1. Branch a partir da `main` (`git switch -c <tema>`).
 2. Editar o `index.html` (ou `pdv/`, `supabase/`).
 3. Testar local: `python3 tools/preview_build.py && python3 tools/serve.py`, abrir `http://localhost:4179`.
-4. Abrir o PR. O Cloudflare Pages gera um link de preview, sem banco e com o restaurante de demonstração.
-5. Testar no link do preview, no celular (390 px) e no computador. Anexar o print no PR.
-6. Merge. Conferir no ar que a mudança está lá (`flow.somoslidera.com.br`).
+4. Abrir o PR (o modelo em `.github/pull_request_template.md` já traz a checklist) com a etiqueta **`homologar`**. O Cloudflare Pages gera um link de preview, sem banco e com o restaurante de demonstração: `https://<branch-com-hifens>.flow-preview.pages.dev`, com o nome cortado em 28 caracteres. Por isso, prefira nomes de branch curtos. O link fixo `flow-preview.pages.dev` é a `main`, que já está em produção, e não serve para homologar.
+5. **Homologação:** quem vai usar testa no link do PR, no celular (390 px) e no computador, e comenta "homologado". Anexar o print no PR.
+6. Tirar a etiqueta `homologar` e fazer o merge. Conferir no ar que a mudança está lá (`flow.somoslidera.com.br`).
 
 **Aviso de versão nova:** numa atualização maior, suba no MESMO PR a constante `VER_MAIOR='AAAA-MM-DD'` do `index.html` e o `versao.json` (`{"maior":"AAAA-MM-DD"}`). O app confere o `versao.json` a cada 10 min e mostra "Saiu uma versão nova" só se a data do arquivo for maior que a dele. Ajuste pequeno não sobe a data. Para anunciar novidade, acrescente um item na lista `NOVIDADES` (aparece uma vez por pessoa e aparelho, só para quem tem acesso à área).
 
