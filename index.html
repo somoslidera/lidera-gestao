@@ -10177,15 +10177,20 @@ function estCompraModal(id){if(!pode('compras'))return toast('Seu acesso não pe
     <div class="field"><label>Previsão de chegada <span class="hint">opcional</span></label><input class="input" id="cp_d" type="date" value="${esc(c&&c.previsao||'')}"></div></div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="cp_ok" onclick="estCompraSalvar('${ins.id}')">${c?'Salvar':'Marcar como comprado'}</button></div>`);}
 function estCompraSalvar(id){if(!pode('compras'))return toast('Seu acesso não permite marcar compra');const ins=DB.insumos[id];if(!ins)return;
-  const q=parseFloat((($('#cp_q')||{}).value||'').replace(',','.'))||0;const f=((($('#cp_f')||{}).value)||'').trim();const d=(($('#cp_d')||{}).value)||'';
+  const q=parseNumBR(($('#cp_q')||{}).value||'')||0;const f=((($('#cp_f')||{}).value)||'').trim();const d=(($('#cp_d')||{}).value)||'';
   ins.compra={status:'comprado',qtd:q>0?estR(q,3):0,fornecedor:f,previsao:d,em:new Date().toISOString(),por:quemSou()};save();closeModal();viewEstoque();toast(ins.nome+': marcado como comprado');}
 function estCompraLimpar(id){if(!pode('compras'))return toast('Seu acesso não permite mexer na compra');const ins=DB.insumos[id];if(!ins||!estCompraAtiva(ins))return;
   uxConfirma({titulo:'Tirar a marca de comprado?',texto:esc(ins.nome)+' volta a aparecer como item a comprar. Use quando a compra não vai mais chegar.',sim:'Tirar a marca',nao:'Cancelar'},()=>{ins.compra=null;save();viewEstoque();toast('Marca de comprado retirada: '+ins.nome);});}
-/* a compra chegou: qualquer entrada de compra lançada para o produto tira a marca. */
+/* a compra chegou: entrada de compra lançada para o produto tira a marca. */
 function estCompraChegou(ins){if(!estCompraAtiva(ins))return false;ins.compra=null;return true;}
-function estCompraReqHint(v){const el=$('#ra_compra');if(!el)return;const ins=estProdPorNome(v);el.textContent=ins&&estCompraAtiva(ins)&&(+estSaldoArm(ins,EST_ARM_PRINCIPAL)||0)<=0.0005?'📦 '+estCompraReqTxt(ins):'';}
+/* nota: conta como chegada uma vez por produto (carimbo nv.chegou). Re-salvar a nota não limpa de novo; trocar o produto da nota limpa o novo.
+   Nota sem carimbo (anterior a esta versão) com data antes da marca é nota antiga sendo editada: não limpa. */
+function estCompraChegouNota(nv,ins){if(!nv||!ins)return;const vis=Array.isArray(nv.chegou)?nv.chegou:null;if(vis&&vis.includes(ins.id))return;
+  if(estCompraAtiva(ins)){const em=String(ins.compra.em||'').slice(0,10);if(vis||!(nv.data&&em&&nv.data<em))estCompraChegou(ins);}
+  nv.chegou=(vis||[]).concat(ins.id);}
+function estCompraReqHint(v,de){const el=$('#ra_compra');if(!el)return;const ins=estProdPorNome(v);el.textContent=ins&&estCompraAtiva(ins)&&(+estSaldoArm(ins,de||EST_ARM_PRINCIPAL)||0)<=0.0005?'📦 '+estCompraReqTxt(ins):'';}
 /* ----- integrações: compra, desperdício, venda ----- */
-function estEntradaDeLanc(nv,ins,qi,valor){if(ins&&qi>0&&!estMovs().some(m=>m.origem==='lanc'&&m.refId===nv.id))estCompraChegou(ins,nv.data);if(!estCfg().entradas||!ins||!(qi>0))return;estReverter('lanc',nv.id);
+function estEntradaDeLanc(nv,ins,qi,valor){if(ins&&qi>0)estCompraChegouNota(nv,ins);if(!estCfg().entradas||!ins||!(qi>0))return;estReverter('lanc',nv.id);
   estMov('entrada',ins.id,qi,{custo:valor/qi,origem:'lanc',refId:nv.id,data:nv.data,arm:nv.arm||'',obs:(nv.fornecedor?nv.fornecedor:'')+(nv.nfe?' · NF '+nv.nfe:'')});}
 function estPerdaDeDesp(d){if(!estCfg().perdas)return;
   if(d.tipo==='insumo'){const ins=DB.insumos[d.refId];if(ins&&estEstocavel(ins))estMov('perda',ins.id,d.qtd,{origem:'desp',refId:d.id,data:d.data,arm:d.arm||estCfg().armVendas,motivo:d.motivo||'Desperdício',obs:d.acao||''});
@@ -10345,7 +10350,7 @@ function estArmChip(arm){return estMultiArm()?`<span class="tag tag-gray" style=
 function estAlertasHTML(items){const h=hojeISO();const abaixo=items.filter(x=>x.comprar&&!estCompraAtiva(x.ins)).length;const nComprados=items.filter(x=>estCompraAtiva(x.ins)).length;let rupt=0,parados=0;
   items.forEach(x=>{const i=estInfoProduto(x.ins);if(i.ruptura&&!x.comprar)rupt++;if(i.semMov30&&(+x.ins.estoqueAtual||0)>0)parados++;});
   const ult=estContagens().slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''))[0];const neg=estMultiArm()?estNegativos():[];const pend=pdvPendentes().reduce((s,v)=>s+(v.itens||[]).length,0);
-  const nCrit=items.filter(x=>x.comprar&&x.crit>0).length;const partes=[];if(abaixo)partes.push(`<a onclick="estoqueTab='compras';viewEstoque()" style="color:var(--red);font-weight:600;cursor:pointer" title="${nCrit?nCrit+' no ponto de pedido (crítico)':''}">${abaixo} para comprar${nCrit?' · '+nCrit+' no crítico':''}</a>`);
+  const nCrit=items.filter(x=>x.comprar&&x.crit>0&&!estCompraAtiva(x.ins)).length;const partes=[];if(abaixo)partes.push(`<a onclick="estoqueTab='compras';viewEstoque()" style="color:var(--red);font-weight:600;cursor:pointer" title="${nCrit?nCrit+' no ponto de pedido (crítico)':''}">${abaixo} para comprar${nCrit?' · '+nCrit+' no crítico':''}</a>`);
   if(nComprados)partes.push(`<a onclick="estoqueTab='compras';viewEstoque()" style="color:var(--navy);font-weight:600;cursor:pointer">${nComprados} comprado(s) aguardando chegada</a>`);
   if(neg.length)partes.push(`<a onclick="estRegularizarNegativos()" style="color:var(--red);font-weight:700;cursor:pointer" title="Saiu de um armazém mais do que entrou nele: faltou registrar uma transferência ou produção. Clique para regularizar transferindo do principal.">${neg.length} saldo(s) negativo(s) em armazém</a>`);
   if(rupt)partes.push(`<span style="color:var(--amber);font-weight:600" title="Pelo consumo dos últimos 30 dias, o saldo acaba em até 7 dias">${rupt} com ruptura prevista em 7 dias</span>`);
@@ -10478,7 +10483,7 @@ function estMovSalvar(){estMovLer();const d=estMovDraft;if(!d)return closeModal(
   itens.forEach(x=>{const ins=DB.insumos[x.insumoId];const q=parseFloat(x.q);let m=null;
     if(tipo==='ajuste'){const atual=estMultiArm()?estSaldoArm(ins,arm||EST_ARM_PRINCIPAL):(+ins.estoqueAtual||0);const delta=estR(q-atual,3);if(!delta){igual++;return;}m=estMov('ajuste',ins.id,0,{delta,arm,origem:'manual',data:d.data,motivo:'Ajuste manual',obs:d.obs});}
     else m=estMov(tipo,ins.id,q,{custo:tipo==='entrada'?(+x.custo||0):0,arm,origem:'manual',data:d.data,motivo:d.motivo||'',obs:d.obs});
-    if(m){n++;if(tipo==='entrada')estCompraChegou(ins,d.data);}});
+    if(m){n++;if(tipo==='entrada')estCompraChegou(ins);}});
   if(!n)return toast(igual?'Os saldos já são esses':'Não foi possível registrar');
   estMovDraft=null;save();closeModal();viewEstoque();toast(EST_TIPOS[tipo][0]+' registrada em '+n+' produto'+(n===1?'':'s')+(igual?' · '+igual+' já estava(m) com esse saldo':''));}
 
@@ -10995,7 +11000,7 @@ function estReqGerar(id){const r=estRequisicoes().find(x=>x.id===id);if(!r||!est
 function estReqQtd(id,insumoId,v){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;const it=(r.itens||[]).find(x=>x.insumoId===insumoId);if(!it)return;it.qtd=parseFloat(v)||0;it.manual=true;save();}
 function estReqRemItem(id,insumoId){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;r.itens=(r.itens||[]).filter(x=>x.insumoId!==insumoId);save();viewEstoque();}
 function estReqAddItem(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)return;
-  modal(`<div class="modal-head"><h3>Item avulso</h3><button class="x" onclick="closeModal()">${icoX}</button></div><div class="modal-body">${estProdDatalistSetor('est_prod_dl',r.para)}<div class="field"><label>Produto</label><input class="input" id="ra_prod" list="est_prod_dl" placeholder="Digite o nome…" oninput="estCompraReqHint(this.value)"><div class="gp-mini" id="ra_compra" style="color:var(--navy);font-weight:600;margin-top:4px"></div></div><div class="field"><label>Quantidade <span class="hint">em porções para os porcionados; nos outros, na unidade do produto</span></label><input class="input" id="ra_q" type="number" step="0.001" min="0"></div></div>
+  modal(`<div class="modal-head"><h3>Item avulso</h3><button class="x" onclick="closeModal()">${icoX}</button></div><div class="modal-body">${estProdDatalistSetor('est_prod_dl',r.para)}<div class="field"><label>Produto</label><input class="input" id="ra_prod" list="est_prod_dl" placeholder="Digite o nome…" oninput="estCompraReqHint(this.value,'${esc(r.de||'')}')"><div class="gp-mini" id="ra_compra" style="color:var(--navy);font-weight:600;margin-top:4px"></div></div><div class="field"><label>Quantidade <span class="hint">em porções para os porcionados; nos outros, na unidade do produto</span></label><input class="input" id="ra_q" type="number" step="0.001" min="0"></div></div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="(function(){const ins=estProdPorNome(document.getElementById('ra_prod').value);let q=parseFloat(document.getElementById('ra_q').value)||0;if(!ins||!(q>0))return toast('Escolha o produto e a quantidade');if(estEhPorc(ins))q=opQtdUni(ins,q);const r=estRequisicoes().find(x=>x.id==='${id}');if(!prodNoSetor(ins,r.para))return toast('Este produto não está liberado para '+estArmNome(r.para)+'. Libere a subcategoria dele em Categorias.');r.itens=(r.itens||[]).filter(x=>x.insumoId!==ins.id);r.itens.push({insumoId:ins.id,nec:0,tem:estR(Math.max(0,estSaldoArm(ins,r.para)),3),qtd:q,manual:true,avulso:true});save();closeModal();viewEstoque();})()">Adicionar</button></div>`);}
 function estReqConfirmar(id){if(!pode('req_separar'))return toast('Só o estoquista conclui a separação');const r=estRequisicoes().find(x=>x.id===id);if(!r||r.status==='separada')return;const itens=(r.itens||[]).filter(x=>+x.qtd>0).map(x=>({insumoId:x.insumoId,q:+x.qtd}));if(!itens.length)return toast('Nenhum item com quantidade');
   const neg=itens.filter(x=>estSaldoArm(DB.insumos[x.insumoId],r.de)<x.q);

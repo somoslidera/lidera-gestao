@@ -141,7 +141,7 @@ async function rodar(largura) {
   checa(/aguardando chegada \(comprado em/.test(dica), `${largura}: item avulso sem o aviso de aguardando chegada`);
   await pag.evaluate(() => { closeModal(); estReqSel = null; });
 
-  // ---- nota lançada limpa (mesmo com data antiga); re-salvar a mesma nota não limpa ----
+  // ---- nota lançada limpa; re-salvar a mesma nota e editar nota antiga não limpam ----
   const nota = await pag.evaluate(({ a }) => {
     const ins = DB.insumos[a];
     const nv = { id: "t-nf-1", data: hojeISO(), fornecedor: "Fornecedor Teste", nfe: "123", insumoId: a, valor: 50, grupo: "CMV" };
@@ -150,14 +150,20 @@ async function rodar(largura) {
     ins.compra = { status: "comprado", qtd: 3, fornecedor: "", previsao: "", em: new Date().toISOString(), por: "teste" };
     estEntradaDeLanc(nv, ins, 5, 50);  // editar a mesma nota
     const manteveEdicao = estCompraAtiva(ins);
+    // nota antiga (sem carimbo, de antes da marca) sendo editada: não limpa
     const velha = { id: "t-nf-velha", data: diasSoma(hojeISO(), -30), fornecedor: "X", insumoId: a, valor: 10, grupo: "CMV" };
     DB.lancamentos.push(velha); estEntradaDeLanc(velha, ins, 1, 10);
-    const limpouVelha = ins.compra === null;
-    return { limpouNova, manteveEdicao, limpouVelha };
+    const manteveVelha = estCompraAtiva(ins);
+    // nota nova que já tinha outro produto, trocada para este: limpa
+    const outra = { id: "t-nf-2", data: hojeISO(), fornecedor: "Y", insumoId: a, valor: 10, grupo: "CMV", chegou: ["outro-produto"] };
+    DB.lancamentos.push(outra); estEntradaDeLanc(outra, ins, 1, 10);
+    const limpouTroca = ins.compra === null && outra.chegou.includes(a);
+    return { limpouNova, manteveEdicao, manteveVelha, limpouTroca };
   }, { a: A.id });
   checa(nota.limpouNova, `${largura}: nota lançada não limpou a marca`);
   checa(nota.manteveEdicao, `${largura}: re-salvar a mesma nota limpou a marca nova`);
-  checa(nota.limpouVelha, `${largura}: nota com data antiga não limpou a marca`);
+  checa(nota.manteveVelha, `${largura}: editar nota antiga limpou a marca`);
+  checa(nota.limpouTroca, `${largura}: trocar o produto da nota não limpou a marca do novo`);
 
   // ---- entrada manual pela tela de movimentação limpa ----
   await pag.evaluate((b) => { estMovModal("entrada", b); estMovBulkSet(b, "4"); }, B.id);
