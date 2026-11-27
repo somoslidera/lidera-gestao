@@ -4,6 +4,7 @@ O Flow não tem homologação: o `index.html` do repo fala com o banco de **prod
 
 | Arquivo | Para quê |
 |---|---|
+| `smoke/req-margem.mjs` | Teste da margem % sobre a "Média do dia da semana" na requisição: média × 1,2 com +20%, trocar 20% → 40% não acumula, a barra de 0 a 100% recalcula da média, prato digitado à mão fica fora e "Repetir a última" não leva margem, em 1280 e 390 px. `node req-margem.mjs` depois do `preview_build.py`. |
 | `preview_build.py` | Monta `_site/`: tira a URL do Supabase (o app roda no "modo local", só no navegador), força a demonstração no PDV, põe a faixa "PREVIEW · sem banco" e carrega um restaurante de demonstração na primeira visita. Se sobrar qualquer menção ao banco de produção, **o build falha**. |
 | `preview_simulacao.js` | Painel **Simular** do preview (veja abaixo). O `preview_build.py` injeta só no `_site/`; o `index.html` do repo não ganha nada. |
 | `smoke/simulacao.mjs` | Teste do painel Simular: o painel existe no `_site/` e não no `index.html` do repo; Chefe de setor com 1 setor esconde as outras áreas e a Posição mostra só o setor; voltar a dono restaura tudo. 1280 e 390 px. `node simulacao.mjs` depois do `preview_build.py`. |
