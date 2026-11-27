@@ -46,14 +46,19 @@ async function rodar(largura) {
   // caso de teste, só no navegador
   const ids = await pag.evaluate(() => {
     const ins = Object.values(DB.insumos).filter((i) => estEstocavel(i) && i.noEstoque !== false && i.uni === "kg");
-    const [a, b, c] = ins;
+    const [a, b, c, d] = ins;
     a.embNome = "PCT"; a.embQtd = 1; a.estoqueAtual = 12;
+    // a: entrou em PCT com 1 kg por pacote e o nome não diz 1 kg → "confira?"
+    DB.lancamentos.push({ id: "t-um", data: hojeISO(), grupo: "CMV", valor: 30, insumoId: a.id, qtd: 3, uni: "PCT" });
+    // d: mesmo caso, mas o nome diz 1KG → não entra
+    d.nome = d.nome + " 1KG"; d.embNome = "PCT"; d.embQtd = 1;
+    DB.lancamentos.push({ id: "t-um-ok", data: hojeISO(), grupo: "CMV", valor: 30, insumoId: d.id, qtd: 3, uni: "PCT" });
     delete b.embNome; b.embQtd = 0; b.estoqueAtual = 5;
     DB.lancamentos.push({ id: "t-sememb", data: hojeISO(), grupo: "CMV", valor: 50, insumoId: b.id, qtd: 2, uni: "CX" });
     c.cmp = 10; c.preco = 13; c.qtd = 1;
     estoqueTab = "contagem"; estoqueFiltro = "Todos"; estoqueUniF = ""; estoqueKpiF = "";
     go("estoque");
-    return { a: a.nome, b: b.nome, c: c.nome, cat: a.cat };
+    return { a: a.nome, b: b.nome, c: c.nome, d: d.nome, cat: a.cat };
   });
   await pag.waitForTimeout(400);
 
@@ -63,16 +68,17 @@ async function rodar(largura) {
   const corpo = await pag.locator("#estoqueTbody").innerText();
   checa(/12 × 1 kg/.test(corpo), `${largura}: "12 × 1 kg" não aparece para ${ids.a}`);
   checa(/sem embalagem/.test(corpo), `${largura}: "sem embalagem" não aparece para ${ids.b}`);
+  checa(/confira\?/.test(corpo), `${largura}: "confira?" não aparece para ${ids.a}`);
   checa(await pag.locator("text=Total em kg").count() === 0, `${largura}: Total em kg apareceu sem categoria`);
   await pag.screenshot({ path: join(PRINTS, `posicao-${largura}.png`), fullPage: largura < 600 });
 
-  // scorecard Sem embalagem filtra
-  await pag.locator(".kpi", { hasText: "Sem embalagem" }).click();
+  // scorecard Conferir embalagem filtra: a (1 kg por pacote) e b (sem embalagem), não d (nome diz 1KG)
+  await pag.locator(".kpi", { hasText: "Conferir embalagem" }).click();
   await pag.waitForTimeout(300);
-  const linhas = await pag.locator("#estoqueTbody tr").count();
-  checa(linhas === 1, `${largura}: filtro Sem embalagem deixou ${linhas} linha(s), esperado 1`);
-  await pag.screenshot({ path: join(PRINTS, `posicao-sememb-${largura}.png`) });
-  await pag.locator(".kpi", { hasText: "Sem embalagem" }).click();
+  const nomes = await pag.evaluate(() => (window.EST_POS_FILT || []).map((x) => x.nome));
+  checa(nomes.length === 2 && nomes.includes(ids.a) && nomes.includes(ids.b), `${largura}: Conferir embalagem filtrou ${JSON.stringify(nomes)}, esperado ${ids.a} e ${ids.b}`);
+  await pag.screenshot({ path: join(PRINTS, `posicao-confemb-${largura}.png`) });
+  await pag.locator(".kpi", { hasText: "Conferir embalagem" }).click();
 
   // scorecard Preço subiu filtra
   await pag.locator(".kpi", { hasText: "Preço subiu" }).click();

@@ -9868,21 +9868,27 @@ function estoqueValorTotal(){return estoqueItens().reduce((s,x)=>s+x.valorEstoqu
 /* compra arredondada para a embalagem (fardo, caixa, barril). Sem embalagem cadastrada, fica como está. */
 /* Posição do estoque (D15/D18): só leitura, nada aqui grava dado */
 function estUniNorm(u){u=(u||'').trim();if(!u)return '';const l=u.toLowerCase();return l==='l'?'L':(BASE[l]?l:u);}
-function estSemEmbSet(){const s=new Set();   // produto em kg/g/L/ml que já chegou numa nota em unidade incompatível (CX, PCT, un…) e não tem embalagem cadastrada
-  (DB.lancamentos||[]).forEach(l=>{const ins=l&&l.insumoId&&DB.insumos[l.insumoId];if(!ins||!['kg','g','L','ml'].includes(ins.uni)||insEmb(ins))return;
-    const u=estUniNorm(l.uni);if(!u||uniCompat(u,ins.uni)||+l.embQtd>0)return;s.add(ins.id);});return s;}
+const EST_NOME_1UN=/(^|[^0-9,.])1 ?(KG|L|LT|LTS|LITRO)\b|1000 ?(G|GR|ML)\b/i;
+function estConfEmbMap(){const m=new Map();   // "Conferir embalagem" (D18 + P10): 'sem' = chegou em CX/PCT/un e o produto não tem embalagem; 'um' = entrou com 1 kg/L por pacote e o nome não diz 1 kg/1 L
+  (DB.lancamentos||[]).forEach(l=>{const ins=l&&l.insumoId&&DB.insumos[l.insumoId];if(!ins||!['kg','g','L','ml'].includes(ins.uni))return;
+    const u=estUniNorm(l.uni);if(!u||uniCompat(u,ins.uni))return;const e=insEmb(ins),el=+l.embQtd>0?+l.embQtd:0;
+    if(!e&&!el){m.set(ins.id,'sem');return;}
+    if(['kg','L'].includes(ins.uni)&&(el||e.qtd)===1&&!EST_NOME_1UN.test(ins.nome||'')&&!m.has(ins.id))m.set(ins.id,'um');});return m;}
 function estPrecoVar(x){const u=+x.ultCompra||0,m=+x.ins.cmp||0;return (u>0&&m>0)?(u-m)/m:0;}
-function estPosFiltroOk(x,SE){if(estoqueUniF&&x.uni!==estoqueUniF)return false;if(estoqueKpiF==='sememb')return SE.has(x.ins.id);if(estoqueKpiF==='preco')return estPrecoVar(x)>0.15;return true;}
+function estPosFiltroOk(x,SE){if(estoqueUniF&&x.uni!==estoqueUniF)return false;if(estoqueKpiF==='confemb')return SE.has(x.ins.id);if(estoqueKpiF==='preco')return estPrecoVar(x)>0.15;return true;}
 function estUltCompraCel(x){if(!(x.ultCompra>0))return '<span style="color:var(--soft)">—</span>';const v=estPrecoVar(x);
   const seta=v>0.15?` <span style="color:var(--red);font-weight:700" title="${fmtN(v*100,0)}% acima do custo médio">▲</span>`:v<-0.15?` <span style="color:var(--green);font-weight:700" title="${fmtN(-v*100,0)}% abaixo do custo médio">▼</span>`:'';
   return fmtBRL(x.ultCompra)+seta;}
-function estPacotesCel(x,SE){const e=insEmb(x.ins);if(e)return `<span title="${esc(e.nome)} de ${estQ(e.qtd,uSym(x.uni))}">${estQ(x.atual/e.qtd)} × ${estQ(e.qtd,uSym(x.uni))}</span>`;
-  return SE.has(x.ins.id)?'<span style="color:var(--soft);font-size:12px" title="Chegou em nota por unidade/caixa/pacote, mas o produto não tem o tamanho da embalagem cadastrado">— sem embalagem</span>':'';}
+function estPacotesCel(x,SE){const e=insEmb(x.ins),k=SE.get(x.ins.id);
+  const conf=k==='um'?` <span style="color:var(--amber);font-weight:600;font-size:12px" title="Entrou com 1 ${uSym(x.uni)} por pacote e o nome do produto não diz o tamanho. Confira se o pacote tem mesmo 1 ${uSym(x.uni)}.">confira?</span>`:'';
+  if(e)return `<span title="${esc(e.nome)} de ${estQ(e.qtd,uSym(x.uni))}">${estQ(x.atual/e.qtd)} × ${estQ(e.qtd,uSym(x.uni))}</span>${conf}`;
+  if(k==='sem')return '<span style="color:var(--soft);font-size:12px" title="Chegou em nota por unidade/caixa/pacote, mas o produto não tem o tamanho da embalagem cadastrado. Essa compra não entrou no estoque.">— sem embalagem</span>';
+  return conf.trim();}
 function estPosKpisHTML(lista,SE){if(!souDoPrincipal())return '';
   const nSE=lista.filter(x=>SE.has(x.ins.id)).length, nPr=lista.filter(x=>estPrecoVar(x)>0.15).length;
   const kg=estoqueFiltro!=='Todos'?lista.reduce((t,x)=>t+(x.uni==='kg'?x.atual:x.uni==='g'?x.atual/1000:0),0):null;
   const card=(k,ic,lbl,val,sub,cor)=>{const on=estoqueKpiF===k;return `<div class="kpi" role="button" tabindex="0" style="cursor:pointer;${on?'box-shadow:0 0 0 2px var(--navy)':''}" title="${on?'Clique para limpar o filtro':'Clique para filtrar a tabela'}" onclick="estoqueKpiF=estoqueKpiF==='${k}'?'':'${k}';viewEstoque()"><div class="ic ${ic}">${ico('cmv')}</div><div class="k-lbl">${lbl}</div><div class="k-val"${cor?` style="color:${cor}"`:''}>${val}</div><div class="k-sub" style="color:var(--soft)">${on?'filtrando · <b>× limpar</b>':sub}</div></div>`;};
-  let h=card('sememb',nSE?'ic-red':'ic-green','Sem embalagem',nSE,'chegou em pacote, falta o tamanho',nSE?'var(--red)':'var(--green)');
+  let h=card('confemb',nSE?'ic-gold':'ic-green','Conferir embalagem',nSE,'pacote sem tamanho, ou contado como 1 kg',nSE?'var(--amber)':'var(--green)');
   if(podeVerValores())h+=card('preco',nPr?'ic-gold':'ic-green','Preço subiu',nPr,'última compra +15% sobre a média','');
   if(kg!=null){const on=estoqueUniF==='kg';h+=`<div class="kpi" role="button" tabindex="0" style="cursor:pointer;${on?'box-shadow:0 0 0 2px var(--navy)':''}" title="Saldo somado dos produtos em kg e g desta categoria" onclick="estoqueUniF=estoqueUniF==='kg'?'':'kg';viewEstoque()"><div class="ic ic-navy">${ico('cmv')}</div><div class="k-lbl">Total em kg</div><div class="k-val">${estQ(kg,'kg')}</div><div class="k-sub" style="color:var(--soft)">${on?'filtrando · <b>× limpar</b>':'em '+esc(estoqueFiltro)}</div></div>`;}
   return `<div class="kpi-grid no-print" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">${h}</div>`;}
@@ -9960,7 +9966,7 @@ function viewEstoque(){
     const selArmF=(estMultiArm()&&souDoPrincipal())?`<select class="input" style="max-width:200px" title="Mostrar só os produtos liberados para um estoque" onchange="estoqueArmF=this.value;viewEstoque()"><option value="">Todos os estoques</option>${setoresSemPrincipal().map(a=>`<option value="${esc(a.id)}" ${estoqueArmF===a.id?'selected':''}>Só ${esc(a.nome)}</option>`).join('')}</select>`:'';
     const base0=estoqueCmvF==='cmv'?itCMV:estoqueCmvF==='fora'?itFora:items;
     const base=souDoPrincipal()?(estoqueArmF&&estArm(estoqueArmF)?base0.filter(x=>prodNoSetor(x.ins,estoqueArmF)):base0):base0.filter(x=>armazensPermitidos().some(a=>prodNoSetor(x.ins,a.id)));   // chefe de setor: só os produtos das categorias do setor dele; admin pode filtrar por um estoque
-    const baseCat=estoqueFiltro==='Todos'?base:base.filter(x=>x.cat===estoqueFiltro);const SEMEMB=estSemEmbSet();
+    const baseCat=estoqueFiltro==='Todos'?base:base.filter(x=>x.cat===estoqueFiltro);const SEMEMB=estConfEmbMap();
     const filt=applySort('estoque',baseCat.filter(x=>estPosFiltroOk(x,SEMEMB)));window.EST_POS_FILT=filt;
     $('#view').innerHTML=`
     ${estTabsHTML()}
