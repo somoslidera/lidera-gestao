@@ -177,13 +177,13 @@ async function contraste(ctx, pag, nome) {
   return res.n;
 }
 async function kpi(pag, nome, tema) {
-  await pag.evaluate(async (tema) => { const fam = { gala: "Geist", linho: "Figtree", marinho: "Manrope" }[tema]; try { await document.fonts.load(`600 20px "${fam}"`, "0123"); } catch (e) {} kpiFit(document.getElementById("view")); }, tema);
+  await pag.evaluate(async (tema) => { const fam = { gala: "Geist", linho: "Figtree", marinho: "Geist" }[tema]; try { await document.fonts.load(`600 20px "${fam}"`, "0123"); } catch (e) {} kpiFit(document.getElementById("view")); }, tema);
   const r = await pag.evaluate((tema) => {
     const vals = [...document.querySelectorAll("#view .kpi .k-val, #view .dsh-kpi-val")].filter((e) => e.offsetParent);
     if (!vals.length) return { n: 0 };
     const cs = getComputedStyle(vals[0]);
     const fonte = cs.fontFamily, tab = cs.fontVariantNumeric;
-    const fam = { gala: "Geist", linho: "Figtree", marinho: "Manrope" }[tema];
+    const fam = { gala: "Geist", linho: "Figtree", marinho: "Geist" }[tema];
     const carregada = document.fonts.check(`600 20px "${fam}"`, "0123456789");
     const textos = ["R$ 9.999.999,99", "R$ 13.860,00", "-R$ 276.988,23"];
     const orig = vals.map((e) => e.textContent);

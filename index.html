@@ -1485,50 +1485,176 @@ body[data-tema] .card:not(.hero-card),body[data-tema] .kpi,body[data-tema] .dsh-
 /* números dentro dos gráficos do Dashboard (texto de SVG com a Fraunces no atributo) */
 body[data-tema] #view svg text[font-family^="Fraunces"]{font-family:var(--fnum);letter-spacing:-.02em}
 
-/* ================= 1. NOITE DE GALA ================= */
+/* --- extras comuns (polimento) --- */
+/* cartão sem meta de faturamento: em vez de um buraco, o contorno do medidor que vai aparecer ali, o convite e o botão */
+body[data-tema] .dsh-pe-card .dsh-vazio{display:flex;flex-direction:column;align-items:center;gap:14px;padding:0;max-width:236px;font-family:var(--ftit);font-size:17px;font-weight:500;line-height:1.35;letter-spacing:-.01em;color:var(--ink);text-wrap:balance}
+body[data-tema] .dsh-pe-card .dsh-vazio::before{content:"";width:172px;height:86px;border:2px dashed var(--gold-soft);border-bottom:0;border-radius:172px 172px 0 0;opacity:.75;margin-bottom:2px}
+body[data-tema] .dsh-pe-card .dsh-vazio br{display:none}
+body[data-tema] .dsh-pe-card .dsh-vazio .btn{margin-top:4px;font-family:Inter,system-ui,sans-serif;letter-spacing:0}
+body[data-tema=linho] .dsh-pe-card .dsh-vazio .btn{font-family:'Figtree',Inter,system-ui,sans-serif}
+/* Nova contagem: a busca limpa o display das linhas e elas perdem as colunas; com tema, as colunas voltam (produto | contado | diferença) */
+body[data-tema] #ec_rows [data-id]{display:grid}
+@media(max-width:640px){body[data-tema] #ec_rows [data-id]{grid-template-columns:minmax(0,1fr) 104px 68px!important;gap:10px!important}
+  body[data-tema] #ec_rows [data-id]>div:first-child>div:first-child{white-space:normal!important}
+  body[data-tema] #ec_q{max-width:none!important;flex:1 1 100%}}
+
+/* ================= 1. NOITE DE GALA (carro-chefe) =================
+   Salão à noite e carta de vinhos: azul-meia-noite, marfim, latão escovado.
+   Régua do tema: UM fio dourado por superfície importante (topo, régua de números, janela), nunca em todo cartão;
+   títulos e seções em Fraunces (as seções em itálico, como numa carta); números em Geist com algarismos tabulares;
+   números agrupados numa régua só, com divisórias finas, em vez de vários cartões iguais; abas sublinhadas em latão;
+   campos são "poços" (um tom abaixo da superfície). Cartões opacos (sem desfoque) para ficar leve no celular. */
 body[data-tema=gala]{--fnum:'Geist',Inter,system-ui,sans-serif;--ftit:'Fraunces',Georgia,serif;
-  --bg:#ECEEF3;--card:#FFFFFF;--glass:rgba(255,255,255,.86);--line:#DFE2EA;--ink:#0F1730;--muted:#48516B;--soft:#5D657B;
-  --navy:#1D3573;--navy-700:#162A5E;--gold:#86693A;--green:#147A52;--red:#C0392F;--gold-soft:#C9B07E;--fio:rgba(164,138,87,.8);--radius:18px;
-  --shadow:0 1px 1px rgba(15,23,48,.04),0 3px 8px rgba(15,23,48,.04),0 24px 48px -20px rgba(15,23,48,.26);--shadow-lg:0 32px 72px -22px rgba(15,23,48,.40);
-  background:radial-gradient(1000px 520px at 105% -12%,rgba(164,138,87,.16),transparent 60%),radial-gradient(1100px 640px at -12% -24%,rgba(29,53,115,.14),transparent 62%),var(--bg)}
-body.dark[data-tema=gala]{--bg:#070B16;--card:#0F1629;--glass:rgba(19,27,51,.66);--line:rgba(214,196,160,.12);--ink:#F2EDE2;--muted:#B5BBCC;--soft:#9098AD;
-  --navy:#6684CC;--navy-700:#5571B6;--gold:#D2B77F;--gold-soft:#E2CB9A;--fio:rgba(226,203,154,.6);
-  --green:#4FCB97;--red:#F07D73;--amber:#E5B05A;--blue-bg:rgba(102,132,204,.18);
-  --shadow:inset 0 1px 0 rgba(255,255,255,.035),0 28px 56px -24px rgba(0,0,0,.85);--shadow-lg:0 36px 80px -20px rgba(0,0,0,.9);
-  background:radial-gradient(1200px 720px at -12% -22%,rgba(29,53,115,.62),transparent 60%),radial-gradient(900px 520px at 108% -6%,rgba(164,138,87,.16),transparent 60%),radial-gradient(900px 600px at 50% 120%,rgba(29,53,115,.22),transparent 60%),var(--bg)}
-/* menu: black-tie, fio dourado na borda */
-body[data-tema=gala] .sidebar{background:linear-gradient(180deg,#0E1733 0%,#0A1128 55%,#060B1B 100%);box-shadow:inset -1px 0 0 rgba(201,176,126,.30)}
-body.dark[data-tema=gala] .sidebar{background:linear-gradient(180deg,#060A15,#04070F);box-shadow:inset -1px 0 0 rgba(201,176,126,.22)}
-body[data-tema=gala] .nav .lbl{color:rgba(217,192,140,.62)}
-body[data-tema=gala] .nav a.active{background:linear-gradient(90deg,rgba(201,176,126,.18),rgba(201,176,126,.02));color:#F6EBD2}
-body[data-tema=gala] .nav a.active svg{color:#DCC392}
-/* topo: vidro + fio de ouro fino */
-body[data-tema=gala] .topbar{background:rgba(255,255,255,.62);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-bottom-color:transparent}
-body.dark[data-tema=gala] .topbar{background:rgba(7,11,22,.55)}
-body[data-tema=gala] .topbar::after{height:1px;background:linear-gradient(90deg,transparent,var(--fio) 25%,var(--fio) 75%,transparent)}
-body[data-tema=gala] .topbar h1{font-weight:600;letter-spacing:-.01em}
-/* cartões: vidro fosco com o fio dourado no alto */
-body[data-tema=gala] .card:not(.hero-card),body[data-tema=gala] .kpi,body[data-tema=gala] .dsh-kpi{background:linear-gradient(90deg,transparent 6%,var(--fio) 50%,transparent 94%) top/100% 1px no-repeat,var(--glass);border-color:var(--line);box-shadow:var(--shadow);backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%)}
-body[data-tema=gala] .card .card{backdrop-filter:none;-webkit-backdrop-filter:none}
-body[data-tema=gala] .kpi .k-val,body[data-tema=gala] .dsh-kpi-val{font-weight:600}
-body[data-tema=gala] .dsh-head .ttl,body[data-tema=gala] .card-pad>.ttl,body[data-tema=gala] .section-head .ttl{font-weight:600;font-size:16.5px;letter-spacing:-.01em}
-/* abas: a escolhida em tinta escura com letra dourada */
-body[data-tema=gala] .pill-filter button{background:transparent;border-color:var(--line);color:var(--muted)}
-body[data-tema=gala] .pill-filter button.on{background:#0F1730;border-color:#0F1730;color:#EBD9B0}
-body.dark[data-tema=gala] .pill-filter button{background:rgba(255,255,255,.03)}
-body.dark[data-tema=gala] .pill-filter button.on{background:linear-gradient(180deg,#DCC392,#BFA16A);border-color:transparent;color:#0B1020}
-/* botões */
-body[data-tema=gala] .btn-primary{background:linear-gradient(180deg,#22397A,#13245A);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 0 0 1px rgba(201,176,126,.45),0 10px 22px -10px rgba(15,23,48,.7)}
-body.dark[data-tema=gala] .btn-primary{background:linear-gradient(180deg,#DCC392,#B99B62);color:#0B1020;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 12px 26px -12px rgba(201,176,126,.55)}
-body[data-tema=gala] .btn-ghost,body[data-tema=gala] .bell,body[data-tema=gala] .icon-btn{background:rgba(255,255,255,.7);border-color:var(--line)}
-body.dark[data-tema=gala] .btn-ghost,body.dark[data-tema=gala] .bell,body.dark[data-tema=gala] .icon-btn,body.dark[data-tema=gala] .theme-toggle{background:rgba(255,255,255,.04);border-color:var(--line);color:var(--ink)}
-body.dark[data-tema=gala] .input,body.dark[data-tema=gala] select.input{background-color:rgba(255,255,255,.04);border-color:var(--line)}
-body.dark[data-tema=gala] .modal{background:#0F1629;border:1px solid var(--line)}
-body.dark[data-tema=gala] .modal-foot{background:#0B1121}
-body.dark[data-tema=gala] tbody tr:hover{background:rgba(226,203,154,.04)}
-body.dark[data-tema=gala] .dsh-kpi .chip.soft,body.dark[data-tema=gala] .dsh-bullet{background:rgba(255,255,255,.05)}
+  --bg:#F1F2F5;--card:#FFFFFF;--poco:#F4F5F8;--hair:#E5E8EE;--line:#DADEE7;--ink:#0F1730;--muted:#48516B;--soft:#5D657B;
+  --navy:#1D3573;--navy-700:#162A5E;--gold:#86693A;--latao:#A48A57;--green:#147A52;--red:#C0392F;--gold-soft:#C9B07E;--fio:rgba(164,138,87,.9);--radius:14px;
+  --realce:rgba(164,138,87,.07);--foco:0 0 0 3px rgba(164,138,87,.28);
+  --shadow:0 0 0 1px rgba(15,23,48,.06),0 1px 2px rgba(15,23,48,.05),0 14px 30px -20px rgba(15,23,48,.30);--shadow-lg:0 0 0 1px rgba(15,23,48,.08),0 36px 80px -24px rgba(15,23,48,.45);
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .06 0 0 0 0 .09 0 0 0 0 .19 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"),radial-gradient(900px 480px at 100% -10%,rgba(164,138,87,.13),transparent 62%),radial-gradient(1000px 600px at -10% -20%,rgba(29,53,115,.10),transparent 62%),var(--bg)}
+body.dark[data-tema=gala]{--bg:#0A1023;--card:#111933;--poco:#0C1328;--hair:#212B4A;--line:rgba(200,210,240,.13);--ink:#F4EFE4;--muted:#B6BCCE;--soft:#939BB2;
+  --navy:#8FA8E8;--navy-700:#7C97DC;--gold:#D9BF8A;--latao:#D9BF8A;--gold-soft:#E6D0A0;--fio:rgba(217,191,138,.75);
+  --green:#56CF9C;--red:#F28479;--amber:#E8B562;--blue-bg:rgba(143,168,232,.14);--green-bg:rgba(86,207,156,.13);--red-bg:rgba(242,132,121,.14);--amber-bg:rgba(232,181,98,.13);
+  --realce:rgba(217,191,138,.06);--foco:0 0 0 3px rgba(217,191,138,.24);
+  --shadow:0 0 0 1px rgba(200,210,240,.08),inset 0 1px 0 rgba(255,255,255,.035),0 26px 50px -30px rgba(0,0,0,.95);--shadow-lg:0 0 0 1px rgba(200,210,240,.12),0 40px 90px -20px rgba(0,0,0,.9);
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .045 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"),radial-gradient(1100px 640px at -8% -18%,rgba(44,78,170,.42),transparent 62%),radial-gradient(760px 420px at 104% -8%,rgba(164,138,87,.13),transparent 62%),radial-gradient(900px 520px at 60% 118%,rgba(29,53,115,.26),transparent 62%),var(--bg)}
+body[data-tema=gala]{-webkit-font-smoothing:antialiased}
+body[data-tema=gala] :is(button,a,summary,[tabindex]):focus-visible{outline:2px solid var(--latao);outline-offset:2px}
+/* --- menu: meia-noite nos dois modos; o item da vez ganha marfim e o fio à esquerda --- */
+body[data-tema=gala] .sidebar{background:linear-gradient(180deg,#0E1733 0%,#0A1128 46%,#070C1D 100%);box-shadow:inset -1px 0 0 rgba(217,191,138,.20)}
+body.dark[data-tema=gala] .sidebar{background:linear-gradient(180deg,#0B1126 0%,#080D1E 100%);box-shadow:inset -1px 0 0 rgba(200,210,240,.08)}
+body[data-tema=gala] .brand .wm{letter-spacing:-.02em}
+body[data-tema=gala] .nav .lbl{color:rgba(217,192,140,.66);font-size:10.5px;letter-spacing:.16em;padding-top:16px}
+body[data-tema=gala] .nav a{color:rgba(232,236,246,.74);border-radius:9px;transition:background-color .14s,color .14s}
+body[data-tema=gala] .nav a:hover{background:rgba(255,255,255,.05);color:#fff}
+body[data-tema=gala] .nav a.active{background:linear-gradient(90deg,rgba(217,191,138,.16),rgba(217,191,138,.03));color:#F7EEDA;font-weight:600}
+body[data-tema=gala] .nav a.active::before{background:#D9BF8A;top:9px;bottom:9px;width:2px}
+body[data-tema=gala] .nav a.active svg{color:#E0C894}
+body[data-tema=gala] .side-foot{border-top-color:rgba(200,210,240,.09)}
+/* --- topo: vidro, título de carta, fio de latão de ponta a ponta --- */
+body[data-tema=gala] .topbar{background:rgba(250,250,252,.72);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-bottom-color:transparent}
+body.dark[data-tema=gala] .topbar{background:rgba(10,16,35,.66)}
+body[data-tema=gala] .topbar::after{height:1px;bottom:0;background:linear-gradient(90deg,var(--fio),rgba(164,138,87,.18) 55%,transparent)}
+body[data-tema=gala] .topbar h1{font-weight:600;font-size:22px;letter-spacing:-.018em;line-height:1.15}
+body[data-tema=gala] .rota-setas{gap:6px}
+body[data-tema=gala] .rota-setas .rn-b{width:30px;height:30px;border:1px solid var(--line);border-radius:50%;color:var(--muted);font-size:18px;position:relative;transition:border-color .14s,color .14s,background-color .14s}
+body[data-tema=gala] .rota-setas .rn-b::before{content:"";position:absolute;inset:-8px -3px}
+body[data-tema=gala] .rota-setas .rn-b:hover:not(:disabled){background:var(--realce);border-color:var(--fio);color:var(--ink)}
+body[data-tema=gala] .rota-setas .rn-b:disabled{opacity:.38}
+body[data-tema=gala] .rota-trilha{font-size:12px;margin-top:2px}
+body[data-tema=gala] .rota-trilha a{transition:color .14s}
+body[data-tema=gala] .rota-trilha a:hover{color:var(--gold);text-decoration:none}
+body[data-tema=gala] .rota-trilha .sep{opacity:.45;margin:0 6px}
+body[data-tema=gala] .rota-trilha .at{color:var(--gold);font-weight:600}
+/* --- superfícies: opacas, um anel fino no lugar do contorno --- */
+body[data-tema=gala] .card:not(.hero-card),body[data-tema=gala] .kpi,body[data-tema=gala] .dsh-kpi{background:var(--card);border-color:transparent;box-shadow:var(--shadow)}
+body[data-tema=gala] .card .card{box-shadow:0 0 0 1px var(--hair)}
+body[data-tema=gala] .dsh-head .ttl,body[data-tema=gala] .card-pad>.ttl,body[data-tema=gala] .section-head .ttl{font-weight:600;font-size:19px;letter-spacing:-.015em;line-height:1.2}
+body[data-tema=gala] .dsh-head .desc,body[data-tema=gala] .section-head .desc{font-size:12.5px;color:var(--soft);margin-top:4px;line-height:1.45}
+/* --- régua de números: um painel só, divisórias finas, fio no alto (Dashboard e Estoque) --- */
+body[data-tema=gala] .dsh-kpis,body[data-tema=gala] #view .kpi-grid{gap:1px!important;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;position:relative}
+body[data-tema=gala] .dsh-kpis::before,body[data-tema=gala] #view .kpi-grid.kpi5::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--fio) 22%,var(--fio) 78%,transparent);z-index:1;pointer-events:none}
+body[data-tema=gala] .dsh-kpi,body[data-tema=gala] #view .kpi-grid .kpi{background:none;border:0;border-radius:0;box-shadow:0 0 0 1px var(--hair)}
+body[data-tema=gala] .dsh-kpi{padding:22px 24px 18px;gap:0}
+body[data-tema=gala] .dsh-kpi .lbl,body[data-tema=gala] .kpi .k-lbl{font-size:12.5px;font-weight:500;color:var(--muted)}
+body[data-tema=gala] .dsh-kpi .chip.soft{background:none;padding:0;font-size:12px;font-weight:500;color:var(--soft)}
+body[data-tema=gala] .dsh-kpi-val{font-weight:600;font-size:clamp(23px,2.05vw,30px);letter-spacing:-.035em;line-height:1.1;margin-top:10px}
+body[data-tema=gala] .dsh-kpi-foot{font-size:12.5px;margin-top:5px}
+body[data-tema=gala] .dsh-kpi-foot b{font-family:var(--fnum);font-variant-numeric:tabular-nums;font-weight:600}
+body[data-tema=gala] .dsh-kpi-vis{margin-top:14px}
+body[data-tema=gala] .dsh-bullet{height:6px;background:var(--poco);border-color:var(--hair)}
+body[data-tema=gala] .dsh-bullet s{top:-5px;height:14px;opacity:.75}
+body[data-tema=gala] #view .kpi-grid .kpi{display:block;padding:18px 20px 16px}
+body[data-tema=gala] #view .kpi-grid .kpi .ic{display:none}
+body[data-tema=gala] .kpi .k-val{font-weight:600;letter-spacing:-.03em;margin-top:8px}
+body[data-tema=gala] .kpi .k-sub{font-weight:400;font-size:12.5px;line-height:1.4;margin-top:5px}
+body[data-tema=gala] #view .kpi-grid[style*="auto-fi"]{display:flex;flex-wrap:wrap}
+body[data-tema=gala] #view .kpi-grid[style*="auto-fi"] .kpi{flex:1 1 180px}
+@media(max-width:860px){body[data-tema=gala] #view .kpi-grid.kpi5 .kpi:last-child:nth-child(odd){grid-column:1/-1}}
+@media(min-width:901px){body[data-tema=gala] .dsh-card{padding:24px 26px 20px}}
+@media(max-width:640px){body[data-tema=gala] .topbar h1{font-size:19px}}
+body.dark[data-tema=gala] .input.ux-busca{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23939BB2' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='M20 20l-4.2-4.2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:11px center;background-size:15px}
+@media(max-width:640px){body[data-tema=gala] .dsh-kpi{padding:16px 18px 14px}body[data-tema=gala] .dsh-kpi-val{font-size:27px}body[data-tema=gala] #view .kpi-grid .kpi{padding:14px 16px 13px}
+  body[data-tema=gala] .dsh-head .ttl,body[data-tema=gala] .card-pad>.ttl,body[data-tema=gala] .section-head .ttl{font-size:18px}}
+/* --- abas: sublinhado de latão, como as seções de uma carta --- */
+body[data-tema=gala] .pill-filter.tabs{gap:0 22px;row-gap:0;box-shadow:inset 0 -1px 0 var(--hair)}
+body[data-tema=gala] .pill-filter.tabs button{background:none;border:0;border-radius:0;padding:9px 1px 13px;font-size:13.5px;font-weight:500;color:var(--muted);position:relative;transition:color .14s}
+body[data-tema=gala] .pill-filter.tabs button::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--latao);transform:scaleX(0);transform-origin:0 50%;transition:transform .22s cubic-bezier(.23,1,.32,1)}
+body[data-tema=gala] .pill-filter.tabs button:hover{color:var(--ink)}
+body[data-tema=gala] .pill-filter.tabs button.on{background:none;color:var(--ink);font-weight:600}
+body[data-tema=gala] .pill-filter.tabs button.on::after{transform:none}
+@media(max-width:760px){body[data-tema=gala] .pill-filter.tabs{gap:0 22px;padding-bottom:0}body[data-tema=gala] .pill-filter.tabs button{min-height:46px;padding:12px 1px 13px;font-size:14.5px}}
+/* filtros: fichas discretas; a escolhida em tinta (claro) ou em latão vazado (escuro). O dourado cheio fica só no botão principal */
+body[data-tema=gala] .pill-filter:not(.tabs):not(.lanc-abas):not(.bd-per) button{background:transparent;border-color:var(--line);border-radius:9px;color:var(--muted);font-weight:500;transition:background-color .14s,border-color .14s,color .14s}
+body[data-tema=gala] .pill-filter:not(.tabs):not(.lanc-abas):not(.bd-per) button:hover{border-color:var(--soft);color:var(--ink)}
+body[data-tema=gala] .pill-filter:not(.tabs):not(.lanc-abas):not(.bd-per) button.on{background:#0F1730;border-color:#0F1730;color:#F4EFE4;font-weight:600}
+body.dark[data-tema=gala] .pill-filter:not(.tabs):not(.lanc-abas):not(.bd-per) button.on{background:rgba(217,191,138,.13);border-color:rgba(217,191,138,.6);color:#EEDCB4}
+@media(max-width:640px){body[data-tema=gala] .pill-filter:not(.tabs) button{min-height:44px}}
+/* --- botões: latão escovado no escuro, tinta azul no claro; apertar afunda um fio --- */
+body[data-tema=gala] .btn{border-radius:10px;transition:background-color .14s,border-color .14s,filter .14s,transform .12s cubic-bezier(.23,1,.32,1)}
+body[data-tema=gala] .btn:active{transform:scale(.975)}
+body[data-tema=gala] .btn-primary{background:linear-gradient(180deg,#25428C,#192E68);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 1px 2px rgba(15,23,48,.35),0 8px 18px -12px rgba(15,23,48,.7)}
+body[data-tema=gala] .btn-primary:hover{background:linear-gradient(180deg,#25428C,#192E68);filter:brightness(1.1)}
+body.dark[data-tema=gala] .btn-primary{background:linear-gradient(180deg,#E8D3A4 0%,#D2B67F 52%,#C3A56C 100%);color:#17110A;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -1px 0 rgba(90,66,20,.35),0 1px 2px rgba(0,0,0,.5)}
+body.dark[data-tema=gala] .btn-primary:hover{background:linear-gradient(180deg,#E8D3A4 0%,#D2B67F 52%,#C3A56C 100%);filter:brightness(1.06)}
+body[data-tema=gala] .btn-ghost,body[data-tema=gala] .bell,body[data-tema=gala] .icon-btn,body[data-tema=gala] .msel-btn{background:var(--card);border-color:var(--line);color:var(--ink);transition:background-color .14s,border-color .14s}
+body[data-tema=gala] .btn-ghost:hover,body[data-tema=gala] .bell:hover,body[data-tema=gala] .msel-btn:hover{background:var(--card);border-color:var(--fio)}
+body.dark[data-tema=gala] .btn-ghost,body.dark[data-tema=gala] .bell,body.dark[data-tema=gala] .icon-btn,body.dark[data-tema=gala] .theme-toggle,body.dark[data-tema=gala] .msel-btn{background:rgba(255,255,255,.035)}
+body.dark[data-tema=gala] .btn-ghost:hover,body.dark[data-tema=gala] .bell:hover,body.dark[data-tema=gala] .msel-btn:hover{background:rgba(255,255,255,.06)}
+body[data-tema=gala] .msel.open .msel-btn{border-color:var(--latao);box-shadow:var(--foco)}
+body.dark[data-tema=gala] .msel-pop{background:#141D3A;border-color:var(--line)}
+body.dark[data-tema=gala] .msel-head input,body.dark[data-tema=gala] .msel-foot{background:var(--poco)}
+body.dark[data-tema=gala] .msel-it:hover{background:rgba(255,255,255,.05)}
+/* --- campos: poço um tom abaixo da superfície; foco em latão --- */
+body[data-tema=gala] .input,body[data-tema=gala] select.input{background-color:var(--poco);border-color:var(--line);border-radius:10px;transition:border-color .14s,box-shadow .14s,background-color .14s}
+body[data-tema=gala] .input:hover,body[data-tema=gala] select.input:hover{border-color:var(--soft)}
+body[data-tema=gala] .input:focus,body[data-tema=gala] select.input:focus{border-color:var(--latao);box-shadow:var(--foco);background-color:var(--card)}
+body.dark[data-tema=gala] .input:focus,body.dark[data-tema=gala] select.input:focus{background-color:#0E1630}
+body.dark[data-tema=gala] input[type=date].input{color-scheme:dark}
+/* --- tabela: cabeçalho baixo, linhas finas, números retos, realce quente ao passar --- */
+body[data-tema=gala] #view thead th{font-size:12px;font-weight:500;color:var(--soft);padding:13px 16px;border-bottom-color:var(--hair)}
+body[data-tema=gala] #view tbody td{padding:13px 16px;border-bottom-color:var(--hair)}
+body[data-tema=gala] #view tbody tr{transition:background-color .12s}
+body[data-tema=gala] #view tbody tr:hover{background:var(--realce)}
+body[data-tema=gala] #view .est-pos td:first-child{font-weight:600;letter-spacing:-.005em}
+body[data-tema=gala] #view td.num .input{font-family:var(--fnum);font-variant-numeric:tabular-nums;border-radius:8px;border-color:var(--hair)}
+@media(max-width:640px){body[data-tema=gala] table.tc td[data-l]::before{text-transform:none;letter-spacing:0;font-weight:500;font-size:12px;color:var(--soft);margin-bottom:3px}
+  body[data-tema=gala] table.tc tr{padding:15px 16px;border-bottom-color:var(--hair);gap:10px 14px}
+  body[data-tema=gala] #view .scroll-x table.tc td:first-child,body[data-tema=gala] table.tc td:first-child{font-size:16px}
+  body[data-tema=gala] #view table.tc td.num .input{width:100%!important;min-height:46px;font-size:17px;font-weight:600}}
+/* --- janela: fio no alto, título de carta, rodapé firme --- */
+body[data-tema=gala] .modal-overlay{background:rgba(8,12,28,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+body[data-tema=gala] .modal{border-top:0;border-radius:18px;background:linear-gradient(90deg,transparent 8%,var(--fio) 50%,transparent 92%) top/100% 1px no-repeat,var(--card);box-shadow:var(--shadow-lg);animation:galaSobe .24s cubic-bezier(.23,1,.32,1)}
+body.dark[data-tema=gala] .modal{background:linear-gradient(90deg,transparent 8%,var(--fio) 50%,transparent 92%) top/100% 1px no-repeat,#10182F}
+@keyframes galaSobe{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+body[data-tema=gala] .modal-head{border-bottom-color:var(--hair)}
+body[data-tema=gala] .modal-head h3{font-size:21px;font-weight:600;letter-spacing:-.015em}
+body[data-tema=gala] .modal-head .x{width:36px;height:36px;border-radius:50%;transition:background-color .14s,color .14s}
+body[data-tema=gala] .modal-head .x:hover{background:var(--realce);color:var(--ink)}
+body[data-tema=gala] .modal-foot{background:var(--poco);border-top-color:var(--hair)}
+body.dark[data-tema=gala] .modal-foot{background:#0C1328}
+@media(max-width:640px){body[data-tema=gala] .modal,body[data-tema=gala] .modal.wide{border-radius:20px 20px 0 0}
+  body[data-tema=gala] .modal-head .x{width:44px;height:44px;margin-right:-8px}
+  body[data-tema=gala] .modal-foot .btn{min-height:50px;font-size:15px}
+  body[data-tema=gala] .modal-foot .btn-primary{flex-basis:100%}}
+/* --- Nova contagem: seções em itálico de carta, linha generosa, campo grande com número reto --- */
+body[data-tema=gala] #ec_rows [data-cab]{display:flex;align-items:center;gap:14px;font-family:var(--ftit);font-style:italic;font-size:17px!important;font-weight:500!important;text-transform:none!important;letter-spacing:-.005em!important;color:var(--gold)!important;padding:20px 0 8px!important}
+body[data-tema=gala] #ec_rows [data-cab]::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--fio),transparent);opacity:.55}
+body[data-tema=gala] #ec_rows [data-id]{border-top-color:var(--hair)!important;padding:9px 0!important}
+body[data-tema=gala] #ec_rows [data-cab]+[data-id]{border-top-color:transparent!important}
+body[data-tema=gala] #ec_rows [data-id]>div:first-child>div:first-child{font-size:14.5px!important;letter-spacing:-.005em}
+body[data-tema=gala] #ec_rows .input{font-family:var(--fnum);font-variant-numeric:tabular-nums;font-weight:600;font-size:15px}
+body[data-tema=gala] #ec_rows [id^=ec_dif_]{font-family:var(--fnum);font-variant-numeric:tabular-nums}
+body[data-tema=gala] #ec_total{border-top:1px solid var(--fio)!important;padding-top:14px!important;margin-top:10px!important}
+@media(max-width:640px){body[data-tema=gala] #ec_rows [data-id]{padding:12px 0!important}
+  body[data-tema=gala] #ec_rows [data-id]>div:first-child>div:first-child{font-size:16px!important}
+  body[data-tema=gala] #ec_rows [data-id]>div:first-child>div+div{font-size:12.5px!important;margin-top:2px}
+  body[data-tema=gala] #ec_rows .input{min-height:48px;font-size:18px;padding:8px 12px!important}}
+/* --- miúdos --- */
 body[data-tema=gala] .ic-navy{background:rgba(29,53,115,.09)}
-body.dark[data-tema=gala] .ic-navy{background:rgba(102,132,204,.16);color:#9DB3E6}
+body.dark[data-tema=gala] .ic-navy{background:rgba(143,168,232,.14);color:#A9BDEE}
+body.dark[data-tema=gala] .dsh-kpi .chip.soft{background:none}
+body.dark[data-tema=gala] .dsh-bullet{background:var(--poco)}
+body.dark[data-tema=gala] .tag-gray{background:rgba(255,255,255,.07)}
+@media(prefers-reduced-motion:reduce){body[data-tema=gala] .btn:active{transform:none}body[data-tema=gala] .modal{animation:none}body[data-tema=gala] .pill-filter.tabs button::after{transition:none}}
 
 /* ================= 2. LINHO ================= */
 body[data-tema=linho]{--fnum:'Figtree',Inter,system-ui,sans-serif;--ftit:'Figtree',Inter,system-ui,sans-serif;font-family:'Figtree',Inter,system-ui,sans-serif;
@@ -1654,6 +1780,27 @@ body.dark[data-tema=marinho] .dsh-kpi .chip.soft,body.dark[data-tema=marinho] .d
 body.dark[data-tema=marinho] .sidebar,body.dark[data-tema=marinho] .topbar{background:var(--band)}
 body.dark[data-tema=marinho] .card:not(.hero-card),body.dark[data-tema=marinho] .kpi,body.dark[data-tema=marinho] .dsh-kpi{border-color:rgba(255,255,255,.07)}
 body[data-tema=marinho] .theme-toggle{background:rgba(255,255,255,.08)}
+/* === paleta de dados (todas as direções) ===
+   Fica no fim para valer sobre os tokens de cada direção. Cada cor tem um papel só:
+   azul = receita/vendas; latão = despesas; verde-água = bom; laranja = atenção; carmim = ruim.
+   O dourado de TEXTO (#86693A) não pinta mais barra (ficava marrom); a atenção saiu do âmbar (colava no dourado)
+   para o laranja, e o ruim foi para o carmim para se afastar do laranja. Conferido com simulação de daltonismo:
+   receita × despesas ΔE 33 (claro) e 26 (escuro); bom × ruim e bom × atenção separados também em deuteranopia. */
+body[data-tema]{--d-rec:#1D3573;--d-desp:#AD8736;--green:#0E7C66;--amber:#AD4C08;--red:#B4234A;--green-bg:#E1F3EE;--amber-bg:#FBEBDD;--red-bg:#FAE6EA}
+body.dark[data-tema]{--d-rec:#6F93EA;--d-desp:#E0BE6A;--green:#45D0AC;--amber:#EE8437;--red:#F0607F;--green-bg:rgba(69,208,172,.14);--amber-bg:rgba(238,132,55,.15);--red-bg:rgba(240,96,127,.15)}
+body.dark[data-tema=marinho]{--d-rec:#8FB0FF}
+body[data-tema] #view .dsh-chart rect[fill="var(--navy)"],body[data-tema] #view .dsh-kpi-vis circle[fill="var(--navy)"]{fill:var(--d-rec)}
+body[data-tema] #view .dsh-kpi-vis [stroke="var(--navy)"]{stroke:var(--d-rec)}
+body[data-tema] #view .dsh-kpi-vis stop[stop-color="var(--navy)"]{stop-color:var(--d-rec)}
+body[data-tema] #view svg [fill="var(--gold)"]{fill:var(--d-desp)}
+body[data-tema] #view svg [stroke="var(--gold)"]{stroke:var(--d-desp)}
+body[data-tema] #view .dsh-legend i[style*="--navy"]{background:var(--d-rec)!important}
+body[data-tema] #view .dsh-legend i[style*="--gold"]{background:var(--d-desp)!important}
+/* as barras de meses passados ficam mais claras, mas ainda legíveis; a do mês corrente, cheia */
+body[data-tema] #view .dsh-chart rect[opacity=".55"]{opacity:.5}
+body[data-tema] #view .dsh-chart rect[opacity=".9"]{opacity:1}
+/* números do Dashboard: Marinho passa a usar a mesma letra reta das outras (o 1 da Manrope abria buraco no meio do valor) */
+body[data-tema=marinho]{--fnum:'Geist','Manrope',Inter,system-ui,sans-serif}
 }
 </style>
 </head>
@@ -3130,9 +3277,9 @@ function toggleTheme(){applyTheme(document.body.classList.contains('dark')?'ligh
    Sem escolha, nada muda: o body não ganha data-tema e a fonte extra não é carregada.
    O claro/escuro continua no botão da lua (body.dark); o tema só troca os tokens de cada modo. */
 const TEMAS={
-  gala:{nome:'Noite de gala',ideia:'Elegante como salão à noite: cartões de vidro fosco com fio dourado e números retos, fáceis de ler.',fonte:'Geist:wght@400;500;600;700'},
+  gala:{nome:'Noite de gala',ideia:'Elegante como salão à noite: cartões de vidro fosco com fio dourado e números retos, fáceis de ler.',fonte:'Geist:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@1,9..144,500'},
   linho:{nome:'Linho',ideia:'Claro e quente como toalha de linho: menu lateral claro, cantos macios e mais respiro.',fonte:'Figtree:wght@400;500;600;700;800'},
-  marinho:{nome:'Marinho moderno',ideia:'O azul vira fundo: faixa marinho no topo da tela, cartões que flutuam sobre ela, letras modernas.',fonte:'Manrope:wght@500;600;700;800'}};
+  marinho:{nome:'Marinho moderno',ideia:'O azul vira fundo: faixa marinho no topo da tela, cartões que flutuam sobre ela, letras modernas.',fonte:'Manrope:wght@500;600;700;800&family=Geist:wght@500;600;700;800'}};
 function temaAtual(){try{const t=localStorage.getItem('flow_tema')||'';return TEMAS[t]?t:'';}catch(e){return '';}}
 function temaFonte(t){if(!TEMAS[t]||document.getElementById('temaFonte_'+t))return;const l=document.createElement('link');l.id='temaFonte_'+t;l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family='+TEMAS[t].fonte+'&display=swap';l.onload=()=>{try{document.fonts.ready.then(()=>kpiFit(document.getElementById('view')));}catch(e){}};document.head.appendChild(l);}
 function aplicarTema(t,salvar){if(!TEMAS[t])t='';
