@@ -13,6 +13,8 @@ Caminho na tela: <!-- ex.: Financeiro → Contas a Pagar → "○ Pago" numa par
 
 O preview roda **sem banco**, com um restaurante de demonstração. Nada do que se faz ali chega ao Flow de verdade.
 
+- [ ] **Toda mudança de tela traz, no mesmo PR, os dados fictícios que a deixam visível no preview (em tools/preview_mock.js). O link de teste nunca pode abrir a tela nova vazia.**
+
 ## Homologação
 
 - [ ] Testado no computador

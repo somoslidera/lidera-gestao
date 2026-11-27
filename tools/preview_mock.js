@@ -128,7 +128,11 @@
 
     /* ---------- fichas ---------- */
     var semana={};   // fichaId -> pratos por semana (antes da escala)
-    Object.values(DB.fichas).forEach(function(fi){if(VENDAS_BASE[fi.nome]){semana[fi.id]=VENDAS_BASE[fi.nome];fi.precos=Object.assign({},fi.precos||{});}});
+    /* pratos do buffet (da demo de sempre): o preço da porção é o peso dela ao preço do quilo do buffet */
+    var kgBuffet=+((DB.buffet||{}).precoVendaKg)||45.9;
+    Object.values(DB.fichas).forEach(function(fi){if(!VENDAS_BASE[fi.nome])return;semana[fi.id]=VENDAS_BASE[fi.nome];fi.precos=Object.assign({},fi.precos||{});
+      var g=(fi.comps||[]).reduce(function(t,c){var i=DB.insumos[c[0]];return t+((i&&(BASE[i.uni]==='g'||BASE[i.uni]==='ml'))?(+c[1]||0):0);},0);
+      if(g>0)fi.precoVenda=r2(g/1000*kgBuffet);});
     FICHAS.forEach(function(a,i){var id='mock-ficha-'+(i+1);var x=a[7]||{};
       DB.fichas[id]={id:id,nome:a[0],cat:a[1],porcoes:1,custoEmbalagem:x.emb!=null?x.emb:(a[3]?1.1:0),precoVenda:a[2],precoIfood:a[3]||0,precos:a[3]?{ifood:a[3],proprio:a[4]}:{},vendasMes:0,tempoPreparo:12,utensilios:'',modoPreparo:[],padraoFinalizacao:'',comps:a[5].map(function(c){return [C(c[0]),c[1]];}).filter(function(c){return c[0];})};
       semana[id]=a[6];});
@@ -146,12 +150,12 @@
     Object.keys(semana).forEach(function(id){somaUso(estExplodir(DB.fichas[id],semana[id]/7),1);});
     ['estrog','feijoada','molho'].forEach(function(k){var s=K[k];if(!s||!uso[s.id])return;estReceitaPara(s,uso[s.id]).forEach(function(x){uso[x.insumoId]=(uso[x.insumoId]||0)+x.q;});});
 
-    /* ideal e crítico */
+    /* ideal e crítico, em números redondos como alguém digitaria */
+    var redondo=function(v,i){if(i.uni==='un'||v>=10)return Math.ceil(v);if(i.tipo==='preparado'&&i.uni==='g')return Math.ceil(v/100)*100;return Math.ceil(v*2)/2;};
     Object.values(DB.insumos).forEach(function(i){if(!estEstocavel(i)||!uso[i.id])return;var r=ROTA[i._f];var cob=r?r.cob:4;
-      i.estoqueMin=r3(Math.max(1,uso[i.id]*cob));i.estoqueCrit=r3(Math.max(0.5,uso[i.id]*cob*0.35));
-      if(i.uni==='un'){i.estoqueMin=Math.ceil(i.estoqueMin);i.estoqueCrit=Math.ceil(i.estoqueCrit);}});
+      i.estoqueMin=redondo(Math.max(1,uso[i.id]*cob),i);i.estoqueCrit=redondo(Math.max(0.5,uso[i.id]*cob*0.35),i);});
     /* alguns com o ponto de pedido alto (sempre aparecem na Lista de Compras) e dois que zeram na contagem de hoje */
-    ['acucar','ovos','parmesao','cenoura','cerveja','linguica'].forEach(function(k){var i=K[k];if(i&&i.estoqueMin)i.estoqueCrit=i.uni==='un'?Math.ceil(i.estoqueMin*0.92):r3(i.estoqueMin*0.92);});
+    ['acucar','ovos','parmesao','cenoura','cerveja','linguica'].forEach(function(k){var i=K[k];if(i&&i.estoqueMin)i.estoqueCrit=redondo(i.estoqueMin*0.92,i);});
     var ZERA=['alface','cheiro'];
     /* produção sai em lotes: a compra cobre também um lote inteiro do que vai para os preparados */
     var LOTE={},porLote={};
@@ -236,9 +240,9 @@
         if(teo<=0&&!ehZera)return;
         var cont=ehZera?0:r3(teo*rnd(0.955,1.01));if(i.uni==='un'||(i.tipo!=='preparado'&&insEmb(i)&&i.uni==='un'))cont=Math.round(cont);
         var dif=r3(cont-teo);itens.push({insumoId:i.id,teorico:teo,contado:cont,dif:dif,valorDif:r2(dif*estCustoAtual(i))});});
-      var c={id:uid(),data:data,arm:arm,itens:itens,obs:parcial?'Contagem de hoje (parte do estoque)':'Contagem de fim de mês',totalDif:r2(itens.reduce(function(s,x){return s+x.valorDif;},0)),por:'Colaborador 7',em:emISO(data,parcial?'09:40':'21:30')};
+      var c={id:uid(),data:data,arm:arm,itens:itens,obs:parcial?'Contagem de hoje (parte do estoque)':'Contagem de fim de mês',totalDif:r2(itens.reduce(function(s,x){return s+x.valorDif;},0)),por:'Colaborador 7',em:emISO(data,parcial?'09:40':'16:30')};
       if(nao.length)c.naoContados=nao;
-      itens.forEach(function(x){if(x.dif)estMov('ajuste',x.insumoId,0,{delta:x.dif,arm:arm,origem:'contagem',refId:c.id,data:data,hora:parcial?'09:40':'21:30',motivo:'Contagem física',obs:x.dif<0?'faltou na contagem':'sobrou na contagem'});});
+      itens.forEach(function(x){if(x.dif)estMov('ajuste',x.insumoId,0,{delta:x.dif,arm:arm,origem:'contagem',refId:c.id,data:data,hora:parcial?'09:40':'16:30',motivo:'Contagem física',obs:x.dif<0?'faltou na contagem':'sobrou na contagem'});});
       DB.contagens.push(c);return c;}
 
     /* ---------- custos fixos (viram contas a pagar todo mês) ---------- */
