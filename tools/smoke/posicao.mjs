@@ -1,5 +1,5 @@
-// Teste da aba Estoque → Posição (D15/D18): colunas "Última compra" e "Em pacotes",
-// filtro de unidade e scorecards clicáveis. Roda contra o _site/ (sem banco), em 1280 e 390 px.
+// Teste da aba Estoque → Posição (D15/D18): colunas "Essencial" (padrão) e "Completa", "Última compra"
+// e "Em pacotes", filtro de unidade e scorecards clicáveis. Roda contra o _site/ (sem banco), em 1280 e 390 px.
 //
 //   python3 ../preview_build.py && node posicao.mjs
 //
@@ -62,9 +62,113 @@ async function rodar(largura) {
   });
   await pag.waitForTimeout(400);
 
-  const ths = await pag.locator("table.est-pos thead th").allTextContents();
-  checa(ths.some((t) => /Última compra/.test(t)), `${largura}: falta a coluna Última compra`);
-  checa(ths.some((t) => /Em pacotes/.test(t)), `${largura}: falta a coluna Em pacotes`);
+  const cab = () => pag.evaluate(() => [...document.querySelectorAll("table.est-pos thead th")].map((th) => th.textContent.replace(/[↑↓]/g, "").trim()));
+  const SO_COMPLETA = ["Categoria", "Subcategoria", "Fornecedor", "Custo médio", "Última compra", "Custo por porção"];
+  const temSub = await pag.evaluate(() => estSubprodutos().length > 0);
+  const larguraTabela = () => pag.evaluate(() => document.querySelector("table.est-pos").scrollWidth);
+  // no celular a tabela vira cartões e o cabeçalho fica escondido: clica pelo DOM (mesmo onclick do th)
+  const clicaTh = (rot) => pag.evaluate((r) => [...document.querySelectorAll("table.est-pos thead th")].find((th) => th.textContent.trim().startsWith(r)).click(), rot);
+  const colsOn = () => pag.evaluate(() => (document.querySelector("#estPosCols button.on") || {}).textContent || "");
+
+  // Essencial é o padrão: sem as 6 colunas, com "Compra" logo depois de Crítico
+  let ths = await cab();
+  checa(await colsOn() === "Essencial", `${largura}: a visão padrão não é Essencial (${await colsOn()})`);
+  SO_COMPLETA.forEach((c) => checa(!ths.includes(c), `${largura}: Essencial mostra a coluna ${c}`));
+  checa(ths[ths.indexOf("Crítico") + 1] === "Compra", `${largura}: Compra não vem logo depois de Crítico: ${JSON.stringify(ths)}`);
+  checa(ths.includes("Em pacotes") && ths.includes("Cobertura"), `${largura}: Essencial perdeu Em pacotes ou Cobertura`);
+  const lEss = await larguraTabela();
+  await pag.screenshot({ path: join(PRINTS, `posicao-essencial-${largura}.png`), fullPage: largura < 600 });
+  if (largura < 600) {
+    const sobra = await pag.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    checa(sobra <= 1, `${largura} Essencial: a página rola na horizontal (${sobra}px)`);
+  }
+  // ordenar e buscar na Essencial
+  await clicaTh("Insumo");
+  await pag.waitForTimeout(200);
+  let nomesOrd = await pag.evaluate(() => (window.EST_POS_FILT || []).map((x) => x.nome.toLowerCase()));
+  checa(nomesOrd.length > 2 && nomesOrd.every((n, i) => !i || nomesOrd[i - 1] <= n), `${largura}: ordenar por Insumo não ordenou na Essencial`);
+  await clicaTh("Crítico");
+  await pag.waitForTimeout(200);
+  checa(await pag.evaluate(() => SORT.estoque.k === "crit" && (window.EST_POS_FILT || []).every((x, i, L) => !i || (L[i - 1].crit || 0) <= (x.crit || 0))), `${largura}: ordenar por Crítico não ordenou`);
+  await pag.locator("#estBusca").fill(ids.c);
+  await pag.waitForTimeout(200);
+  let vis = await pag.evaluate(() => [...document.querySelectorAll("#estoqueTbody tr")].filter((tr) => tr.style.display !== "none").map((tr) => tr.children[0].innerText));
+  checa(vis.length >= 1 && vis.every((t) => t.includes(ids.c)), `${largura}: busca na Essencial mostrou ${JSON.stringify(vis)}`);
+  await pag.locator("#estBusca").fill("");
+  await pag.evaluate(() => { buscaEst = ""; filtrarLinhas(document.getElementById("estBusca"), "#estoqueTbody"); });
+
+  // Completa: tudo de volta
+  await pag.locator('#estPosCols button[data-cols="completa"]').click();
+  await pag.waitForTimeout(300);
+  ths = await cab();
+  SO_COMPLETA.filter((c) => c !== "Custo por porção" || temSub).forEach((c) => checa(ths.includes(c), `${largura}: Completa sem a coluna ${c}`));
+  checa(ths[ths.indexOf("Crítico") + 1] === "Compra", `${largura}: na Completa, Compra não vem logo depois de Crítico`);
+  checa(ths.includes("Em pacotes"), `${largura}: falta a coluna Em pacotes`);
+  const lComp = await larguraTabela();
+  if (largura >= 600) checa(lEss < lComp, `${largura}: Essencial (${lEss}px) não ficou mais estreita que a Completa (${lComp}px)`);
+  console.log(`  ${largura}: largura da tabela Essencial ${lEss}px · Completa ${lComp}px`);
+  await pag.screenshot({ path: join(PRINTS, `posicao-completa-${largura}.png`), fullPage: largura < 600 });
+  // ordenar por Fornecedor e buscar na Completa
+  await clicaTh("Fornecedor");
+  await pag.waitForTimeout(200);
+  checa(await pag.evaluate(() => SORT.estoque.k === "fornecedor"), `${largura}: ordenar por Fornecedor não pegou na Completa`);
+  await pag.locator("#estBusca").fill(ids.c);
+  await pag.waitForTimeout(200);
+  vis = await pag.evaluate(() => [...document.querySelectorAll("#estoqueTbody tr")].filter((tr) => tr.style.display !== "none").map((tr) => tr.children[0].innerText));
+  checa(vis.length >= 1 && vis.every((t) => t.includes(ids.c)), `${largura}: busca na Completa mostrou ${JSON.stringify(vis)}`);
+  await pag.locator("#estBusca").fill("");
+  await pag.evaluate(() => { buscaEst = ""; });
+  if (largura < 600) {
+    const sobra = await pag.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    checa(sobra <= 1, `${largura} Completa: a página rola na horizontal (${sobra}px)`);
+  }
+  // impressão da Posição continua saindo (relatório próprio, não depende das colunas da tela)
+  const impr = await pag.evaluate(() => { const p = window.print; let ok = false; window.print = () => { ok = /Posição do estoque/.test((document.getElementById("printArea") || {}).textContent || ""); }; try { imprimirTela(); } finally { window.print = p; } return ok; });
+  checa(impr, `${largura}: a impressão da Posição não montou o relatório`);
+
+  // quem não vê valores: Completa sem as colunas de custo
+  const semVal = await pag.evaluate(() => {
+    MEMBRO_PERMS = ["estoque"]; MEMBRO_SUB = { posicao: true, valores: false };
+    viewEstoque();
+    const t = [...document.querySelectorAll("table.est-pos thead th")].map((th) => th.textContent.replace(/[↑↓]/g, "").trim());
+    MEMBRO_PERMS = null; MEMBRO_SUB = null; viewEstoque();
+    return t;
+  });
+  checa(semVal.includes("Fornecedor") && !semVal.includes("Custo médio") && !semVal.includes("Última compra") && !semVal.includes("Custo por porção"), `${largura}: sem valores, a Completa mostrou ${JSON.stringify(semVal)}`);
+
+  // a escolha é por usuário: outra pessoa no mesmo aparelho começa na Essencial
+  const outro = await pag.evaluate(() => { const n = MEMBRO_NOME; MEMBRO_NOME = "Pessoa de teste"; viewEstoque(); const on = document.querySelector("#estPosCols button.on").textContent; MEMBRO_NOME = n; viewEstoque(); return on; });
+  checa(outro === "Essencial", `${largura}: outro usuário herdou a visão ${outro}`);
+
+  // recarregar a página lembra a Completa
+  await pag.reload({ waitUntil: "load" });
+  await pag.waitForTimeout(2500);
+  await pag.evaluate(() => { estoqueTab = "contagem"; estoqueFiltro = "Todos"; estoqueUniF = ""; estoqueKpiF = ""; go("estoque"); });
+  await pag.waitForTimeout(400);
+  checa(await colsOn() === "Completa" && (await cab()).includes("Categoria"), `${largura}: depois de recarregar, a escolha Completa não foi lembrada`);
+  // localStorage bloqueado: não quebra, troca vale na sessão
+  const bloq = await pag.evaluate(() => { const g = Storage.prototype.getItem, s = Storage.prototype.setItem; Storage.prototype.getItem = () => { throw new Error("bloqueado"); }; Storage.prototype.setItem = () => { throw new Error("bloqueado"); };
+    try { estPosColsSet("essencial"); const a = document.querySelector("#estPosCols button.on").textContent; estPosColsSet("completa"); return a + "/" + document.querySelector("#estPosCols button.on").textContent; } finally { Storage.prototype.getItem = g; Storage.prototype.setItem = s; } });
+  checa(bloq === "Essencial/Completa", `${largura}: com o armazenamento bloqueado a troca deu ${bloq}`);
+  // voltar para Essencial com a ordenação numa coluna que some: volta à ordem padrão
+  await pag.evaluate(() => { SORT.estoque = { k: "fornecedor", d: 1 }; });
+  await pag.locator('#estPosCols button[data-cols="essencial"]').click();
+  await pag.waitForTimeout(300);
+  checa(await pag.evaluate(() => SORT.estoque.k === "comprar"), `${largura}: Essencial ficou ordenada por coluna escondida`);
+  // refaz o caso de teste depois do recarregamento (a demonstração não salvou as mudanças)
+  await pag.evaluate(({ a, b, c, d }) => {
+    const ins = Object.values(DB.insumos).filter((i) => estEstocavel(i) && i.noEstoque !== false && i.uni === "kg");
+    const [A, B, C, D] = ins;
+    A.embNome = "PCT"; A.embQtd = 1; A.estoqueAtual = 12;
+    DB.lancamentos.push({ id: "t-um", data: hojeISO(), grupo: "CMV", valor: 30, insumoId: A.id, qtd: 3, uni: "PCT" });
+    if (!/1KG$/.test(D.nome)) D.nome = D.nome + " 1KG"; D.embNome = "PCT"; D.embQtd = 1;
+    DB.lancamentos.push({ id: "t-um-ok", data: hojeISO(), grupo: "CMV", valor: 30, insumoId: D.id, qtd: 3, uni: "PCT" });
+    delete B.embNome; B.embQtd = 0; B.estoqueAtual = 5;
+    DB.lancamentos.push({ id: "t-sememb", data: hojeISO(), grupo: "CMV", valor: 50, insumoId: B.id, qtd: 2, uni: "CX" });
+    C.cmp = 10; C.preco = 13; C.qtd = 1;
+    viewEstoque();
+  }, ids);
+  await pag.waitForTimeout(300);
   const corpo = await pag.locator("#estoqueTbody").innerText();
   checa(/12 × 1 kg/.test(corpo), `${largura}: "12 × 1 kg" não aparece para ${ids.a}`);
   checa(/sem embalagem/.test(corpo), `${largura}: "sem embalagem" não aparece para ${ids.b}`);
@@ -85,6 +189,7 @@ async function rodar(largura) {
   await pag.waitForTimeout(300);
   const txtPreco = await pag.locator("#estoqueTbody").innerText();
   checa(txtPreco.includes(ids.c) && /▲/.test(txtPreco), `${largura}: Preço subiu não mostra ${ids.c} com ▲`);
+  checa((await cab()).includes("Última compra"), `${largura}: Preço subiu na Essencial não mostra a coluna Última compra`);
   await pag.locator(".kpi", { hasText: "Preço subiu" }).click();
 
   // categoria escolhida → Total em kg aparece e filtra kg

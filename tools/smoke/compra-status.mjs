@@ -103,11 +103,23 @@ async function rodar(largura) {
   await pag.screenshot({ path: join(PRINTS, `compra-lista-${largura}.png`), fullPage: largura < 600 });
   await semRolagem(pag, largura, "Lista");
 
-  // ---- Posição: tag junto ao nome e contagem sem os comprados ----
+  // ---- Posição: tag na coluna "Compra" (logo depois de Crítico), não no nome; contagem sem os comprados ----
   await pag.evaluate(() => { estoqueTab = "contagem"; viewEstoque(); });
   await pag.waitForTimeout(300);
-  const celA = await pag.locator(`#estoqueTbody tr[data-ins="${A.id}"] td`).first().innerText().catch(() => "");
-  checa(/Comprado · chega \d\d\/\d\d/.test(celA) && /atualizado em/.test(celA), `${largura}: Posição sem a tag em ${A.nome}: ${JSON.stringify(celA)}`);
+  const pos = await pag.evaluate(({ a, e }) => {
+    const ths = [...document.querySelectorAll("table.est-pos thead th")].map((th) => th.textContent.replace(/[↑↓]/g, "").trim());
+    const trA = document.querySelector(`#estoqueTbody tr[data-ins="${a}"]`), trE = document.querySelector(`#estoqueTbody tr[data-ins="${e}"]`);
+    const tdA = trA && trA.querySelector("td.est-compra-td"), tdE = trE && trE.querySelector("td.est-compra-td");
+    return { ths, col: tdA ? [...trA.children].indexOf(tdA) : -1, cel: tdA ? tdA.innerText : "", nome: trA ? trA.children[0].innerText : "",
+      nomeTag: !!(trA && trA.children[0].querySelector(".est-compra")), vazia: tdE ? tdE.innerHTML.trim() : null, x: !!(tdA && tdA.querySelector(".est-compra-x")) };
+  }, { a: A.id, e: E.id });
+  const iCrit = pos.ths.indexOf("Crítico");
+  checa(iCrit > 0 && pos.ths[iCrit + 1] === "Compra" && pos.col === iCrit + 1, `${largura}: coluna Compra não está logo depois de Crítico (${JSON.stringify(pos.ths)}, célula na ${pos.col})`);
+  checa(/Comprado · chega \d\d\/\d\d/.test(pos.cel) && /atualizado em \d\d\/\d\d \d\d:\d\d/.test(pos.cel), `${largura}: coluna Compra sem etiqueta e "atualizado em dd/mm hh:mm" em ${A.nome}: ${JSON.stringify(pos.cel)}`);
+  checa(!pos.nomeTag && !/Comprado/.test(pos.nome), `${largura}: a etiqueta continua na célula do nome`);
+  checa(pos.x, `${largura}: coluna Compra sem o ×`);
+  checa(pos.vazia === "", `${largura}: item sem marca com a célula de compra preenchida: ${JSON.stringify(pos.vazia)}`);
+  if (largura < 600) checa(await pag.evaluate((e) => getComputedStyle(document.querySelector(`#estoqueTbody tr[data-ins="${e}"] td.est-compra-td`)).display === "none", E.id), `${largura}: cartão sem marca mostra a linha "Compra" vazia`);
   const depois = await itensAComprar(pag);
   checa(depois === antes - 2, `${largura}: Itens a comprar ${depois}, esperado ${antes - 2}`);
   const aviso = await pag.locator("#view").innerText();
@@ -175,7 +187,9 @@ async function rodar(largura) {
   // ---- "×" limpa ----
   await pag.evaluate((c) => { const i = DB.insumos[c]; i.compra = { status: "comprado", qtd: 2, fornecedor: "", previsao: "", em: new Date().toISOString(), por: "teste" }; estoqueTab = "contagem"; viewEstoque(); }, C.id);
   await pag.waitForTimeout(300);
-  const x = pag.locator(`#estoqueTbody tr[data-ins="${C.id}"] .est-compra-x`);
+  const celC = await pag.locator(`#estoqueTbody tr[data-ins="${C.id}"] td.est-compra-td`).innerText().catch(() => "");
+  checa(/Comprado em \d\d\/\d\d/.test(celC) && /atualizado em \d\d\/\d\d \d\d:\d\d · teste/.test(celC), `${largura}: coluna Compra sem "Comprado em dd/mm" e "atualizado em … · quem": ${JSON.stringify(celC)}`);
+  const x = pag.locator(`#estoqueTbody tr[data-ins="${C.id}"] td.est-compra-td .est-compra-x`);
   checa(await x.count() === 1, `${largura}: falta o × na tag de ${C.nome}`);
   if (await x.count()) {
     await x.click();
@@ -189,7 +203,7 @@ async function rodar(largura) {
     DB.insumos[d].compra = { status: "comprado", qtd: 1, fornecedor: "", previsao: "", em: new Date().toISOString(), por: "teste" };
     MEMBRO_PERMS = ["estoque"]; MEMBRO_SETORES = null; MEMBRO_SUB = { posicao: true, mov: true, contagem: true, compras: false };
     estoqueTab = "contagem"; viewEstoque();
-    const tag = !!document.querySelector(`#estoqueTbody tr[data-ins="${d}"] .est-compra`);
+    const tag = !!document.querySelector(`#estoqueTbody tr[data-ins="${d}"] td.est-compra-td .est-compra`);
     const xis = document.querySelectorAll(".est-compra-x").length;
     closeModal(); estCompraModal(e); const abriu = !!document.querySelector("#cp_q");
     estCompraSalvar(e); const marcou = estCompraAtiva(DB.insumos[e]);
