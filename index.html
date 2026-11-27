@@ -1324,11 +1324,15 @@ button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible,
 .ux-ajuda>summary::before{content:'?';display:inline-flex;width:18px;height:18px;border:1px solid var(--line);border-radius:50%;align-items:center;justify-content:center;font-size:11px;color:var(--muted);background:var(--card)}
 .ux-ajuda[open]>summary{margin-bottom:2px}
 /* confirmação própria no lugar da janela do navegador */
-.ux-conf{position:fixed;inset:0;z-index:400;background:rgba(16,32,63,.45);display:flex;align-items:center;justify-content:center;padding:20px}
+.ux-conf{position:fixed;inset:0;z-index:1200;background:rgba(16,32,63,.45);display:flex;align-items:center;justify-content:center;padding:20px}
 .ux-conf-box{background:var(--card);border-radius:16px;box-shadow:var(--shadow-lg);padding:22px 24px 18px;max-width:440px;width:100%}
 .ux-conf-t{font-family:'Fraunces',serif;font-size:18px;font-weight:700;color:var(--ink);line-height:1.25}
 .ux-conf-x{font-size:13px;color:var(--muted);line-height:1.55;margin-top:8px}
 .ux-conf-b{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.ux-conf-ico{display:inline-flex;width:22px;height:22px;color:var(--amber);vertical-align:-3px;margin-right:8px}.ux-conf-ico svg{width:22px;height:22px}
+.ux-conf-lista{margin:10px 0 0;padding:0;list-style:none;max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.ux-conf-lista li{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;font-size:13px;color:var(--ink);border-top:1px solid var(--line)}.ux-conf-lista li:first-child{border-top:0}
+.ux-conf-lista b{white-space:nowrap;font-weight:600}
 .btn.ux-perigo{background:var(--red);color:#fff;border:1px solid var(--red)}
 .btn.ux-perigo:hover{filter:brightness(.94)}
 /* estado vazio enxuto do cartão de meta */
@@ -6245,8 +6249,6 @@ function editNota(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)retu
   {const g=itens.find(ehNotaGratis);lmTipoNota=g?g.tipoNota:'compra';lmTrocaSaida=!itens.some(x=>x.tipoNota==='troca'&&x.trocaSaida===false);lmTipoDet=null;}
   lancarModal(true);}
 function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
-  const semProd=lancDraft.filter(r=>lmTotalLinha(r)&&r.grupo==='CMV'&&!(r.insumoId&&DB.insumos[r.insumoId])).length;
-  if(semProd>0 && !confirm('Atenção: '+semProd+(semProd===1?' item de CMV não está vinculado a um produto cadastrado.':' itens de CMV não estão vinculados a produtos cadastrados.')+'\n\nSem o vínculo, o gasto não atualiza o custo do produto nem o estoque. Deseja salvar mesmo assim?')) return;
   const vivos=new Set();let n=0,prodAtu=0,novos=0,lastYM=null,estN=0;const semConv=[];
   {const validas=lancDraft.filter(lmLinhaOk);const numNota=(validas.find(r=>(r.nf||'').trim())||{}).nf||lmEdit.nf||'';
    if(numNota)validas.forEach(r=>{if(!(r.nf||'').trim()&&grupoTipo(r.grupo)!=='receita')r.nf=numNota;});else lmNumerarSemNF(validas);}
@@ -6277,15 +6279,31 @@ function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
   lmEdit=null;save();closeModal();viewFinanceiro();
   if(lmGratis())lmTipoNota='compra';
   toast('Nota atualizada · '+n+' item(ns)'+(novos?' · '+novos+' novo(s)':'')+(remov.length?' · '+remov.length+' excluído(s)':'')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':'')+lmSemConvMsg(semConv));}
-function lancarModalSalvar(){DB.lancamentos=DB.lancamentos||[];
-  if(!lmDatasConferir())return;
-  if(!lmPermutaOk())return;   // ano digitado ou lido errado deixava o lançamento fora do DRE (572 casos em 15 clientes)
+/* itens de CMV sem produto vinculado: pode ser decisão gerencial, então avisa no modal do Flow e deixa lançar */
+function lmSemVinculo(){return (lancDraft||[]).map((r,i)=>({r,i})).filter(({r})=>lmLinhaOk(r)&&r.grupo==='CMV'&&!(r.insumoId&&DB.insumos[r.insumoId]));}
+function lmSemVinculoAviso(){const sv=lmSemVinculo();if(!sv.length)return false;const n=sv.length,um=n===1,max=8,gratis=lmGratis();
+  // bonificação/troca: o valor da linha é só referência (na edição vem de vRef) e a nota fica fora do DRE e do caixa
+  const val=r=>{const t=lmTotalLinha(r);return gratis?(t>0?'ref. '+fmtBRL(t):fmtN(+r.qtd||0,(+r.qtd||0)%1?2:0)+' '+esc(r.uni||'un')):fmtBRL(t);};
+  const lista=sv.slice(0,max).map(({r})=>`<li><span>${esc((r.desc||'').trim()||'Item sem descrição')}</span><b>${val(r)}</b></li>`).join('')+(n>max?`<li><span>e mais ${n-max}</span></li>`:'');
+  const efeito=gratis?`É ${lmTipoNota==='bonif'?'bonificação':'troca'}: não entra no DRE nem no caixa, e sem o vínculo também não dá entrada no estoque.`
+    :'O gasto entra no Financeiro e no DRE, mas não atualiza o custo do produto nem o estoque.';
+  uxConfirma({aviso:true,semFundo:true,titulo:(um?'1 item de CMV está':n+' itens de CMV estão')+' sem produto vinculado',
+    texto:`${efeito} ${um?'Ele aparece':'Eles aparecem'} em amarelo na nota.<ul class="ux-conf-lista">${lista}</ul>`,
+    sim:lmEdit?'Salvar sem vínculo':'Lançar sem vínculo',nao:'Voltar e vincular'},
+    ()=>lancarModalSalvar(true),
+    ()=>{const el=$('#lm_rows');const row=el&&el.children[sv[0].i];if(row&&row.scrollIntoView)row.scrollIntoView({block:'center',behavior:'smooth'});});
+  return true;}
+function lancarModalSalvar(semVinculoOk){DB.lancamentos=DB.lancamentos||[];
+  // validações primeiro; o aviso de item sem vínculo vem por último. "Lançar sem vínculo" volta aqui com true e não repete
+  // as validações: elas já passaram nesta mesma tentativa e a nota não pode ser editada com o aviso aberto.
+  if(semVinculoOk!==true){
+    if(!lmDatasConferir())return;
+    if(!lmPermutaOk())return;   // ano digitado ou lido errado deixava o lançamento fora do DRE (572 casos em 15 clientes)
+    if(lmSemVinculoAviso())return;}
   if(lmEdit)return lancarModalSalvarEdicao();
   if(!lmGratis())lmNotaAutoCond(true); // condição padrão do fornecedor, se a nota ficou sem parcelas
   const nfGeradas=lmNumerarSemNF(lancDraft.filter(lmLinhaOk));
-  // itens de CMV que serão lançados sem produto vinculado (amarelo) → confirma antes
-  const semProd=lancDraft.filter(r=>lmLinhaOk(r)&&r.grupo==='CMV'&&!(r.insumoId&&DB.insumos[r.insumoId])).length;
-  if(semProd>0 && !confirm('Atenção: '+semProd+(semProd===1?' item de CMV não está vinculado a um produto cadastrado (aparece em amarelo).':' itens de CMV não estão vinculados a produtos cadastrados (aparecem em amarelo).')+'\n\nSem o vínculo, o gasto não atualiza o custo do produto nem o estoque. Deseja lançar mesmo assim?')) return;
+  // itens de CMV sem produto vinculado: avisados no topo (lmSemVinculoAviso)
   // avisa se alguma NF do rascunho já foi lançada antes (mesma nota + mesmo fornecedor)
   const jaLancadas=[...new Set(lancDraft.filter(r=>lmLinhaOk(r)&&nfKey(r.nf)&&nfJaLancada(r.nf,r.fornecedor)).map(r=>(r.nf||'').trim()))];
   if(jaLancadas.length && !confirm('A NF '+jaLancadas.join(', ')+(jaLancadas.length===1?' já foi lançada':' já foram lançadas')+' para esse fornecedor.\n\nDeseja lançar mesmo assim?')) return;
@@ -9447,10 +9465,13 @@ let _uxRaf=0;
 function uxAplicar(){_uxRaf=0;try{uxTabelas(document.getElementById('view'));uxIcones(document.body);}catch(e){}}
 function uxAgendar(){if(!_uxRaf)_uxRaf=requestAnimationFrame(uxAplicar);}
 (function(){const ini=()=>{try{new MutationObserver(uxAgendar).observe(document.body,{childList:true,subtree:true});uxAgendar();}catch(e){}};if(document.body)ini();else document.addEventListener('DOMContentLoaded',ini);})();
-/* o: {titulo, texto (HTML já escapado), sim, nao, perigo} · ok roda só se a pessoa confirmar */
-function uxConfirma(o,ok){const a=document.getElementById('uxConfirm');if(a)a.remove();const d=document.createElement('div');d.id='uxConfirm';d.className='ux-conf';
-  d.innerHTML=`<div class="ux-conf-box" role="alertdialog" aria-modal="true"><div class="ux-conf-t">${o.titulo||'Confirmar'}</div>${o.texto?`<div class="ux-conf-x">${o.texto}</div>`:''}<div class="ux-conf-b"><button class="btn btn-ghost" data-a="0">${o.nao||'Cancelar'}</button><button class="btn ${o.perigo?'ux-perigo':'btn-primary'}" data-a="1">${o.sim||'Confirmar'}</button></div></div>`;
-  d.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(e.target!==d&&!b)return;d.remove();if(b&&b.dataset.a==='1'){try{ok&&ok();}catch(err){console.error(err);}}});
+/* o: {titulo, texto (HTML já escapado), sim, nao, perigo, aviso, semFundo} · ok roda só se a pessoa confirmar; naoCb (opcional) só no botão "nao".
+   Clique no fundo fecha (como Cancelar), menos nos primeiros 400 ms (é o 2º clique de um clique duplo no botão que abriu).
+   semFundo: o fundo não fecha, e os botões também ignoram os primeiros 400 ms (no celular a folha de baixo põe o confirmar onde estava o botão que abriu). */
+function uxConfirma(o,ok,naoCb){const a=document.getElementById('uxConfirm');if(a)a.remove();const d=document.createElement('div');d.id='uxConfirm';d.className='ux-conf';
+  d.innerHTML=`<div class="ux-conf-box" role="alertdialog" aria-modal="true"><div class="ux-conf-t">${o.aviso?`<span class="ux-conf-ico">${icoWarn}</span>`:''}${o.titulo||'Confirmar'}</div>${o.texto?`<div class="ux-conf-x">${o.texto}</div>`:''}<div class="ux-conf-b"><button class="btn btn-ghost" data-a="0">${o.nao||'Cancelar'}</button><button class="btn ${o.perigo?'ux-perigo':'btn-primary'}" data-a="1">${o.sim||'Confirmar'}</button></div></div>`;
+  const t0=Date.now();
+  d.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(e.target!==d&&!b)return;if(!b&&o.semFundo)return;if(Date.now()-t0<400&&(!b||o.semFundo))return;d.remove();if(b&&b.dataset.a==='1'){try{ok&&ok();}catch(err){console.error(err);}}else if(b&&naoCb){try{naoCb();}catch(err){console.error(err);}}});
   document.body.appendChild(d);const f=d.querySelector('[data-a="0"]');if(f)f.focus();}
 /* Esc fecha: primeiro a confirmação, depois a janela aberta (como clicar no X). Nota com itens preenchidos não fecha por engano. */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
