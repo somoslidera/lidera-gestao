@@ -1,5 +1,7 @@
 // Teste de "Subprodutos em lote" (Fichas Técnicas → Mais): começa com todos os preparados marcados,
 // o dono desmarca o que é feito na hora, aplica com resumo. Só administrador vê o botão.
+// É um recurso por cliente (DB.recursos.subprodLote): desligado, ninguém vê nem abre; só a Lidera
+// (admin/consultor dentro da conta, ADMIN_MODE) vê o interruptor em Configurações → Conta.
 // Roda contra o _site/ (sem banco), em 1280 e 390 px.
 //
 //   python3 ../preview_build.py && node subprodutos.mjs
@@ -44,11 +46,40 @@ async function rodar(largura) {
   const ids = await pag.evaluate(() => {
     const mk = (nome, estocavel, saldo) => { const id = uid(); DB.insumos[id] = { id, nome, cat: "Teste", tipo: "preparado", uni: "g", rendimento: 1000, comps: [], estocavel, estoqueAtual: saldo }; return id; };
     const a = mk("ZZ Molho base", false, 0), b = mk("ZZ Farofa da casa", false, 0), c = mk("ZZ Vinagrete", true, 350);
-    MEMBRO_PERMS = null; MEMBRO_NIVEL = ""; go("fichas");
+    MEMBRO_PERMS = null; MEMBRO_NIVEL = ""; delete DB.recursos; go("fichas");
     return { a, b, c };
   });
   await pag.waitForTimeout(300);
-  checa(await pag.evaluate(() => document.querySelector("#topActions").innerHTML.includes("subprodLoteModal")), `${largura}: dono não vê o botão Subprodutos em lote`);
+
+  // recurso desligado (padrão): nem o dono vê o botão, e o modal recusa
+  const off = await pag.evaluate(() => { const btn = document.querySelector("#topActions").innerHTML.includes("subprodLoteModal"); _slSel = null; subprodLoteModal(); const abriu = !!document.querySelector("#sl_resumo"); if (abriu) closeModal(); return { btn, abriu }; });
+  checa(!off.btn, `${largura}: recurso desligado, mas o dono vê o botão Subprodutos em lote`);
+  checa(!off.abriu, `${largura}: recurso desligado, mas o modal abriu`);
+
+  // interruptor: o dono não vê; dentro da conta como cliente também não; a Lidera (ADMIN_MODE + admin/consultor) vê
+  const sw = await pag.evaluate(() => {
+    const ver = () => { contaTab = "conta"; go("conta"); return !!document.querySelector("input[data-recurso=subprodLote]"); };
+    const dono = ver();
+    ADMIN_MODE = true; PERFIL = { papel: "cliente" }; const cliente = ver();
+    PERFIL = { papel: "consultor" }; const consultor = ver();
+    PERFIL = { papel: "admin" }; const admin = ver();
+    const titulo = document.querySelector("#view").innerText.includes("Recursos liberados para esta conta (só a Lidera vê)");
+    return { dono, cliente, consultor, admin, titulo };
+  });
+  checa(!sw.dono, `${largura}: o dono vê o interruptor de recursos`);
+  checa(!sw.cliente, `${largura}: perfil cliente com ADMIN_MODE vê o interruptor`);
+  checa(sw.consultor && sw.admin, `${largura}: a Lidera não vê o interruptor (${JSON.stringify(sw)})`);
+  checa(sw.titulo, `${largura}: falta o título da seção de recursos`);
+  if (sw.admin) {
+    await pag.screenshot({ path: join(PRINTS, `recursos-${largura}.png`), fullPage: largura < 600 });
+    await pag.locator("input[data-recurso=subprodLote]").check();
+    await pag.waitForTimeout(200);
+  }
+  const ligou = await pag.evaluate(() => { const r = { on: !!(DB.recursos && DB.recursos.subprodLote === true), salvo: (JSON.parse(localStorage.getItem(STORE_KEY) || "{}").recursos || {}).subprodLote === true }; ADMIN_MODE = false; PERFIL = null; MEMBRO_PERMS = null; MEMBRO_NIVEL = ""; go("fichas"); return r; });
+  checa(ligou.on, `${largura}: ligar o interruptor não gravou DB.recursos.subprodLote`);
+  checa(ligou.salvo, `${largura}: ligar o interruptor não salvou`);
+  await pag.waitForTimeout(300);
+  checa(await pag.evaluate(() => document.querySelector("#topActions").innerHTML.includes("subprodLoteModal")), `${largura}: recurso ligado, mas o dono não vê o botão Subprodutos em lote`);
 
   // abre: todos marcados
   await pag.evaluate(() => { _slSel = null; _slQ = "ZZ "; subprodLoteModal(); });
@@ -85,6 +116,19 @@ async function rodar(largura) {
   // gerente não vê o botão e não consegue abrir
   const g = await pag.evaluate(() => { MEMBRO_PERMS = ["fichas", "estoque"]; MEMBRO_NIVEL = "gerente"; go("fichas"); const btn = document.querySelector("#topActions").innerHTML.includes("subprodLoteModal"); subprodLoteModal(); const abriu = !!document.querySelector("#sl_resumo"); MEMBRO_PERMS = null; MEMBRO_NIVEL = ""; return { btn, abriu }; });
   checa(!g.btn && !g.abriu, `${largura}: gerente vê ou abre o lote (${JSON.stringify(g)})`);
+
+  // a Lidera desliga: o botão some de novo e o modal recusa
+  const desl = await pag.evaluate(() => {
+    ADMIN_MODE = true; PERFIL = { papel: "admin" }; contaTab = "conta"; go("conta");
+    const cx = document.querySelector("input[data-recurso=subprodLote]"); const marcado = !!(cx && cx.checked);
+    if (cx) { cx.checked = false; cx.dispatchEvent(new Event("change")); }
+    ADMIN_MODE = false; PERFIL = null; go("fichas");
+    const btn = document.querySelector("#topActions").innerHTML.includes("subprodLoteModal");
+    _slSel = null; subprodLoteModal(); const abriu = !!document.querySelector("#sl_resumo"); if (abriu) closeModal();
+    return { marcado, valor: DB.recursos && DB.recursos.subprodLote, btn, abriu };
+  });
+  checa(desl.marcado, `${largura}: o interruptor não aparece marcado com o recurso ligado`);
+  checa(desl.valor === false && !desl.btn && !desl.abriu, `${largura}: desligar não escondeu o recurso (${JSON.stringify(desl)})`);
 
   if (largura < 600) {
     const sobra = await pag.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

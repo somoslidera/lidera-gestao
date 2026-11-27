@@ -3708,7 +3708,7 @@ function viewFichas(){
     +`<button class="btn btn-ghost" onclick="baixarModeloFichas()">⬇ Baixar modelo (planilha)</button>`
     +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Importar planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarFichas(this)"></label>`
     +(estMultiArm()?`<button class="btn btn-ghost" onclick="fichasArmLoteModal()">🏬 Estoque de saída em lote</button>`:'')
-+(souAdminConta()?`<button class="btn btn-ghost" onclick="subprodLoteModal()">📦 Subprodutos em lote</button>`:''));
++(recursoOn('subprodLote')&&souAdminConta()?`<button class="btn btn-ghost" onclick="subprodLoteModal()">📦 Subprodutos em lote</button>`:''));
   const fichas=Object.values(DB.fichas);
   const preparados=Object.values(DB.insumos).filter(i=>i.tipo==='preparado');
   const modulares=Object.values(DB.modulares||{});
@@ -3743,7 +3743,7 @@ function souAdminConta(){return !MEMBRO_PERMS||MEMBRO_NIVEL==='admin';}
 let _slSel=null,_slCat='',_slQ='';
 function subprodLotePreps(){return Object.values(DB.insumos||{}).filter(i=>i&&i.tipo==='preparado').sort((a,b)=>a.nome.localeCompare(b.nome));}
 function subprodLoteVisiveis(){return subprodLotePreps().filter(i=>(!_slCat||i.cat===_slCat)&&(!_slQ||lmNorm(i.nome).includes(lmNorm(_slQ))));}
-function subprodLoteModal(){if(!souAdminConta())return toast('Só o administrador marca subprodutos em lote');
+function subprodLoteModal(){if(!recursoOn('subprodLote'))return toast('Este recurso não está liberado para esta conta');if(!souAdminConta())return toast('Só o administrador marca subprodutos em lote');
 const preps=subprodLotePreps();if(!preps.length)return toast('Nenhum preparado cadastrado');
 if(!_slSel)_slSel=new Set(preps.map(i=>i.id));
 const cats=[...new Set(preps.map(i=>i.cat).filter(Boolean))].sort(),vis=subprodLoteVisiveis(),hoje=preps.filter(i=>i.estocavel).length;
@@ -3759,7 +3759,7 @@ function subprodLoteMudancas(){const ps=subprodLotePreps();return {vira:ps.filte
 function subprodLoteResumo(){const el=document.getElementById('sl_resumo');if(!el||!_slSel)return;const {vira,deixa}=subprodLoteMudancas();
 const visIds=new Set(subprodLoteVisiveis().map(i=>i.id)),fora=[...vira,...deixa].filter(i=>!visIds.has(i.id)).length;
 el.innerHTML=`<b>${_slSel.size}</b> marcado(s). Ao aplicar: <b>${vira.length}</b> passa(m) a ser subproduto · <b>${deixa.length}</b> deixa(m) de ser.${fora?` <span style="color:var(--amber);font-weight:600">${fora} dessas mudanças estão fora do filtro atual.</span>`:''}`;}
-function subprodLoteAplicar(){if(!souAdminConta()||!_slSel)return;const {vira,deixa}=subprodLoteMudancas();
+function subprodLoteAplicar(){if(!recursoOn('subprodLote')||!souAdminConta()||!_slSel)return;const {vira,deixa}=subprodLoteMudancas();
 if(!vira.length&&!deixa.length){_slSel=null;closeModal();return toast('Nada mudou');}
 const comSaldo=deixa.filter(i=>Math.abs(+i.estoqueAtual||0)>0.0005);
 const msg=(vira.length?vira.length+' preparado(s) passam a ser subproduto: ganham estoque próprio (começa em zero até a Produção) e a venda passa a baixar deles, não do bruto.\n':'')
@@ -8402,6 +8402,18 @@ function fecharVideo(){const ov=document.getElementById('vidOverlay');if(ov)ov.r
 
 /* ===================== CONFIGURAÇÕES / CONTA ===================== */
 let contaTab='conta';
+/* Recursos por cliente: função liberada só para algumas contas, ligada no próprio dado da conta (DB.recursos = {chave:true}; ausente = desligado).
+   Só a Lidera (admin ou consultor dentro da conta do cliente) vê e mexe no interruptor, em Configurações → Conta. Desligar grava false (não apaga a chave) para o merge3 não ressuscitar o valor. */
+const RECURSOS_CLIENTE=[['subprodLote','Subprodutos em lote (Fichas Técnicas)']];
+function recursoOn(k){return !!(typeof DB!=='undefined'&&DB&&DB.recursos&&DB.recursos[k]===true);}
+function souLidera(){return !!(ADMIN_MODE&&PERFIL&&(PERFIL.papel==='admin'||PERFIL.papel==='consultor'));}
+function recursoSet(k,on){if(!souLidera())return toast('Só a Lidera libera recursos para a conta');if(!RECURSOS_CLIENTE.some(([x])=>x===k))return;
+  if(!DB.recursos||typeof DB.recursos!=='object'||Array.isArray(DB.recursos))DB.recursos={};DB.recursos[k]=!!on;save();
+  const r=RECURSOS_CLIENTE.find(([x])=>x===k);toast((on?'Liberado para esta conta: ':'Desligado para esta conta: ')+r[1]);viewConta();}
+function recursosCardHtml(){return `<div class="card card-pad" style="max-width:740px;margin-top:16px;border:1px dashed var(--gold)">
+    <div class="section-head"><div><div class="ttl">Recursos liberados para esta conta (só a Lidera vê)</div><div class="desc">Funções que ficam ligadas só para este restaurante. O dono e a equipe não veem este quadro; com o recurso ligado, eles passam a ver a função na tela dela.</div></div></div>
+    ${RECURSOS_CLIENTE.map(([k,l])=>`<label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:13.5px;cursor:pointer"><input type="checkbox" data-recurso="${k}" ${recursoOn(k)?'checked':''} onchange="recursoSet('${k}',this.checked)" style="width:18px;height:18px;flex:0 0 auto;accent-color:var(--navy)"> ${esc(l)}</label>`).join('')}
+  </div>`;}
 function esc(s){return (s==null?'':s).toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}   // texto digitado nunca vira marcação
 function exportDados(){const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='lidera-gestao-dados.json';a.click();toast('Dados exportados');}
 function importarBackup(input){const f=input&&input.files&&input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d||!d.insumos||!d.fichas)throw 0;DB=d;save();renderFoot();go('dashboard');toast('Backup importado com sucesso');}catch(e){toast('Arquivo inválido, selecione um backup do Lidera Gestão');}};rd.readAsText(f);}
@@ -8424,7 +8436,7 @@ function viewConta(){
       <div class="field"><label>CPF</label><input class="input" value="${esc(c.cpf)}" placeholder="000.000.000-00" oninput="DB.conta.cpf=this.value;finTouch()"></div>
     </div>
     <div class="field" style="max-width:240px"><label>Data de nascimento</label><input class="input" type="date" value="${esc(c.nascimento)}" oninput="DB.conta.nascimento=this.value;finTouch()"></div>
-  </div>`;
+  </div>`+(souLidera()?recursosCardHtml():'');
   else if(contaTab==='seg'){
     if(sb){body=`<div class="card card-pad" style="max-width:740px"><div class="ttl">Segurança</div><div class="desc" style="margin-bottom:16px">Troque sua senha de acesso</div>
       <div id="sec_msg" style="display:none;font-size:13px;padding:10px 12px;border-radius:10px;margin-bottom:14px"></div>
