@@ -1,7 +1,10 @@
 // Teste do aviso de itens não contados na contagem física (#27): modal do Flow com a lista,
 // "Voltar e contar" (não salva e leva ao 1º em branco), "Salvar sem eles" (saldo fica como está)
 // e "Zerar os não contados" (2ª confirmação com o valor; grava 0). A contagem salva guarda quem
-// ficou de fora e como, e estContagemVer mostra. Roda contra o _site/ (sem banco), em 1280 e 390 px.
+// ficou de fora e como, e estContagemVer mostra. Também: perda do "Zerar" só com os saldos positivos
+// (negativo aparece à parte, como ganho), Cancelar no 2º passo volta ao aviso, lista de contagens separa
+// contados de zerados/mantidos, porcionado na mesma unidade no aviso e no detalhe, Tab preso no aviso.
+// Roda contra o _site/ (sem banco), em 1280 e 390 px.
 //
 //   python3 ../preview_build.py && node contagem-aviso.mjs
 //
@@ -70,7 +73,7 @@ async function rodar(largura) {
     usados.forEach((i, k) => { i.noEstoque = true; i.cmp = 2; i.estoqueAtual = k < 10 ? 5 : 0; delete i.estoquePor; });
     DB.contagens = [];
     estoqueTab = "contar"; go("estoque");
-    const ordem = estoqueItens().filter((x) => usados.includes(x.ins)).sort((a, b) => (a.cat || "").localeCompare(b.cat || "") || a.nome.localeCompare(b.nome)).map((x) => x.ins.id);
+    const ordem = estContOrdena(estoqueItens().filter((x) => usados.includes(x.ins))).map((x) => x.ins.id);
     const zero = usados[10].id;
     return { dez: ordem.filter((id) => id !== zero), zero };
   });
@@ -99,6 +102,15 @@ async function rodar(largura) {
       checa(sobra <= 1, `${L}: a página rola na horizontal com o modal (${sobra}px)`);
     }
     await pag.screenshot({ path: join(PRINTS, `contagem-aviso-${largura}.png`) });
+
+    // 7) Tab e Shift+Tab ficam dentro do aviso; foco jogado na contagem por baixo volta para o aviso
+    const dentro = () => pag.evaluate(() => { const c = document.getElementById("uxConfirm"); return !!c && c.contains(document.activeElement); });
+    let preso = true;
+    for (let k = 0; k < 5; k++) { await pag.keyboard.press("Tab"); if (!(await dentro())) preso = false; }
+    for (let k = 0; k < 5; k++) { await pag.keyboard.press("Shift+Tab"); if (!(await dentro())) preso = false; }
+    checa(preso, `${L}: o Tab sai do aviso e chega na contagem por baixo`);
+    await pag.evaluate(() => { const i = document.querySelector("#ec_rows input"); if (i) i.focus(); });
+    checa(await dentro(), `${L}: dá para pôr o foco num campo da contagem com o aviso aberto`);
 
     // 2) Voltar e contar: não salva e foca o 1º em branco
     await aviso.locator("button", { hasText: "Voltar e contar" }).click();
@@ -135,8 +147,20 @@ async function rodar(largura) {
     const txt = await conf.innerText();
     checa(/30,00/.test(txt), `${L}: a 2ª confirmação não mostra a perda de R$ 30,00: ${txt.replace(/\s+/g, " ")}`);
     checa(await pag.evaluate(() => { const c = document.getElementById("uxConfirm"); return !!c && +getComputedStyle(c).zIndex > 500; }), `${L}: a 2ª confirmação fica atrás da janela da contagem`);
+    checa(!/-\s*R\$|R\$\s*-/.test(txt), `${L}: a 2ª confirmação mostra valor negativo: ${txt.replace(/\s+/g, " ")}`);
     const n0 = await pag.evaluate(() => DB.contagens.length);
     await pag.screenshot({ path: join(PRINTS, `contagem-aviso-zerar-${largura}.png`) });
+    // Cancelar no 2º passo volta ao aviso das 3 opções (não fecha tudo, não salva)
+    await conf.locator("button", { hasText: "Cancelar" }).click();
+    await pag.waitForTimeout(200);
+    const volta = await pag.evaluate(() => { const c = document.getElementById("uxConfirm"); return { tem: !!c && c.classList.contains("ec-falta"),
+      bt: c ? [...c.querySelectorAll("button")].map((b) => b.textContent.trim()) : [], lista: c ? c.querySelectorAll(".ec-falta-it").length : 0,
+      contagem: !!document.querySelector("#ec_rows"), n: DB.contagens.length }; });
+    checa(volta.tem && volta.lista === 3 && ["Zerar os não contados", "Salvar sem eles", "Voltar e contar"].every((t) => volta.bt.includes(t)),
+      `${L}: Cancelar no "Zerar" não voltou ao aviso das 3 opções ${JSON.stringify(volta)}`);
+    checa(volta.contagem && volta.n === n0, `${L}: Cancelar no "Zerar" fechou a contagem ou salvou ${JSON.stringify(volta)}`);
+    await aviso.locator("button", { hasText: "Zerar os não contados" }).click();
+    await pag.waitForTimeout(200);
     await conf.locator("button", { hasText: "Zerar e salvar" }).click();
     await pag.waitForTimeout(500);
     const r = await pag.evaluate((b) => { const c = DB.contagens[DB.contagens.length - 1] || {}; return { n: DB.contagens.length, id: c.id, itens: (c.itens || []).length, total: c.totalDif,
@@ -162,7 +186,57 @@ async function rodar(largura) {
       checa(sobra <= 1, `${L}: estContagemVer rola na horizontal (${sobra}px)`);
     }
     await pag.evaluate(() => closeModal());
+
+    // 2) lista de contagens: zerado não conta como contado nem aparece duas vezes
+    const celulas = await pag.evaluate(() => { closeModal(); estoqueTab = "contar"; viewEstoque();
+      return [...document.querySelectorAll("table tbody tr td.num:first-of-type, table tbody tr td")].map((td) => td.innerText.replace(/\s+/g, " ").trim()).filter((t) => /contado/.test(t)); });
+    checa(celulas.some((t) => /^7 contados 3 zerados$/.test(t)), `${L}: a lista não mostra "7 contados · 3 zerados" ${JSON.stringify(celulas)}`);
+    checa(celulas.some((t) => /^7 contados 3 fora \(mantidos\)$/.test(t)), `${L}: a lista não mostra "7 contados · 3 fora (mantidos)" ${JSON.stringify(celulas)}`);
+    checa(!celulas.some((t) => /\b10\b/.test(t)), `${L}: a lista ainda soma os zerados nos itens ${JSON.stringify(celulas)}`);
   }
+
+  // 1) saldo negativo no "Zerar": perda só dos positivos; o negativo aparece à parte, como ganho (nunca "perda de -R$")
+  await pag.evaluate((b) => { b.forEach((id, k) => { DB.insumos[id].estoqueAtual = k === 2 ? -3 : 5; delete DB.insumos[id].estoquePor; }); }, brancos);
+  await abrirContagem(pag, dez);
+  await salvar(pag);
+  await pag.waitForTimeout(300);
+  if (checa(await aviso.count() === 1, `${L}: modal não apareceu (saldo negativo)`)) {
+    const n0 = await pag.evaluate(() => DB.contagens.length);
+    await aviso.locator("button", { hasText: "Zerar os não contados" }).click();
+    await pag.waitForTimeout(200);
+    const txt = (await pag.locator("#uxConfirm").innerText()).replace(/\s+/g, " ");
+    checa(/perda de R\$\s*20,00/.test(txt), `${L}: a perda não é só a dos positivos (R$ 20,00): ${txt}`);
+    checa(/1 item com saldo negativo volta a 0 \(\+R\$\s*6,00\)/.test(txt), `${L}: não separa o saldo negativo (+R$ 6,00): ${txt}`);
+    checa(!/-\s*R\$|R\$\s*-/.test(txt), `${L}: mostra valor negativo na confirmação: ${txt}`);
+    await pag.screenshot({ path: join(PRINTS, `contagem-aviso-negativo-${largura}.png`) });
+    await pag.locator("#uxConfirm button", { hasText: "Cancelar" }).click();
+    await pag.waitForTimeout(200);
+    checa(await aviso.count() === 1, `${L}: Cancelar (saldo negativo) não voltou ao aviso`);
+    await aviso.locator("button", { hasText: "Voltar e contar" }).click();
+    await pag.waitForTimeout(200);
+    checa(await pag.evaluate(() => DB.contagens.length) === n0, `${L}: Cancelar e Voltar salvaram a contagem`);
+  }
+
+  // 3) porcionado: o aviso e o detalhe da contagem mostram o livro na mesma unidade (porções)
+  const porc = brancos[0];
+  await pag.evaluate((b) => { b.forEach((id) => { DB.insumos[id].estoqueAtual = 5; });
+    const i0 = DB.insumos[b[0]]; window.__porcOrig = { tipo: i0.tipo, estocavel: i0.estocavel, uni: i0.uni, porcaoBase: i0.porcaoBase, porcaoNome: i0.porcaoNome };
+    Object.assign(DB.insumos[b[0]], { tipo: "preparado", estocavel: true, uni: "kg", porcaoBase: 500, porcaoNome: "pote" }); }, brancos);
+  await abrirContagem(pag, dez);
+  await salvar(pag);
+  await pag.waitForTimeout(300);
+  if (checa(await aviso.count() === 1, `${L}: modal não apareceu (porcionado)`)) {
+    const lvAviso = (await aviso.locator(`.ec-falta-it[data-id="${porc}"] .lv`).innerText()).replace(/\s+/g, " ").trim();
+    checa(/pote/.test(lvAviso), `${L}: o aviso não mostra o porcionado em porções: "${lvAviso}"`);
+    await aviso.locator("button", { hasText: "Salvar sem eles" }).click();
+    await pag.waitForTimeout(500);
+    const lvVer = await pag.evaluate((id) => { const c = DB.contagens[DB.contagens.length - 1]; closeModal(); estContagemVer(c.id);
+      const nm = DB.insumos[id].nome; const linha = [...document.querySelectorAll("#modalRoot .modal div")].find((el) => el.children.length === 2 && el.children[0].textContent === nm);
+      return linha ? linha.children[1].innerText.replace(/\s+/g, " ").trim() : null; }, porc);
+    checa(lvVer && lvVer.startsWith(lvAviso + " ·"), `${L}: estContagemVer mostra "${lvVer}", o aviso mostrou "${lvAviso}"`);
+    await pag.evaluate(() => closeModal());
+  }
+  await pag.evaluate((id) => { Object.assign(DB.insumos[id], window.__porcOrig); }, porc);
 
   // 6) contagem por setor: "não contado" é só o que aquele setor mostra
   const setor = await pag.evaluate(() => {
