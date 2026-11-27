@@ -100,9 +100,17 @@ def trecho_login(s: str) -> str:
     for obrig in ("naEquipe", "normMembro(naEquipe)", "MEMBRO_SUB=", "MEMBRO_SETORES=", "MEMBRO_NIVEL="):
         if obrig not in a:
             falhar(f"{onde}: o trecho copiado não tem {obrig!r}. Ajuste o preview_build.py.")
+    # a linha que aplica o acesso do membro e a seguinte (o ramo do dono), copiadas do login real
+    k = corpo.find(TRECHO_FIM_LINHA)
+    fim_dono = corpo.find("\n", corpo.find("\n", k) + 1)
+    final = corpo[k:fim_dono if fim_dono > 0 else len(corpo)]
+    linhas = final.split("\n")
+    if len(linhas) != 2 or not linhas[1].strip().startswith("else{go('dashboard')"):
+        falhar(f"{onde}: depois do acesso do membro não veio o ramo do dono (else{{go('dashboard')…}}). Ajuste o preview_build.py.")
+    a = a + "  " + final
     if "await" in a or "</script" in a:
         falhar(f"{onde}: o trecho do login passou a ter await ou </script>. Ajuste o preview_build.py.")
-    return a + "  " + TRECHO_FIM_LINHA
+    return a
 
 
 def painel_simulacao(s: str) -> str:

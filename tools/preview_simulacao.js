@@ -42,11 +42,25 @@
     if(st)DB.equipe.push(membroDe(st));
   }
 
-  function aplicar(st){
-    porMembro(st);save();gravarEstado(st);
+  /* entra como o membro de teste. Garante o membro na Equipe antes do login copiado e nunca deixa o ramo
+     de dono fixar DB.conta.email com o e-mail fictício. Devolve false se o login não entrou como membro. */
+  function entrar(st){
+    porMembro(st);
+    DB.conta=DB.conta||{};var emailAntes=DB.conta.email;
     var ok=loginComo(SIM_EMAIL);
-    if(ok===undefined){toast('Esse perfil não tem nenhuma área liberada');return false;}
-    selo();return true;
+    if(emailAntes===undefined)delete DB.conta.email;else DB.conta.email=emailAntes;
+    if(ok===undefined)return false;                             // telaMensagem: perfil sem área
+    if(!MEMBRO_PERMS){toast('A simulação caiu no acesso de dono: o membro de teste não foi achado');return false;}
+    return true;
+  }
+  function desfazer(msg){porMembro(null);save();gravarEstado(null);if(msg)toast(msg);setTimeout(function(){location.reload();},msg?1200:0);}
+  function aplicar(st){
+    if(!st||st.nivel==='dono'){voltarDono();return true;}
+    var m=membroDe(st);
+    if(!m.permissoes.length){toast('Esse perfil não tem nenhuma área liberada');return false;}   // valida antes de gravar
+    gravarEstado(st);
+    if(!entrar(st)){desfazer('Não deu para entrar com esse perfil; voltando a dono');return false;}
+    save();selo();return true;
   }
   function voltarDono(){
     porMembro(null);save();gravarEstado(null);
@@ -76,7 +90,7 @@
     var hoje=hojeISO();
     setoresSemPrincipal().forEach(function(a){
       var ja=estTransfs().some(function(t){return t.origem==='simulacao'&&t.para===a.id;});if(ja)return;
-      var itens=Object.values(DB.insumos).filter(function(i){return estEstocavel(i)&&i.tipo!=='preparado'&&prodNoSetor(i,a.id)&&(!Array.isArray(i.setores)||i.setores.includes(a.id));})
+      var itens=Object.values(DB.insumos).filter(function(i){return estEstocavel(i)&&i.tipo!=='preparado'&&prodNoSetor(i,a.id);})
         .map(function(i){return {insumoId:i.id,q:Math.max(1,Math.round(qPadrao(i)/5))};});
       if(itens.length)estTransferir(hoje,EST_ARM_PRINCIPAL,a.id,itens,'cenário do preview',{origem:'simulacao'});
     });
@@ -111,23 +125,25 @@
     var r=new FileReader();
     r.onload=function(){
       var j=null;try{j=JSON.parse(r.result);}catch(e){}
-      var d=j&&j.insumos?j:(j&&j.dados&&j.dados.insumos?j.dados:null);
-      if(!d){toast('Arquivo não parece um Flow exportado (falta "insumos")');return;}
-      var st=lerEstado();DB=d;if(st)porMembro(st);
+      var ok=function(x){return !!(x&&x.insumos&&x.fichas);};          // mesma checagem do importarBackup
+      var d=ok(j)?j:(j&&ok(j.dados)?j.dados:null);
+      if(!d){toast('Arquivo não parece um Flow exportado (falta "insumos" ou "fichas")');return;}
+      var st=lerEstado();DB=d;
       try{localStorage.setItem('flow_preview_demo_v1','1');}catch(e){}
-      save();fechar();
-      if(st)loginComo(SIM_EMAIL);else go('dashboard');
+      fechar();
+      if(st){if(!entrar(st)){desfazer('Não deu para entrar com o perfil simulado; voltando a dono');return;}}
+      save();if(!st)go('dashboard');
       toast('Arquivo aberto só neste navegador');
     };
     r.readAsText(f);
   }
 
-  function refazer(){var st=lerEstado();if(st)loginComo(SIM_EMAIL);else{try{go(current||'dashboard');}catch(e){go('dashboard');}}renderPainel();}
+  function refazer(){var st=lerEstado();if(st){if(!entrar(st)){desfazer('Não deu para entrar com o perfil simulado; voltando a dono');return;}save();}else{try{go(current||'dashboard');}catch(e){go('dashboard');}}renderPainel();}
 
   /* ===== interface ===== */
   var css=document.createElement('style');
   css.textContent=[
-    '#fsimBtn{position:fixed;right:12px;bottom:36px;z-index:1150;max-width:calc(100vw - 24px);border:1px solid #A48A57;background:#fff;color:#1D3573;border-radius:999px;padding:6px 12px;font:600 12px/1.2 Inter,system-ui,sans-serif;box-shadow:0 4px 14px rgba(16,32,63,.18);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.92}',
+    '#fsimBtn{position:fixed;right:12px;bottom:36px;z-index:300;max-width:calc(100vw - 24px);border:1px solid #A48A57;background:#fff;color:#1D3573;border-radius:999px;padding:6px 12px;font:600 12px/1.2 Inter,system-ui,sans-serif;box-shadow:0 4px 14px rgba(16,32,63,.18);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.92}',
     '#fsimBtn:hover{opacity:1}',
     '#fsimBtn.on{background:#A48A57;color:#fff;border-color:#A48A57}',
     '#fsimBg{position:fixed;inset:0;z-index:1160;background:rgba(16,32,63,.35)}',
@@ -183,10 +199,10 @@
       '</div>';
     var q=function(id){return document.getElementById(id);};
     q('fsimFechar').onclick=fechar;
-    q('fsimNivel').onchange=function(){var n=this.value;var N2=NIVEIS[n];lerChecks();rasc.nivel=n;
-      if(n==='personalizado'){if(!rasc.permissoes){var base=NIVEIS[(st&&st.nivel)||'gerente']||NIVEIS.gerente;rasc.permissoes=base.perms.slice();rasc.sub=subCompleto(base);}}
+    q('fsimNivel').onchange=function(){var n=this.value;var N2=NIVEIS[n];lerChecks();var ant=rasc.nivel;rasc.nivel=n;
+      if(n==='personalizado'){if(ant!=='personalizado'){var base=(ant&&ant!=='dono'&&NIVEIS[ant])||NIVEIS.gerente;rasc.permissoes=base.perms.slice();rasc.sub=subCompleto(base);}}
       else{delete rasc.permissoes;delete rasc.sub;}
-      if(N2&&N2.setorPrincipal&&!(rasc.setores||[]).includes(EST_ARM_PRINCIPAL))rasc.setores=(rasc.setores||[]).concat([EST_ARM_PRINCIPAL]);
+      if(n!=='personalizado')rasc.setores=(N2&&N2.setorPrincipal)?[EST_ARM_PRINCIPAL]:[];   // setores recomeçam do padrão do nível
       renderPainel();};
     q('fsimAplicar').onclick=function(){lerChecks();
       if(rasc.nivel==='dono'){if(st)voltarDono();else fechar();return;}
@@ -212,6 +228,6 @@
 
   // recarregou com uma simulação ligada: entra de novo como o membro de teste
   var st0=lerEstado();
-  if(st0){porMembro(st0);try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){}if(loginComo(SIM_EMAIL)===undefined)gravarEstado(null);}
+  if(st0){if(entrar(st0))save();else desfazer('A simulação salva não abriu; voltando a dono');}
   selo();
 })();
