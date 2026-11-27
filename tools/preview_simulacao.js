@@ -228,6 +228,8 @@
 
   // recarregou com uma simulação ligada: entra de novo como o membro de teste
   var st0=lerEstado();
+  // o login de verdade abre a tela do endereço (#/…): o login simulado também, respeitando as permissões do perfil
+  if(st0){try{if(typeof rotaLer==='function')ROTA_PEND={alvo:rotaLer(location.hash)};}catch(e){}}
   if(st0){if(entrar(st0))save();else desfazer('A simulação salva não abriu; voltando a dono');}
   selo();
 })();
