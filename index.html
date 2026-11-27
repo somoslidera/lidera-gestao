@@ -2688,12 +2688,84 @@ const ROUTES={
   conta:{title:'Configurações',render:viewConta},
 };
 let current='dashboard';
-function go(route){if(route==='dre'){finTab='dre';route=(MEMBRO_PERMS&&!MEMBRO_PERMS.includes('financeiro'))?'dre':'financeiro';}   // DRE mora dentro do Financeiro
+function go(route,_modo){let modo=_modo||'push';const naTela=rotaTelaVisivel();   // login/painel por cima (ex.: resize na tela de login): não mexe no endereço nem no pendente
+  if(naTela&&ROTA_PEND){const a=ROTA_PEND.alvo;ROTA_PEND=null;modo='replace';if(a){rotaAplicaAba(a);route=a.rota;}}   // 1ª tela depois do login: a do endereço, se houver
+  if(route==='dre'){finTab='dre';route=(MEMBRO_PERMS&&!MEMBRO_PERMS.includes('financeiro'))?'dre':'financeiro';}   // DRE mora dentro do Financeiro
   if(MEMBRO_PERMS&&!MEMBRO_PERMS.includes(route))route=MEMBRO_PERMS[0]||route; // membro só acessa áreas liberadas
   current=route;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.route===route));
-  $('#pageTitle').textContent=ROUTES[route].title;$('#topActions').innerHTML='';ROUTES[route].render();window.scrollTo(0,0);toggleSidebar(false);try{renderBell();}catch(e){}try{pagtoNavBadge();}catch(e){}}
+  $('#pageTitle').textContent=ROUTES[route].title;$('#topActions').innerHTML='';ROTA_GO=true;try{ROUTES[route].render();}finally{ROTA_GO=false;}window.scrollTo(0,0);toggleSidebar(false);try{renderBell();}catch(e){}try{pagtoNavBadge();}catch(e){}
+  if(naTela){ROTA_ON=true;rotaSync(modo);}}
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.route);}));
 function toggleSidebar(open){const sb=$('#sidebar'),bd=$('#backdrop');if(open===undefined)open=!sb.classList.contains('open');sb.classList.toggle('open',open);bd.classList.toggle('hidden',!open);}
+/* ===== Endereço por tela (#/rota/aba) e voltar/avançar do navegador =====
+   O endereço segue a tela que de fato abriu (depois das permissões). go() empilha uma entrada por tela nova;
+   trocar de aba (Estoque, Financeiro) também empilha; voltar/avançar (popstate) abre a tela sem empilhar de novo.
+   Modal aberto ganha uma entrada própria: o voltar fecha o modal e fica na tela. Antes do início, o navegador sai.
+   Só mexe no #: ?parâmetros (convite, ?v=, ?tela=, ?vazio=) e o # do link de senha (#access_token…) ficam como estão.
+   Abas de outras telas (Configurações, Buffet, Parâmetros…) ainda não entram no endereço. */
+const ROTA_SLUG={dashboard:'dashboard',financeiro:'financeiro',dre:'dre',faturamento:'faturamento',insumos:'produtos',fichas:'fichas-tecnicas',estoque:'estoque',checklists:'checklists',pops:'pops',engenharia:'engenharia-de-menu',cmv:'cmv',desperdicio:'desperdicios',buffet:'buffet',folha:'folha',cargos:'cargos',formacao:'formacao',mapa:'plano-de-guerra',equipe:'equipe',conta:'configuracoes'};
+const ROTA_ABAS={
+  estoque:{contagem:'posicao',mov:'movimentacoes',contar:'contar',producao:'producao',requisicoes:'requisicoes',vendas:'baixa-por-vendas',vendaspdv:'vendas-por-produto',compras:'lista-de-compras',historico:'historico-de-compras'},
+  financeiro:{visao:'visao-geral',lanc:'lancamentos',pagar:'contas-a-pagar',receber:'contas-a-receber',permuta:'permutas',fluxo:'fluxo-de-caixa',dre:'dre',conc:'conciliacao',custosfixos:'custos-fixos',param:'parametros'}};
+function rotaInv(o){return Object.fromEntries(Object.entries(o).map(([k,v])=>[v,k]));}
+const ROTA_DO_SLUG=rotaInv(ROTA_SLUG),ROTA_ABA_DO_SLUG={estoque:rotaInv(ROTA_ABAS.estoque),financeiro:rotaInv(ROTA_ABAS.financeiro)};
+function rotaLer(h){const m=/^#\/([a-z0-9-]+)(?:\/([a-z0-9-]+))?\/?$/.exec(String(h||'').toLowerCase());if(!m)return null;
+  const rota=ROTA_DO_SLUG[m[1]];if(!rota||!ROUTES[rota])return null;
+  const aba=(m[2]&&ROTA_ABA_DO_SLUG[rota])?(ROTA_ABA_DO_SLUG[rota][m[2]]||null):null;return {rota,aba};}
+let ROTA_PEND={alvo:rotaLer(location.hash)},ROTA_ON=false,ROTA_GO=false,HIST_I=(history.state&&history.state.flow)?(+history.state.i||0):0;
+function rotaAplicaAba(a){if(!a||!a.aba)return;
+  if(a.rota==='estoque'&&a.aba!==estoqueTab){estoqueTab=a.aba;estReqSel=null;}
+  else if(a.rota==='financeiro')finTab=a.aba;}
+function rotaHashDe(rota){const s=ROTA_SLUG[rota];if(!s)return '';let h='#/'+s;
+  try{if(rota==='estoque'&&ROTA_ABAS.estoque[estoqueTab]&&estAbasPermitidas().some(([k])=>k===estoqueTab))h+='/'+ROTA_ABAS.estoque[estoqueTab];
+    else if(rota==='financeiro'&&ROTA_ABAS.financeiro[finTab])h+='/'+ROTA_ABAS.financeiro[finTab];}catch(e){}
+  return h;}
+function rotaModalAberto(){return !!(document.querySelector('#modalRoot .modal-overlay')||document.getElementById('uxConfirm')||document.getElementById('catpick'));}
+function rotaAppVisivel(){return ROTA_ON&&rotaTelaVisivel();}
+function rotaTelaVisivel(){if(RECOVERY)return false;   // login, painel Lidera/consultor e assistente inicial ficam por cima do app: lá o endereço não manda
+  for(const id of ['authScreen','adminScreen','consScreen','formAdminScreen','wizScreen']){const el=document.getElementById(id);if(el&&el.style.display!=='none'&&getComputedStyle(el).display!=='none')return false;}
+  return true;}
+function rotaUrl(h){return location.pathname+location.search+h;}
+function rotaSt(i,m){return {flow:1,i,m,o:(typeof ORG!=='undefined'&&ORG&&ORG.id)||null};}   // o = organização: no painel Lidera, o voltar pula as telas de outro cliente aberto antes
+function rotaSairDoApp(descartar){try{ROTA_ON=false;if(!ROTA_PEND||descartar)ROTA_PEND={alvo:null};   // a próxima tela aberta ("Abrir app") ocupa esta entrada; no painel Lidera/consultor o endereço recarregado não vale para o 1º cliente aberto
+  if(!RECOVERY)history.replaceState(rotaSt(HIST_I,0),'',/^#\//.test(location.hash)?location.pathname+location.search:location.href);}catch(e){}}
+function rotaSync(modo){try{
+  if(RECOVERY)return;const h=rotaHashDe(current);if(!h)return;
+  const st=history.state,temSt=!!(st&&st.flow);
+  if(temSt&&location.hash===h)return;   // já está no endereço certo (não empilha a mesma tela duas vezes)
+  if(modo==='replace'||!temSt||(st.m&&!rotaModalAberto()))history.replaceState(rotaSt(HIST_I,0),'',rotaUrl(h));   // entrada do modal já fechado: reaproveita
+  else history.pushState(rotaSt(++HIST_I,0),'',rotaUrl(h));
+}catch(e){}}
+// troca de aba chama viewEstoque/viewFinanceiro direto (sem go): o endereço acompanha depois de desenhar
+['viewEstoque','viewFinanceiro','viewDRE'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(){const r=f.apply(this,arguments);if(ROTA_ON&&!ROTA_GO&&rotaAppVisivel())rotaSync('push');return r;};});
+// modal abriu: empilha uma entrada (mesmo endereço) para o voltar do celular fechar o modal em vez de sair da tela
+function rotaModalVer(){try{if(!rotaModalAberto()||!rotaAppVisivel())return;const st=history.state;if(st&&st.flow&&st.m)return;
+  history.pushState(rotaSt(++HIST_I,1),'',location.href);}catch(e){}}
+try{const mo=new MutationObserver(rotaModalVer);const mr=document.getElementById('modalRoot');if(mr)mo.observe(mr,{childList:true});mo.observe(document.body,{childList:true});}catch(e){}
+// fecha o que está por cima (Esc e voltar do navegador usam a mesma regra): a confirmação; o 2º passo do aviso de não
+// contados volta ao 1º; o seletor de categoria; a janela só pelo X. Janela sem X obriga uma escolha e fica. Nota com itens preenchidos não fecha.
+function fecharTopo(){const c=document.getElementById('uxConfirm');
+  if(c){const cancelar=c.dataset.p==='2'&&c.querySelector('[data-a="cancelar"]');if(cancelar)cancelar.click();else c.remove();return;}
+  if(document.getElementById('catpick')){try{catPickerClose();}catch(e){}return;}
+  const m=document.querySelector('#modalRoot .modal');if(!m)return;
+  if(m.querySelector('#lm_rows')&&typeof lancDraft!=='undefined'&&lancDraft.some(r=>lmTotalLinha(r)||(r.desc||'').trim())){toast('Há itens preenchidos. Use Cancelar ou o X para sair sem lançar.');return;}
+  const x=m.querySelector('.modal-head .x');if(x)x.click();}
+window.addEventListener('popstate',e=>{try{
+  const st=e.state,temSt=!!(st&&st.flow);const dir=(temSt&&st.i<HIST_I)?-1:1;
+  if(temSt)HIST_I=+st.i||0;
+  if(!rotaAppVisivel())return;
+  if(!temSt)history.replaceState(rotaSt(++HIST_I,0),'',location.href);   // # digitado na barra de endereço
+  const antes=rotaHashDe(current);
+  if(rotaModalAberto()){fecharTopo();   // voltar com modal aberto: fecha e fica na tela
+    if(rotaModalAberto())history.pushState(rotaSt(++HIST_I,1),'',rotaUrl(antes));
+    else if(location.hash!==antes)history.pushState(rotaSt(++HIST_I,0),'',rotaUrl(antes));
+    return;}
+  if(temSt&&(st.o||null)!==((typeof ORG!=='undefined'&&ORG&&ORG.id)||null)){history.go(dir);return;}   // entrada de outro cliente (painel Lidera)
+  const alvo=rotaLer(location.hash);
+  if(!alvo){if(temSt){history.go(dir);return;}rotaSync('replace');return;}   // entrada sem tela (ex.: painel Lidera): segue; # inválido: corrige
+  rotaAplicaAba(alvo);go(alvo.rota,'replace');
+  if(temSt&&rotaHashDe(current)===antes)history.go(dir);   // nada mudou na tela (entrada repetida): continua para a próxima
+}catch(err){}});
 function normData(){
   DB.fin=DB.fin||{};const f=DB.fin;
   // vendas importadas do PDV (Suitable): a Edge Function não conhece as regras dos meios; o app aplica aqui
@@ -9513,13 +9585,10 @@ function uxConfirma(o,ok,naoCb){const a=document.getElementById('uxConfirm');if(
   const t0=Date.now();
   d.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(e.target!==d&&!b)return;if(!b&&o.semFundo)return;if(Date.now()-t0<400&&(!b||o.semFundo))return;d.remove();if(b&&b.dataset.a==='1'){try{ok&&ok();}catch(err){console.error(err);}}else if(b&&naoCb){try{naoCb();}catch(err){console.error(err);}}});
   document.body.appendChild(d);const f=d.querySelector('[data-a="0"]');if(f)f.focus();}
-/* Esc fecha: primeiro a confirmação, depois a janela aberta (como clicar no X). Nota com itens preenchidos não fecha por engano. */
+/* Esc fecha o que está por cima: mesma regra do voltar do navegador (fecharTopo). */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
-  const c=document.getElementById('uxConfirm');if(c){c.remove();return;}
-  if(document.getElementById('catpick'))return;
-  const m=document.querySelector('#modalRoot .modal');if(!m)return;
-  if(m.querySelector('#lm_rows')&&typeof lancDraft!=='undefined'&&lancDraft.some(r=>lmTotalLinha(r)||(r.desc||'').trim()))return toast('Há itens preenchidos. Use Cancelar ou o X para sair sem lançar.');
-  const x=m.querySelector('.modal-head .x');if(x)x.click();else closeModal();});
+  if(document.getElementById('catpick'))return;   // o seletor de categoria trata o próprio Esc
+  fecharTopo();});
 /* ação principal do Financeiro sempre na barra do topo, no mesmo lugar das outras telas */
 function uxFinTop(){const el=document.getElementById('topActions');if(!el)return;let h='';
   if(finTab==='lanc'&&podeFinNota())h=`<button class="btn btn-primary" onclick="lancarModal()">${icoPlus} Lançar</button>`;
@@ -11639,7 +11708,7 @@ async function entrarClienteRouter(uid,orgId,email){
   else{await entrarComoCliente(orgId||(unidades[0]&&unidades[0].id)||null,email);}
 }
 function showUnidades(){
-  hideAdmin();const b=authBox();b.style.display='flex';
+  hideAdmin();rotaSairDoApp();const b=authBox();b.style.display='flex';
   const cards=DONO_UNIDADES.map(u=>{const nome=esc((u.dados&&u.dados.conta&&u.dados.conta.restaurante)||u.nome||'Unidade');const susp=u.status==='suspenso';
     return `<button class="unidade-card" ${susp?'disabled':''} onclick="abrirUnidade('${u.id}')"><span class="un-nome">${nome}</span><span class="un-sub">${susp?'acesso suspenso':'toque para abrir'}</span></button>`;}).join('');
   b.innerHTML=`<div class="auth-card" style="max-width:460px"><div class="auth-wm" style="text-align:center">Flow</div><div class="auth-by" style="text-align:center">by Lidera</div>
@@ -11944,7 +12013,7 @@ function projAtrasadas(p){const h=hojeISO();return ((p&&p.tarefas)||[]).filter(x
 function projCur(){return ADMIN_ORGS.find(o=>o.id===adminSel);}
 async function projSaveOrg(o){if(!o)return;try{const cur=(await sb.from('organizacoes').select('dados').eq('id',o.id).single()).data;const dados=(cur&&cur.dados)||{};dados._projeto=o.dados._projeto;await sb.from('organizacoes').update({dados}).eq('id',o.id);o.dados=dados;}catch(e){toast('Erro ao salvar projeto');}}
 
-async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin();
+async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin();rotaSairDoApp(true);
   const cs=document.getElementById('consScreen');if(cs)cs.style.display='none';
   const titulo=IS_SUPER?`Flow <span style="font-size:14px;color:var(--gold)">· Painel Lidera</span>`:`Flow <span style="font-size:14px;color:var(--gold)">· Meu Painel</span>`;
   const sub=IS_SUPER?'Controle geral de consultores, clientes e projetos':`Seus clientes${MY_LIMITE?` · limite ${MY_LIMITE}`:''}`;
