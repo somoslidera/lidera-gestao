@@ -1410,6 +1410,8 @@ button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible,
     <a data-route="dashboard" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
     <div class="lbl">FINANCEIRO</div>
     <a data-route="financeiro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18v13H3z"/><path d="M3 10h18M7 15h4"/></svg>Financeiro</a>
+    <!-- acréscimo: a rota "folha" aparece DUAS vezes no menu (aqui e em RH). Quem procura o item use querySelectorAll; o ícone vem de ICO_FOLHA -->
+    <a data-route="folha">Folha de Pagamento</a>
     <div class="lbl">GESTÃO</div>
     <a data-route="insumos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Produtos</a>
     <a data-route="fichas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2v6M15 2v6M7 8h10l-1 12a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2L7 8z"/></svg>Fichas Técnicas</a>
@@ -1422,7 +1424,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible,
     <a data-route="desperdicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>Desperdícios</a>
     <a data-route="buffet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h18M5 11a7 7 0 0 1 14 0M4 13v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1M8 19h8"/></svg>Mapa do Buffet</a>
     <div class="lbl">RH</div>
-    <a data-route="folha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M21 20a6 6 0 0 0-3-5"/></svg>Folha de Pagamento</a>
+    <a data-route="folha">Folha de Pagamento</a>
     <a data-route="cargos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M8 11h8M8 15h6"/></svg>Descrições de Cargos</a>
     <div class="lbl">FORMAÇÃO</div>
     <a data-route="formacao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-5"/><path d="M22 10v6"/></svg>Formação em Gestão</a>
@@ -4747,6 +4749,8 @@ function podeFinPagto(){return pode('fin_pagto');}
 function podeFinNota(){return pode('fin_nota');}
 function finSoLanc(){return !!MEMBRO_PERMS&&!pode('fin_completo');}   // membro restrito: Financeiro mostra só a aba Lançamentos (e o DRE, se a área DRE estiver liberada)
 function finTabsPermitidas(tabs){if(!finSoLanc())return tabs;const ok=['lanc'];if(MEMBRO_PERMS.includes('dre'))ok.push('dre');return tabs.filter(t=>ok.includes(t[0]));}
+/* abre o DRE de verdade: área DRE marcada, ou Financeiro com todas as abas (mesma regra de finTabsPermitidas) */
+function podeAbrirDre(){return podeArea('dre')||(podeArea('financeiro')&&!finSoLanc());}
 function finTabAjustar(){if(!finSoLanc())return;const ok=finTabsPermitidas([['lanc'],['dre']]).map(t=>t[0]);if(!ok.includes(finTab))finTab='lanc';}
 function liqCobr(x){return +((+x.valor||0)+(+x.juros||0)+(+x.multa||0)-(+x.desconto||0)).toFixed(2);}
 function liqExtras(x){return !!(x&&((+x.juros||0)||(+x.multa||0)||(+x.desconto||0)));}
@@ -6727,7 +6731,10 @@ function finCategorias(){
 /* ===================== FINANCEIRO ===================== */
 let finTab='visao',folhaYM=null;
 function curFolhaYM(){return folhaYM||ymOf(hojeISO());}
-function viewFolha(){$('#topActions').innerHTML=`<button class="btn btn-primary" onclick="funcEdit(null)">${icoPlus} Novo funcionário</button>`;$('#view').innerHTML=`<div style="max-width:1320px">${finFolha()}</div>`;}
+/* ícone da Folha: um só para os dois itens do menu (FINANCEIRO e RH) e o botão do Financeiro */
+const ICO_FOLHA='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M21 20a6 6 0 0 0-3-5"/></svg>';
+document.querySelectorAll('#nav a[data-route="folha"]').forEach(a=>{if(!a.querySelector('svg'))a.insertAdjacentHTML('afterbegin',ICO_FOLHA);});
+function viewFolha(){$('#topActions').innerHTML=`${podeArea('financeiro')?`<button class="btn btn-ghost" data-atalho="financeiro" onclick="finTab='visao';go('financeiro')">← Financeiro</button>`:''}<button class="btn btn-primary" onclick="funcEdit(null)">${icoPlus} Novo funcionário</button>`;$('#view').innerHTML=`<div style="max-width:1320px">${finFolha()}</div>`;}
 const FIN_TEMPLATES={
   contasPagar:()=>({id:uid(),descricao:'',grupo:'Despesas Gerais',sub:((DB.categorias&&DB.categorias['Despesas Gerais'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,pago:false,forma:''}),
   contasReceber:()=>({id:uid(),descricao:'',grupo:'Receita',sub:((DB.categorias&&DB.categorias['Receita'])||{subs:[]}).subs[0]||'',vencimento:'',valor:0,recebido:false,forma:''}),
@@ -7125,7 +7132,7 @@ function finFolha(){
     <tr style="background:rgba(29,53,115,.04)"><td style="padding:8px 10px;font-size:11.5px;color:var(--muted);font-weight:600">Subtotal ${cat}</td><td class="num">${fmtBRL(sub.bruto)}</td><td class="num">${fmtBRL(sub.porFora)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.vales)}</td><td class="num" style="color:var(--red)">${fmtBRL(sub.consumo)}</td><td class="num">${fmtBRL(sub.beneficios)}</td>${campos.map(c=>`<td class="num" style="color:${corCampo(c,subCampos[c.id])}">${fmtBRL(subCampos[c.id])}</td>`).join('')}<td class="num">${fmtBRL(sub.inss)}</td><td class="num">${fmtBRL(sub.fgts)}</td><td class="num">${fmtBRL(sub.prov)}</td><td class="num"><b>${fmtBRL(sub.liquido)}</b></td><td class="num"><b style="color:var(--navy)">${fmtBRL(sub.total)}</b></td><td></td><td></td></tr>`;
   }).join('');
   return `<div class="card card-pad" style="max-width:1320px">
-    <div class="section-head"><div><div class="ttl">Folha de pagamento</div><div class="desc">Controle mensal. Marque <b>Pago</b> para registrar o pagamento, com opção de lançar no DRE.</div></div>
+    <div class="section-head"><div><div class="ttl">Folha de pagamento</div><div class="desc">Controle mensal. Marque <b>Pago</b> para registrar o pagamento, com opção de lançar no DRE.</div><div class="desc" data-folha-dre style="margin-top:3px">O que você lança daqui entra no ${podeAbrirDre()?`<a onclick="go('dre')" style="color:var(--gold);font-weight:600;cursor:pointer">DRE do Financeiro</a>`:'DRE do Financeiro'}: salários em <b>Mão-de-Obra</b>; encargos em <b>Encargos Sociais</b> e <b>Benefícios</b>.</div></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="month" class="input" style="max-width:170px" value="${ym}" onchange="folhaYM=this.value;if(current==='folha')viewFolha();else viewFinanceiro()">
         <button class="btn btn-ghost btn-sm" onclick="funcCatsModal()">${icoEdit} Categorias</button>
@@ -9519,6 +9526,9 @@ function uxFinTop(){const el=document.getElementById('topActions');if(!el)return
   else if(finTab==='pagar')h=`<button class="btn btn-primary" onclick="finAddConta('contasPagar')">${icoPlus} Nova conta</button>`;
   else if(finTab==='receber')h=`<button class="btn btn-primary" onclick="finAddConta('contasReceber')">${icoPlus} Nova conta a receber</button>`;
   else if(finTab==='permuta')h=`<button class="btn btn-primary" onclick="permutaLancar('',false)">${icoPlus} Compra em permuta</button>`;
+  // atalho para a Folha (que está no menu em FINANCEIRO e em RH): só na Visão Geral ou ao lado de um botão que já existe,
+  // para não criar uma linha a mais no topo das outras abas no celular. Só para quem tem a área Folha.
+  if(podeArea('folha')&&(finTab==='visao'||h))h+=`<button class="btn btn-ghost" data-atalho="folha" onclick="go('folha')" title="Salários, encargos e pagamentos do mês (entram no DRE em Mão-de-Obra)">${ICO_FOLHA}Folha de pagamento</button>`;
   el.innerHTML=h;}
 
 /* ===================== CONTROLE DE CMV (Real por contagem) ===================== */
@@ -11338,6 +11348,8 @@ const sb=(window.supabase&&SUPA_URL.indexOf('http')===0)?window.supabase.createC
 let PERFIL=null, ORG=null, CLOUD=false, ADMIN_MODE=false, RECOVERY=false, MEMBRO_PERMS=null, MEMBRO_SUB=null, MEMBRO_SETORES=null, MEMBRO_NOME='', MEMBRO_NIVEL='';
 /* pode('contagem') etc.: admin/dono = sempre; membro sem `sub` gravado = tudo dentro das áreas dele */
 function pode(k){if(!MEMBRO_PERMS)return true;if(MEMBRO_SUB&&Object.prototype.hasOwnProperty.call(MEMBRO_SUB,k))return !!MEMBRO_SUB[k];return true;}
+/* área do menu liberada (mesma regra do menu e do go): dono/Lidera sempre; membro só com a área marcada */
+function podeArea(r){return !MEMBRO_PERMS||MEMBRO_PERMS.includes(r);}
 function meusSetores(){if(!MEMBRO_PERMS||!MEMBRO_SETORES)return null;if(typeof estMultiArm==='function'&&!estMultiArm())return null;return MEMBRO_SETORES;} // null = todos (admin da Equipe, dono, ou cliente com um armazém só)
 function setorPermitido(arm){const s=meusSetores();return !s||s.includes(arm||EST_ARM_PRINCIPAL);}
 /* ideal e crítico alimentam a compra: só dono, Lidera, administrador da equipe ou quem tiver a permissão marcada */

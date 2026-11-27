@@ -82,7 +82,7 @@ Duas frentes mexem no Flow ao mesmo tempo, a Lidera e a Adventure. As duas usam 
 - **Notificação interna:** `notificar(alvo,titulo,texto,{rota,…})`, com alvo por permissão, setor ou admin.
 - **Nada de regra fixa para um cliente no código.** Tudo é genérico e ligado por parâmetro ou permissão.
 - Identidade visual: azul `#1D3573`, dourado `#A48A57`, off-white `#F2F2F2`; Fraunces (títulos) e Inter.
-- O menu lateral não deve ser reorganizado nem renomeado sem pedido do responsável.
+- No menu lateral, acrescentar acesso pode (ex.: o mesmo item em dois grupos, como a Folha de Pagamento em FINANCEIRO e em RH); mover, remover ou renomear item precisa do OK do responsável.
 
 ### Celular
 
