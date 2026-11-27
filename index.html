@@ -672,6 +672,23 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 @media(max-width:720px){.wiz-card{grid-template-columns:1fr}.wiz-ctx{padding:20px}}
 body.dark .wiz-foot{background:#0E1626}
 
+/* contagem: aviso de itens não contados (fica por cima da janela da contagem) */
+.ux-conf.ec-falta{z-index:1100}
+.ec-falta .ux-conf-box{max-width:560px;max-height:calc(100vh - 40px);display:flex;flex-direction:column}
+.ec-falta-lista{flex:1 1 auto;min-height:80px;max-height:46vh;overflow:auto;-webkit-overflow-scrolling:touch;margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:0 10px}
+.ec-falta-cab{position:sticky;top:0;background:var(--card);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--gold);font-weight:700;padding:8px 0 4px}
+.ec-falta-it{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
+.ec-falta-it .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.ec-falta-it .lv{text-align:right;white-space:nowrap;color:var(--muted);font-size:12.5px}
+.ec-falta-b{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:14px}
+.ec-falta-b .ec-zerar{color:var(--red)}
+@media(max-width:640px){
+  .ec-falta .ux-conf-box{max-height:92vh;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+  .ec-falta-lista{max-height:none}
+  .ec-falta-b{flex-direction:column-reverse}
+  .ec-falta-b .btn{width:100%;justify-content:center;min-height:46px}
+}
+
 /* folha de contagem de estoque (impressão em 2 colunas) */
 #printArea{display:none}
 @media print{
@@ -10664,7 +10681,7 @@ function estContarHTML(){const cs=estContagens().filter(c=>setorPermitido(c.arm|
     <div class="section-head"><div><div class="ttl">Contagem física</div><div class="desc">Compare o estoque contado com o livro. A diferença mostra o que sumiu, quebrou ou não foi lançado.${multi?' Com mais de um armazém, cada contagem é de um local.':''}</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><select class="input" id="ec_print_cat" style="max-width:190px" title="Folha de contagem só de uma categoria"><option value="">Todas as categorias</option>${[...new Set(estoqueItens().map(x=>x.cat||'Sem categoria'))].sort((a,b)=>a.localeCompare(b,'pt')).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}</select><button class="btn btn-ghost btn-sm no-print" onclick="imprimirContagem(($('#ec_print_cat')||{}).value||'')">🖨️ Folha de contagem</button>${pode('contagem')?`<button class="btn btn-primary btn-sm" onclick="estContagemNova()">${icoPlus} Nova contagem</button>`:''}</div></div>
     ${cs.length?`<div class="scroll-x"><table><thead><tr><th>Data</th>${multi?'<th>Armazém</th>':''}<th>Quem contou</th><th class="num">Itens</th><th class="num">Com diferença</th>${podeVerValores()?'<th class="num">Faltou (R$)</th><th class="num">Sobrou (R$)</th><th class="num">Divergência</th>':''}<th>Obs.</th><th></th></tr></thead><tbody>
-      ${cs.map(c=>`<tr><td><b>${fmtDataBR(c.data)}</b></td>${multi?`<td>${esc(estArmNome(c.arm||EST_ARM_PRINCIPAL))}</td>`:''}<td style="font-size:12px;color:var(--muted)">${esc(c.por||'—')}${c.em?'<div class="gp-mini">'+c.em.slice(11,16)+'</div>':''}</td><td class="num">${c.itens.length}</td><td class="num">${c.itens.filter(x=>Math.abs(x.dif)>0.0005).length}</td>${podeVerValores()?`<td class="num" style="color:var(--red)">${fmtBRL(c.itens.filter(x=>x.valorDif<0).reduce((s,x)=>s+x.valorDif,0))}</td><td class="num" style="color:var(--green)">${fmtBRL(c.itens.filter(x=>x.valorDif>0).reduce((s,x)=>s+x.valorDif,0))}</td><td class="num" style="font-weight:700;color:${Math.abs(c.totalDif)>0.005?'var(--red)':'var(--green)'}">${fmtBRL(c.totalDif)}</td>`:''}<td style="font-size:12px;color:var(--muted)">${esc(c.obs||'')}</td><td><button class="icon-btn" title="Ver detalhes" onclick="estContagemVer('${c.id}')">${icoEdit}</button></td></tr>`).join('')}
+      ${cs.map(c=>`<tr><td><b>${fmtDataBR(c.data)}</b></td>${multi?`<td>${esc(estArmNome(c.arm||EST_ARM_PRINCIPAL))}</td>`:''}<td style="font-size:12px;color:var(--muted)">${esc(c.por||'—')}${c.em?'<div class="gp-mini">'+c.em.slice(11,16)+'</div>':''}</td><td class="num">${c.itens.length}${Array.isArray(c.naoContados)&&c.naoContados.length?'<div class="gp-mini">'+c.naoContados.length+' fora</div>':''}</td><td class="num">${c.itens.filter(x=>Math.abs(x.dif)>0.0005).length}</td>${podeVerValores()?`<td class="num" style="color:var(--red)">${fmtBRL(c.itens.filter(x=>x.valorDif<0).reduce((s,x)=>s+x.valorDif,0))}</td><td class="num" style="color:var(--green)">${fmtBRL(c.itens.filter(x=>x.valorDif>0).reduce((s,x)=>s+x.valorDif,0))}</td><td class="num" style="font-weight:700;color:${Math.abs(c.totalDif)>0.005?'var(--red)':'var(--green)'}">${fmtBRL(c.totalDif)}</td>`:''}<td style="font-size:12px;color:var(--muted)">${esc(c.obs||'')}</td><td><button class="icon-btn" title="Ver detalhes" onclick="estContagemVer('${c.id}')">${icoEdit}</button></td></tr>`).join('')}
     </tbody></table></div>`:`<div style="font-size:13px;color:var(--soft);padding:10px 0">Nenhuma contagem registrada. Imprima a folha, conte e lance aqui: o Flow compara com o livro e acerta o saldo.</div>`}
   </div>`;}
 function estContagemNova(){if(!pode('contagem'))return toast('Seu acesso não permite lançar contagem');
@@ -10672,11 +10689,11 @@ function estContagemNova(){if(!pode('contagem'))return toast('Seu acesso não pe
   if(!estContDraft||estContDraft.filtro!==estContFiltro)estContDraft={filtro:estContFiltro,data:hojeISO(),arm:(estContDraft&&estContDraft.arm)||permitidos[0].id,vals:{},obs:''};
   if(!permitidos.some(a=>a.id===estContDraft.arm)){estContDraft.arm=permitidos[0].id;estContDraft.vals={};}
   const multi=estMultiArm();const arm=estArmValido(estContDraft.arm);const mob=ehMobile();let lastCat=null,rows='';
-  const itemsSetor=estoqueItens().filter(x=>(estContFiltro!=='cmv'||ehInsumoCMV(x.ins))&&prodNoSetor(x.ins,arm));const catsCont=[...new Set(itemsSetor.map(x=>x.cat||'Sem categoria'))].sort((a,b)=>a.localeCompare(b,'pt'));if(estContCat&&!catsCont.includes(estContCat))estContCat='';
+  const itemsSetor=estContItensDe(arm);const catsCont=[...new Set(itemsSetor.map(x=>x.cat||'Sem categoria'))].sort((a,b)=>a.localeCompare(b,'pt'));if(estContCat&&!catsCont.includes(estContCat))estContCat='';
   const items=itemsSetor.slice().sort((a,b)=>(a.cat||'').localeCompare(b.cat||'')||a.nome.localeCompare(b.nome));/* todas: categoria e busca filtram na tela, sem perder o que já foi digitado */const V=podeVerValores();const contados=Object.values(estContDraft.vals).filter(v=>v!=null&&v!=='').length;
   items.forEach(x=>{if(x.cat!==lastCat){lastCat=x.cat;rows+=`<div data-cab="1" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--gold);font-weight:700;padding:10px 0 4px">${esc(x.cat||'Sem categoria')}</div>`;}
     const v=estContDraft.vals[x.ins.id];const teo=multi?estSaldoArm(x.ins,arm):(+x.ins.estoqueAtual||0);const u=uSym(x.uni);const P=estEhPorc(x.ins);
-    rows+=`<div data-n="${esc(x.nome)}" data-c="${esc(x.cat||'Sem categoria')}" style="display:grid;grid-template-columns:${mob?'1fr 82px 96px':(V?'1fr 110px 130px 120px 130px':'1fr 110px 130px 120px')};gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)">
+    rows+=`<div data-id="${esc(x.ins.id)}" data-n="${esc(x.nome)}" data-c="${esc(x.cat||'Sem categoria')}" style="display:grid;grid-template-columns:${mob?'1fr 82px 96px':(V?'1fr 110px 130px 120px 130px':'1fr 110px 130px 120px')};gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)">
       <div style="min-width:0"><div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.nome)}${x.ins.tipo==='preparado'?' <span class="tag tag-gold" style="font-size:10px;padding:0 6px">subproduto</span>':''}</div>${P?`<div style="font-size:11px;color:var(--soft)">conte em ${esc(estPorcRot(x.ins,2))} de ${estQ(prepPorcao(x.ins).base,bSym(x.ins.uni))}</div>`:''}${mob?`<div style="font-size:11px;color:var(--soft)">livro ${P?estQP(x.ins,teo):estQ(teo,u)}</div>`:''}</div>
       ${mob?'':`<div style="text-align:right;font-size:12.5px;color:var(--muted)">${P?estQP(x.ins,teo):estQ(teo,u)}</div>`}
       <div>${P?`<input class="input" type="number" step="1" min="0" inputmode="numeric" value="${v==null||v===''?'':estNPorc(x.ins,+v)}" placeholder="${esc(estPorcRot(x.ins,2))}" style="text-align:right;padding:6px 8px" oninput="estContSetP('${x.ins.id}',this.value)">`:`<input class="input" type="number" step="0.001" min="0" inputmode="decimal" value="${v==null?'':v}" placeholder="${mob?u:'contado'}" style="text-align:right;padding:6px 8px" oninput="estContSet('${x.ins.id}',this.value)">`}</div>
@@ -10696,28 +10713,63 @@ function estContagemNova(){if(!pode('contagem'))return toast('Seu acesso não pe
     <div id="ec_total" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:2px solid var(--navy);margin-top:8px;padding-top:10px;font-size:13px">${estContTotalTxt()}</div>
     <div class="field" style="margin-top:10px"><label>Observação</label><input class="input" value="${esc(estContDraft.obs)}" placeholder="Ex.: contagem de segunda, antes da abertura" oninput="estContDraft.obs=this.value"></div>
   </div><div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Continuar depois</button><button class="btn btn-primary" onclick="estContagemSalvar()">Salvar contagem e acertar o estoque</button></div>`,true,true);estContFiltrar();}
+/* itens que a contagem mostra: filtro Só CMV/Todos + produtos do setor contado (categoria e busca só filtram a tela) */
+function estContItensDe(arm){return estoqueItens().filter(x=>(estContFiltro!=='cmv'||ehInsumoCMV(x.ins))&&prodNoSetor(x.ins,arm));}
+/* em branco com saldo de livro diferente de 0, na ordem da tela (livro 0 em branco não é "não contado") */
+function estContFaltam(){const d=estContDraft;if(!d)return [];const arm=estArmValido(d.arm);
+  return estContItensDe(arm).filter(x=>{const v=d.vals[x.ins.id];return (v==null||v==='')&&Math.abs(estContLivro(x.ins))>0.0005;})
+    .sort((a,b)=>(a.cat||'').localeCompare(b.cat||'')||a.nome.localeCompare(b.nome));}
+function estContFaltaAviso(F){const a=document.getElementById('uxConfirm');if(a)a.remove();const V=podeVerValores();const n=F.length,um=n===1;let cat=null,lista='';
+  F.forEach(x=>{const c=x.cat||'Sem categoria';if(c!==cat){cat=c;lista+=`<div class="ec-falta-cab">${esc(c)}</div>`;}const teo=estContLivro(x.ins);
+    lista+=`<div class="ec-falta-it" data-id="${esc(x.ins.id)}"><span class="nm">${esc(x.nome)}</span><span class="lv">livro ${estEhPorc(x.ins)?estQP(x.ins,teo,true):esc(estQ(teo,uSym(x.uni)))}</span></div>`;});
+  const d=document.createElement('div');d.id='uxConfirm';d.className='ux-conf ec-falta';
+  d.innerHTML=`<div class="ux-conf-box" role="alertdialog" aria-modal="true" aria-labelledby="ec_falta_t"><div class="ux-conf-t" id="ec_falta_t">${um?'1 item não foi contado':n+' itens não foram contados'}</div>
+    <div class="ux-conf-x">Ficaram em branco e têm saldo no livro. Volte e conte, salve sem ${um?'ele':'eles'} (o saldo fica como está) ou zere ${um?'o item':'os itens'} se não ${um?'tem':'têm'} no estoque.</div>
+    <div class="ec-falta-lista">${lista}</div>
+    <div class="ec-falta-b"><button class="btn btn-ghost ec-zerar" data-a="zerar">Zerar os não contados</button><button class="btn btn-ghost" data-a="manter">Salvar sem ${um?'ele':'eles'}</button><button class="btn btn-primary" data-a="voltar">Voltar e contar</button></div></div>`;
+  d.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(e.target!==d&&!b)return;const ac=b?b.dataset.a:'voltar';
+    if(ac==='voltar'){d.remove();return estContIrPara(F[0].ins.id);}
+    if(ac==='manter'){d.remove();return estContagemSalvar('manter');}
+    d.remove();const val=F.reduce((s,x)=>s+estContLivro(x.ins)*estCustoAtual(x.ins),0);
+    uxConfirma({perigo:true,titulo:'Zerar '+(um?'1 item não contado':n+' itens não contados')+'?',
+      texto:`${um?'O saldo dele vai':'O saldo deles vai'} para 0 nesta contagem${V?`, uma perda de <b style="color:var(--red);white-space:nowrap">${fmtBRL(val)}</b> que entra na divergência`:', e a diferença entra na divergência'}. Use só se não ${um?'tem':'têm'} no estoque. Dá para desfazer excluindo a contagem.`,
+      sim:'Zerar e salvar',nao:'Cancelar'},()=>estContagemSalvar('zerar'));
+    const c=document.getElementById('uxConfirm');if(c)c.classList.add('ec-falta');});
+  document.body.appendChild(d);const f=d.querySelector('[data-a="voltar"]');if(f)f.focus();}
+/* leva ao item na lista da contagem (limpa busca e categoria se ele estiver escondido) */
+function estContIrPara(id){const ach=()=>document.querySelector('#ec_rows [data-id="'+CSS.escape(id)+'"]');let r=ach();
+  if(!r||r.style.display==='none'){estContQ='';estContCat='';estContagemNova();r=ach();}
+  if(!r)return;const inp=r.querySelector('input');if(r.scrollIntoView)r.scrollIntoView({block:'center'});if(inp)inp.focus({preventScroll:true});}
 function estContLivro(ins){return estMultiArm()?estSaldoArm(ins,estArmValido((estContDraft||{}).arm)):(+ins.estoqueAtual||0);}
 function estContDifTxt(ins,v){if(v==null||v==='')return '<span style="color:var(--soft)">—</span>';const d=estR((+v||0)-estContLivro(ins),3);if(!d)return '<span style="color:var(--green)">confere</span>';const val=d*estCustoAtual(ins);return `<span style="color:${d<0?'var(--red)':'var(--amber)'};font-weight:600">${d>0?'+':''}${estEhPorc(ins)?estQP(ins,d,true):estQ(d,uSym(ins.uni))}</span>${podeVerValores()?`<div style="font-size:11px;color:var(--soft)">${fmtBRL(val)}</div>`:''}`;}
 function estContTotalTxt(){let n=0,falt=0,sob=0;Object.entries(estContDraft.vals).forEach(([id,v])=>{if(v==null||v==='')return;const ins=DB.insumos[id];if(!ins)return;n++;const d=((+v||0)-estContLivro(ins))*estCustoAtual(ins);if(d<0)falt+=d;else sob+=d;});
   if(!podeVerValores())return `<span>${n} contado(s)</span>`;
   return `<span>${n} contado(s)</span><span>Faltou: <b style="color:var(--red)">${fmtBRL(falt)}</b></span><span>Sobrou: <b style="color:var(--amber)">${fmtBRL(sob)}</b></span><span>Divergência: <b style="color:${Math.abs(falt+sob)>0.005?'var(--red)':'var(--green)'}">${fmtBRL(falt+sob)}</b></span>`;}
 function estContSet(id,v){estContDraft.vals[id]=v;const el=$('#ec_dif_'+id);if(el)el.innerHTML=estContDifTxt(DB.insumos[id],v);const t=$('#ec_total');if(t)t.innerHTML=estContTotalTxt();}
-function estContagemSalvar(){const d=estContDraft;if(!d)return;const itens=[];const data=d.data||hojeISO();const arm=estArmValido(d.arm);
+/* modo: vazio = confere os não contados antes; 'manter' = salva sem eles; 'zerar' = grava 0 neles */
+function estContagemSalvar(modo){const d=estContDraft;if(!d)return;const itens=[];const data=d.data||hojeISO();const arm=estArmValido(d.arm);
   Object.entries(d.vals).forEach(([id,v])=>{if(v==null||v==='')return;const ins=DB.insumos[id];if(!ins)return;const cont=+v||0;const teo=estContLivro(ins);const dif=estR(cont-teo,3);const custo=estCustoAtual(ins);
     itens.push({insumoId:id,teorico:teo,contado:cont,dif,valorDif:estR(dif*custo,2)});});
   if(!itens.length)return toast('Preencha ao menos um item contado');
   if(!setorPermitido(arm))return toast('Você não pode contar '+estArmNome(arm));
+  const F=estContFaltam();if(F.length&&modo!=='manter'&&modo!=='zerar')return estContFaltaAviso(F);
+  const naoContados=F.map(x=>{const teo=estContLivro(x.ins);if(modo==='zerar'){const dif=estR(-teo,3);itens.push({insumoId:x.ins.id,teorico:teo,contado:0,dif,valorDif:estR(dif*estCustoAtual(x.ins),2),zerado:true});}
+    return {insumoId:x.ins.id,teorico:teo,trat:modo==='zerar'?'zerado':'mantido'};});
   const c={id:uid(),data,arm,itens,obs:(d.obs||'').trim(),totalDif:estR(itens.reduce((s,x)=>s+x.valorDif,0),2),por:quemSou(),em:new Date().toISOString()};
+  if(naoContados.length)c.naoContados=naoContados;
   itens.forEach(x=>{if(x.dif)estMov('ajuste',x.insumoId,0,{delta:x.dif,arm,origem:'contagem',refId:c.id,data,motivo:'Contagem física',obs:x.dif<0?'faltou na contagem':'sobrou na contagem'});});
   estContagens().push(c);estContDraft=null;save();closeModal();estoqueTab='contar';viewEstoque();
-  toast('Contagem salva · '+itens.length+' itens · divergência '+fmtBRL(c.totalDif));
+  toast('Contagem salva · '+itens.length+' itens · divergência '+fmtBRL(c.totalDif)+(naoContados.length?' · '+naoContados.length+' não contado(s) '+(modo==='zerar'?'zerado(s)':'mantido(s)'):''));
   if(itens.length&&pode('cmv')&&(!estMultiArm()||arm===EST_ARM_PRINCIPAL))setTimeout(()=>{if(confirm('Registrar esta contagem no Controle de CMV como estoque final ('+fmtBRL(estoqueValorCMV())+')?'))lancarCmvDoEstoque();},400);}
-function estContagemVer(id){const c=estContagens().find(x=>x.id===id);if(!c)return;const its=c.itens.slice().sort((a,b)=>a.valorDif-b.valorDif);
+function estContagemVer(id){const c=estContagens().find(x=>x.id===id);if(!c)return;const its=c.itens.slice().sort((a,b)=>a.valorDif-b.valorDif);const NC=Array.isArray(c.naoContados)?c.naoContados:[];const ncM=NC.filter(x=>x.trat!=='zerado'),ncZ=NC.filter(x=>x.trat==='zerado');
+  const ncHTML=NC.length?`<div style="margin-top:14px;border:1px solid var(--line);border-radius:12px;padding:10px 12px"><div style="font-weight:700;font-size:13.5px;color:var(--ink)">${NC.length===1?'1 item ficou':NC.length+' itens ficaram'} de fora da contagem</div>
+    <div style="font-size:12px;color:var(--muted);margin:2px 0 6px">${ncZ.length?`<b>${ncZ.length} zerado(s)</b>: o saldo foi para 0 (estão na tabela acima). `:''}${ncM.length?`<b>${ncM.length} mantido(s)</b>: o saldo ficou como estava.`:''}</div>
+    <div style="max-height:220px;overflow:auto">${NC.map(x=>{const ins=DB.insumos[x.insumoId]||{nome:'(removido)',uni:''};return `<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:12.5px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.nome)}</span><span style="white-space:nowrap;color:var(--muted)">livro ${esc(estQ(x.teorico,uSym(ins.uni)))} · <b style="color:${x.trat==='zerado'?'var(--red)':'var(--muted)'}">${x.trat==='zerado'?'zerado':'mantido'}</b></span></div>`;}).join('')}</div></div>`:'';
   modal(`<div class="modal-head"><h3>Contagem de ${fmtDataBR(c.data)}${estMultiArm()?' · '+esc(estArmNome(c.arm||EST_ARM_PRINCIPAL)):''}</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">${c.obs?`<div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">${esc(c.obs)}</div>`:''}
     <div class="scroll-x"><table><thead><tr><th>Produto</th><th class="num">Livro</th><th class="num">Contado</th><th class="num">Diferença</th>${podeVerValores()?'<th class="num">R$</th>':''}</tr></thead><tbody>
-    ${its.map(x=>{const ins=DB.insumos[x.insumoId]||{nome:'(removido)',uni:''};const u=uSym(ins.uni);return `<tr><td>${esc(ins.nome)}</td><td class="num">${estQ(x.teorico,u)}</td><td class="num">${estQ(x.contado,u)}</td><td class="num" style="color:${x.dif<0?'var(--red)':x.dif>0?'var(--amber)':'var(--green)'};font-weight:600">${x.dif>0?'+':''}${estQ(x.dif)}</td>${podeVerValores()?`<td class="num" style="color:${x.valorDif<0?'var(--red)':x.valorDif>0?'var(--amber)':'var(--soft)'}">${fmtBRL(x.valorDif)}</td>`:''}</tr>`;}).join('')}
-    </tbody>${podeVerValores()?`<tfoot><tr style="font-weight:700;border-top:2px solid var(--navy)"><td colspan="4">Divergência total</td><td class="num" style="color:${Math.abs(c.totalDif)>0.005?'var(--red)':'var(--green)'}">${fmtBRL(c.totalDif)}</td></tr></tfoot>`:''}</table></div>
+    ${its.map(x=>{const ins=DB.insumos[x.insumoId]||{nome:'(removido)',uni:''};const u=uSym(ins.uni);return `<tr><td>${esc(ins.nome)}${x.zerado?' <span class="tag tag-gray" style="font-size:10px;padding:0 6px" title="Não foi contado e foi zerado">zerado</span>':''}</td><td class="num">${estQ(x.teorico,u)}</td><td class="num">${estQ(x.contado,u)}</td><td class="num" style="color:${x.dif<0?'var(--red)':x.dif>0?'var(--amber)':'var(--green)'};font-weight:600">${x.dif>0?'+':''}${estQ(x.dif)}</td>${podeVerValores()?`<td class="num" style="color:${x.valorDif<0?'var(--red)':x.valorDif>0?'var(--amber)':'var(--soft)'}">${fmtBRL(x.valorDif)}</td>`:''}</tr>`;}).join('')}
+    </tbody>${podeVerValores()?`<tfoot><tr style="font-weight:700;border-top:2px solid var(--navy)"><td colspan="4">Divergência total</td><td class="num" style="color:${Math.abs(c.totalDif)>0.005?'var(--red)':'var(--green)'}">${fmtBRL(c.totalDif)}</td></tr></tfoot>`:''}</table></div>${ncHTML}
   </div><div class="modal-foot"><button class="btn btn-ghost" style="color:var(--red);margin-right:auto" onclick="estContagemDel('${id}')">Excluir contagem</button><button class="btn btn-primary" onclick="closeModal()">Fechar</button></div>`,true);}
 function estContagemDel(id){if(!confirm('Excluir esta contagem e desfazer os ajustes de saldo que ela gerou?'))return;estReverter('contagem',id);DB.contagens=estContagens().filter(c=>c.id!==id);save();closeModal();viewEstoque();toast('Contagem excluída');}
 
