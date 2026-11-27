@@ -10832,10 +10832,14 @@ function estProdComparacaoHTML(){const dias=30;const de=diasSoma(hojeISO(),-dias
   if(!linhas.length&&!recebido)return '';
   return `<div class="card card-pad" style="margin-top:16px"><div class="ttl" style="margin-bottom:2px">Requisitado × devolvido · últimos ${dias} dias</div><div class="desc" style="margin-bottom:8px">Bruto usado nas produções, quanto virou subproduto, quanto voltou ao principal e o rendimento real contra a receita.</div>
     ${linhas.length?`<div class="scroll-x"><table><thead><tr><th>Subproduto</th><th class="num">Bruto usado</th><th class="num">Produzido</th><th class="num">Devolvido ao principal</th><th class="num">Rendimento real</th><th class="num" title="Produções abaixo do mínimo aceito">Abaixo do mín.</th></tr></thead><tbody>${linhas.join('')}</tbody></table></div>`:''}${recebido}</div>`;}
+/* membro preso a setores: o rascunho nasce com origem/destino que ele pode usar (o select só lista esses).
+   Sem isso a tela mostrava "Produção → Produção" e gravava principal → estoque de vendas. Preferência: setor de produção dele. */
+function estProdArmsDoMembro(d){if(!d||!meusSetores())return;const ok=armazensPermitidos();if(!ok.length)return;const alt=(ok.find(a=>a.producao)||ok[0]).id;
+  if(!setorPermitido(d.armDe))d.armDe=alt;if(!setorPermitido(d.armPara))d.armPara=alt;}
 function estProducaoModal(subId){const subs=estSubprodutos();if(!subs.length)return toast('Marque um preparado como subproduto com estoque primeiro');
   const sub=DB.insumos[subId]||subs[0];const multi=estMultiArm();const cfg=estCfg();
   if(!estProdDraft||estProdDraft.subId!==sub.id){estProdDraft={subId:sub.id,data:hojeISO(),qtd:+sub.rendimento||1,armDe:EST_ARM_PRINCIPAL,armPara:cfg.armVendas,comps:estReceitaPara(sub,+sub.rendimento||1).map(x=>({insumoId:x.insumoId,q:x.q})),obs:'',forn:estProdFornPadrao(sub)};}
-  const d=estProdDraft;const u=uSym(sub.uni);const rf=Array.isArray(sub.rendForn)?sub.rendForn:[];
+  estProdArmsDoMembro(estProdDraft);const d=estProdDraft;const u=uSym(sub.uni);const rf=Array.isArray(sub.rendForn)?sub.rendForn:[];
   modal(`<div class="modal-head"><h3>Registrar produção</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
   <div class="modal-body">
     <div class="grid-2"><div class="field"><label>Subproduto <span class="hint">digite para buscar</span></label><input class="input" id="pr_sub" list="pr_sub_dl" value="${esc(sub.nome)}" onfocus="this.select()" onchange="estProdTrocaSub(this.value)"><datalist id="pr_sub_dl">${subs.map(s=>`<option value="${esc(s.nome)}"></option>`).join('')}</datalist></div>
@@ -10875,6 +10879,7 @@ function estProdRecalc(deQtd){const d=estProdDraft;const sub=DB.insumos[d.subId]
 function estProducaoSalvar(){const d=estProdDraft;if(!d)return;const sub=DB.insumos[d.subId];if(!sub)return;const qtd=parseFloat(($('#pr_qtd')||{}).value)||d.qtd;if(!(qtd>0))return toast('Informe a quantidade produzida');
   if(opQtdAviso(sub,qtd)&&!confirm('Quantidade fora do comum: '+estQReqBase(qtd,sub)+' ('+fmtN(qtd/((+sub.rendimento)||1),0)+' receitas). Registrar assim mesmo?'))return;
   const comps=d.comps.filter(c=>c.insumoId&&c.q>0);if(!comps.length)return toast('Informe os ingredientes consumidos');
+  if(estMultiArm()&&(!setorPermitido(d.armDe)||!setorPermitido(d.armPara)))return toast('Você só registra produção nos seus setores: escolha a origem e o destino de novo');
   const extra={forn:d.forn||'',esperado:estProdEsperado(sub,d.forn)};const piso=estProdPiso(sub,comps);
   if(piso&&qtd<piso.piso){const motivo=(($('#pr_motivo')||{}).value||'').trim();if(!motivo)return toast('Produção abaixo do mínimo: informe o motivo');
     const chk=$('#pr_aprovo');const aprovador=chk?(chk.checked?(quemSou()||'responsável'):''):((($('#pr_aprovador')||{}).value||'').trim());if(!aprovador)return toast(chk?'Marque a aprovação para concluir':'Informe quem aprovou esta produção');
