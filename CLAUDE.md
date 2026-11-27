@@ -83,6 +83,7 @@ Duas frentes mexem no Flow ao mesmo tempo, a Lidera e a Adventure. As duas usam 
 - **Nada de regra fixa para um cliente no código.** Tudo é genérico e ligado por parâmetro ou permissão.
 - Identidade visual: azul `#1D3573`, dourado `#A48A57`, off-white `#F2F2F2`; Fraunces (títulos) e Inter.
 - O menu lateral não deve ser reorganizado nem renomeado sem pedido do responsável.
+- **Endereço por tela:** cada tela tem um endereço `#/<tela>` e, no Estoque e no Financeiro, `#/<tela>/<aba>` (ex.: `#/estoque/contar`, `#/financeiro/dre`). Os nomes ficam em `ROTA_SLUG` e `ROTA_ABAS`; tela nova entra lá. `go()` empilha uma entrada no histórico (a mesma tela não empilha de novo) e o voltar/avançar do navegador abre a tela sem empilhar. Modal aberto ganha uma entrada: o voltar fecha o modal e fica na tela. Depois do login, o endereço abre a tela dele, respeitando as permissões (o endereço mostra a tela que de fato abriu). Só o `#/…` é do app: `?parâmetros` e o `#access_token…` do link de senha não são tocados. Abas de outras telas (Configurações, Buffet, seções de Parâmetros) ainda não entram no endereço.
 
 ### Celular
 
