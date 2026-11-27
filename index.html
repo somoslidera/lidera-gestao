@@ -6281,18 +6281,25 @@ function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
   toast('Nota atualizada · '+n+' item(ns)'+(novos?' · '+novos+' novo(s)':'')+(remov.length?' · '+remov.length+' excluído(s)':'')+(prodAtu?' · '+prodAtu+' produto(s) com preço atualizado':'')+lmSemConvMsg(semConv));}
 /* itens de CMV sem produto vinculado: pode ser decisão gerencial, então avisa no modal do Flow e deixa lançar */
 function lmSemVinculo(){return (lancDraft||[]).map((r,i)=>({r,i})).filter(({r})=>lmLinhaOk(r)&&r.grupo==='CMV'&&!(r.insumoId&&DB.insumos[r.insumoId]));}
-function lmSemVinculoAviso(){const sv=lmSemVinculo();if(!sv.length)return false;const n=sv.length,um=n===1,max=8;
-  const lista=sv.slice(0,max).map(({r})=>`<li><span>${esc((r.desc||'').trim()||'Item sem descrição')}</span><b>${fmtBRL(lmTotalLinha(r))}</b></li>`).join('')+(n>max?`<li><span>e mais ${n-max}</span></li>`:'');
-  uxConfirma({aviso:true,titulo:(um?'1 item de CMV está':n+' itens de CMV estão')+' sem produto vinculado',
-    texto:`O gasto entra no Financeiro e no DRE, mas não atualiza o custo do produto nem o estoque.${lmEdit?'':' '+(um?'Ele aparece':'Eles aparecem')+' em amarelo na nota.'}<ul class="ux-conf-lista">${lista}</ul>`,
+function lmSemVinculoAviso(){const sv=lmSemVinculo();if(!sv.length)return false;const n=sv.length,um=n===1,max=8,gratis=lmGratis();
+  // bonificação/troca: o valor da linha é só referência (na edição vem de vRef) e a nota fica fora do DRE e do caixa
+  const val=r=>{const t=lmTotalLinha(r);return gratis?(t>0?'ref. '+fmtBRL(t):fmtN(+r.qtd||0,(+r.qtd||0)%1?2:0)+' '+esc(r.uni||'un')):fmtBRL(t);};
+  const lista=sv.slice(0,max).map(({r})=>`<li><span>${esc((r.desc||'').trim()||'Item sem descrição')}</span><b>${val(r)}</b></li>`).join('')+(n>max?`<li><span>e mais ${n-max}</span></li>`:'');
+  const efeito=gratis?`É ${lmTipoNota==='bonif'?'bonificação':'troca'}: não entra no DRE nem no caixa, e sem o vínculo também não dá entrada no estoque.`
+    :'O gasto entra no Financeiro e no DRE, mas não atualiza o custo do produto nem o estoque.';
+  uxConfirma({aviso:true,semFundo:true,titulo:(um?'1 item de CMV está':n+' itens de CMV estão')+' sem produto vinculado',
+    texto:`${efeito} ${um?'Ele aparece':'Eles aparecem'} em amarelo na nota.<ul class="ux-conf-lista">${lista}</ul>`,
     sim:lmEdit?'Salvar sem vínculo':'Lançar sem vínculo',nao:'Voltar e vincular'},
     ()=>lancarModalSalvar(true),
     ()=>{const el=$('#lm_rows');const row=el&&el.children[sv[0].i];if(row&&row.scrollIntoView)row.scrollIntoView({block:'center',behavior:'smooth'});});
   return true;}
 function lancarModalSalvar(semVinculoOk){DB.lancamentos=DB.lancamentos||[];
-  if(semVinculoOk!==true&&lmSemVinculoAviso())return;
-  if(!lmDatasConferir())return;
-  if(!lmPermutaOk())return;   // ano digitado ou lido errado deixava o lançamento fora do DRE (572 casos em 15 clientes)
+  // validações primeiro; o aviso de item sem vínculo vem por último. "Lançar sem vínculo" volta aqui com true e não repete
+  // as validações: elas já passaram nesta mesma tentativa e a nota não pode ser editada com o aviso aberto.
+  if(semVinculoOk!==true){
+    if(!lmDatasConferir())return;
+    if(!lmPermutaOk())return;   // ano digitado ou lido errado deixava o lançamento fora do DRE (572 casos em 15 clientes)
+    if(lmSemVinculoAviso())return;}
   if(lmEdit)return lancarModalSalvarEdicao();
   if(!lmGratis())lmNotaAutoCond(true); // condição padrão do fornecedor, se a nota ficou sem parcelas
   const nfGeradas=lmNumerarSemNF(lancDraft.filter(lmLinhaOk));
@@ -9458,10 +9465,13 @@ let _uxRaf=0;
 function uxAplicar(){_uxRaf=0;try{uxTabelas(document.getElementById('view'));uxIcones(document.body);}catch(e){}}
 function uxAgendar(){if(!_uxRaf)_uxRaf=requestAnimationFrame(uxAplicar);}
 (function(){const ini=()=>{try{new MutationObserver(uxAgendar).observe(document.body,{childList:true,subtree:true});uxAgendar();}catch(e){}};if(document.body)ini();else document.addEventListener('DOMContentLoaded',ini);})();
-/* o: {titulo, texto (HTML já escapado), sim, nao, perigo, aviso} · ok roda só se a pessoa confirmar; naoCb (opcional) só no botão "nao" */
+/* o: {titulo, texto (HTML já escapado), sim, nao, perigo, aviso, semFundo} · ok roda só se a pessoa confirmar; naoCb (opcional) só no botão "nao".
+   Clique no fundo fecha (como Cancelar), menos nos primeiros 400 ms (é o 2º clique de um clique duplo no botão que abriu).
+   semFundo: o fundo não fecha, e os botões também ignoram os primeiros 400 ms (no celular a folha de baixo põe o confirmar onde estava o botão que abriu). */
 function uxConfirma(o,ok,naoCb){const a=document.getElementById('uxConfirm');if(a)a.remove();const d=document.createElement('div');d.id='uxConfirm';d.className='ux-conf';
   d.innerHTML=`<div class="ux-conf-box" role="alertdialog" aria-modal="true"><div class="ux-conf-t">${o.aviso?`<span class="ux-conf-ico">${icoWarn}</span>`:''}${o.titulo||'Confirmar'}</div>${o.texto?`<div class="ux-conf-x">${o.texto}</div>`:''}<div class="ux-conf-b"><button class="btn btn-ghost" data-a="0">${o.nao||'Cancelar'}</button><button class="btn ${o.perigo?'ux-perigo':'btn-primary'}" data-a="1">${o.sim||'Confirmar'}</button></div></div>`;
-  d.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(e.target!==d&&!b)return;d.remove();if(b&&b.dataset.a==='1'){try{ok&&ok();}catch(err){console.error(err);}}else if(b&&naoCb){try{naoCb();}catch(err){console.error(err);}}});
+  const t0=Date.now();
+  d.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(e.target!==d&&!b)return;if(!b&&o.semFundo)return;if(Date.now()-t0<400&&(!b||o.semFundo))return;d.remove();if(b&&b.dataset.a==='1'){try{ok&&ok();}catch(err){console.error(err);}}else if(b&&naoCb){try{naoCb();}catch(err){console.error(err);}}});
   document.body.appendChild(d);const f=d.querySelector('[data-a="0"]');if(f)f.focus();}
 /* Esc fecha: primeiro a confirmação, depois a janela aberta (como clicar no X). Nota com itens preenchidos não fecha por engano. */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;

@@ -41,21 +41,58 @@ async function rodar(largura) {
   await pag.waitForTimeout(2500);
 
   // nota com 2 itens de CMV sem produto + 1 despesa que não é CMV
-  const abrir = () => pag.evaluate(() => {
-    go("financeiro"); lancarModal();
+  const abrir = (extra) => pag.evaluate((extra) => {
+    const outro = Object.keys(DB.categorias || {}).find((g) => g !== "CMV" && grupoTipo(g) !== "receita");
+    if (!outro) return { erro: "o demo não tem grupo de despesa fora do CMV (DB.categorias)" };
+    closeModal(); go("financeiro"); lancarModal();
     const mk = (o) => Object.assign(lmBlank(), { fornecedor: "Fornecedor teste", nf: "T-26" }, o);
     lancDraft = [mk({ grupo: "CMV", desc: "Coco ralado avulso", qtd: 2, vun: 15.5 }),
                  mk({ grupo: "CMV", desc: "Embalagem <b>marmita</b>", qtd: 10, vun: 1.2 }),
-                 mk({ grupo: Object.keys(DB.categorias).find((g) => g !== "CMV" && grupoTipo(g) !== "receita"), desc: "Gás", qtd: 1, vun: 120 })];
+                 mk({ grupo: outro, desc: "Gás", qtd: 1, vun: 120 })];
+    if (extra === "permuta") Object.assign(lancDraft[2], { forma: permutaFormaNome(), fornecedor: "" });
+    if (extra === "bonif") lmTipoNota = "bonif";
     lmPagtoModo = "depois"; renderLmRows();
-    return DB.lancamentos.length;
-  });
+    return { n: DB.lancamentos.length };
+  }, extra || "");
+  const salvar = pag.locator(".modal-foot .btn-primary");
+  const box = pag.locator("#uxConfirm .ux-conf-box");
+  const fecharAviso = async () => { if (await box.count()) await box.locator("button", { hasText: "Voltar e vincular" }).click(); await pag.waitForTimeout(200); };
+
+  const a0 = await abrir();
+  if (a0.erro) { falhas.push(`${largura}: ${a0.erro}`); await ctx.close(); return; }
+
+  // 0a) validação antes do aviso: permuta sem fornecedor barra e o aviso nem abre
+  await abrir("permuta");
+  await salvar.click();
+  await pag.waitForTimeout(500);   // o aviso ignora cliques nos primeiros 400 ms
+  checa(await pag.locator("#uxConfirm").count() === 0, `${largura}: o aviso abriu antes da validação de permuta`);
+
+  // 0b) nota de bonificação: o texto não diz que entra no DRE e os valores são só referência
+  await abrir("bonif");
+  await salvar.click();
+  await pag.waitForTimeout(500);   // o aviso ignora cliques nos primeiros 400 ms
+  const tb = await box.innerText().catch(() => "");
+  checa(/não entra no DRE nem no caixa/.test(tb) && !/entra no Financeiro e no DRE/.test(tb), `${largura}: texto errado na bonificação: ${tb.slice(0, 160)}`);
+  checa(/ref\. R\$/.test(tb), `${largura}: na bonificação o valor não aparece como referência`);
+  checa(/em amarelo na nota/.test(tb), `${largura}: bonificação sem a frase do amarelo`);
+  await fecharAviso();
+  await pag.evaluate(() => { lmTipoNota = "compra"; });
+
+  // 0c) clique duplo em Lançar: o 2º clique não fecha o aviso pelo fundo
+  await abrir();
+  await salvar.dblclick();
+  await pag.waitForTimeout(500);
+  checa(await box.count() === 1, `${largura}: clique duplo em Lançar fechou o aviso sem salvar`);
+  checa(await pag.evaluate(() => DB.lancamentos.filter((l) => l.nfe === "T-26").length) === 0, `${largura}: clique duplo em Lançar confirmou o aviso e salvou`);
+  await pag.mouse.click(5, 5);   // clique no fundo, depois dos 400 ms: este aviso não fecha pelo fundo
+  await pag.waitForTimeout(200);
+  checa(await box.count() === 1, `${largura}: o aviso fechou com clique no fundo`);
+  await fecharAviso();
 
   // 1) Voltar e vincular: não salva nada
-  const antes = await abrir();
-  await pag.locator(".modal-foot .btn-primary").click();
-  await pag.waitForTimeout(300);
-  const box = pag.locator("#uxConfirm .ux-conf-box");
+  const antes = (await abrir()).n;
+  await salvar.click();
+  await pag.waitForTimeout(500);   // o aviso ignora cliques nos primeiros 400 ms
   checa(await box.count() === 1, `${largura}: o modal do Flow não abriu`);
   const txt = await box.innerText();
   checa(/2 itens de CMV estão sem produto vinculado/.test(txt), `${largura}: título errado: ${txt.slice(0, 80)}`);
@@ -71,21 +108,24 @@ async function rodar(largura) {
 
   // 2) Lançar sem vínculo: salva os 3
   await pag.locator(".modal-foot .btn-primary").click();
-  await pag.waitForTimeout(300);
+  await pag.waitForTimeout(500);
   await pag.locator("#uxConfirm button", { hasText: "Lançar sem vínculo" }).click();
   await pag.waitForTimeout(800);
   // a confirmação de data ou de NF repetida pode vir depois: não deve existir neste caso
-  const depois = await pag.evaluate(() => DB.lancamentos.filter((l) => l.nfe === "T-26" || l.nf === "T-26" || /Coco ralado avulso|marmita|Gás/.test(l.descricao || "")).length);
-  checa(depois >= 3, `${largura}: Lançar sem vínculo salvou ${depois} de 3`);
+  checa(await pag.locator("#uxConfirm").count() === 0, `${largura}: um aviso continuou aberto depois de "Lançar sem vínculo"`);
+  const salvo = await pag.evaluate(() => ({ n: DB.lancamentos.length, nf: DB.lancamentos.filter((l) => l.nfe === "T-26").length }));
+  checa(salvo.n - antes === 3, `${largura}: Lançar sem vínculo criou ${salvo.n - antes} lançamento(s), esperado 3`);
+  checa(salvo.nf === 3, `${largura}: ${salvo.nf} lançamento(s) com nfe T-26, esperado 3`);
 
   // 3) Edição: abre o modal com "Salvar sem vínculo"
   const editou = await pag.evaluate(() => { const l = DB.lancamentos.find((x) => /Coco ralado avulso/.test(x.descricao || "")); if (!l) return false; closeModal(); editNota(l.id); return !!lmEdit; }).catch(() => false);
   if (editou) {
     await pag.waitForTimeout(400);
     await pag.locator(".modal-foot .btn-primary").click();
-    await pag.waitForTimeout(300);
+    await pag.waitForTimeout(500);
     const t2 = await pag.locator("#uxConfirm").innerText().catch(() => "");
     checa(/Salvar sem vínculo/.test(t2), `${largura}: na edição o modal não abriu com "Salvar sem vínculo"`);
+    checa(/em amarelo na nota/.test(t2), `${largura}: na edição o texto não fala do amarelo`);
     await pag.screenshot({ path: join(PRINTS, `semvinculo-edicao-${largura}.png`) });
   } else falhas.push(`${largura}: não abriu a edição da nota (editNota)`);
 
