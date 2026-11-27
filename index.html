@@ -201,6 +201,7 @@ th.num{text-align:right}
 .dd-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:220px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 40px rgba(15,26,54,.16);padding:6px;z-index:70;flex-direction:column}
 .dd.open .dd-menu{display:flex}
 @media(min-width:641px){.est-pos th:first-child,.est-pos td:first-child{min-width:300px}}
+@media(min-width:641px){.est-pos td.est-compra-td .est-compra{min-width:150px}}
 /* lista suspensa de seleção múltipla (filtro de fornecedor/categoria da Lista de Compras) */
 .msel{position:relative;display:inline-block}
 .msel-btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 12px 0 13px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:13.5px;font-weight:600;cursor:pointer;max-width:340px;transition:border-color .15s,box-shadow .15s}
@@ -1371,7 +1372,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible,
   table.tc td:first-child::before,table.tc td[data-l=""]::before{display:none}
   table.tc td[data-l=""]{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px}
   table.tc td.tc-full{grid-column:1/-1}
-  table.tc td.tc-vazio{display:none}
+  #view .scroll-x table.tc td.tc-vazio,table.tc td.tc-vazio{display:none}
   /* período em uma linha; o intervalo livre abre só quando pedido */
   .fin-per-m{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .fin-per-m>input[type=month]{flex:1 1 150px;max-width:none!important}
@@ -2945,10 +2946,10 @@ let insumoFiltro='Todos', buscaProd='';
 const SORT={insumos:{k:'nome',d:1},estoque:{k:'comprar',d:-1}};
 const SORTCOLS={
  insumos:{nome:i=>i.nome,cat:i=>i.cat,grupo:i=>i.grupo||'',sub:i=>i.sub||i.cat||'',fornecedor:i=>i.fornecedor||'',preco:i=>i.preco||0,qtd:i=>i.qtd||0,custo:i=>custoInsumoBase(i)*(TO_BASE[i.uni]||1),noEstoque:i=>i.noEstoque!==false?1:0},
- estoque:{nome:x=>x.nome,cat:x=>x.cat,grupo:x=>x.grupo||'',sub:x=>x.sub||x.cat||'',uni:x=>x.uni,fornecedor:x=>x.fornecedor,custo:x=>x.custo,min:x=>x.min,atual:x=>x.atual,necessidade:x=>x.necessidade,valorEstoque:x=>x.valorEstoque,comprar:x=>x.comprar?1:0,ultCompra:x=>x.ultCompra,pacotes:x=>x.pacotes==null?-1:x.pacotes}};
+ estoque:{nome:x=>x.nome,cat:x=>x.cat,grupo:x=>x.grupo||'',sub:x=>x.sub||x.cat||'',uni:x=>x.uni,fornecedor:x=>x.fornecedor,custo:x=>x.custo,min:x=>x.min,crit:x=>x.crit,compra:x=>estCompraAtiva(x.ins)?'a'+(x.ins.compra.previsao||'9999-99-99'):'z',atual:x=>x.atual,necessidade:x=>x.necessidade,valorEstoque:x=>x.valorEstoque,comprar:x=>x.comprar?1:0,ultCompra:x=>x.ultCompra,pacotes:x=>x.pacotes==null?-1:x.pacotes}};
 function setSort(tab,k){const s=SORT[tab];if(s.k===k)s.d=-s.d;else{s.k=k;s.d=1;}tab==='insumos'?viewInsumos():viewEstoque();}
 function applySort(tab,arr){const s=SORT[tab],acc=SORTCOLS[tab][s.k];if(!acc)return arr;return arr.slice().sort((a,b)=>{let x=acc(a),y=acc(b);if(typeof x==='string'||typeof y==='string'){x=(x||'').toString().toLowerCase();y=(y||'').toString().toLowerCase();return x<y?-s.d:x>y?s.d:0;}return ((x||0)-(y||0))*s.d;});}
-function thS(tab,label,k,num){const s=SORT[tab],a=s.k===k?(s.d>0?' ↑':' ↓'):'';return `<th class="${num?'num ':''}th-sort" onclick="setSort('${tab}','${k}')">${label}${a}</th>`;}
+function thS(tab,label,k,num,title){const s=SORT[tab],a=s.k===k?(s.d>0?' ↑':' ↓'):'';return `<th class="${num?'num ':''}th-sort"${title?` title="${esc(title)}"`:''} onclick="setSort('${tab}','${k}')">${label}${a}</th>`;}
 function viewInsumos(){
   $('#topActions').innerHTML=`<button class="btn btn-primary" onclick="editInsumo()">${icoPlus} Novo produto</button>`
     +`<button class="btn btn-ghost" onclick="gerenciarCategorias('insumo')">≡ Categorias</button>`
@@ -10071,7 +10072,12 @@ function viewEstoque(){
     const base0=estoqueCmvF==='cmv'?itCMV:estoqueCmvF==='fora'?itFora:items;
     const base=souDoPrincipal()?(estoqueArmF&&estArm(estoqueArmF)?base0.filter(x=>prodNoSetor(x.ins,estoqueArmF)):base0):base0.filter(x=>armazensPermitidos().some(a=>prodNoSetor(x.ins,a.id)));   // chefe de setor: só os produtos das categorias do setor dele; admin pode filtrar por um estoque
     const baseCat=estoqueFiltro==='Todos'?base:base.filter(x=>x.cat===estoqueFiltro);const SEMEMB=estConfEmbMap();
-    const filt=applySort('estoque',baseCat.filter(x=>estPosFiltroOk(x,SEMEMB)));window.EST_POS_FILT=filt;
+    const filt0=baseCat.filter(x=>estPosFiltroOk(x,SEMEMB));
+    const COMP=estPosCompleta(),VER=podeVerValores(),VCUSTO=VER&&(COMP||estoqueKpiF==='preco');   // "Preço subiu" mostra o custo mesmo na Essencial: é o motivo do filtro
+    const VPORC=COMP&&VER&&estSubprodutos().length>0,VCOMPRA=filt0.some(x=>estCompraAtiva(x.ins)),MULTI=estMultiArm(),ARMS=MULTI?armazensPermitidos():[];
+    const visiveis=['comprar','nome','min','crit','pacotes','uni'].concat(VCOMPRA?['compra']:[],!MULTI||souDoPrincipal()?['atual']:[],COMP?['grupo','sub','fornecedor']:[],VCUSTO?['custo','ultCompra']:[]);
+    if(!visiveis.includes(SORT.estoque.k))SORT.estoque={k:'comprar',d:-1};   // ordenado por coluna que sumiu (visão, filtro "Preço subiu", marca de compra): volta ao padrão
+    const filt=applySort('estoque',filt0);window.EST_POS_FILT=filt;
     $('#view').innerHTML=`
     ${estTabsHTML()}
     ${souDoPrincipal()&&!podeVerValores()?`<div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))"><div class="kpi"><div class="ic ${comprarList.length?'ic-red':'ic-green'}">${ico('cmv')}</div><div class="k-lbl">Itens a comprar</div><div class="k-val" style="color:${comprarList.length?'var(--red)':'var(--green)'}">${comprarList.length}</div><div class="k-sub" style="color:var(--soft)">abaixo do mínimo</div></div><div class="kpi"><div class="ic ic-navy">${ico('cmv')}</div><div class="k-lbl">Produtos no estoque</div><div class="k-val">${items.length}</div><div class="k-sub" style="color:var(--soft)">${itCMV.length} do CMV · ${itFora.length} fora</div></div></div>${estAlertasHTML(items)}`:souDoPrincipal()?`<div class="kpi-grid kpi5">
@@ -10086,24 +10092,26 @@ function viewEstoque(){
     <div class="section-head no-print" style="flex-wrap:wrap;gap:10px"><div class="pill-filter" style="margin:0">${[['todos','Todos'],['cmv','Só CMV'],['fora','Fora do CMV']].map(([k,l])=>`<button class="${estoqueCmvF===k?'on':''}" onclick="estoqueCmvF='${k}';viewEstoque()">${l}</button>`).join('')}</div>${estUniPillsHTML(baseCat)}
       ${mselHTML('estCatDd',{rot:'Categoria',todos:'Todas',sel:estoqueFiltro==='Todos'?'':estoqueFiltro,ops:cats.filter(c=>c!=='Todos').map(c=>({k:c,n:items.filter(x=>x.cat===c).length})),nTodos:items.length,cb:'estCatSet',buscaPh:'Buscar categoria…'})}
       <input class="input" id="estBusca" value="${esc(buscaEst)}" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="buscaEst=this.value;filtrarLinhas(this,'#estoqueTbody')"></div>
+    ${estPosColsHTML(COMP)}
     <div class="card"><div class="scroll-x"><table class="tc est-pos">
-      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Ideal','min',1)}${thS('estoque','Crítico','crit',1)}${estMultiArm()?armazensPermitidos().map(a=>`<th class="num" title="Saldo em ${esc(a.nome)}">${esc(estArmCurto(a))}</th>`).join('')+(souDoPrincipal()?thS('estoque','Total','atual',1):''):thS('estoque','Atual','atual',1)}${thS('estoque','Em pacotes','pacotes',1)}<th class="num" title="Dias de estoque pelo consumo dos últimos 30 dias (vendas baixadas, perdas e saídas)">Cobertura</th>${thS('estoque','Categoria','grupo')}${thS('estoque','Subcategoria','sub')}${thS('estoque','Fornecedor','fornecedor')}${podeVerValores()?thS('estoque','Custo médio','custo',1)+thS('estoque','Última compra','ultCompra',1):''}${podeVerValores()&&estSubprodutos().length?`<th class="num" title="Subprodutos com porção definida no cadastro: custo médio × tamanho da porção">Custo por porção</th>`:''}${thS('estoque','Unid.','uni',1)}</tr></thead>
+      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Ideal','min',1)}${thS('estoque','Crítico','crit',1)}${VCOMPRA?thS('estoque','Compra','compra',0,'Comprado, aguardando chegada (marcado na Lista de Compras)'):''}${MULTI?ARMS.map(a=>`<th class="num" title="Saldo em ${esc(a.nome)}">${esc(estArmCurto(a))}</th>`).join('')+(souDoPrincipal()?thS('estoque','Total','atual',1):''):thS('estoque','Atual','atual',1)}${thS('estoque','Em pacotes','pacotes',1)}<th class="num" title="Dias de estoque pelo consumo dos últimos 30 dias (vendas baixadas, perdas e saídas)">Cobertura</th>${COMP?thS('estoque','Categoria','grupo')+thS('estoque','Subcategoria','sub')+thS('estoque','Fornecedor','fornecedor'):''}${VCUSTO?thS('estoque','Custo médio','custo',1)+thS('estoque','Última compra','ultCompra',1):''}${VPORC?`<th class="num" title="Subprodutos com porção definida no cadastro: custo médio × tamanho da porção">Custo por porção</th>`:''}${thS('estoque','Unid.','uni',1)}</tr></thead>
       <tbody id="estoqueTbody">${filt.map(x=>`
-        <tr data-ins="${x.ins.id}">
+        <tr data-ins="${x.ins.id}" data-busca="${esc([x.nome,x.cat,x.sub,x.fornecedor,insFornAtual(x.ins)].filter(Boolean).join(' '))}">
           <td><a onclick="estKardex('${x.ins.id}')" title="Ver o kardex (histórico de entradas e saídas)" style="font-weight:700;cursor:pointer">${esc(x.nome)}</a>${x.ins.tipo==='preparado'?'<div style="font-size:11px;color:var(--gold);font-weight:600">subproduto</div>':''}</td>
           <td class="num">${souDoPrincipal()&&podeIdeal()?`<input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${estIdealVal(x,'min')}" placeholder="0" title="Estoque ideal: quanto você quer ter depois de comprar${estEhPorc(x.ins)?' (em porções)':''}" oninput="estIdealSet('${x.ins.id}','estoqueMin',this.value)" onchange="viewEstoque()">`:`<span style="color:var(--muted)">${x.min?(estEhPorc(x.ins)?estQP(x.ins,x.min,true):estQ(x.min)):'—'}</span>`}${estEhPorc(x.ins)?'<div class="gp-mini">porções</div>':''}</td>
           <td class="num">${souDoPrincipal()&&podeIdeal()?`<input class="input" type="number" step="0.01" style="width:74px;text-align:right;${x.crit>0&&x.atual<=x.crit?'border-color:var(--red);color:var(--red);font-weight:700':''}" value="${estIdealVal(x,'crit')}" placeholder="—" title="Estoque crítico (ponto de pedido): ao chegar aqui, entra na lista de compras. Vazio = usa o ideal como hoje.${estEhPorc(x.ins)?' Em porções.':''}" oninput="estIdealSet('${x.ins.id}','estoqueCrit',this.value)" onchange="viewEstoque()">`:`<span style="color:${x.crit>0&&x.atual<=x.crit?'var(--red)':'var(--muted)'}">${x.crit?(estEhPorc(x.ins)?estQP(x.ins,x.crit,true):estQ(x.crit)):'—'}</span>`}</td>
-          ${estMultiArm()?armazensPermitidos().map(a=>{const v=estSaldoArm(x.ins,a.id);return `<td class="num" style="${v<-0.0005?'color:var(--red);font-weight:700':''}" title="${v<-0.0005?'Saldo negativo: saiu mais do que entrou neste armazém':''}${v&&estEhPorc(x.ins)?estQReqBase(v,x.ins):''}">${v?(estEhPorc(x.ins)?estQP(x.ins,v,true):estQ(v)):'<span style=\"color:var(--soft)\">—</span>'}</td>`;}).join('')+(souDoPrincipal()?`<td class="num"><b>${estAtualCel(x)}</b></td>`:''):`<td class="num"><b>${estAtualCel(x)}</b></td>`}
+          ${VCOMPRA?`<td class="tc-full est-compra-td">${estCompraTagHTML(x.ins)}</td>`:''}
+          ${MULTI?ARMS.map(a=>{const v=estSaldoArm(x.ins,a.id);return `<td class="num" style="${v<-0.0005?'color:var(--red);font-weight:700':''}" title="${v<-0.0005?'Saldo negativo: saiu mais do que entrou neste armazém':''}${v&&estEhPorc(x.ins)?estQReqBase(v,x.ins):''}">${v?(estEhPorc(x.ins)?estQP(x.ins,v,true):estQ(v)):'<span style=\"color:var(--soft)\">—</span>'}</td>`;}).join('')+(souDoPrincipal()?`<td class="num"><b>${estAtualCel(x)}</b></td>`:''):`<td class="num"><b>${estAtualCel(x)}</b></td>`}
           <td class="num">${estPacotesCel(x,SEMEMB)}</td>
           <td class="num">${(function(){const i=estInfoProduto(x.ins);return i.cob==null?'<span style="color:var(--soft)" title="Sem consumo registrado nos últimos 30 dias">—</span>':`<span style="font-weight:600;color:${i.ruptura?'var(--red)':i.cob<15?'var(--amber)':'var(--green)'}" title="${fmtN(i.cons.diario,2)} ${uSym(x.uni)}/dia">${Math.round(i.cob)} d</span>`;})()}</td>
-          <td>${ehInsumoCMV(x.ins)?`<span class="tag tag-gray">CMV</span>`:`<span class="tag tag-amber" title="Não entra na apuração do CMV">${esc(x.grupo)}</span>`}</td>
+          ${COMP?`<td>${ehInsumoCMV(x.ins)?`<span class="tag tag-gray">CMV</span>`:`<span class="tag tag-amber" title="Não entra na apuração do CMV">${esc(x.grupo)}</span>`}</td>
           <td>${(x.sub||x.cat)?`<span style="font-size:12.5px">${esc(x.sub||x.cat)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
-          <td><span style="font-size:12.5px;color:var(--muted)" title="Último fornecedor pelas notas. Para escolher outro, use a Lista de Compras.">${esc(insFornAtual(x.ins)==='Sem fornecedor'?'—':insFornAtual(x.ins))}</span></td>
-          ${podeVerValores()?`<td class="num">${fmtBRL(x.custo)}</td><td class="num">${estUltCompraCel(x)}</td>`:''}${podeVerValores()&&estSubprodutos().length?`<td class="num">${estCustoPorcaoCel(x)}</td>`:''}
+          <td><span style="font-size:12.5px;color:var(--muted)" title="Último fornecedor pelas notas. Para escolher outro, use a Lista de Compras.">${esc(insFornAtual(x.ins)==='Sem fornecedor'?'—':insFornAtual(x.ins))}</span></td>`:''}
+          ${VCUSTO?`<td class="num">${fmtBRL(x.custo)}</td><td class="num">${estUltCompraCel(x)}</td>`:''}${VPORC?`<td class="num">${estCustoPorcaoCel(x)}</td>`:''}
           <td class="num">${uSym(x.uni)}</td>
         </tr>`).join('')}</tbody>
     </table></div></div>`;
-    estCompraTagsPos();if(buscaEst){const _e=$('#estBusca');if(_e)filtrarLinhas(_e,'#estoqueTbody');}
+    if(buscaEst){const _e=$('#estBusca');if(_e)filtrarLinhas(_e,'#estoqueTbody');}
     return;
   }
 
@@ -10267,7 +10275,14 @@ function estCompraTagHTML(ins){if(!estCompraAtiva(ins))return '';const c=ins.com
   const x=pode('compras')?`<button class="no-print est-compra-x" title="Tirar a marca de comprado" aria-label="Tirar a marca de comprado" onclick="event.stopPropagation();estCompraLimpar('${ins.id}')" style="border:0;background:none;color:inherit;padding:0 0 0 6px;margin:0;min-height:0;height:auto;width:auto;font-size:13px;line-height:1;font-weight:700;cursor:pointer;opacity:.7">×</button>`:'';
   return `<div class="est-compra" style="margin-top:3px"><span class="tag ${atras?'tag-amber':'tag-navy'}" style="font-size:10.5px;padding:1px 7px;white-space:nowrap" title="${esc(det)}">📦 ${esc(estCompraTxt(ins))}${x}</span><div class="gp-mini">atualizado em ${esc(estCompraQuando(c))}${c.por?' · '+esc(c.por):''}</div></div>`;}
 function estCompraReqTxt(ins){const c=ins.compra;return 'aguardando chegada (comprado em '+estCompraDiaMes(c)+(c.previsao?' · chega '+fmtDataBR(c.previsao).slice(0,5):'')+')';}
-function estCompraTagsPos(){document.querySelectorAll('#estoqueTbody tr[data-ins]').forEach(tr=>{const ins=DB.insumos[tr.getAttribute('data-ins')];if(!estCompraAtiva(ins))return;const td=tr.querySelector('td');if(td)td.insertAdjacentHTML('beforeend',estCompraTagHTML(ins));});}
+/* Posição: colunas "Essencial" (padrão para todos) ou "Completa" (Categoria, Subcategoria, Fornecedor, Custo médio,
+   Última compra e Custo por porção). A escolha fica neste aparelho, por usuário; sem armazenamento, vale até recarregar. */
+let _estPosCols={};
+function estPosColsChave(){return 'flow_pos_cols_'+String((PERFIL&&PERFIL.id)||DONO_UID||'local');}   // id do usuário logado (dono ou membro da equipe); sem login = modo local
+function estPosCompleta(){const k=estPosColsChave();if(_estPosCols[k])return _estPosCols[k]==='completa';try{return localStorage.getItem(k)==='completa';}catch(e){return false;}}
+function estPosColsSet(v){const k=estPosColsChave();_estPosCols[k]=v;try{localStorage.setItem(k,v);}catch(e){}
+  viewEstoque();}   // a ordem só volta ao padrão se a coluna ordenada sumir (checado no viewEstoque)
+function estPosColsHTML(c){return `<div class="no-print" id="estPosCols" style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:0 0 8px"><span style="font-size:12.5px;color:var(--muted)">Colunas:</span><div class="pill-filter" style="margin:0">${[['essencial','Essencial','Só o que a operação usa no dia a dia'],['completa','Completa','Também Categoria, Subcategoria, Fornecedor e as colunas de custo e compra']].map(([k,l,t])=>`<button class="${(k==='completa')===c?'on':''}" data-cols="${k}" title="${t}" onclick="estPosColsSet('${k}')">${l}</button>`).join('')}</div></div>`;}
 function estCompraModal(id){if(!pode('compras'))return toast('Seu acesso não permite marcar compra');const ins=DB.insumos[id];if(!ins)return;
   const c=estCompraAtiva(ins)?ins.compra:null;const x=estoqueItens().find(y=>y.ins.id===id);const q=c?c.qtd:(x&&+x.qtdPedir>0?+x.qtdPedir:'');
   const fa=insFornAtual(ins);const forn=c?(c.fornecedor||''):(fa==='Sem fornecedor'?'':fa);const nomes=[...new Set(insFornecedores(id).map(f=>f.nome).concat(forn?[forn]:[]))];
@@ -11299,7 +11314,7 @@ function estVendasCSV(input){const f=input.files&&input.files[0];input.value='';
   viewEstoque();toast(ok+' prato(s) preenchido(s)'+(nao.length?' · '+nao.length+' sem ficha: vincule no quadro acima':''));};rd.readAsText(f,'utf-8');}
 
 /* ===================== HELPERS ===================== */
-function filtrarLinhas(input,sel){const q=lmNorm((input.value||'').trim());const tb=document.querySelector(sel);if(!tb)return;const trs=tb.querySelectorAll('tr');const rows=trs.length?trs:tb.children;[...rows].forEach(tr=>{tr.style.display=(!q||lmNorm(tr.textContent).includes(q))?'':'none';});}
+function filtrarLinhas(input,sel){const q=lmNorm((input.value||'').trim());const tb=document.querySelector(sel);if(!tb)return;const trs=tb.querySelectorAll('tr');const rows=trs.length?trs:tb.children;[...rows].forEach(tr=>{tr.style.display=(!q||lmNorm(tr.textContent+' '+(tr.getAttribute('data-busca')||'')).includes(q))?'':'none';});}   // data-busca: campos que a linha não mostra (ex.: fornecedor na visão Essencial)
 function emptyState(t,d,action){return `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg><div class="t">${t}</div><div class="d">${d}</div><button class="btn btn-primary" style="margin-top:16px" onclick="${action}">${icoPlus} Começar</button></div>`;}
 
 /* ===================== SAAS: AUTH + NUVEM + ADMIN ===================== */
