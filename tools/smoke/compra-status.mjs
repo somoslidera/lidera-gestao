@@ -141,7 +141,7 @@ async function rodar(largura) {
   checa(/aguardando chegada \(comprado em/.test(dica), `${largura}: item avulso sem o aviso de aguardando chegada`);
   await pag.evaluate(() => { closeModal(); estReqSel = null; });
 
-  // ---- nota lançada limpa; re-salvar a mesma nota e nota antiga não limpam ----
+  // ---- nota lançada limpa (mesmo com data antiga); re-salvar a mesma nota não limpa ----
   const nota = await pag.evaluate(({ a }) => {
     const ins = DB.insumos[a];
     const nv = { id: "t-nf-1", data: hojeISO(), fornecedor: "Fornecedor Teste", nfe: "123", insumoId: a, valor: 50, grupo: "CMV" };
@@ -152,12 +152,12 @@ async function rodar(largura) {
     const manteveEdicao = estCompraAtiva(ins);
     const velha = { id: "t-nf-velha", data: diasSoma(hojeISO(), -30), fornecedor: "X", insumoId: a, valor: 10, grupo: "CMV" };
     DB.lancamentos.push(velha); estEntradaDeLanc(velha, ins, 1, 10);
-    const manteveVelha = estCompraAtiva(ins);
-    return { limpouNova, manteveEdicao, manteveVelha };
+    const limpouVelha = ins.compra === null;
+    return { limpouNova, manteveEdicao, limpouVelha };
   }, { a: A.id });
   checa(nota.limpouNova, `${largura}: nota lançada não limpou a marca`);
   checa(nota.manteveEdicao, `${largura}: re-salvar a mesma nota limpou a marca nova`);
-  checa(nota.manteveVelha, `${largura}: nota de 30 dias antes limpou a marca`);
+  checa(nota.limpouVelha, `${largura}: nota com data antiga não limpou a marca`);
 
   // ---- entrada manual pela tela de movimentação limpa ----
   await pag.evaluate((b) => { estMovModal("entrada", b); estMovBulkSet(b, "4"); }, B.id);

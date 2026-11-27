@@ -10181,8 +10181,8 @@ function estCompraSalvar(id){if(!pode('compras'))return toast('Seu acesso não p
   ins.compra={status:'comprado',qtd:q>0?estR(q,3):0,fornecedor:f,previsao:d,em:new Date().toISOString(),por:quemSou()};save();closeModal();viewEstoque();toast(ins.nome+': marcado como comprado');}
 function estCompraLimpar(id){if(!pode('compras'))return toast('Seu acesso não permite mexer na compra');const ins=DB.insumos[id];if(!ins||!estCompraAtiva(ins))return;
   uxConfirma({titulo:'Tirar a marca de comprado?',texto:esc(ins.nome)+' volta a aparecer como item a comprar. Use quando a compra não vai mais chegar.',sim:'Tirar a marca',nao:'Cancelar'},()=>{ins.compra=null;save();viewEstoque();toast('Marca de comprado retirada: '+ins.nome);});}
-/* a compra chegou: entrada de compra lançada para o produto. Nota com data mais de 7 dias antes da marca é outra compra (nota antiga lançada atrasada). */
-function estCompraChegou(ins,data){if(!estCompraAtiva(ins))return false;const em=String(ins.compra.em||'').slice(0,10);if(data&&em&&data<diasSoma(em,-7))return false;ins.compra=null;return true;}
+/* a compra chegou: qualquer entrada de compra lançada para o produto tira a marca. */
+function estCompraChegou(ins){if(!estCompraAtiva(ins))return false;ins.compra=null;return true;}
 function estCompraReqHint(v){const el=$('#ra_compra');if(!el)return;const ins=estProdPorNome(v);el.textContent=ins&&estCompraAtiva(ins)&&(+estSaldoArm(ins,EST_ARM_PRINCIPAL)||0)<=0.0005?'📦 '+estCompraReqTxt(ins):'';}
 /* ----- integrações: compra, desperdício, venda ----- */
 function estEntradaDeLanc(nv,ins,qi,valor){if(ins&&qi>0&&!estMovs().some(m=>m.origem==='lanc'&&m.refId===nv.id))estCompraChegou(ins,nv.data);if(!estCfg().entradas||!ins||!(qi>0))return;estReverter('lanc',nv.id);
