@@ -42,12 +42,17 @@ async function rodar(largura) {
     await pag.waitForTimeout(600);
     const r = await pag.evaluate(() => {
       const vals = [...document.querySelectorAll("#view .kpi .k-val, #view .dsh-kpi-val")].filter((e) => e.offsetParent);
-      vals.forEach((e) => { e.textContent = "R$ 9.999.999,99"; });
-      kpiFit(document.getElementById("view"));
-      const cortados = vals.filter((e) => {
-        const k = e.closest(".kpi,.dsh-kpi").getBoundingClientRect(), v = e.getBoundingClientRect();
-        return e.scrollWidth > e.clientWidth + 1 || v.right > k.right + 0.5 || parseFloat(getComputedStyle(e).fontSize) < 12;
-      }).length;
+      const textos = ["R$ 9.999.999,99", "R$ 13.860,00", "-R$ 276.988,23"];
+      let cortados = 0;
+      for (const txt of textos) {
+        vals.forEach((e) => { e.textContent = txt; });
+        kpiFit(document.getElementById("view"));
+        cortados += vals.filter((e) => {
+          const k = e.closest(".kpi,.dsh-kpi").getBoundingClientRect(), v = e.getBoundingClientRect();
+          return e.scrollWidth > e.clientWidth || v.right > k.right + 0.5 || parseFloat(getComputedStyle(e).fontSize) < 12;
+        }).length;
+      }
+      vals.forEach((e) => { e.textContent = textos[0]; }); kpiFit(document.getElementById("view"));
       return { n: vals.length, cortados, tam: vals.map((e) => getComputedStyle(e).fontSize) };
     });
     checa(r.n > 0, `${largura} ${rota}: nenhum KPI na tela`);

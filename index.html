@@ -431,6 +431,10 @@ body.dark{
 body.dark .topbar{background:rgba(16,22,38,.82)}
 body.dark .input,body.dark select.input,body.dark textarea.input{background:#0F1A30;color:var(--ink);border-color:var(--line)}
 body.dark .input::placeholder{color:#5C6882}
+/* tema escuro: controles nativos (ícone do calendário em data/mês/hora, seta do select, barra de rolagem) em versão clara */
+@media screen{body.dark{color-scheme:dark}body.dark .input::-webkit-calendar-picker-indicator{opacity:.9;cursor:pointer}}
+/* campo de mês: "novembro de 2026" cabe inteiro (o max-width inline de 150-170px cortava o ano) */
+input[type=month].input{min-width:12.5em}
 body.dark .btn-ghost{background:#1A2540;color:var(--ink);border-color:var(--line)}
 body.dark .btn-ghost:hover{background:#222F4E}
 body.dark .icon-btn{background:#1A2540}
@@ -9498,9 +9502,9 @@ function kpiFit(root){if(!root)return;root.querySelectorAll('.kpi').forEach(k=>{
   el.style.fontSize='';el.style.whiteSpace='';el.style.textOverflow='';
   const card=el.closest('.kpi,.dsh-kpi')||el.parentElement,cr=card.getBoundingClientRect(),pr=parseFloat(getComputedStyle(card).paddingRight)||0;
   const livre=()=>Math.min(el.clientWidth||1e9,cr.right-pr-el.getBoundingClientRect().left),precisa=()=>el.scrollWidth;
-  const cw=livre(),sw=precisa();if(cw<=0||sw<=cw+1)return;
+  const cw=livre(),sw=precisa();if(cw<=0||sw<=cw)return;
   const fs=parseFloat(getComputedStyle(el).fontSize)||20;el.style.fontSize=Math.max(12,Math.floor(fs*cw/sw*0.97*10)/10)+'px';el.style.textOverflow='clip';
-  if(precisa()>livre()+1)el.style.whiteSpace='normal';});}
+  if(precisa()>livre())el.style.whiteSpace='normal';});}
 function uxAplicar(){_uxRaf=0;try{uxTabelas(document.getElementById('view'));uxIcones(document.body);kpiFit(document.getElementById('view'));}catch(e){}}
 window.addEventListener('resize',()=>{clearTimeout(window._kpiT);window._kpiT=setTimeout(()=>kpiFit(document.getElementById('view')),150);});
 function uxAgendar(){if(!_uxRaf)_uxRaf=requestAnimationFrame(uxAplicar);}
