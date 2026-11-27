@@ -52,7 +52,7 @@ async function rodar(largura) {
   await pag.waitForTimeout(300);
 
   // recurso desligado (padrão): nem o dono vê o botão, e o modal recusa
-  const off = await pag.evaluate(() => { const btn = document.querySelector("#topActions").innerHTML.includes("subprodLoteModal"); _slSel = null; subprodLoteModal(); const abriu = !!document.querySelector("#sl_resumo"); if (abriu) closeModal(); return { btn, abriu }; });
+  const off = await pag.evaluate(() => { const btn = document.querySelector("#topActions").innerHTML.includes("subprodLoteAbrir"); _slSel = null; subprodLoteModal(); const abriu = !!document.querySelector("#sl_resumo"); if (abriu) closeModal(); return { btn, abriu }; });
   checa(!off.btn, `${largura}: recurso desligado, mas o dono vê o botão Subprodutos em lote`);
   checa(!off.abriu, `${largura}: recurso desligado, mas o modal abriu`);
 
@@ -79,12 +79,12 @@ async function rodar(largura) {
   checa(ligou.on, `${largura}: ligar o interruptor não gravou DB.recursos.subprodLote`);
   checa(ligou.salvo, `${largura}: ligar o interruptor não salvou`);
   await pag.waitForTimeout(300);
-  checa(await pag.evaluate(() => document.querySelector("#topActions").innerHTML.includes("subprodLoteModal")), `${largura}: recurso ligado, mas o dono não vê o botão Subprodutos em lote`);
+  checa(await pag.evaluate(() => document.querySelector("#topActions").innerHTML.includes("subprodLoteAbrir")), `${largura}: recurso ligado, mas o dono não vê o botão Subprodutos em lote`);
 
   // abre: todos marcados
   await pag.evaluate(() => { _slSel = null; _slQ = "ZZ "; subprodLoteModal(); });
   await pag.waitForTimeout(300);
-  const marcados = await pag.locator(".modal input[type=checkbox]:checked").count();
+  const marcados = await pag.locator(".modal label:visible input[type=checkbox]:checked").count();
   checa(marcados === 3, `${largura}: esperava 3 marcados ao abrir (filtro ZZ), veio ${marcados}`);
   await pag.screenshot({ path: join(PRINTS, `subprodutos-${largura}.png`), fullPage: false });
 
@@ -96,25 +96,44 @@ async function rodar(largura) {
   checa(resumo.includes(`${2 + fora} passa`), `${largura}: resumo inesperado: ${resumo}`);
   checa(!fora || resumo.includes(`${fora} dessas mudanças estão fora do filtro`), `${largura}: resumo não avisa ${fora} fora do filtro: ${resumo}`);
   await pag.locator(".modal-foot .btn-primary", { hasText: "Aplicar" }).click();
+  await pag.waitForTimeout(200);
+  checa(!(await pag.evaluate(() => DB.insumos[Object.keys(DB.insumos).find((k) => DB.insumos[k].nome === "ZZ Vinagrete")].estocavel === false)), `${largura}: aplicou antes de confirmar`);
+  const conf = await pag.locator("#uxConfirm").innerText().catch(() => "");
+  dialogos.push(conf);
+  await pag.locator('#uxConfirm [data-a="1"]').click();
   await pag.waitForTimeout(300);
   const r = await pag.evaluate((ids) => ({ a: DB.insumos[ids.a].estocavel, b: DB.insumos[ids.b].estocavel, c: DB.insumos[ids.c].estocavel, pa: DB.insumos[ids.a].estoquePor }), ids);
   checa(r.a === true && r.b === true, `${largura}: os marcados não viraram subproduto`);
   checa(r.c === false, `${largura}: o desmarcado continuou subproduto`);
   checa(r.pa && typeof r.pa === "object", `${largura}: subproduto novo sem estoquePor`);
-  checa(dialogos.length === 1 && dialogos[0].includes(`${2 + fora} preparado`) && (!fora || dialogos[0].includes(`${fora} dessas mudanças`)) && /1 com saldo/.test(dialogos[0]) && /ZZ Vinagrete/.test(dialogos[0]), `${largura}: confirmação inesperada: ${dialogos[0]}`);
+  checa(dialogos.length === 1 && dialogos[0].includes(`${2 + fora} preparado`) && (!fora || dialogos[0].includes(`${fora} dessas mudanças`)) && /1 com saldo/.test(dialogos[0]) && /ZZ Vinagrete/.test(dialogos[0]) && /nada é zerado/.test(dialogos[0]) && !/começa em zero/.test(dialogos[0]), `${largura}: confirmação inesperada: ${dialogos[0]}`);
 
   // cancelar no confirm não muda nada
   await pag.evaluate(() => { _slSel = null; _slQ = "ZZ "; subprodLoteModal(); });
   await pag.waitForTimeout(200);
-  pag.removeAllListeners("dialog"); pag.on("dialog", (d) => d.dismiss());
   await pag.locator(".modal label", { hasText: "ZZ Molho base" }).locator("input").uncheck();
   await pag.locator(".modal-foot .btn-primary", { hasText: "Aplicar" }).click();
+  await pag.waitForTimeout(200);
+  await pag.locator('#uxConfirm [data-a="0"]').click();
   await pag.waitForTimeout(200);
   checa(await pag.evaluate((id) => DB.insumos[id].estocavel, ids.a) === true, `${largura}: cancelar a confirmação mudou o dado`);
   await pag.evaluate(() => { _slSel = null; closeModal(); });
 
+  // fechar no X guarda a seleção, mas o botão sempre reabre do zero (tudo marcado, sem filtro)
+  await pag.evaluate(() => { _slSel = new Set(); _slQ = "ZZ "; subprodLoteModal(); closeModal(); subprodLoteAbrir(); });
+  await pag.waitForTimeout(200);
+  const reab = await pag.evaluate(() => ({ sel: _slSel.size, total: subprodLotePreps().length, q: _slQ }));
+  checa(reab.sel === reab.total && reab.q === "", `${largura}: reabrir pelo botão não começou do zero ${JSON.stringify(reab)}`);
+  // digitar na busca e clicar direto em "Desmarcar todos": o clique não pode se perder
+  await pag.locator(".modal input[placeholder='Buscar preparado']").fill("ZZ ");
+  await pag.locator(".modal button", { hasText: "Desmarcar todos" }).click();
+  await pag.waitForTimeout(200);
+  const desm = await pag.evaluate(() => ({ zz: subprodLotePreps().filter((i) => i.nome.startsWith("ZZ ") && _slSel.has(i.id)).length, outros: subprodLotePreps().filter((i) => !i.nome.startsWith("ZZ ") && !_slSel.has(i.id)).length, vis: [...document.querySelectorAll("#sl_lista label")].filter((l) => l.style.display !== "none").length, zzTotal: subprodLotePreps().filter((i) => i.nome.startsWith("ZZ ")).length }));
+  checa(desm.zz === 0 && desm.outros === 0 && desm.vis === desm.zzTotal, `${largura}: busca + Desmarcar todos falhou ${JSON.stringify(desm)}`);
+  await pag.evaluate(() => { _slSel = null; closeModal(); });
+
   // gerente não vê o botão e não consegue abrir
-  const g = await pag.evaluate(() => { MEMBRO_PERMS = ["fichas", "estoque"]; MEMBRO_NIVEL = "gerente"; go("fichas"); const btn = document.querySelector("#topActions").innerHTML.includes("subprodLoteModal"); subprodLoteModal(); const abriu = !!document.querySelector("#sl_resumo"); MEMBRO_PERMS = null; MEMBRO_NIVEL = ""; return { btn, abriu }; });
+  const g = await pag.evaluate(() => { MEMBRO_PERMS = ["fichas", "estoque"]; MEMBRO_NIVEL = "gerente"; go("fichas"); const btn = document.querySelector("#topActions").innerHTML.includes("subprodLoteAbrir"); subprodLoteModal(); const abriu = !!document.querySelector("#sl_resumo"); MEMBRO_PERMS = null; MEMBRO_NIVEL = ""; return { btn, abriu }; });
   checa(!g.btn && !g.abriu, `${largura}: gerente vê ou abre o lote (${JSON.stringify(g)})`);
 
   // a Lidera desliga: o botão some de novo e o modal recusa
@@ -123,7 +142,7 @@ async function rodar(largura) {
     const cx = document.querySelector("input[data-recurso=subprodLote]"); const marcado = !!(cx && cx.checked);
     if (cx) { cx.checked = false; cx.dispatchEvent(new Event("change")); }
     ADMIN_MODE = false; PERFIL = null; go("fichas");
-    const btn = document.querySelector("#topActions").innerHTML.includes("subprodLoteModal");
+    const btn = document.querySelector("#topActions").innerHTML.includes("subprodLoteAbrir");
     _slSel = null; subprodLoteModal(); const abriu = !!document.querySelector("#sl_resumo"); if (abriu) closeModal();
     return { marcado, valor: DB.recursos && DB.recursos.subprodLote, btn, abriu };
   });

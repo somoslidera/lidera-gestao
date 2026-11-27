@@ -3708,7 +3708,7 @@ function viewFichas(){
     +`<button class="btn btn-ghost" onclick="baixarModeloFichas()">⬇ Baixar modelo (planilha)</button>`
     +`<label class="btn btn-ghost" style="cursor:pointer">⬆ Importar planilha<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="importarFichas(this)"></label>`
     +(estMultiArm()?`<button class="btn btn-ghost" onclick="fichasArmLoteModal()">🏬 Estoque de saída em lote</button>`:'')
-+(recursoOn('subprodLote')&&souAdminConta()?`<button class="btn btn-ghost" onclick="subprodLoteModal()">📦 Subprodutos em lote</button>`:''));
++(recursoOn('subprodLote')&&souAdminConta()?`<button class="btn btn-ghost" onclick="subprodLoteAbrir()">📦 Subprodutos em lote</button>`:''));
   const fichas=Object.values(DB.fichas);
   const preparados=Object.values(DB.insumos).filter(i=>i.tipo==='preparado');
   const modulares=Object.values(DB.modulares||{});
@@ -3742,33 +3742,43 @@ function viewFichas(){
 function souAdminConta(){return !MEMBRO_PERMS||MEMBRO_NIVEL==='admin';}
 let _slSel=null,_slCat='',_slQ='';
 function subprodLotePreps(){return Object.values(DB.insumos||{}).filter(i=>i&&i.tipo==='preparado').sort((a,b)=>a.nome.localeCompare(b.nome));}
-function subprodLoteVisiveis(){return subprodLotePreps().filter(i=>(!_slCat||i.cat===_slCat)&&(!_slQ||lmNorm(i.nome).includes(lmNorm(_slQ))));}
+function subprodLoteVisivel(i){return (!_slCat||i.cat===_slCat)&&(!_slQ||lmNorm(i.nome).includes(lmNorm(_slQ)));}
+function subprodLoteVisiveis(){return subprodLotePreps().filter(subprodLoteVisivel);}
+/* quantas mudanças caem em preparados escondidos pelo filtro (a lista nasce toda marcada, inclusive o que o filtro esconde) */
+function subprodLoteFora(muds){return muds.filter(i=>!subprodLoteVisivel(i)).length;}
+/* o botão sempre abre do zero: tudo marcado, sem filtro (seleção de outra abertura ou de outra conta não vale) */
+function subprodLoteAbrir(){_slSel=null;_slCat='';_slQ='';subprodLoteModal();}
 function subprodLoteModal(){if(!recursoOn('subprodLote'))return toast('Este recurso não está liberado para esta conta');if(!souAdminConta())return toast('Só o administrador marca subprodutos em lote');
 const preps=subprodLotePreps();if(!preps.length)return toast('Nenhum preparado cadastrado');
 if(!_slSel)_slSel=new Set(preps.map(i=>i.id));
-const cats=[...new Set(preps.map(i=>i.cat).filter(Boolean))].sort(),vis=subprodLoteVisiveis(),hoje=preps.filter(i=>i.estocavel).length;
+const cats=[...new Set(preps.map(i=>i.cat).filter(Boolean))].sort(),nSub=preps.filter(i=>i.estocavel).length;
 modal(`<div class="modal-head"><h3>Subprodutos em lote</h3><button class="x" onclick="closeModal()">${icoX}</button></div>
 <div class="modal-body">
-<div class="gp-mini" style="margin-bottom:8px">Marcado = <b>subproduto</b>: é produzido antes e guardado, tem estoque próprio, entra pela Produção e a venda baixa dele (não do bruto). Desmarcado = feito na hora. A lista começa com todos marcados: desmarque o que é feito na hora. Hoje: ${hoje} de ${preps.length} são subproduto.</div>
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><select class="input" style="max-width:200px" onchange="_slCat=this.value;subprodLoteModal()"><option value="">Todas as categorias</option>${cats.map(c=>`<option ${_slCat===c?'selected':''}>${esc(c)}</option>`).join('')}</select><input class="input" style="max-width:220px" placeholder="Buscar preparado" value="${esc(_slQ)}" onchange="_slQ=this.value;subprodLoteModal()"><button class="btn btn-ghost" onclick="subprodLoteMarcar(true)">Marcar todos</button><button class="btn btn-ghost" onclick="subprodLoteMarcar(false)">Desmarcar todos</button></div>
-<div style="max-height:44vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:4px 10px">${vis.map(i=>`<label style="display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:13px;cursor:pointer"><input type="checkbox" ${_slSel.has(i.id)?'checked':''} onchange="this.checked?_slSel.add('${i.id}'):_slSel.delete('${i.id}');subprodLoteResumo()" style="width:16px;height:16px"><span style="flex:1;min-width:0">${esc(i.nome)} <span class="gp-mini">${esc(i.cat||'')}</span></span><span class="gp-mini" style="white-space:nowrap">hoje: ${i.estocavel?'subproduto':'na hora'}</span></label>`).join('')||'<div class="gp-mini" style="padding:10px 0">Nenhum preparado com esse filtro.</div>'}</div>
+<div class="gp-mini" style="margin-bottom:8px">Marcado = <b>subproduto</b>: é produzido antes e guardado, tem estoque próprio, entra pela Produção e a venda baixa dele (não do bruto). Desmarcado = feito na hora. A lista começa com todos marcados: desmarque o que é feito na hora. Hoje: ${nSub} de ${preps.length} são subproduto.</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><select class="input" style="max-width:200px" onchange="_slCat=this.value;subprodLoteFiltrar()"><option value="">Todas as categorias</option>${cats.map(c=>`<option value="${esc(c)}" ${_slCat===c?'selected':''}>${esc(c)}</option>`).join('')}</select><input class="input" style="max-width:220px" placeholder="Buscar preparado" value="${esc(_slQ)}" oninput="_slQ=this.value;subprodLoteFiltrar()"><button class="btn btn-ghost" onclick="subprodLoteMarcar(true)">Marcar todos</button><button class="btn btn-ghost" onclick="subprodLoteMarcar(false)">Desmarcar todos</button></div>
+<div id="sl_lista" style="max-height:44vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:4px 10px">${preps.map(i=>`<label data-id="${esc(i.id)}" style="display:${subprodLoteVisivel(i)?'flex':'none'};gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:13px;cursor:pointer"><input type="checkbox" ${_slSel.has(i.id)?'checked':''} onchange="subprodLoteToggle(this)" style="width:16px;height:16px"><span style="flex:1;min-width:0">${esc(i.nome)} <span class="gp-mini">${esc(i.cat||'')}</span></span><span class="gp-mini" style="white-space:nowrap">hoje: ${i.estocavel?'subproduto':'na hora'}</span></label>`).join('')}<div id="sl_vazio" class="gp-mini" style="padding:10px 0;display:none">Nenhum preparado com esse filtro.</div></div>
 <div id="sl_resumo" style="font-size:13px;margin-top:10px"></div>
-</div><div class="modal-foot"><button class="btn btn-ghost" onclick="_slSel=null;closeModal()">Cancelar</button><button class="btn btn-primary" onclick="subprodLoteAplicar()">Aplicar</button></div>`,true);subprodLoteResumo();}
-function subprodLoteMarcar(on){subprodLoteVisiveis().forEach(i=>on?_slSel.add(i.id):_slSel.delete(i.id));subprodLoteModal();}
+</div><div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="subprodLoteAplicar()">Aplicar</button></div>`,true);subprodLoteFiltrar();}
+function subprodLoteToggle(cb){const el=cb.closest('[data-id]');if(!el||!_slSel)return;const id=el.getAttribute('data-id');cb.checked?_slSel.add(id):_slSel.delete(id);subprodLoteResumo();}
+/* filtra no lugar, sem redesenhar a janela (redesenhar no meio de um clique perdia o clique) */
+function subprodLoteFiltrar(){let n=0;document.querySelectorAll('#sl_lista [data-id]').forEach(el=>{const i=DB.insumos[el.getAttribute('data-id')],v=!!i&&subprodLoteVisivel(i);el.style.display=v?'flex':'none';if(v)n++;});
+const vz=document.getElementById('sl_vazio');if(vz)vz.style.display=n?'none':'block';subprodLoteResumo();}
+function subprodLoteMarcar(on){if(!_slSel)return;subprodLoteVisiveis().forEach(i=>on?_slSel.add(i.id):_slSel.delete(i.id));
+document.querySelectorAll('#sl_lista [data-id]').forEach(el=>{const cb=el.querySelector('input');if(cb)cb.checked=_slSel.has(el.getAttribute('data-id'));});subprodLoteResumo();}
 function subprodLoteMudancas(){const ps=subprodLotePreps();return {vira:ps.filter(i=>_slSel.has(i.id)&&!i.estocavel),deixa:ps.filter(i=>!_slSel.has(i.id)&&i.estocavel)};}
-function subprodLoteResumo(){const el=document.getElementById('sl_resumo');if(!el||!_slSel)return;const {vira,deixa}=subprodLoteMudancas();
-const visIds=new Set(subprodLoteVisiveis().map(i=>i.id)),fora=[...vira,...deixa].filter(i=>!visIds.has(i.id)).length;
+function subprodLoteResumo(){const el=document.getElementById('sl_resumo');if(!el||!_slSel)return;const {vira,deixa}=subprodLoteMudancas(),fora=subprodLoteFora([...vira,...deixa]);
 el.innerHTML=`<b>${_slSel.size}</b> marcado(s). Ao aplicar: <b>${vira.length}</b> passa(m) a ser subproduto · <b>${deixa.length}</b> deixa(m) de ser.${fora?` <span style="color:var(--amber);font-weight:600">${fora} dessas mudanças estão fora do filtro atual.</span>`:''}`;}
 function subprodLoteAplicar(){if(!recursoOn('subprodLote')||!souAdminConta()||!_slSel)return;const {vira,deixa}=subprodLoteMudancas();
 if(!vira.length&&!deixa.length){_slSel=null;closeModal();return toast('Nada mudou');}
-const comSaldo=deixa.filter(i=>Math.abs(+i.estoqueAtual||0)>0.0005);
-const msg=(vira.length?vira.length+' preparado(s) passam a ser subproduto: ganham estoque próprio (começa em zero até a Produção) e a venda passa a baixar deles, não do bruto.\n':'')
-+(()=>{const v=new Set(subprodLoteVisiveis().map(i=>i.id)),f=[...vira,...deixa].filter(i=>!v.has(i.id)).length;return f?'Atenção: '+f+' dessas mudanças são de preparados fora do filtro atual.\n':'';})()
-+(deixa.length?deixa.length+' deixam de ser subproduto'+(comSaldo.length?' ('+comSaldo.length+' com saldo em estoque, que deixa de ser controlado: '+comSaldo.slice(0,5).map(i=>i.nome).join(', ')+(comSaldo.length>5?'…':'')+')':'')+'.\n':'')+'\nContinuar?';
-if(!confirm(msg))return;
-vira.forEach(i=>{i.estocavel=true;if(!i.estoquePor||typeof i.estoquePor!=='object')i.estoquePor={principal:+i.estoqueAtual||0};});
-deixa.forEach(i=>{i.estocavel=false;});
-_slSel=null;save();closeModal();toast(vira.length+' agora são subproduto · '+deixa.length+' deixaram de ser',6000);viewFichas();}
+const comSaldo=deixa.filter(i=>Math.abs(+i.estoqueAtual||0)>0.0005),fora=subprodLoteFora([...vira,...deixa]);
+const txt=(vira.length?'<p><b>'+vira.length+'</b> preparado(s) passam a ser subproduto: ganham estoque próprio, com o saldo que já estiver registrado (nada é zerado), e a venda passa a baixar deles, não do bruto.</p>':'')
++(fora?'<p style="color:var(--amber);font-weight:600">Atenção: '+fora+' dessas mudanças são de preparados fora do filtro atual.</p>':'')
++(deixa.length?'<p><b>'+deixa.length+'</b> deixam de ser subproduto'+(comSaldo.length?' ('+comSaldo.length+' com saldo em estoque, que deixa de ser controlado: '+comSaldo.slice(0,5).map(i=>esc(i.nome)).join(', ')+(comSaldo.length>5?'…':'')+')':'')+'.</p>':'');
+uxConfirma({titulo:'Aplicar subprodutos em lote?',texto:txt,sim:'Aplicar',nao:'Voltar',perigo:true},()=>{if(!_slSel)return;const m=subprodLoteMudancas();
+m.vira.forEach(i=>{i.estocavel=true;if(!i.estoquePor||typeof i.estoquePor!=='object')i.estoquePor={principal:+i.estoqueAtual||0};});
+m.deixa.forEach(i=>{i.estocavel=false;});
+_slSel=null;save();closeModal();toast(m.vira.length+' agora são subproduto · '+m.deixa.length+' deixaram de ser',6000);viewFichas();});
+const u=document.getElementById('uxConfirm');if(u)u.style.zIndex=600;/* a confirmação (z 400) ficaria atrás desta janela (z 500) */}
 /* definir o estoque de saída de várias fichas de uma vez (seção 4): filtro por categoria e busca, marcar todas, aplicar */
 let _flSel=new Set(),_flCat='',_flQ='';
 function fichasArmLoteModal(){const arms=setoresSemPrincipal();if(!arms.length)return toast('Cadastre os estoques de setor em Estoque › configurar');
