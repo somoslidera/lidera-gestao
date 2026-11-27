@@ -7,6 +7,7 @@ O Flow não tem homologação: o `index.html` do repo fala com o banco de **prod
 | `preview_build.py` | Monta `_site/`: tira a URL do Supabase (o app roda no "modo local", só no navegador), força a demonstração no PDV, põe a faixa "PREVIEW · sem banco" e carrega um restaurante de demonstração na primeira visita. Se sobrar qualquer menção ao banco de produção, **o build falha**. |
 | `serve.py` | Serve o `_site/` em `http://localhost:4179`. Com `--producao`, serve o repo como está (cuidado: banco de produção). |
 | `smoke/` | Teste com Playwright: abre Flow e PDV do `_site/`, confere que nenhuma requisição vai ao Supabase e tira prints em 1280 px e 390 px (regra D9). |
+| `smoke/subprodutos.mjs` | Teste de "Subprodutos em lote" (Fichas Técnicas → Mais): nasce tudo marcado, desmarcar e aplicar com confirmação, aviso de mudança fora do filtro, cancelar não muda nada, gerente não vê. `node subprodutos.mjs` depois do `preview_build.py`. |
 | `smoke/posicao.mjs` | Teste da aba Estoque → Posição: colunas "Última compra" e "Em pacotes", filtro de unidade e scorecards (Conferir embalagem, Preço subiu, Total em kg), em 1280 e 390 px. `node posicao.mjs` depois do `preview_build.py`. |
 
 ## Uso rápido
