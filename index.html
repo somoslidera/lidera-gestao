@@ -4679,6 +4679,8 @@ function finTabsPermitidas(tabs){if(!finSoLanc())return tabs;const ok=['lanc'];i
 function finTabAjustar(){if(!finSoLanc())return;const ok=finTabsPermitidas([['lanc'],['dre']]).map(t=>t[0]);if(!ok.includes(finTab))finTab='lanc';}
 function liqCobr(x){return +((+x.valor||0)+(+x.juros||0)+(+x.multa||0)-(+x.desconto||0)).toFixed(2);}
 function liqExtras(x){return !!(x&&((+x.juros||0)||(+x.multa||0)||(+x.desconto||0)));}
+/* situação de pagamento de uma parcela (pago + data em que foi paga + conciliação com o banco): precisa sobreviver ao editar a nota */
+function liqPagoDe(x){if(!x||!x.pago)return {pago:false};const o={pago:true};if(x.pagoEm)o.pagoEm=x.pagoEm;if(x.conc)o.conc=x.conc;return o;}
 function liqExtrasDe(x){const o={};if(+x.juros)o.juros=+(+x.juros).toFixed(2);if(+x.multa)o.multa=+(+x.multa).toFixed(2);if(+x.desconto)o.desconto=+(+x.desconto).toFixed(2);if(x.obs)o.obs=(''+x.obs).trim();if(x.bol&&(x.bol.linha||(x.bol.anexos||[]).length))o.bol=x.bol;return o;}
 function liqExtrasTxt(x){const p=[];if(+x.juros)p.push('juros '+fmtBRL(x.juros));if(+x.multa)p.push('multa '+fmtBRL(x.multa));if(+x.desconto)p.push('desconto '+fmtBRL(x.desconto));return p.join(' · ');}
 function pagtoPendentes(){const map=new Map();(DB.lancamentos||[]).forEach(l=>{if(!l||!l.pagtoPendente||l.autoTaxa)return;
@@ -5869,19 +5871,20 @@ function lmGerarLista(total,base,n,intervalo){const mensal=(intervalo==='M');con
 function lmNotaRows(){return lancDraft.filter(r=>lmTotalLinha(r)>0);}
 function lmNotaParcelasAtuais(){const rows=lmNotaRows();if(!rows.length)return null;const L0=rows[0].parcelasLista||[];if(!L0.length)return null;
   const key=L=>L.map(p=>p.data).join(',');if(!rows.every(r=>key(r.parcelasLista||[])===key(L0)))return null;
-  return L0.map((p,k)=>Object.assign({data:p.data,valor:+rows.reduce((s,r)=>s+(+r.parcelasLista[k].valor||0),0).toFixed(2)},liqExtrasDe(p)));}
+  return L0.map((p,k)=>{const ps=rows.map(r=>r.parcelasLista[k]);const pg=ps.every(q=>q&&q.pago);
+    return Object.assign({data:p.data,valor:+rows.reduce((s,r)=>s+(+r.parcelasLista[k].valor||0),0).toFixed(2)},pg?liqPagoDe({pago:true,pagoEm:ps.map(q=>q.pagoEm||'').sort().slice(-1)[0],conc:(ps.find(q=>q.conc)||{}).conc}):{},liqExtrasDe(p));});}
 function lmNotaParcelar(){const rows=lmNotaRows();if(!rows.length)return toast('Informe os valores dos itens antes de parcelar a nota');
   const total=+rows.reduce((s,r)=>s+lmTotalLinha(r),0).toFixed(2);const ref=rows[0];
   let atual=lmNotaParcelasAtuais();
   if(!atual&&!lancDraft.some(r=>(r.parcelasLista||[]).length)){const c=fornCond(ref.fornecedor);if(c)atual=lmGerarLista(total,ref.data||hojeISO(),c.n,c.iv);}
-  lmNotaRow={data:ref.data,desc:'Nota inteira · '+rows.length+' item(ns)',nf:ref.nf,fornecedor:ref.fornecedor,qtd:1,vun:total,parcelasLista:atual?atual.map(p=>Object.assign({data:p.data,valor:p.valor},liqExtrasDe(p))):[],forma:rows.every(r=>r.forma===rows[0].forma)?(rows[0].forma||''):'',obsPagto:rows[0].obsPagto||''};
+  lmNotaRow={data:ref.data,desc:'Nota inteira · '+rows.length+' item(ns)',nf:ref.nf,fornecedor:ref.fornecedor,qtd:1,vun:total,parcelasLista:atual?atual.map(p=>Object.assign({data:p.data,valor:p.valor},p.pago?liqPagoDe(p):{},liqExtrasDe(p))):[],forma:rows.every(r=>r.forma===rows[0].forma)?(rows[0].forma||''):'',obsPagto:rows[0].obsPagto||''};
   lmParcRender(-1);}
 function lmNotaAplicarParcelas(lista){const rows=lmNotaRows();const total=+rows.reduce((s,r)=>s+lmTotalLinha(r),0).toFixed(2);
   if(!lista.length){rows.forEach(r=>{r.parcelasLista=[];r.parcelas=1;});return;}
   const accP=lista.map(()=>0); // quanto de cada parcela já foi distribuído; o último item absorve os centavos
   rows.forEach((r,ri)=>{const tot=lmTotalLinha(r);const ult=ri===rows.length-1;let accR=0;
     r.parcelasLista=lista.map((p,k)=>{let v;if(ult)v=+((+p.valor||0)-accP[k]).toFixed(2);else if(k===lista.length-1)v=+(tot-accR).toFixed(2);else v=+((+p.valor||0)*tot/total).toFixed(2);
-      accR=+(accR+v).toFixed(2);accP[k]=+(accP[k]+v).toFixed(2);return Object.assign({data:p.data,valor:v},ri===0?liqExtrasDe(p):{});});   // juros/multa/desconto ficam no 1º item: a nota agrupa no Contas a Pagar
+      accR=+(accR+v).toFixed(2);accP[k]=+(accP[k]+v).toFixed(2);return Object.assign({data:p.data,valor:v},p.pago?liqPagoDe(p):{},ri===0?liqExtrasDe(p):{});});   // juros/multa/desconto ficam no 1º item: a nota agrupa no Contas a Pagar
     r.parcelas=lista.length;if(lmNotaRow){if(lmNotaRow.forma)r.forma=lmNotaRow.forma;if(lmNotaRow.obsPagto!=null)r.obsPagto=lmNotaRow.obsPagto;}});}
 function lmCondLabel(c){return c.n+'x '+(c.iv==='M'?'mensal':(c.n===1?'em ':'a cada ')+c.iv+' dias');}
 /* condição de pagamento padrão do fornecedor: aplicada sozinha quando a nota ainda não tem parcelas */
@@ -6197,7 +6200,7 @@ function editNota(id){const l=(DB.lancamentos||[]).find(x=>x.id===id);if(!l)retu
   let itens=notaItens(l.nfe,l.fornecedor);if(!itens.length&&ehNotaGratis(l))itens=[l];if(!itens.length)return editLancamento(id);
   lancDraft=itens.map(x=>{const q=(x.qtd!=null&&+x.qtd>0)?+x.qtd:1;const vb=ehNotaGratis(x)?(+x.vRef||0):(x.valor||0);const vun=q?vb/q:vb;
     return Object.assign(lmBlank(),{_id:x.id,data:x.data,grupo:x.grupo,sub:x.sub||'',desc:x.descricao||'',descOrig:x.descricao||'',nf:x.nfe||'',fornecedor:x.fornecedor||'',vun,vunStr:fmtUnitInput(vun),qtd:q,uni:x.uni||'',forma:x.forma||'',insumoId:x.insumoId||'',fromIA:!!x.insumoId,
-      embLanc:(x.embNome&&+x.embQtd>0)?{nome:x.embNome,qtd:+x.embQtd}:null,obsPagto:x.obsPagto||'',parcelasLista:(x.liquidacoes||[]).map(p=>Object.assign({data:p.data,valor:+p.valor||0,pago:!!p.pago},liqExtrasDe(p)))});});
+      embLanc:(x.embNome&&+x.embQtd>0)?{nome:x.embNome,qtd:+x.embQtd}:null,obsPagto:x.obsPagto||'',parcelasLista:(x.liquidacoes||[]).map(p=>Object.assign({data:p.data,valor:+p.valor||0},liqPagoDe(p),liqExtrasDe(p)))});});
   lmEdit={nf:l.nfe||'',forn:l.fornecedor||'',ids:itens.map(x=>x.id)};lmObs=l.obs||'';lmPagtoModo='agora';
   {const g=itens.find(ehNotaGratis);lmTipoNota=g?g.tipoNota:'compra';lmTrocaSaida=!itens.some(x=>x.tipoNota==='troca'&&x.trocaSaida===false);lmTipoDet=null;}
   lancarModal(true);}
@@ -6225,7 +6228,7 @@ function lancarModalSalvarEdicao(){DB.lancamentos=DB.lancamentos||[];
     if(nv.pagtoPendente&&((r.parcelasLista&&r.parcelasLista.length)||r.forma)&&podeFinPagto()){delete nv.pagtoPendente;nv.pagtoDefinidoEm=hojeISO();nv.pagtoPor=quemSou();}
     if(ehNotaGratis(nv)){delete nv.liquidacoes;}
     else if(nv.pagtoPendente){delete nv.liquidacoes;nv.forma='';}
-    else if(r.parcelasLista&&r.parcelasLista.length)nv.liquidacoes=r.parcelasLista.map(x=>Object.assign({data:x.data,valor:+x.valor||0,pago:!!x.pago},liqExtrasDe(x)));
+    else if(r.parcelasLista&&r.parcelasLista.length)nv.liquidacoes=r.parcelasLista.map(x=>Object.assign({data:x.data,valor:+x.valor||0},liqPagoDe(x),liqExtrasDe(x)));
     else{delete nv.liquidacoes;aplicarLiquidacoes(nv,{parcelas:r.parcelas,vencimento:r.vencimento});}
     syncTaxaLanc(nv);vivos.add(nv.id);n++;lastYM=ymOf(nv.data);});
   remov.forEach(id=>estReverter('lanc',id));
