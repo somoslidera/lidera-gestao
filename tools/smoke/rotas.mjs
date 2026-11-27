@@ -32,18 +32,20 @@ const falhas = [];
 const nav = await chromium.launch();
 await mkdir(PRINTS, { recursive: true });
 
-function checa(cond, msg) { if (!cond) falhas.push(msg); }
+function checa(cond, msg) { if (!cond) falhas.push(msg); return !!cond; }
 const espera = (pag, ms = 350) => pag.waitForTimeout(ms);
 
 async function rodar(largura) {
   const L = `${largura}`;
   const ctx = await nav.newContext({ viewport: { width: largura, height: largura < 600 ? 844 : 900 } });
   ctx.setDefaultTimeout(8000);
+  ctx.setDefaultNavigationTimeout(45000);
   const pag = await ctx.newPage();
   const erros = [];
   const banco = [];
   pag.on("pageerror", (e) => erros.push(String(e)));
   pag.on("request", (r) => { if (/supabase\.co/.test(r.url())) banco.push(r.url()); });
+  pag.on("dialog", (d) => d.dismiss());
 
   const hash = () => pag.evaluate(() => location.hash);
   const estado = () => pag.evaluate(() => ({ c: current, et: estoqueTab, ft: finTab, h: location.hash, s: location.search,
@@ -150,6 +152,102 @@ async function rodar(largura) {
   e = await estado();
   checa(!e.conf && e.c === "estoque" && e.et === "contagem", `${L}: voltar com confirmação aberta: ${JSON.stringify(e)}`);
 
+  // janela sem X (obriga uma escolha, como "Alterações não enviadas"): o voltar e o Esc não fecham; o voltar é absorvido
+  await pag.evaluate(() => modal(`<div class="modal-head"><h3>Teste sem X</h3></div><div class="modal-body">escolha uma opção</div><div class="modal-foot"><button class="btn btn-primary" id="tsOk" onclick="closeModal()">Ok</button></div>`, true));
+  await espera(pag);
+  await voltar();
+  e = await estado();
+  checa(e.modal && e.c === "estoque" && e.et === "contagem" && e.h === "#/estoque/posicao", `${L}: voltar fechou a janela sem X ou trocou de tela: ${JSON.stringify(e)}`);
+  await pag.keyboard.press("Escape");
+  await espera(pag, 200);
+  checa((await estado()).modal, `${L}: Esc fechou a janela sem X`);
+  await voltar();
+  e = await estado();
+  checa(e.modal && e.c === "estoque" && e.et === "contagem", `${L}: 2º voltar com janela sem X: ${JSON.stringify(e)}`);
+  await pag.locator("#tsOk").click();
+  await espera(pag);
+  await voltar();
+  e = await estado();
+  checa(!e.modal && e.c === "financeiro" && e.ft === "dre", `${L}: depois de escolher na janela sem X, voltar não foi para Financeiro › DRE: ${JSON.stringify(e)}`);
+  await menu("estoque");
+  await aba("Contagem física");
+
+  // aviso de não contados: no 2º passo ("Zerar…?") o voltar volta ao 1º, como o Esc; depois fecha o aviso; depois a contagem
+  const itCont = await pag.evaluate(() => {
+    const its = estoqueItens().map((x) => x.ins).filter((i) => i.noEstoque !== false).slice(0, 3);
+    its.forEach((i) => { i.estoqueAtual = 5; delete i.estoquePor; });
+    estContDraft = null; estContQ = ""; estContCat = ""; estContFiltro = "todos";
+    estContagemNova(); estContDraft.vals[its[0].id] = "5"; estContagemNova();
+    return its.length;
+  });
+  await espera(pag, 250);
+  await pag.locator(".modal-foot button", { hasText: "Salvar contagem" }).click();
+  await espera(pag);
+  const aviso = pag.locator("#uxConfirm.ec-falta");
+  if (checa(itCont === 3 && await aviso.count() === 1, `${L}: o aviso de não contados não abriu (${itCont} itens)`)) {
+    await aviso.locator("button", { hasText: "Zerar os não contados" }).click();
+    await espera(pag, 200);
+    checa(await pag.evaluate(() => document.getElementById("uxConfirm").dataset.p) === "2", `${L}: o aviso não foi ao 2º passo`);
+    await voltar();
+    const p = await pag.evaluate(() => { const c = document.getElementById("uxConfirm"); return { p: c && c.dataset.p, modal: !!document.querySelector("#modalRoot .modal-overlay"), h: location.hash, n: DB.contagens.length }; });
+    checa(p.p === "1" && p.modal && p.h === "#/estoque/contar", `${L}: voltar no 2º passo do aviso não voltou ao 1º: ${JSON.stringify(p)}`);
+    await voltar();
+    e = await estado();
+    checa(!e.conf && e.modal && e.h === "#/estoque/contar", `${L}: voltar no 1º passo do aviso: ${JSON.stringify(e)}`);
+    await voltar();
+    e = await estado();
+    checa(!e.modal && e.c === "estoque" && e.et === "contar", `${L}: voltar depois do aviso não fechou a contagem: ${JSON.stringify(e)}`);
+  }
+
+  // seletor de categoria dentro do lançamento: o voltar fecha só o seletor
+  await pag.evaluate(() => { finTab = "lanc"; go("financeiro"); });
+  await espera(pag);
+  await pag.evaluate(() => lancarModal());
+  await espera(pag);
+  const cb = pag.locator("#modalRoot .cat-btn >> visible=true").first();
+  if (checa(await cb.count() === 1, `${L}: o lançamento não tem o seletor de categoria`)) {
+    await cb.click();
+    await espera(pag, 250);
+    checa(await pag.locator("#catpick").count() === 1, `${L}: o seletor de categoria não abriu`);
+    await voltar();
+    e = await estado();
+    checa(await pag.locator("#catpick").count() === 0 && e.modal && e.c === "financeiro" && e.h === "#/financeiro/lancamentos", `${L}: voltar com o seletor de categoria aberto: ${JSON.stringify(e)}`);
+  }
+  await voltar();
+  e = await estado();
+  checa(!e.modal && e.c === "financeiro" && e.ft === "lanc", `${L}: voltar não fechou o lançamento: ${JSON.stringify(e)}`);
+
+  // modal aberto vence a regra de "entrada de outro cliente": fecha o modal e fica
+  await pag.evaluate(() => history.replaceState(Object.assign({}, history.state, { o: "outro-cliente" }), "", location.href));
+  await pag.locator("#topActions .btn-primary").first().click();   // Lançar
+  await espera(pag);
+  await voltar();
+  e = await estado();
+  checa(!e.modal && e.c === "financeiro" && e.h === "#/financeiro/lancamentos" && pag.url().startsWith(BASE), `${L}: modal + entrada de outro cliente: ${JSON.stringify(e)}`);
+  await pag.evaluate(() => history.replaceState(Object.assign({}, history.state, { o: null }), "", location.href));
+
+  // go() com a tela de login por cima (ex.: mudar de celular para computador no login) não mexe no endereço nem no pendente
+  const h0 = await hash();
+  const pend = await pag.evaluate(() => { showLogin(); ROTA_PEND = { alvo: rotaLer("#/estoque/contar") }; go("dashboard"); return { h: location.hash, p: !!(ROTA_PEND && ROTA_PEND.alvo) }; });
+  checa(pend.h === h0 && pend.p, `${L}: go() com o login na tela mexeu no endereço ou no pendente: ${JSON.stringify(pend)}`);
+  await pag.setViewportSize({ width: largura < 600 ? 1280 : 390, height: 844 });
+  await espera(pag, 400);
+  await pag.setViewportSize({ width: largura, height: largura < 600 ? 844 : 900 });
+  await espera(pag, 400);
+  const pend2 = await pag.evaluate(() => ({ h: location.hash, p: !!(ROTA_PEND && ROTA_PEND.alvo) }));
+  checa(pend2.h === h0 && pend2.p, `${L}: o resize com o login na tela mexeu no endereço ou no pendente: ${JSON.stringify(pend2)}`);
+  await pag.evaluate(() => { hideLogin(); go("dashboard"); });   // "entrou": abre a tela pendente
+  await espera(pag);
+  e = await estado();
+  checa(e.c === "estoque" && e.et === "contar" && e.h === "#/estoque/contar", `${L}: depois do login a tela pendente não abriu: ${JSON.stringify(e)}`);
+
+  // painel Lidera/consultor: ao cair no painel, o endereço recarregado não vale para o 1º "Abrir app"
+  const adm = await pag.evaluate(async () => { ROTA_PEND = { alvo: rotaLer("#/financeiro/dre") }; try { await showAdmin(); } catch (err) {}
+    const r = { alvo: ROTA_PEND && ROTA_PEND.alvo, h: location.hash };
+    document.getElementById("adminScreen").style.display = "none"; go("dashboard"); r.depois = location.hash; r.c = current; return r; });
+  checa(adm.alvo === null && adm.h === "" && adm.c === "dashboard" && adm.depois === "#/dashboard", `${L}: painel herdou a rota do endereço: ${JSON.stringify(adm)}`);
+  erros.splice(0, erros.length, ...erros.filter((x) => !/sb|supabase|null/i.test(x)));   // showAdmin sem banco falha depois de esconder o app (esperado no preview)
+
   // impressão da tela continua saindo
   const impr = await pag.evaluate(() => { const p = window.print; let ok = false; window.print = () => { ok = ((document.getElementById("printArea") || {}).textContent || "").length > 20; }; try { imprimirTela(); } finally { window.print = p; } return ok; });
   checa(impr, `${L}: imprimirTela não montou a folha`);
@@ -228,7 +326,7 @@ async function rodar(largura) {
 }
 
 for (const largura of [1280, 390]) {
-  try { await rodar(largura); } catch (err) { falhas.push(`${largura}: o teste parou: ${String(err).split("\n")[0]}`); }
+  try { await rodar(largura); } catch (err) { falhas.push(`${largura}: o teste parou: ${String(err).split("\n").slice(0, 4).join(" / ")}`); }
 }
 await nav.close();
 srv.close();

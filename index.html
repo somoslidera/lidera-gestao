@@ -2686,13 +2686,13 @@ const ROUTES={
   conta:{title:'Configurações',render:viewConta},
 };
 let current='dashboard';
-function go(route,_modo){let modo=_modo||'push';
-  if(ROTA_PEND){const a=ROTA_PEND.alvo;ROTA_PEND=null;modo='replace';if(a){rotaAplicaAba(a);route=a.rota;}}   // 1ª tela depois do login: a do endereço, se houver
+function go(route,_modo){let modo=_modo||'push';const naTela=rotaTelaVisivel();   // login/painel por cima (ex.: resize na tela de login): não mexe no endereço nem no pendente
+  if(naTela&&ROTA_PEND){const a=ROTA_PEND.alvo;ROTA_PEND=null;modo='replace';if(a){rotaAplicaAba(a);route=a.rota;}}   // 1ª tela depois do login: a do endereço, se houver
   if(route==='dre'){finTab='dre';route=(MEMBRO_PERMS&&!MEMBRO_PERMS.includes('financeiro'))?'dre':'financeiro';}   // DRE mora dentro do Financeiro
   if(MEMBRO_PERMS&&!MEMBRO_PERMS.includes(route))route=MEMBRO_PERMS[0]||route; // membro só acessa áreas liberadas
   current=route;document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.route===route));
   $('#pageTitle').textContent=ROUTES[route].title;$('#topActions').innerHTML='';ROTA_GO=true;try{ROUTES[route].render();}finally{ROTA_GO=false;}window.scrollTo(0,0);toggleSidebar(false);try{renderBell();}catch(e){}try{pagtoNavBadge();}catch(e){}
-  ROTA_ON=true;rotaSync(modo);}
+  if(naTela){ROTA_ON=true;rotaSync(modo);}}
 document.querySelectorAll('#nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.route);}));
 function toggleSidebar(open){const sb=$('#sidebar'),bd=$('#backdrop');if(open===undefined)open=!sb.classList.contains('open');sb.classList.toggle('open',open);bd.classList.toggle('hidden',!open);}
 /* ===== Endereço por tela (#/rota/aba) e voltar/avançar do navegador =====
@@ -2718,13 +2718,14 @@ function rotaHashDe(rota){const s=ROTA_SLUG[rota];if(!s)return '';let h='#/'+s;
   try{if(rota==='estoque'&&ROTA_ABAS.estoque[estoqueTab]&&estAbasPermitidas().some(([k])=>k===estoqueTab))h+='/'+ROTA_ABAS.estoque[estoqueTab];
     else if(rota==='financeiro'&&ROTA_ABAS.financeiro[finTab])h+='/'+ROTA_ABAS.financeiro[finTab];}catch(e){}
   return h;}
-function rotaModalAberto(){return !!(document.querySelector('#modalRoot .modal-overlay')||document.getElementById('uxConfirm'));}
-function rotaAppVisivel(){if(!ROTA_ON||RECOVERY)return false;   // login, painel Lidera/consultor e assistente inicial ficam por cima do app: lá o endereço não manda
+function rotaModalAberto(){return !!(document.querySelector('#modalRoot .modal-overlay')||document.getElementById('uxConfirm')||document.getElementById('catpick'));}
+function rotaAppVisivel(){return ROTA_ON&&rotaTelaVisivel();}
+function rotaTelaVisivel(){if(RECOVERY)return false;   // login, painel Lidera/consultor e assistente inicial ficam por cima do app: lá o endereço não manda
   for(const id of ['authScreen','adminScreen','consScreen','formAdminScreen','wizScreen']){const el=document.getElementById(id);if(el&&el.style.display!=='none'&&getComputedStyle(el).display!=='none')return false;}
   return true;}
 function rotaUrl(h){return location.pathname+location.search+h;}
 function rotaSt(i,m){return {flow:1,i,m,o:(typeof ORG!=='undefined'&&ORG&&ORG.id)||null};}   // o = organização: no painel Lidera, o voltar pula as telas de outro cliente aberto antes
-function rotaSairDoApp(){try{ROTA_ON=false;if(!ROTA_PEND)ROTA_PEND={alvo:null};   // a próxima tela aberta ("Abrir app") ocupa esta entrada
+function rotaSairDoApp(descartar){try{ROTA_ON=false;if(!ROTA_PEND||descartar)ROTA_PEND={alvo:null};   // a próxima tela aberta ("Abrir app") ocupa esta entrada; no painel Lidera/consultor o endereço recarregado não vale para o 1º cliente aberto
   if(!RECOVERY)history.replaceState(rotaSt(HIST_I,0),'',/^#\//.test(location.hash)?location.pathname+location.search:location.href);}catch(e){}}
 function rotaSync(modo){try{
   if(RECOVERY)return;const h=rotaHashDe(current);if(!h)return;
@@ -2736,26 +2737,28 @@ function rotaSync(modo){try{
 // troca de aba chama viewEstoque/viewFinanceiro direto (sem go): o endereço acompanha depois de desenhar
 ['viewEstoque','viewFinanceiro','viewDRE'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(){const r=f.apply(this,arguments);if(ROTA_ON&&!ROTA_GO&&rotaAppVisivel())rotaSync('push');return r;};});
 // modal abriu: empilha uma entrada (mesmo endereço) para o voltar do celular fechar o modal em vez de sair da tela
-function rotaModalVer(){try{if(!rotaAppVisivel()||!rotaModalAberto())return;const st=history.state;if(st&&st.flow&&st.m)return;
+function rotaModalVer(){try{if(!rotaModalAberto()||!rotaAppVisivel())return;const st=history.state;if(st&&st.flow&&st.m)return;
   history.pushState(rotaSt(++HIST_I,1),'',location.href);}catch(e){}}
 try{const mo=new MutationObserver(rotaModalVer);const mr=document.getElementById('modalRoot');if(mr)mo.observe(mr,{childList:true});mo.observe(document.body,{childList:true});}catch(e){}
-// fecha o que está por cima, como o Esc: primeiro a confirmação, depois a janela (pelo X). Nota com itens preenchidos não fecha.
-function rotaFecharModal(){const c=document.getElementById('uxConfirm');if(c){c.remove();return;}
+// fecha o que está por cima (Esc e voltar do navegador usam a mesma regra): a confirmação; o 2º passo do aviso de não
+// contados volta ao 1º; o seletor de categoria; a janela só pelo X. Janela sem X obriga uma escolha e fica. Nota com itens preenchidos não fecha.
+function fecharTopo(){const c=document.getElementById('uxConfirm');
+  if(c){const cancelar=c.dataset.p==='2'&&c.querySelector('[data-a="cancelar"]');if(cancelar)cancelar.click();else c.remove();return;}
   if(document.getElementById('catpick')){try{catPickerClose();}catch(e){}return;}
-  const m=document.querySelector('#modalRoot .modal');if(!m){closeModal();return;}
+  const m=document.querySelector('#modalRoot .modal');if(!m)return;
   if(m.querySelector('#lm_rows')&&typeof lancDraft!=='undefined'&&lancDraft.some(r=>lmTotalLinha(r)||(r.desc||'').trim())){toast('Há itens preenchidos. Use Cancelar ou o X para sair sem lançar.');return;}
-  const x=m.querySelector('.modal-head .x');if(x)x.click();else closeModal();}
+  const x=m.querySelector('.modal-head .x');if(x)x.click();}
 window.addEventListener('popstate',e=>{try{
   const st=e.state,temSt=!!(st&&st.flow);const dir=(temSt&&st.i<HIST_I)?-1:1;
   if(temSt)HIST_I=+st.i||0;
   if(!rotaAppVisivel())return;
-  if(temSt&&(st.o||null)!==((typeof ORG!=='undefined'&&ORG&&ORG.id)||null)){history.go(dir);return;}   // entrada de outro cliente (painel Lidera)
   if(!temSt)history.replaceState(rotaSt(++HIST_I,0),'',location.href);   // # digitado na barra de endereço
   const antes=rotaHashDe(current);
-  if(rotaModalAberto()){rotaFecharModal();   // voltar com modal aberto: fecha e fica na tela
+  if(rotaModalAberto()){fecharTopo();   // voltar com modal aberto: fecha e fica na tela
     if(rotaModalAberto())history.pushState(rotaSt(++HIST_I,1),'',rotaUrl(antes));
     else if(location.hash!==antes)history.pushState(rotaSt(++HIST_I,0),'',rotaUrl(antes));
     return;}
+  if(temSt&&(st.o||null)!==((typeof ORG!=='undefined'&&ORG&&ORG.id)||null)){history.go(dir);return;}   // entrada de outro cliente (painel Lidera)
   const alvo=rotaLer(location.hash);
   if(!alvo){if(temSt){history.go(dir);return;}rotaSync('replace');return;}   // entrada sem tela (ex.: painel Lidera): segue; # inválido: corrige
   rotaAplicaAba(alvo);go(alvo.rota,'replace');
@@ -9575,13 +9578,10 @@ function uxConfirma(o,ok,naoCb){const a=document.getElementById('uxConfirm');if(
   const t0=Date.now();
   d.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(e.target!==d&&!b)return;if(!b&&o.semFundo)return;if(Date.now()-t0<400&&(!b||o.semFundo))return;d.remove();if(b&&b.dataset.a==='1'){try{ok&&ok();}catch(err){console.error(err);}}else if(b&&naoCb){try{naoCb();}catch(err){console.error(err);}}});
   document.body.appendChild(d);const f=d.querySelector('[data-a="0"]');if(f)f.focus();}
-/* Esc fecha: primeiro a confirmação, depois a janela aberta (como clicar no X). Nota com itens preenchidos não fecha por engano. */
+/* Esc fecha o que está por cima: mesma regra do voltar do navegador (fecharTopo). */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
-  const c=document.getElementById('uxConfirm');if(c){c.remove();return;}
-  if(document.getElementById('catpick'))return;
-  const m=document.querySelector('#modalRoot .modal');if(!m)return;
-  if(m.querySelector('#lm_rows')&&typeof lancDraft!=='undefined'&&lancDraft.some(r=>lmTotalLinha(r)||(r.desc||'').trim()))return toast('Há itens preenchidos. Use Cancelar ou o X para sair sem lançar.');
-  const x=m.querySelector('.modal-head .x');if(x)x.click();else closeModal();});
+  if(document.getElementById('catpick'))return;   // o seletor de categoria trata o próprio Esc
+  fecharTopo();});
 /* ação principal do Financeiro sempre na barra do topo, no mesmo lugar das outras telas */
 function uxFinTop(){const el=document.getElementById('topActions');if(!el)return;let h='';
   if(finTab==='lanc'&&podeFinNota())h=`<button class="btn btn-primary" onclick="lancarModal()">${icoPlus} Lançar</button>`;
@@ -12001,7 +12001,7 @@ function projAtrasadas(p){const h=hojeISO();return ((p&&p.tarefas)||[]).filter(x
 function projCur(){return ADMIN_ORGS.find(o=>o.id===adminSel);}
 async function projSaveOrg(o){if(!o)return;try{const cur=(await sb.from('organizacoes').select('dados').eq('id',o.id).single()).data;const dados=(cur&&cur.dados)||{};dados._projeto=o.dados._projeto;await sb.from('organizacoes').update({dados}).eq('id',o.id);o.dados=dados;}catch(e){toast('Erro ao salvar projeto');}}
 
-async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin();rotaSairDoApp();
+async function showAdmin(){const b=adminBox();b.style.display='block';hideLogin();rotaSairDoApp(true);
   const cs=document.getElementById('consScreen');if(cs)cs.style.display='none';
   const titulo=IS_SUPER?`Flow <span style="font-size:14px;color:var(--gold)">· Painel Lidera</span>`:`Flow <span style="font-size:14px;color:var(--gold)">· Meu Painel</span>`;
   const sub=IS_SUPER?'Controle geral de consultores, clientes e projetos':`Seus clientes${MY_LIMITE?` · limite ${MY_LIMITE}`:''}`;
