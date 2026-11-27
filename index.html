@@ -2924,7 +2924,7 @@ let insumoFiltro='Todos', buscaProd='';
 const SORT={insumos:{k:'nome',d:1},estoque:{k:'comprar',d:-1}};
 const SORTCOLS={
  insumos:{nome:i=>i.nome,cat:i=>i.cat,grupo:i=>i.grupo||'',sub:i=>i.sub||i.cat||'',fornecedor:i=>i.fornecedor||'',preco:i=>i.preco||0,qtd:i=>i.qtd||0,custo:i=>custoInsumoBase(i)*(TO_BASE[i.uni]||1),noEstoque:i=>i.noEstoque!==false?1:0},
- estoque:{nome:x=>x.nome,cat:x=>x.cat,grupo:x=>x.grupo||'',sub:x=>x.sub||x.cat||'',uni:x=>x.uni,fornecedor:x=>x.fornecedor,custo:x=>x.custo,min:x=>x.min,atual:x=>x.atual,necessidade:x=>x.necessidade,valorEstoque:x=>x.valorEstoque,comprar:x=>x.comprar?1:0}};
+ estoque:{nome:x=>x.nome,cat:x=>x.cat,grupo:x=>x.grupo||'',sub:x=>x.sub||x.cat||'',uni:x=>x.uni,fornecedor:x=>x.fornecedor,custo:x=>x.custo,min:x=>x.min,atual:x=>x.atual,necessidade:x=>x.necessidade,valorEstoque:x=>x.valorEstoque,comprar:x=>x.comprar?1:0,ultCompra:x=>x.ultCompra,pacotes:x=>x.pacotes==null?-1:x.pacotes}};
 function setSort(tab,k){const s=SORT[tab];if(s.k===k)s.d=-s.d;else{s.k=k;s.d=1;}tab==='insumos'?viewInsumos():viewEstoque();}
 function applySort(tab,arr){const s=SORT[tab],acc=SORTCOLS[tab][s.k];if(!acc)return arr;return arr.slice().sort((a,b)=>{let x=acc(a),y=acc(b);if(typeof x==='string'||typeof y==='string'){x=(x||'').toString().toLowerCase();y=(y||'').toString().toLowerCase();return x<y?-s.d:x>y?s.d:0;}return ((x||0)-(y||0))*s.d;});}
 function thS(tab,label,k,num){const s=SORT[tab],a=s.k===k?(s.d>0?' ↑':' ↓'):'';return `<th class="${num?'num ':''}th-sort" onclick="setSort('${tab}','${k}')">${label}${a}</th>`;}
@@ -9689,7 +9689,7 @@ function saveCmvReg(id){const data=$('#cr_data').value;if(!data)return toast('In
 function delCmvReg(id){if(!confirm('Remover esta contagem?'))return;DB.cmvRegistros=(DB.cmvRegistros||[]).filter(x=>x.id!==id);save();viewCMV();toast('Contagem removida');}
 
 /* ===================== ESTOQUE & COMPRAS ===================== */
-let estoqueTab='contagem', estoqueFiltro='Todos', estoqueCmvF='todos', buscaEst='', _cmvZeraEstoque=false;
+let estoqueTab='contagem', estoqueFiltro='Todos', estoqueCmvF='todos', buscaEst='', _cmvZeraEstoque=false, estoqueUniF='', estoqueKpiF='';
 function custoUnitCompra(ins){return ins.qtd?ins.preco/ins.qtd:0;} // custo por unidade de compra
 /* Padrão de compra: o produto tem a unidade de USO (g/ml/un, a mesma da ficha técnica) e, opcionalmente,
    uma embalagem de compra (pé com 12 folhas, pacote com 400 g). A nota traz "2 UN" = 2 embalagens;
@@ -9861,11 +9861,39 @@ function estoqueItens(){const DER=estNecDerivada();
     const sugerido=estCompraArredonda(necessidade,i);
     const qtdPedir=(i.qtdPedir!=null&&i.qtdPedir!=='')?(+i.qtdPedir||0):sugerido;
     const totalPrevisto=custo*qtdPedir;
-    return {ins:i,nome:i.nome,cat:i.cat,grupo:i.grupo||'',sub:i.sub||i.cat||'',uni:i.uni,fornecedor:insFornAtual(i),custo,min,crit,atual,necessidade,sugerido,valorEstoque,qtdPedir,totalPrevisto,comprar,prazoRep:+i.prazoRep||0,derivado,derivDet:dv?dv.det:[],produzir};
+    return {ins:i,nome:i.nome,cat:i.cat,grupo:i.grupo||'',sub:i.sub||i.cat||'',uni:i.uni,fornecedor:insFornAtual(i),custo,min,crit,atual,necessidade,sugerido,valorEstoque,qtdPedir,totalPrevisto,comprar,prazoRep:+i.prazoRep||0,derivado,derivDet:dv?dv.det:[],produzir,ultCompra:custoUnitCompra(i),pacotes:insEmb(i)?atual/insEmb(i).qtd:null};
   });
 }
 function estoqueValorTotal(){return estoqueItens().reduce((s,x)=>s+x.valorEstoque,0);}
 /* compra arredondada para a embalagem (fardo, caixa, barril). Sem embalagem cadastrada, fica como está. */
+/* Posição do estoque (D15/D18): só leitura, nada aqui grava dado */
+function estUniNorm(u){u=(u||'').trim();if(!u)return '';const l=u.toLowerCase();return l==='l'?'L':(BASE[l]?l:u);}
+const EST_NOME_1UN=/(^|[^0-9,.])1 ?(KG|L|LT|LTS|LITRO)\b|1000 ?(G|GR|ML)\b/i;
+function estConfEmbMap(){const m=new Map();   // "Conferir embalagem" (D18 + P10): 'sem' = chegou em CX/PCT/un e o produto não tem embalagem; 'um' = entrou com 1 kg/L por pacote e o nome não diz 1 kg/1 L
+  (DB.lancamentos||[]).forEach(l=>{const ins=l&&l.insumoId&&DB.insumos[l.insumoId];if(!ins||!['kg','g','L','ml'].includes(ins.uni))return;
+    const u=estUniNorm(l.uni);if(!u||uniCompat(u,ins.uni))return;const e=insEmb(ins),el=+l.embQtd>0?+l.embQtd:0;
+    if(!e&&!el){m.set(ins.id,'sem');return;}
+    if(['kg','L'].includes(ins.uni)&&(el||e.qtd)===1&&!EST_NOME_1UN.test(ins.nome||'')&&!m.has(ins.id))m.set(ins.id,'um');});return m;}
+function estPrecoVar(x){const u=+x.ultCompra||0,m=+x.ins.cmp||0;return (u>0&&m>0)?(u-m)/m:0;}
+function estPosFiltroOk(x,SE){if(estoqueUniF&&x.uni!==estoqueUniF)return false;if(estoqueKpiF==='confemb')return SE.has(x.ins.id);if(estoqueKpiF==='preco')return estPrecoVar(x)>0.15;return true;}
+function estUltCompraCel(x){if(!(x.ultCompra>0))return '<span style="color:var(--soft)">—</span>';const v=estPrecoVar(x);
+  const seta=v>0.15?` <span style="color:var(--red);font-weight:700" title="${fmtN(v*100,0)}% acima do custo médio">▲</span>`:v<-0.15?` <span style="color:var(--green);font-weight:700" title="${fmtN(-v*100,0)}% abaixo do custo médio">▼</span>`:'';
+  return fmtBRL(x.ultCompra)+seta;}
+function estPacotesCel(x,SE){const e=insEmb(x.ins),k=SE.get(x.ins.id);
+  const conf=k==='um'?` <span style="color:var(--amber);font-weight:600;font-size:12px" title="Entrou com 1 ${uSym(x.uni)} por pacote e o nome do produto não diz o tamanho. Confira se o pacote tem mesmo 1 ${uSym(x.uni)}.">confira?</span>`:'';
+  if(e)return `<span title="${esc(e.nome)} de ${estQ(e.qtd,uSym(x.uni))}">${estQ(x.atual/e.qtd)} × ${estQ(e.qtd,uSym(x.uni))}</span>${conf}`;
+  if(k==='sem')return '<span style="color:var(--soft);font-size:12px" title="Chegou em nota por unidade/caixa/pacote, mas o produto não tem o tamanho da embalagem cadastrado. Essa compra não entrou no estoque.">— sem embalagem</span>';
+  return conf.trim();}
+function estPosKpisHTML(lista,SE){if(!souDoPrincipal())return '';
+  const nSE=lista.filter(x=>SE.has(x.ins.id)).length, nPr=lista.filter(x=>estPrecoVar(x)>0.15).length;
+  const kg=estoqueFiltro!=='Todos'?lista.reduce((t,x)=>t+(x.uni==='kg'?x.atual:x.uni==='g'?x.atual/1000:0),0):null;
+  const card=(k,ic,lbl,val,sub,cor)=>{const on=estoqueKpiF===k;return `<div class="kpi" role="button" tabindex="0" style="cursor:pointer;${on?'box-shadow:0 0 0 2px var(--navy)':''}" title="${on?'Clique para limpar o filtro':'Clique para filtrar a tabela'}" onclick="estoqueKpiF=estoqueKpiF==='${k}'?'':'${k}';viewEstoque()"><div class="ic ${ic}">${ico('cmv')}</div><div class="k-lbl">${lbl}</div><div class="k-val"${cor?` style="color:${cor}"`:''}>${val}</div><div class="k-sub" style="color:var(--soft)">${on?'filtrando · <b>× limpar</b>':sub}</div></div>`;};
+  let h=card('confemb',nSE?'ic-gold':'ic-green','Conferir embalagem',nSE,'pacote sem tamanho, ou contado como 1 kg',nSE?'var(--amber)':'var(--green)');
+  if(podeVerValores())h+=card('preco',nPr?'ic-gold':'ic-green','Preço subiu',nPr,'última compra +15% sobre a média','');
+  if(kg!=null){const on=estoqueUniF==='kg';h+=`<div class="kpi" role="button" tabindex="0" style="cursor:pointer;${on?'box-shadow:0 0 0 2px var(--navy)':''}" title="Saldo somado dos produtos em kg e g desta categoria" onclick="estoqueUniF=estoqueUniF==='kg'?'':'kg';viewEstoque()"><div class="ic ic-navy">${ico('cmv')}</div><div class="k-lbl">Total em kg</div><div class="k-val">${estQ(kg,'kg')}</div><div class="k-sub" style="color:var(--soft)">${on?'filtrando · <b>× limpar</b>':'em '+esc(estoqueFiltro)}</div></div>`;}
+  return `<div class="kpi-grid no-print" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">${h}</div>`;}
+function estUniPillsHTML(lista){const us=['kg','L','un','g','ml'].filter(u=>lista.some(x=>x.uni===u));if(!us.length)return '';if(estoqueUniF&&!us.includes(estoqueUniF))estoqueUniF='';
+  return `<div class="pill-filter" style="margin:0" title="Com uma unidade escolhida, o custo médio e a última compra ficam em R$ por essa unidade">${[['','Todas'],...us.map(u=>[u,uSym(u)])].map(([k,l])=>`<button class="${estoqueUniF===k?'on':''}" onclick="estoqueUniF='${k}';viewEstoque()">${l}</button>`).join('')}</div>`;}
 function estCompraArredonda(q,ins){q=+q||0;if(!(q>0))return 0;const emb=insEmb(ins);if(emb&&emb.qtd>0)return estR(Math.ceil(q/emb.qtd-1e-9)*emb.qtd,3);return estR(q,3);}
 /* aviso ao perfil Compras quando um produto cruza o crítico (uma vez por cruzamento; some quando o saldo volta acima) */
 function estCritAvisos(items){let n=0;(items||estoqueItens()).forEach(x=>{const i=x.ins;if(!(x.crit>0))return;
@@ -9938,7 +9966,8 @@ function viewEstoque(){
     const selArmF=(estMultiArm()&&souDoPrincipal())?`<select class="input" style="max-width:200px" title="Mostrar só os produtos liberados para um estoque" onchange="estoqueArmF=this.value;viewEstoque()"><option value="">Todos os estoques</option>${setoresSemPrincipal().map(a=>`<option value="${esc(a.id)}" ${estoqueArmF===a.id?'selected':''}>Só ${esc(a.nome)}</option>`).join('')}</select>`:'';
     const base0=estoqueCmvF==='cmv'?itCMV:estoqueCmvF==='fora'?itFora:items;
     const base=souDoPrincipal()?(estoqueArmF&&estArm(estoqueArmF)?base0.filter(x=>prodNoSetor(x.ins,estoqueArmF)):base0):base0.filter(x=>armazensPermitidos().some(a=>prodNoSetor(x.ins,a.id)));   // chefe de setor: só os produtos das categorias do setor dele; admin pode filtrar por um estoque
-    const filt=applySort('estoque',estoqueFiltro==='Todos'?base:base.filter(x=>x.cat===estoqueFiltro));window.EST_POS_FILT=filt;
+    const baseCat=estoqueFiltro==='Todos'?base:base.filter(x=>x.cat===estoqueFiltro);const SEMEMB=estConfEmbMap();
+    const filt=applySort('estoque',baseCat.filter(x=>estPosFiltroOk(x,SEMEMB)));window.EST_POS_FILT=filt;
     $('#view').innerHTML=`
     ${estTabsHTML()}
     ${souDoPrincipal()&&!podeVerValores()?`<div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))"><div class="kpi"><div class="ic ${comprarList.length?'ic-red':'ic-green'}">${ico('cmv')}</div><div class="k-lbl">Itens a comprar</div><div class="k-val" style="color:${comprarList.length?'var(--red)':'var(--green)'}">${comprarList.length}</div><div class="k-sub" style="color:var(--soft)">abaixo do mínimo</div></div><div class="kpi"><div class="ic ic-navy">${ico('cmv')}</div><div class="k-lbl">Produtos no estoque</div><div class="k-val">${items.length}</div><div class="k-sub" style="color:var(--soft)">${itCMV.length} do CMV · ${itFora.length} fora</div></div></div>${estAlertasHTML(items)}`:souDoPrincipal()?`<div class="kpi-grid kpi5">
@@ -9949,22 +9978,24 @@ function viewEstoque(){
       <div class="kpi"><div class="ic ic-navy">${ico('profit')}</div><div class="k-lbl">Fora do CMV</div><div class="k-val">${fmtBRL(valorFora)}</div><div class="k-sub" style="color:var(--soft)">${itFora.length} itens · limpeza, materiais… · total ${fmtBRL(valorTotal)}</div></div>
     </div>
     ${estAlertasHTML(items)}`:`<div class="card card-pad" style="padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:var(--muted)">Saldo de <b>${armazensPermitidos().map(a=>esc(a.nome)).join(', ')}</b>. Só os produtos liberados para o seu setor aparecem aqui; a contagem e a requisição usam a mesma lista.</div>`}
-    <div class="section-head no-print" style="flex-wrap:wrap;gap:10px"><div class="pill-filter" style="margin:0">${[['todos','Todos'],['cmv','Só CMV'],['fora','Fora do CMV']].map(([k,l])=>`<button class="${estoqueCmvF===k?'on':''}" onclick="estoqueCmvF='${k}';viewEstoque()">${l}</button>`).join('')}</div>
+    ${estPosKpisHTML(baseCat,SEMEMB)}
+    <div class="section-head no-print" style="flex-wrap:wrap;gap:10px"><div class="pill-filter" style="margin:0">${[['todos','Todos'],['cmv','Só CMV'],['fora','Fora do CMV']].map(([k,l])=>`<button class="${estoqueCmvF===k?'on':''}" onclick="estoqueCmvF='${k}';viewEstoque()">${l}</button>`).join('')}</div>${estUniPillsHTML(baseCat)}
       ${mselHTML('estCatDd',{rot:'Categoria',todos:'Todas',sel:estoqueFiltro==='Todos'?'':estoqueFiltro,ops:cats.filter(c=>c!=='Todos').map(c=>({k:c,n:items.filter(x=>x.cat===c).length})),nTodos:items.length,cb:'estCatSet',buscaPh:'Buscar categoria…'})}
       <input class="input" id="estBusca" value="${esc(buscaEst)}" style="max-width:240px" placeholder="🔎 Buscar insumo..." oninput="buscaEst=this.value;filtrarLinhas(this,'#estoqueTbody')"></div>
     <div class="card"><div class="scroll-x"><table class="tc est-pos">
-      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Ideal','min',1)}${thS('estoque','Crítico','crit',1)}${estMultiArm()?armazensPermitidos().map(a=>`<th class="num" title="Saldo em ${esc(a.nome)}">${esc(estArmCurto(a))}</th>`).join('')+(souDoPrincipal()?thS('estoque','Total','atual',1):''):thS('estoque','Atual','atual',1)}<th class="num" title="Dias de estoque pelo consumo dos últimos 30 dias (vendas baixadas, perdas e saídas)">Cobertura</th>${thS('estoque','Categoria','grupo')}${thS('estoque','Subcategoria','sub')}${thS('estoque','Fornecedor','fornecedor')}${podeVerValores()?thS('estoque','Custo médio','custo',1):''}${podeVerValores()&&estSubprodutos().length?`<th class="num" title="Subprodutos com porção definida no cadastro: custo médio × tamanho da porção">Custo por porção</th>`:''}${thS('estoque','Unid.','uni',1)}</tr></thead>
+      <thead><tr>${thS('estoque','Insumo','nome')}${thS('estoque','Ideal','min',1)}${thS('estoque','Crítico','crit',1)}${estMultiArm()?armazensPermitidos().map(a=>`<th class="num" title="Saldo em ${esc(a.nome)}">${esc(estArmCurto(a))}</th>`).join('')+(souDoPrincipal()?thS('estoque','Total','atual',1):''):thS('estoque','Atual','atual',1)}${thS('estoque','Em pacotes','pacotes',1)}<th class="num" title="Dias de estoque pelo consumo dos últimos 30 dias (vendas baixadas, perdas e saídas)">Cobertura</th>${thS('estoque','Categoria','grupo')}${thS('estoque','Subcategoria','sub')}${thS('estoque','Fornecedor','fornecedor')}${podeVerValores()?thS('estoque','Custo médio','custo',1)+thS('estoque','Última compra','ultCompra',1):''}${podeVerValores()&&estSubprodutos().length?`<th class="num" title="Subprodutos com porção definida no cadastro: custo médio × tamanho da porção">Custo por porção</th>`:''}${thS('estoque','Unid.','uni',1)}</tr></thead>
       <tbody id="estoqueTbody">${filt.map(x=>`
         <tr>
           <td><a onclick="estKardex('${x.ins.id}')" title="Ver o kardex (histórico de entradas e saídas)" style="font-weight:700;cursor:pointer">${esc(x.nome)}</a>${x.ins.tipo==='preparado'?'<div style="font-size:11px;color:var(--gold);font-weight:600">subproduto</div>':''}</td>
           <td class="num">${souDoPrincipal()?`<input class="input" type="number" step="0.01" style="width:74px;text-align:right" value="${estIdealVal(x,'min')}" placeholder="0" title="Estoque ideal: quanto você quer ter depois de comprar${estEhPorc(x.ins)?' (em porções)':''}" oninput="estIdealSet('${x.ins.id}','estoqueMin',this.value)" onchange="viewEstoque()">`:`<span style="color:var(--muted)">${x.min?(estEhPorc(x.ins)?estQP(x.ins,x.min,true):estQ(x.min)):'—'}</span>`}${estEhPorc(x.ins)?'<div class="gp-mini">porções</div>':''}</td>
           <td class="num">${souDoPrincipal()?`<input class="input" type="number" step="0.01" style="width:74px;text-align:right;${x.crit>0&&x.atual<=x.crit?'border-color:var(--red);color:var(--red);font-weight:700':''}" value="${estIdealVal(x,'crit')}" placeholder="—" title="Estoque crítico (ponto de pedido): ao chegar aqui, entra na lista de compras. Vazio = usa o ideal como hoje.${estEhPorc(x.ins)?' Em porções.':''}" oninput="estIdealSet('${x.ins.id}','estoqueCrit',this.value)" onchange="viewEstoque()">`:`<span style="color:${x.crit>0&&x.atual<=x.crit?'var(--red)':'var(--muted)'}">${x.crit?(estEhPorc(x.ins)?estQP(x.ins,x.crit,true):estQ(x.crit)):'—'}</span>`}</td>
           ${estMultiArm()?armazensPermitidos().map(a=>{const v=estSaldoArm(x.ins,a.id);return `<td class="num" style="${v<-0.0005?'color:var(--red);font-weight:700':''}" title="${v<-0.0005?'Saldo negativo: saiu mais do que entrou neste armazém':''}${v&&estEhPorc(x.ins)?estQReqBase(v,x.ins):''}">${v?(estEhPorc(x.ins)?estQP(x.ins,v,true):estQ(v)):'<span style=\"color:var(--soft)\">—</span>'}</td>`;}).join('')+(souDoPrincipal()?`<td class="num"><b>${estAtualCel(x)}</b></td>`:''):`<td class="num"><b>${estAtualCel(x)}</b></td>`}
+          <td class="num">${estPacotesCel(x,SEMEMB)}</td>
           <td class="num">${(function(){const i=estInfoProduto(x.ins);return i.cob==null?'<span style="color:var(--soft)" title="Sem consumo registrado nos últimos 30 dias">—</span>':`<span style="font-weight:600;color:${i.ruptura?'var(--red)':i.cob<15?'var(--amber)':'var(--green)'}" title="${fmtN(i.cons.diario,2)} ${uSym(x.uni)}/dia">${Math.round(i.cob)} d</span>`;})()}</td>
           <td>${ehInsumoCMV(x.ins)?`<span class="tag tag-gray">CMV</span>`:`<span class="tag tag-amber" title="Não entra na apuração do CMV">${esc(x.grupo)}</span>`}</td>
           <td>${(x.sub||x.cat)?`<span style="font-size:12.5px">${esc(x.sub||x.cat)}</span>`:'<span style="color:var(--soft)">—</span>'}</td>
           <td><span style="font-size:12.5px;color:var(--muted)" title="Último fornecedor pelas notas. Para escolher outro, use a Lista de Compras.">${esc(insFornAtual(x.ins)==='Sem fornecedor'?'—':insFornAtual(x.ins))}</span></td>
-          ${podeVerValores()?`<td class="num">${fmtBRL(x.custo)}</td>`:''}${podeVerValores()&&estSubprodutos().length?`<td class="num">${estCustoPorcaoCel(x)}</td>`:''}
+          ${podeVerValores()?`<td class="num">${fmtBRL(x.custo)}</td><td class="num">${estUltCompraCel(x)}</td>`:''}${podeVerValores()&&estSubprodutos().length?`<td class="num">${estCustoPorcaoCel(x)}</td>`:''}
           <td class="num">${uSym(x.uni)}</td>
         </tr>`).join('')}</tbody>
     </table></div></div>`;
