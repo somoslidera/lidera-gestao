@@ -4,6 +4,7 @@ O Flow não tem homologação: o `index.html` do repo fala com o banco de **prod
 
 | Arquivo | Para quê |
 |---|---|
+| `smoke/req-margem.mjs` | Teste da margem % sobre a "Média do dia da semana" na requisição: média × 1,2 com +20%, trocar 20% → 40% não acumula, a barra de 0 a 100% recalcula da média, prato digitado à mão fica fora e "Repetir a última" não leva margem, em 1280 e 390 px. `node req-margem.mjs` depois do `preview_build.py`. |
 | `preview_build.py` | Monta `_site/`: tira a URL do Supabase (o app roda no "modo local", só no navegador), força a demonstração no PDV, põe a faixa "PREVIEW · sem banco" e carrega um restaurante de demonstração na primeira visita. Se sobrar qualquer menção ao banco de produção, **o build falha**. |
 | `serve.py` | Serve o `_site/` em `http://localhost:4179`. Com `--producao`, serve o repo como está (cuidado: banco de produção). |
 | `smoke/` | Teste com Playwright: abre Flow e PDV do `_site/`, confere que nenhuma requisição vai ao Supabase e tira prints em 1280 px e 390 px (regra D9). |
