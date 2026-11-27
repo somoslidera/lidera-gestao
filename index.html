@@ -11,7 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
-  --navy:#1D3573;--navy-700:#172b5e;--navy-900:#10203f;
+  --font-num:'Inter',system-ui,-apple-system,sans-serif;--navy:#1D3573;--navy-700:#172b5e;--navy-900:#10203f;
   --gold:#A48A57;--gold-soft:#C2A875;--off:#F2F2F2;
   --bg:#F5F6F9;--card:#FFFFFF;--line:#E6E8EE;--ink:#1B2235;--muted:#566074;--soft:#6F7788;
   --green:#1E9E6A;--green-bg:#E5F4EC;--red:#D2483F;--red-bg:#FBE9E7;
@@ -78,7 +78,7 @@ input,select,textarea{font-family:inherit}
 .kpi .ic{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:11px}
 .kpi .ic svg{width:20px;height:20px}
 .kpi .k-lbl{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.2px;text-transform:uppercase}
-.kpi .k-val{font-size:24px;font-weight:700;letter-spacing:-.6px;margin-top:2px;font-family:'Fraunces',serif;line-height:1.05}
+.kpi .k-val{font-size:24px;font-weight:700;letter-spacing:-.6px;margin-top:2px;font-family:var(--font-num);font-variant-numeric:tabular-nums;line-height:1.05}
 .kpi .k-sub{font-size:12px;margin-top:4px;display:flex;align-items:center;gap:5px;font-weight:600;color:var(--soft)}
 .kpi-grid.kpi5{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
 .kpi-grid.kpi5 .kpi{padding:13px 13px}
@@ -109,7 +109,7 @@ tbody tr:hover{background:#FAFBFC}
 .scroll-x tbody td .money-pre{font-size:12px}
 .scroll-x tbody td .icon-btn{width:30px;height:30px}
 .num{text-align:right;font-variant-numeric:tabular-nums}
-th.num{text-align:right}
+th.num{text-align:right}td.num{font-family:var(--font-num)}
 .tag{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
 .tag-green{background:var(--green-bg);color:var(--green)}.tag-red{background:var(--red-bg);color:var(--red)}
 .tag-amber{background:var(--amber-bg);color:var(--amber)}.tag-navy{background:var(--blue-bg);color:var(--navy)}
@@ -160,7 +160,7 @@ th.num{text-align:right}
 .calc-box .line:last-child{border-bottom:none}
 .calc-box .line span:first-child{color:rgba(255,255,255,.72)}
 .calc-box .line b{font-weight:600;font-variant-numeric:tabular-nums}
-.calc-box .big b{font-size:18px;color:var(--gold-soft);font-family:'Fraunces',serif}
+.calc-box .big b{font-size:18px;color:var(--gold-soft);font-family:var(--font-num);font-variant-numeric:tabular-nums}
 .chan-tabs{display:flex;gap:8px;margin:14px 0 10px}
 .chan-tabs button{flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--muted)}
 .chan-tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
@@ -177,14 +177,14 @@ th.num{text-align:right}
 .matrix .axis-v{position:absolute;left:50%;top:7%;bottom:7%;width:0;border-left:1px dashed var(--line)}
 .matrix .axis-h{position:absolute;top:50%;left:7%;right:7%;height:0;border-top:1px dashed var(--line)}
 .matrix .axis-mid{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;letter-spacing:.6px;text-transform:uppercase;color:var(--soft);background:var(--card);padding:2px 7px;border-radius:8px;border:1px solid var(--line);font-weight:700;z-index:1}
-.dot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;font-family:'Fraunces',serif;color:#fff;cursor:pointer;border:2.5px solid var(--card);box-shadow:0 5px 14px rgba(16,31,66,.22);transition:.16s ease;z-index:2}
+.dot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;font-family:var(--font-num);font-variant-numeric:tabular-nums;color:#fff;cursor:pointer;border:2.5px solid var(--card);box-shadow:0 5px 14px rgba(16,31,66,.22);transition:.16s ease;z-index:2}
 .dot:hover{transform:translate(-50%,-50%) scale(1.22);z-index:6;box-shadow:0 9px 22px rgba(16,31,66,.32)}
 .axis-label{font-size:11px;color:var(--muted);text-align:center;margin-top:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase}
 .axis-label-y{position:absolute;left:-12px;top:50%;transform:rotate(-90deg) translateX(50%);transform-origin:left;font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.7px;text-transform:uppercase;white-space:nowrap}
 .eng-stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px 12px;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:128px}
 .eng-stat::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
 .eng-stat .stat-foot{margin-top:auto;font-size:11px;color:var(--soft);border-top:1px solid var(--line);padding-top:7px}
-.eng-rank{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:13px;color:#fff;flex:0 0 auto}
+.eng-rank{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--font-num);font-variant-numeric:tabular-nums;font-weight:600;font-size:13px;color:#fff;flex:0 0 auto}
 
 .dre-table .grp td{font-weight:700;background:#FAFBFC}
 .dre-table .ind td:first-child{padding-left:28px;color:var(--muted)}
@@ -302,7 +302,7 @@ body.dark .bell,body.dark .bell-pop{background:#0E1626}body.dark .bell-pop .bi.n
 .legend .li b{font-size:13px;display:block}.legend .li small{font-size:12px;color:var(--muted)}
 .health-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
 .be-ring{display:flex;align-items:center;gap:18px}
-.be-num{font-size:30px;font-weight:700;font-family:'Fraunces',serif;letter-spacing:-.5px}
+.be-num{font-size:30px;font-weight:700;font-family:var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.5px}
 
 @media(max-width:900px){
   body{height:auto;overflow:auto}
@@ -866,7 +866,7 @@ body.dark .fcard-acts .edit{color:#9DB4E8}
 .mod-cost{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:14px 0}
 .mod-cost>div{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .mod-cost .l{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);font-weight:700}
-.mod-cost .v{font-size:18px;font-weight:700;font-family:'Fraunces',serif;margin-top:3px}
+.mod-cost .v{font-size:18px;font-weight:700;font-family:var(--font-num);font-variant-numeric:tabular-nums;margin-top:3px}
 .mod-box{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
 .mod-box-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .mod-opt-h{display:grid;grid-template-columns:26px 1fr 130px 34px 28px;gap:8px;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 2px 4px}
@@ -898,7 +898,7 @@ thead th{letter-spacing:.7px}
 .gp-stat:hover{border-color:var(--soft);transform:translateY(-1px);box-shadow:var(--shadow)}
 .gp-stat.on{border-color:var(--navy);box-shadow:0 0 0 2px rgba(29,53,115,.18)}
 .gp-stat .l{font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gp-stat .v{font-family:'Fraunces',serif;font-size:28px;font-weight:700;line-height:1.05;letter-spacing:-.5px}
+.gp-stat .v{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:28px;font-weight:700;line-height:1.05;letter-spacing:-.5px}
 .gp-stat .s{font-size:12px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gp-stat.on .l{padding-right:66px}
 .gp-stat.on::after{content:'✓ filtrando';position:absolute;top:8px;right:10px;font-size:11px;font-weight:700;color:var(--navy)}
@@ -1120,7 +1120,7 @@ body.dark .prm-chip{background:var(--card)}body.dark .prm-nav a:hover{background
 .dsh-kpi .chip,.dsh-delta{font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap}
 .dsh-kpi .chip.soft{background:var(--bg);color:var(--muted)}.dsh-kpi .chip.down{background:var(--red-bg);color:var(--red)}
 .dsh-delta.up{background:var(--green-bg);color:var(--green)}.dsh-delta.down{background:var(--red-bg);color:var(--red)}
-.dsh-kpi-val{font-family:'Fraunces',serif;font-size:clamp(20px,1.9vw,27px);font-weight:700;letter-spacing:-.6px;line-height:1.05;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dsh-kpi-val{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:clamp(20px,1.9vw,27px);font-weight:700;letter-spacing:-.6px;line-height:1.05;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dsh-kpi-foot{font-size:12px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dsh-kpi-foot b{font-weight:700}
 .dsh-kpi-vis{margin-top:8px;min-height:12px}
 .dsh-bullet{position:relative;height:8px;border-radius:99px;background:var(--bg);border:1px solid var(--line);overflow:visible}
@@ -1137,14 +1137,14 @@ body.dark .prm-chip{background:var(--card)}body.dark .prm-nav a:hover{background
 .dsh-pe-body{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
 .dsh-arc{width:min(100%,300px);height:auto;flex-shrink:1;min-height:0}
 .dsh-pe-base{text-align:center}
-.dsh-pe-n{font-family:'Fraunces',serif;font-size:34px;font-weight:700;letter-spacing:-.6px;line-height:1;color:var(--ink)}
+.dsh-pe-n{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:34px;font-weight:700;letter-spacing:-.6px;line-height:1;color:var(--ink)}
 .dsh-pe-sub{font-size:12px;color:var(--soft)}.dsh-pe-sub b{color:var(--muted)}
 .dsh-pe-chip{font-size:13px;font-weight:700;padding:5px 12px;border-radius:99px;margin-top:4px}
 .dsh-pe-txt{font-size:13px;color:var(--muted);line-height:1.45;max-width:320px}
 .fin-per{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.fin-per .input{padding:6px 8px;font-size:13px}
 .dia-chip{cursor:pointer;padding:7px 13px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid var(--line);background:transparent;color:var(--soft);transition:.12s}.dia-chip:hover{border-color:var(--navy);color:var(--navy)}.dia-chip.on{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 2px 6px rgba(29,53,115,.25)}body.dark .dia-chip.on{background:#2B4C99;border-color:#2B4C99}
 .dsh-marcos{width:100%;max-width:340px;margin-top:2px}.dsh-marcos-bar{position:relative;height:10px;border-radius:99px;background:var(--line);overflow:visible}.dsh-marcos-bar>i{display:block;height:100%;border-radius:99px;transition:width .4s}.dsh-marcos-bar>b{position:absolute;top:-4px;width:3px;height:18px;border-radius:4px;transform:translateX(-50%)}.dsh-marcos-leg{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--soft)}.dsh-marcos-leg span{display:flex;align-items:center;gap:4px;white-space:nowrap}.dsh-marcos-leg i{width:8px;height:8px;border-radius:4px;display:inline-block}.dsh-marcos-leg b{color:var(--muted)}
-.dsh-pe-comp{display:flex;flex-direction:column;gap:7px}.dsh-pe-comp>div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;column-gap:8px;min-width:0}.dsh-pe-comp span{font-size:12px;font-weight:600;color:var(--muted)}.dsh-pe-comp b{font-family:'Fraunces',serif;font-size:15px;color:var(--ink)}.dsh-pe-comp small{flex-basis:100%;font-size:11px;color:var(--soft);line-height:1.35}
+.dsh-pe-comp{display:flex;flex-direction:column;gap:7px}.dsh-pe-comp>div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;column-gap:8px;min-width:0}.dsh-pe-comp span{font-size:12px;font-weight:600;color:var(--muted)}.dsh-pe-comp b{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:15px;color:var(--ink)}.dsh-pe-comp small{flex-basis:100%;font-size:11px;color:var(--soft);line-height:1.35}
 .dsh-vazio{font-size:13px;color:var(--soft);padding:12px 0;line-height:1.5}
 @media(max-height:780px){.dsh-fit,.dsh-kpis,.dsh-3{gap:12px}.dsh-kpi{padding:12px 14px 10px}.dsh-kpi-val{font-size:clamp(19px,1.7vw,23px)}.dsh-card{padding:14px 16px 12px}.dsh-pe-n{font-size:24px}.dsh-arc{width:min(100%,240px)}.dsh-pe-txt{font-size:12px}.dsh-foot{margin-top:6px;padding-top:6px}}
 @media(max-width:1180px){.dsh-3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.dsh-3>.card:nth-child(2){grid-column:1/-1;min-height:220px}.dsh-fit{height:auto;grid-template-rows:auto auto}}
@@ -1434,7 +1434,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible,
 .tm-prev{display:grid;grid-template-columns:1fr 1fr;height:96px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
 .tm-half{display:flex;gap:9px;padding:10px 10px 10px 0;min-width:0}
 .tm-sb{display:block;width:16px;flex:none;margin:-10px 0}
-.tm-cd{flex:1;min-width:0;border-radius:8px;padding:9px 10px;display:flex;flex-direction:column;gap:6px;justify-content:center;font-family:'Fraunces',Georgia,serif}
+.tm-cd{flex:1;min-width:0;border-radius:8px;padding:9px 10px;display:flex;flex-direction:column;gap:6px;justify-content:center;font-family:Inter,system-ui,sans-serif}
 .tm-lb{display:block;height:5px;width:46%;border-radius:3px;opacity:.55}
 .tm-cd b{font-size:19px;line-height:1;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
 .tm-ln{display:block;height:3px;width:68%;border-radius:2px}
@@ -1462,9 +1462,9 @@ button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible,
    O dourado da marca (#A48A57) continua nos fios, marcadores e acentos, com a cor escrita direto. */
 body[data-tema] .nav a.active::before{background:#A48A57}
 /* números: sans-serif moderna com algarismos tabulares (a Fraunces sai dos números) */
-body[data-tema] .kpi .k-val,body[data-tema] .dsh-kpi-val,body[data-tema] .dsh-pe-n,body[data-tema] .dsh-pe-comp b,body[data-tema] .be-num,body[data-tema] .dash-pill b,body[data-tema] .calc-box .big b{font-family:var(--fnum);font-variant-numeric:tabular-nums;letter-spacing:-.025em}
+body[data-tema] .kpi .k-val,body[data-tema] .dsh-kpi-val,body[data-tema] .dsh-pe-n,body[data-tema] .dsh-pe-comp b,body[data-tema] .be-num,body[data-tema] .dash-pill b,body[data-tema] .calc-box .big b{font-family:var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.025em}
 body[data-tema] .kpi .k-val,body[data-tema] .dsh-kpi-val{font-weight:650}
-body[data-tema] #view td.num{font-family:var(--fnum);font-variant-numeric:tabular-nums}
+body[data-tema] #view td.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
 /* rótulos em caixa normal (menos grito, mais leitura) */
 body[data-tema] .kpi .k-lbl,body[data-tema] .dsh-kpi .lbl{text-transform:none;letter-spacing:0;font-size:12.5px;font-weight:600}
 body[data-tema] thead th{text-transform:none;letter-spacing:0;font-size:12px}
@@ -1483,7 +1483,7 @@ body[data-tema] .card:not(.hero-card),body[data-tema] .kpi,body[data-tema] .dsh-
 }
 @media(min-width:821px) and (max-width:1365px){body[data-tema] .dsh-kpi .lbl{font-size:11px}}
 /* números dentro dos gráficos do Dashboard (texto de SVG com a Fraunces no atributo) */
-body[data-tema] #view svg text[font-family^="Fraunces"]{font-family:var(--fnum);letter-spacing:-.02em}
+body[data-tema] #view svg text[font-family^="var(--font-num"]{letter-spacing:-.02em}
 
 /* --- extras comuns (polimento) --- */
 /* cartão sem meta de faturamento: em vez de um buraco, o contorno do medidor que vai aparecer ali, o convite e o botão */
@@ -1506,7 +1506,7 @@ body[data-tema] #ec_rows [data-id]{display:grid}
    títulos e seções em Fraunces (as seções em itálico, como numa carta); números em Geist com algarismos tabulares;
    números agrupados numa régua só, com divisórias finas, em vez de vários cartões iguais; abas sublinhadas em latão;
    campos são "poços" (um tom abaixo da superfície). Cartões opacos (sem desfoque) para ficar leve no celular. */
-body[data-tema=gala]{--fnum:'Geist',Inter,system-ui,sans-serif;--ftit:'Fraunces',Georgia,serif;
+body[data-tema=gala]{--font-num:'Geist',Inter,system-ui,sans-serif;--ftit:'Fraunces',Georgia,serif;
   --bg:#F1F2F5;--card:#FFFFFF;--poco:#F4F5F8;--hair:#E5E8EE;--line:#DADEE7;--ink:#0F1730;--muted:#48516B;--soft:#5D657B;
   --navy:#1D3573;--navy-700:#162A5E;--gold:#86693A;--latao:#A48A57;--green:#147A52;--red:#C0392F;--gold-soft:#C9B07E;--fio:rgba(164,138,87,.9);--radius:14px;
   --realce:rgba(164,138,87,.07);--foco:0 0 0 3px rgba(164,138,87,.28);
@@ -1560,7 +1560,7 @@ body[data-tema=gala] .dsh-kpi .lbl,body[data-tema=gala] .kpi .k-lbl{font-size:12
 body[data-tema=gala] .dsh-kpi .chip.soft{background:none;padding:0;font-size:12px;font-weight:500;color:var(--soft)}
 body[data-tema=gala] .dsh-kpi-val{font-weight:600;font-size:clamp(23px,2.05vw,30px);letter-spacing:-.035em;line-height:1.1;margin-top:10px}
 body[data-tema=gala] .dsh-kpi-foot{font-size:12.5px;margin-top:5px}
-body[data-tema=gala] .dsh-kpi-foot b{font-family:var(--fnum);font-variant-numeric:tabular-nums;font-weight:600}
+body[data-tema=gala] .dsh-kpi-foot b{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-weight:600}
 body[data-tema=gala] .dsh-kpi-vis{margin-top:14px}
 body[data-tema=gala] .dsh-bullet{height:6px;background:var(--poco);border-color:var(--hair)}
 body[data-tema=gala] .dsh-bullet s{top:-5px;height:14px;opacity:.75}
@@ -1617,7 +1617,7 @@ body[data-tema=gala] #view tbody td{padding:13px 16px;border-bottom-color:var(--
 body[data-tema=gala] #view tbody tr{transition:background-color .12s}
 body[data-tema=gala] #view tbody tr:hover{background:var(--realce)}
 body[data-tema=gala] #view .est-pos td:first-child{font-weight:600;letter-spacing:-.005em}
-body[data-tema=gala] #view td.num .input{font-family:var(--fnum);font-variant-numeric:tabular-nums;border-radius:8px;border-color:var(--hair)}
+body[data-tema=gala] #view td.num .input{font-family:var(--font-num);font-variant-numeric:tabular-nums;border-radius:8px;border-color:var(--hair)}
 @media(max-width:640px){body[data-tema=gala] table.tc td[data-l]::before{text-transform:none;letter-spacing:0;font-weight:500;font-size:12px;color:var(--soft);margin-bottom:3px}
   body[data-tema=gala] table.tc tr{padding:15px 16px;border-bottom-color:var(--hair);gap:10px 14px}
   body[data-tema=gala] #view .scroll-x table.tc td:first-child,body[data-tema=gala] table.tc td:first-child{font-size:16px}
@@ -1643,8 +1643,8 @@ body[data-tema=gala] #ec_rows [data-cab]::after{content:"";flex:1;height:1px;bac
 body[data-tema=gala] #ec_rows [data-id]{border-top-color:var(--hair)!important;padding:9px 0!important}
 body[data-tema=gala] #ec_rows [data-cab]+[data-id]{border-top-color:transparent!important}
 body[data-tema=gala] #ec_rows [data-id]>div:first-child>div:first-child{font-size:14.5px!important;letter-spacing:-.005em}
-body[data-tema=gala] #ec_rows .input{font-family:var(--fnum);font-variant-numeric:tabular-nums;font-weight:600;font-size:15px}
-body[data-tema=gala] #ec_rows [id^=ec_dif_]{font-family:var(--fnum);font-variant-numeric:tabular-nums}
+body[data-tema=gala] #ec_rows .input{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-weight:600;font-size:15px}
+body[data-tema=gala] #ec_rows [id^=ec_dif_]{font-family:var(--font-num);font-variant-numeric:tabular-nums}
 body[data-tema=gala] #ec_total{border-top:1px solid var(--fio)!important;padding-top:14px!important;margin-top:10px!important}
 @media(max-width:640px){body[data-tema=gala] #ec_rows [data-id]{padding:12px 0!important}
   body[data-tema=gala] #ec_rows [data-id]>div:first-child>div:first-child{font-size:16px!important}
@@ -1659,7 +1659,7 @@ body.dark[data-tema=gala] .tag-gray{background:rgba(255,255,255,.07)}
 @media(prefers-reduced-motion:reduce){body[data-tema=gala] .btn:active{transform:none}body[data-tema=gala] .modal{animation:none}body[data-tema=gala] .pill-filter.tabs button::after{transition:none}}
 
 /* ================= 2. LINHO ================= */
-body[data-tema=linho]{--fnum:'Figtree',Inter,system-ui,sans-serif;--ftit:'Figtree',Inter,system-ui,sans-serif;font-family:'Figtree',Inter,system-ui,sans-serif;
+body[data-tema=linho]{--font-num:'Figtree',Inter,system-ui,sans-serif;--ftit:'Figtree',Inter,system-ui,sans-serif;font-family:'Figtree',Inter,system-ui,sans-serif;
   --bg:#F2EDE4;--card:#FFFDF9;--line:#E6DDCC;--ink:#1C2540;--muted:#57513F;--soft:#6A6453;
   --navy:#1D3573;--navy-700:#172B5E;--gold:#86693A;--green:#147A52;--red:#C0392F;--gold-soft:#C2A875;--blue-bg:#E7EBF4;--amber-bg:#F6ECD9;--green-bg:#E4F1E6;--red-bg:#F8E5E0;--radius:22px;
   --shadow:0 1px 2px rgba(74,56,24,.05),0 16px 36px -16px rgba(74,56,24,.24);--shadow-lg:0 30px 64px -20px rgba(74,56,24,.34);
@@ -1723,7 +1723,7 @@ body.dark[data-tema=linho] .dsh-kpi .chip.soft,body.dark[data-tema=linho] .dsh-b
 body[data-tema=linho] tbody tr:hover{background:#FAF5EC}
 
 /* ================= 3. MARINHO MODERNO ================= */
-body[data-tema=marinho]{--fnum:'Manrope',Inter,system-ui,sans-serif;--ftit:'Manrope',Inter,system-ui,sans-serif;
+body[data-tema=marinho]{--font-num:'Manrope',Inter,system-ui,sans-serif;--ftit:'Manrope',Inter,system-ui,sans-serif;
   --bg:#EDF0F6;--card:#FFFFFF;--line:#DEE3ED;--ink:#0E1A3A;--muted:#465372;--soft:#596583;
   --navy:#1D3573;--navy-700:#172B5E;--gold:#86693A;--green:#147A52;--red:#C0392F;--gold-soft:#C9B07E;--band:#1D3573;--band2:#23408A;--radius:16px;
   --shadow:0 1px 2px rgba(14,26,58,.06),0 18px 38px -16px rgba(14,26,58,.30);--shadow-lg:0 30px 64px -20px rgba(14,26,58,.40);
@@ -1802,7 +1802,7 @@ body[data-tema] #view .dsh-legend i[style*="--gold"]{background:var(--d-desp)!im
 body[data-tema] #view .dsh-chart rect[opacity=".55"]{opacity:.5}
 body[data-tema] #view .dsh-chart rect[opacity=".9"]{opacity:1}
 /* números do Dashboard: Marinho passa a usar a mesma letra reta das outras (o 1 da Manrope abria buraco no meio do valor) */
-body[data-tema=marinho]{--fnum:'Geist','Manrope',Inter,system-ui,sans-serif}
+body[data-tema=marinho]{--font-num:'Geist','Manrope',Inter,system-ui,sans-serif}
 }
 </style>
 </head>
@@ -3362,7 +3362,7 @@ function dashBullet(val,meta,cor,extra){const esc_=Math.max(val,meta,extra||0)*1
   return `<div class="dsh-bullet"><i style="width:${w}%;background:${cor}"></i><s style="left:${m}%" title="meta"></s>${extra!=null?`<u style="left:${clamp(extra/esc_*100,0,100)}%" title="teórico"></u>`:''}</div>`;}
 /* arco do ponto de equilíbrio */
 function dashArc(pct,cor){const r=78,cx=100,cy=100,len=Math.PI*r;const p=clamp(pct,0,100)/100;
-  return `<svg viewBox="0 0 200 108" class="dsh-arc"><path d="M${cx-r} ${cy} A${r} ${r} 0 0 1 ${cx+r} ${cy}" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/><path d="M${cx-r} ${cy} A${r} ${r} 0 0 1 ${cx+r} ${cy}" fill="none" stroke="${cor}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${(len*p).toFixed(1)} ${len.toFixed(1)}"/><text x="100" y="88" text-anchor="middle" font-family="Fraunces,serif" font-weight="700" font-size="34" fill="${cor}">${fmtN(Math.min(pct,999),pct>=100?0:1)}%</text><text x="100" y="104" text-anchor="middle" font-size="10.5" fill="var(--soft)">da meta do período</text></svg>`;}
+  return `<svg viewBox="0 0 200 108" class="dsh-arc"><path d="M${cx-r} ${cy} A${r} ${r} 0 0 1 ${cx+r} ${cy}" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/><path d="M${cx-r} ${cy} A${r} ${r} 0 0 1 ${cx+r} ${cy}" fill="none" stroke="${cor}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${(len*p).toFixed(1)} ${len.toFixed(1)}"/><text x="100" y="88" text-anchor="middle" font-family="var(--font-num)" style="font-variant-numeric:tabular-nums" font-weight="700" font-size="34" fill="${cor}">${fmtN(Math.min(pct,999),pct>=100?0:1)}%</text><text x="100" y="104" text-anchor="middle" font-size="10.5" fill="var(--soft)">da meta do período</text></svg>`;}
 /* barras dos últimos meses, com eixo e grade, no tamanho real do quadro */
 function dashSvgMeses(ms,W,H){W=W||520;H=H||200;const fs=clamp(Math.round(H/17),10,12.5),axL=Math.min(56,W*0.13),pad=8,top=fs+12,base=H-fs-8;
   const max0=Math.max(1,...ms.map(x=>Math.max(x.rec,x.desp)));const step=Math.pow(10,Math.floor(Math.log10(max0)));const nice=Math.ceil(max0/(step/2))*(step/2);const max=nice||1;
@@ -3373,7 +3373,7 @@ function dashSvgMeses(ms,W,H){W=W||520;H=H||200;const fs=clamp(Math.round(H/17),
 /* três barras de CMV contra a meta */
 function dashCmvBars(itens,meta,W,H){W=W||300;H=H||180;const fs=clamp(Math.round(H/15),10,12.5);const top=fs*2+10,base=H-fs-10;const max=Math.max(meta,...itens.map(i=>i.v||0))*1.18||1;
   const slot=W/itens.length,bw=Math.min(slot*0.46,60);const y=v=>base-(v/max)*(base-top);const x=i=>i*slot+slot/2;const ym=y(meta);
-  const barras=itens.map((it,i)=>{const cor=it.v!=null?cmvCorRef(it.v):'var(--line)';return `<g>${it.v!=null?`<rect x="${(x(i)-bw/2).toFixed(1)}" y="${y(it.v).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0,base-y(it.v)).toFixed(1)}" rx="6" fill="${cor}" opacity=".9"/>`:`<rect x="${(x(i)-bw/2).toFixed(1)}" y="${y(meta*0.6).toFixed(1)}" width="${bw.toFixed(1)}" height="${(base-y(meta*0.6)).toFixed(1)}" rx="6" fill="none" stroke="var(--line)" stroke-dasharray="4 4"/>`}<text x="${x(i).toFixed(1)}" y="${(it.v!=null?y(it.v):y(meta*0.6))-6}" text-anchor="middle" font-family="Fraunces,serif" font-weight="700" font-size="${fs+6}" fill="${it.v!=null?cor:'var(--soft)'}">${it.v!=null?fmtPct(it.v):'—'}</text><text x="${x(i).toFixed(1)}" y="${H-1}" text-anchor="middle" font-size="${fs}" fill="var(--muted)">${it.n}</text></g>`;}).join('');
+  const barras=itens.map((it,i)=>{const cor=it.v!=null?cmvCorRef(it.v):'var(--line)';return `<g>${it.v!=null?`<rect x="${(x(i)-bw/2).toFixed(1)}" y="${y(it.v).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0,base-y(it.v)).toFixed(1)}" rx="6" fill="${cor}" opacity=".9"/>`:`<rect x="${(x(i)-bw/2).toFixed(1)}" y="${y(meta*0.6).toFixed(1)}" width="${bw.toFixed(1)}" height="${(base-y(meta*0.6)).toFixed(1)}" rx="6" fill="none" stroke="var(--line)" stroke-dasharray="4 4"/>`}<text x="${x(i).toFixed(1)}" y="${(it.v!=null?y(it.v):y(meta*0.6))-6}" text-anchor="middle" font-family="var(--font-num)" style="font-variant-numeric:tabular-nums" font-weight="700" font-size="${fs+6}" fill="${it.v!=null?cor:'var(--soft)'}">${it.v!=null?fmtPct(it.v):'—'}</text><text x="${x(i).toFixed(1)}" y="${H-1}" text-anchor="middle" font-size="${fs}" fill="var(--muted)">${it.n}</text></g>`;}).join('');
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:100%;display:block"><line x1="0" x2="${W}" y1="${ym.toFixed(1)}" y2="${ym.toFixed(1)}" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="5 4" opacity=".55"/>${barras}</svg>`;}
 function viewDashboard(){
   $('#topActions').innerHTML=periodoSeletor();
@@ -4601,7 +4601,7 @@ function simRecalc(){
   const el=$('#sim_out');if(!el)return;
   el.innerHTML=`<div class="wiz-calc" style="margin:0">
     <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Preço de venda sugerido</div>
-    <div style="font-size:28px;font-weight:700;color:var(--navy);font-family:'Fraunces',serif">${preco>0?fmtBRL(preco):'—'}</div>
+    <div style="font-size:28px;font-weight:700;color:var(--navy);font-family:var(--font-num);font-variant-numeric:tabular-nums">${preco>0?fmtBRL(preco):'—'}</div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:13px">
       <span>CMV <b>${fmtPct(cmvPct)}</b></span>
       <span>MC <b style="color:var(--green)">${fmtPct(mcPct)} · ${fmtBRL(mcRS)}</b></span>
@@ -5023,7 +5023,7 @@ function viewEngenharia(){
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:14px;margin-bottom:18px">
     ${ORDEM.map(c=>`<div class="eng-stat" style="--c:${colorOf(c)}">
       <div style="display:flex;gap:13px;align-items:flex-start">
-        <div style="font-family:'Fraunces',serif;font-size:34px;font-weight:600;line-height:.9;color:${colorOf(c)}">${countBy[c]||0}</div>
+        <div style="font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:34px;font-weight:600;line-height:.9;color:${colorOf(c)}">${countBy[c]||0}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:12.5px;font-weight:700;color:${colorOf(c)}">${ENG_GLYPH[c]} ${c}</div>
           <div style="font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:3px">${GUIA[c]}</div></div>
@@ -5062,7 +5062,7 @@ function viewEngenharia(){
           <span class="eng-rank" style="background:${colorOf(x.classe)}">${x.n}</span>
           <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.f.nome)}</div>
             <div style="font-size:11px;color:var(--soft)">${x.pop} vendas/mês${porMC?' · '+fmtBRL(x.marg*x.pop)+'/mês':''}</div></div>
-          <div style="text-align:right;flex:0 0 auto"><div style="font-weight:700;font-size:15px;font-family:'Fraunces',serif;color:${porMC?(x.marg>=corte?'var(--green)':'var(--red)'):cmvCorRef(x.cmv)}">${fmtVal(val(x))}</div>
+          <div style="text-align:right;flex:0 0 auto"><div style="font-weight:700;font-size:15px;font-family:var(--font-num);font-variant-numeric:tabular-nums;color:${porMC?(x.marg>=corte?'var(--green)':'var(--red)'):cmvCorRef(x.cmv)}">${fmtVal(val(x))}</div>
             <span class="tag ${engTag(x.classe)}" style="margin-top:2px">${x.classe}</span></div>
         </div>`).join('')}</div>
     </div>
@@ -7551,7 +7551,7 @@ function funcDespModal(i){const f=DB.fin.funcionarios[i];if(!f)return;const ym=c
         <div class="money-wrap"><span class="money-pre">R$</span><input class="input money-inp" inputmode="numeric" id="fd_v_${it.k}" value="${fmtMoneyInput(l?l.valor:it.v)}" oninput="moneyMask(this);funcDespTotal()"></div>
       </div>`;}).join('')}
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:13px"><span style="color:var(--muted)">Total selecionado</span><b id="fd_total" style="font-family:'Fraunces',serif;font-size:18px">R$ 0,00</b></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:13px"><span style="color:var(--muted)">Total selecionado</span><b id="fd_total" style="font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:18px">R$ 0,00</b></div>
   </div>
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="funcDespLancar()">Lançar no DRE</button></div>`,true);
   funcDespTotal();}
@@ -7648,7 +7648,7 @@ function finFolha(){
       <td class="num">${fmtBRL(m.bruto)}</td><td class="num">${fmtBRL(m.porFora)}</td><td class="num" style="color:${m.vales>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.vales)}</td><td class="num" style="color:${m.consumo>0?'var(--red)':'var(--soft)'}">${fmtBRL(m.consumo)}</td><td class="num">${fmtBRL(m.beneficios)}</td>
       ${campos.map(c=>{const v=valCampo(f,c);return `<td class="num" style="color:${corCampo(c,v)}">${fmtBRL(v)}</td>`;}).join('')}
       <td class="num" style="color:var(--muted)">${fmtBRL(m.inss)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.fgts)}</td><td class="num" style="color:var(--muted)">${fmtBRL(m.prov)}</td>
-      <td class="num"><b>${fmtBRL(m.liquido)}</b></td><td class="num"><b style="color:var(--navy);font-family:'Fraunces',serif">${fmtBRL(m.total)}</b></td>
+      <td class="num"><b>${fmtBRL(m.liquido)}</b></td><td class="num"><b style="color:var(--navy);font-family:var(--font-num);font-variant-numeric:tabular-nums">${fmtBRL(m.total)}</b></td>
       <td style="text-align:center">${pagoCel}</td>
       <td><span style="display:inline-flex;gap:4px"><button class="icon-btn" title="Extras do mês (horas extras, DSR, descontos…)" onclick="funcExtrasModal(${i})" style="width:auto;padding:0 7px;font-size:10.5px;font-weight:700;${m.extrasProv||m.extrasDesc?'color:var(--navy);border-color:var(--navy)':''}">＋/−</button><button class="icon-btn" title="Lançar encargos e despesas deste colaborador (INSS, FGTS, férias, 13º, provisão, benefícios)" onclick="funcDespModal(${i})" style="width:auto;padding:0 8px;font-size:10.5px;font-weight:700;${funcDespLancados(f,ym).length?'color:var(--green);border-color:var(--green)':''}">Encargos${funcDespLancados(f,ym).length?' ✓':''}</button><button class="icon-btn" title="Editar" onclick="funcEdit(${i})">${icoEdit}</button><button class="mini-del" title="Remover" onclick="funcDel(${i})">${icoX}</button></span></td>
     </tr>`;}).join('');
@@ -7665,12 +7665,12 @@ function finFolha(){
         ${current==='folha'?'':`<button class="btn btn-primary btn-sm" onclick="funcEdit(null)">${icoPlus} Novo funcionário</button>`}
       </div></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px;margin:14px 0 18px">
-      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Bruto total</div><div style="font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-top:3px">${fmtBRL(tot.bruto)}</div></div>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Líquido a pagar</div><div style="font-family:'Fraunces',serif;font-size:19px;font-weight:600;color:var(--green);margin-top:3px">${fmtBRL(tot.liquido)}</div><div style="font-size:10.5px;color:var(--soft);margin-top:2px">${pagos}/${ativos.length} pagos</div></div>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">INSS</div><div style="font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-top:3px">${fmtBRL(tot.inss)}</div></div>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">FGTS</div><div style="font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-top:3px">${fmtBRL(tot.fgts)}</div></div>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Provisões 13º+Férias</div><div style="font-family:'Fraunces',serif;font-size:19px;font-weight:600;margin-top:3px">${fmtBRL(tot.prov)}</div></div>
-      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(29,53,115,.08),transparent)"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Custo total da empresa</div><div style="font-family:'Fraunces',serif;font-size:21px;font-weight:600;color:var(--navy);margin-top:3px">${fmtBRL(tot.total)}</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Bruto total</div><div style="font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:19px;font-weight:600;margin-top:3px">${fmtBRL(tot.bruto)}</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Líquido a pagar</div><div style="font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:19px;font-weight:600;color:var(--green);margin-top:3px">${fmtBRL(tot.liquido)}</div><div style="font-size:10.5px;color:var(--soft);margin-top:2px">${pagos}/${ativos.length} pagos</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">INSS</div><div style="font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:19px;font-weight:600;margin-top:3px">${fmtBRL(tot.inss)}</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">FGTS</div><div style="font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:19px;font-weight:600;margin-top:3px">${fmtBRL(tot.fgts)}</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Provisões 13º+Férias</div><div style="font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:19px;font-weight:600;margin-top:3px">${fmtBRL(tot.prov)}</div></div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(29,53,115,.08),transparent)"><div style="font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">Custo total da empresa</div><div style="font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:21px;font-weight:600;color:var(--navy);margin-top:3px">${fmtBRL(tot.total)}</div></div>
     </div>
     ${ativos.length>8?buscaLista('Buscar funcionário','#folhaTb','','margin-bottom:10px'):''}${ativos.length?`<div class="folha-scroll"><table class="tc" style="width:100%;border-collapse:collapse;font-size:12.5px"><thead>${head}</thead><tbody id="folhaTb">${rowsByCat}</tbody></table></div>`:`<div style="text-align:center;padding:36px 0;color:var(--soft)">${todos.length?`Nenhum funcionário ativo em <b>${ymLabel(ym)}</b>. Selecione outro mês ou cadastre.`:'Nenhum funcionário cadastrado.'} <a class="tag tag-gold" style="cursor:pointer" onclick="funcEdit(null)">Adicionar →</a></div>`}
     <details class="ux-ajuda"><summary>Como funciona</summary><div style="font-size:11.5px;color:var(--soft);margin-top:14px;border-top:1px solid var(--line);padding-top:10px;line-height:1.55">
@@ -8015,7 +8015,7 @@ function finVisao(t){
     <div class="card card-pad">
       <div class="section-head"><div><div class="ttl">Próximos vencimentos</div><div class="desc">Contas a pagar em aberto</div></div></div>
       ${venc.length?venc.slice(0,8).map(x=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
-        <div style="width:42px;text-align:center"><div style="font-size:15px;font-weight:700;font-family:'Fraunces',serif;line-height:1">${(x.vencimento||'').split('-')[2]||'—'}</div><div style="font-size:9.5px;color:var(--soft)">${fmtData(x.vencimento).split('/')[1]?'/'+fmtData(x.vencimento).split('/')[1]:''}</div></div>
+        <div style="width:42px;text-align:center"><div style="font-size:15px;font-weight:700;font-family:var(--font-num);font-variant-numeric:tabular-nums;line-height:1">${(x.vencimento||'').split('-')[2]||'—'}</div><div style="font-size:9.5px;color:var(--soft)">${fmtData(x.vencimento).split('/')[1]?'/'+fmtData(x.vencimento).split('/')[1]:''}</div></div>
         <div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(x.descricao||'—')}</div><div style="font-size:11px;color:var(--soft)">${esc(x.categoria||'')}</div></div>
         <div style="font-size:13.5px;font-weight:700;color:var(--red)">${fmtBRL(x.valor)}</div></div>`).join(''):`<div style="font-size:13px;color:var(--soft);padding:8px 0">Nenhum vencimento em aberto.</div>`}
     </div>
@@ -8028,7 +8028,7 @@ function finCustosFixos(){
     ${finRecorrentes()}
     <div style="margin-top:18px"><div class="ttl" style="font-size:13px;margin-bottom:8px">Provisões a reservar / mês</div>
       ${finList('provisoes',[{f:'nome',ph:'Nome',w:'1.5fr'},{f:'valor',type:'money',w:'120px'}])}</div>
-    <div style="border-top:1px solid var(--line);margin-top:16px;padding-top:12px;display:flex;justify-content:space-between;font-size:14px"><b>Total fixo + pessoal</b><b style="font-family:'Fraunces',serif">${fmtBRL(custosFixosTotais())}</b></div>
+    <div style="border-top:1px solid var(--line);margin-top:16px;padding-top:12px;display:flex;justify-content:space-between;font-size:14px"><b>Total fixo + pessoal</b><b style="font-family:var(--font-num);font-variant-numeric:tabular-nums">${fmtBRL(custosFixosTotais())}</b></div>
   </div>`;
 }
 /* ---- Editor de canais de venda (Parâmetros) ---- */
@@ -8875,7 +8875,7 @@ function viewMapa(){
   $('#view').innerHTML=`<div style="max-width:860px">
     <div class="card card-pad" style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
-        <div style="position:relative;flex-shrink:0">${ringSVG(pct)}<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'Fraunces',serif;font-size:19px">${pct}%</div></div>
+        <div style="position:relative;flex-shrink:0">${ringSVG(pct)}<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:19px">${pct}%</div></div>
         <div style="flex:1;min-width:200px">
           <div class="ttl" style="font-size:18px">Plano de Guerra</div>
           <div class="desc">${feitas} de ${ts.length} tarefas concluídas${atrasadas?` · <span style="color:var(--red);font-weight:600">${atrasadas} atrasada(s)</span>`:''}</div>
@@ -10681,7 +10681,7 @@ function viewEstoque(){
   <div class="card card-pad no-print" style="margin-bottom:16px">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div><div class="ttl">${filtrada.length}${LC.sel.length?' de '+comprarList.length:''} item(ns) para comprar</div><div class="desc">Agrupe por fornecedor ou categoria e, se quiser, puxe só alguns. A impressão sai do mesmo jeito.</div></div>
-      ${podeVerValores()?`<div style="font-size:20px;font-weight:700;font-family:'Fraunces',serif">Total: ${fmtBRL(totalFiltro)}</div>`:''}
+      ${podeVerValores()?`<div style="font-size:20px;font-weight:700;font-family:var(--font-num);font-variant-numeric:tabular-nums">Total: ${fmtBRL(totalFiltro)}</div>`:''}
     </div>
     <div class="lc-bar">
       <div class="pill-filter" style="margin:0">${Object.entries(LC_AGRUP).map(([k,v])=>`<button class="${LC.agrup===k?'on':''}" onclick="lcSet('agrup','${k}')">Por ${v.rot}</button>`).join('')}</div>
@@ -10703,7 +10703,7 @@ function viewEstoque(){
           </tr>`).join('')}</tbody>
       </table></div>
     </div>`;}).join('')}
-  ${podeVerValores()?`<div class="card card-pad" style="display:flex;justify-content:space-between;align-items:center"><div class="ttl">Total ${LC.sel.length?'desta compra':'geral da compra'}</div><div style="font-size:22px;font-weight:700;font-family:'Fraunces',serif;color:var(--navy)">${fmtBRL(totalFiltro)}</div></div>`:''}`}`;
+  ${podeVerValores()?`<div class="card card-pad" style="display:flex;justify-content:space-between;align-items:center"><div class="ttl">Total ${LC.sel.length?'desta compra':'geral da compra'}</div><div style="font-size:22px;font-weight:700;font-family:var(--font-num);font-variant-numeric:tabular-nums;color:var(--navy)">${fmtBRL(totalFiltro)}</div></div>`:''}`}`;
   if(estoqueTab==='compras'&&LC_Q)lcFiltrar(LC_Q);
 }
 
@@ -12958,7 +12958,7 @@ function projetoHTML(o){const p=projEnsure(o);const pct=projPct(p);const atr=pro
       <div style="font-weight:700">Progresso do projeto <span class="gp-mini">(só tarefas pontuais${modelo==='essencial'?' das Etapas 1 a 4, PLL Evolution':''}; Onboarding e recorrentes não contam)</span></div>
       <div style="font-size:12.5px;color:var(--soft)">${feitas}/${cont.length} tarefas${atr?` · <span style="color:var(--red);font-weight:600">${atr} atrasada${atr>1?'s':''}</span>`:''}</div>
     </div>
-    <div style="display:flex;align-items:center;gap:12px"><div class="gp-prog ${pct>=100?'done':''}" style="height:10px"><i style="width:${pct}%"></i></div><div style="font-weight:700;font-size:18px;font-family:'Fraunces',serif;color:${pct>=100?'var(--green)':'var(--navy)'}">${pct}%</div></div>
+    <div style="display:flex;align-items:center;gap:12px"><div class="gp-prog ${pct>=100?'done':''}" style="height:10px"><i style="width:${pct}%"></i></div><div style="font-weight:700;font-size:18px;font-family:var(--font-num);font-variant-numeric:tabular-nums;color:${pct>=100?'var(--green)':'var(--navy)'}">${pct}%</div></div>
     <div class="pt-ctl">
       <label class="pt-ctl-f"><span>Programa</span><select class="input" onchange="projModeloSet(this.value)" title="PLL Evolution = Etapas 1 a 4 · PLL Scale = Etapas 1 a 6"><option value="essencial" ${modelo==='essencial'?'selected':''}>PLL Evolution · 1 a 4</option><option value="completo" ${modelo==='completo'?'selected':''}>PLL Scale · 1 a 6</option></select></label>
       <label class="pt-ctl-f"><span>Etapa atual</span><select class="input" onchange="projEtapaAtualSet(this.value)" title="Define a etapa que aceita marcar tarefas. As seguintes ficam bloqueadas até o portão fechar ou alguém liberar."><option value="">${bloq?'Desligar bloqueio (todas abertas)':'Sem bloqueio · automática'+(info.etapa?' ('+esc(info.etapa)+')':'')}</option>${fases.map(f=>`<option value="${esc(f.nome)}" ${bloq&&p.etapaAtual===f.nome?'selected':''}>${esc(f.nome)}</option>`).join('')}</select></label>
