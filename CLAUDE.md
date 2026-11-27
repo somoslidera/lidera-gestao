@@ -31,6 +31,19 @@ Quem usa é dono de restaurante e a equipe dele, e **a maioria usa pelo celular*
 
 **Uma aba aberta com código antigo continua rodando o código antigo** até recarregar, e salva na mesma base. Mudança que reescreve dados (migração no `normData`, por exemplo) precisa conviver com a versão anterior.
 
+## Trabalho em equipe: antes de começar
+
+Duas frentes mexem no Flow ao mesmo tempo, a Lidera e a Adventure. As duas usam a mesma conta do GitHub, e quase tudo está num arquivo só. Para ninguém desfazer o trabalho do outro, o Claude segue estes passos em toda sessão, sem precisar que peçam:
+
+1. **Atualizar antes de tudo:** `git switch main && git pull --ff-only`. Se houver mudança local que não foi salva num commit, pare e pergunte o que fazer com ela.
+2. **Ver o que está em andamento:** `gh pr list --state open`. Em cada PR aberto, olhe o título e as funções que ele mexe (`gh pr diff <n>`). Se algum mexe na mesma tela ou nas mesmas funções do pedido, **pare e avise**: "a tela X está em andamento no PR #N; combine com o outro responsável antes". Não continue por cima.
+3. **Marcar a tela como ocupada logo no começo:** crie a branch com o prefixo de quem pediu (`lidera/<tema>` ou `adv/<tema>`), faça um primeiro commit pequeno e abra o PR como **rascunho** (`gh pr create --draft`), com a tela no título (ex.: "Estoque → Posição: …"). O rascunho é o aviso para o outro lado.
+4. **Um assunto por PR.** Pedido de outra tela vai em outra branch e outro PR.
+5. **Quem fez fica no commit:** como a conta do GitHub é compartilhada, o nome da pessoa vai no autor do commit. Na primeira sessão nesta pasta, se `git config user.name` estiver vazio ou genérico, pergunte o nome e rode `git config user.name "<nome> (<empresa>)"`. A configuração vale só para esta pasta.
+6. **No corpo do PR, sempre:** quem pediu, quem fez (pessoa ou agente) e se foi testado no preview.
+7. **O Claude só faz o merge com ordem explícita.** Pode rodar `gh pr merge <n> --squash --delete-branch`, mas **só quando a pessoa disser, na conversa, que testou no preview e que pode subir**. Antes, `gh pr view <n>` precisa mostrar a branch em dia com a `main`. Se não estiver, atualize e espere o preview novo. Lembre: merge é deploy em produção.
+8. **Conflito:** se o GitHub acusar conflito ou "out-of-date", o Claude atualiza a branch com a `main` e resolve. Se o conflito cair numa parte que o outro lado acabou de mudar, pergunte antes de escolher qual versão fica.
+
 ## Como está organizado
 
 | Caminho | O que é |
@@ -208,5 +221,5 @@ Quem usa é dono de restaurante e a equipe dele, e **a maioria usa pelo celular*
 
 - Diga a tela e o fluxo (ex.: "Lançamentos → Notas da Sefaz → Revisar e lançar") e o que você esperava ver.
 - Peça para o Claude criar a branch e o PR, e testar no preview com o print de 390 px.
-- Você testa no link do preview do PR e, se estiver certo, clica em Merge.
+- Você testa no link do preview do PR e, se estiver certo, clica em Merge ou diz ao Claude que pode subir (veja "Trabalho em equipe", passo 7).
 - O Claude não grava no banco de produção, não faz deploy de Edge Function e não mexe em segredo.
