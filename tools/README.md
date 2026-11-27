@@ -20,6 +20,7 @@ O Flow não tem homologação: o `index.html` do repo fala com o banco de **prod
 python3 tools/preview_build.py          # monta _site/
 python3 tools/serve.py                  # abre em http://localhost:4179
 # smoke (1ª vez: cd tools/smoke && npm ci && npx playwright install chromium)
+node tools/smoke/req-setor.mjs          # requisição por setor: chefe só pede para o próprio setor (pela tela e pelas funções), em 1280 e 390 px
 cd tools/smoke && npm run smoke         # prints em tools/smoke/prints/
 ```
 

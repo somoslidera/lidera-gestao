@@ -10760,7 +10760,7 @@ function opSetQtd(id,i,v){const o=estOrdens().find(x=>x.id===id);const it=o&&o.i
 function opDelItem(id,i){const o=estOrdens().find(x=>x.id===id);if(!o)return;o.itens.splice(i,1);save();opEditar(id);}
 function opCancelar(id){const o=estOrdens().find(x=>x.id===id);if(!o)return;if(!confirm('Cancelar esta ordem de produção? As produções já registradas continuam no estoque.'))return;o.status='cancelada';save();closeModal();viewEstoque();}
 function opGerarRequisicao(id){const o=estOrdens().find(x=>x.id===id);if(!o)return;if(!pode('req_criar'))return toast('Seu acesso não permite criar requisição');if(!estMultiArm())return toast('A requisição exige um segundo armazém (o setor de produção)');
-  const para=estArmValido(o.para);if(para===EST_ARM_PRINCIPAL)return toast('Escolha o setor que vai produzir: os insumos saem do principal para ele');
+  const para=estArmValido(o.para);if(para===EST_ARM_PRINCIPAL)return toast('Escolha o setor que vai produzir: os insumos saem do principal para ele');if(!estReqDestinoOk(para))return toast('Você só requisita para o seu setor');
   const itens=opInsumos(o).map(x=>{const tem=Math.max(0,estSaldoArm(x.ins,para));const falta=Math.max(0,estR(x.q+(+x.ins.reqMin||0)-tem,3));return {insumoId:x.insumoId,nec:estR(x.q,3),tem:estR(tem,3),qtd:estReqArredonda(falta,x.ins),manual:false};});
   if(!itens.length)return toast('Nada a requisitar: tudo já foi produzido');
   const r={id:uid(),data:o.data||hojeISO(),turno:'dia',de:EST_ARM_PRINCIPAL,para,status:'aberta',pratos:[],itens,obs:'Ordem de produção de '+fmtDataBR(o.data)+(o.obs?' · '+o.obs:''),criadoEm:new Date().toISOString(),transfId:'',por:quemSou(),opId:o.id};
@@ -10893,7 +10893,7 @@ function estReqHoras(iso){return iso?(Date.now()-new Date(iso).getTime())/360000
 function estReqTetoDe(ins,arm){const t=ins&&ins.reqTeto&&ins.reqTeto[arm];return +t>0?+t:0;}
 function estReqTeto(insId,arm,v){const ins=DB.insumos[insId];if(!ins)return;ins.reqTeto=ins.reqTeto||{};const n=parseFloat(v)||0;if(n>0)ins.reqTeto[arm]=n;else delete ins.reqTeto[arm];save();}
 function estReqAcimaTeto(r){return (r.itens||[]).filter(x=>{const i=DB.insumos[x.insumoId];const t=estReqTetoDe(i,r.para);return t>0&&+x.qtd>t;});}
-function estReqEnviar(id){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;if(!pode('req_criar'))return toast('Seu acesso não permite enviar requisição');
+function estReqEnviar(id){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;if(!pode('req_criar'))return toast('Seu acesso não permite enviar requisição');if(!estReqMinha(r)||!estReqDestinoOk(r.para))return toast('Você só requisita para o seu setor');
   const itens=(r.itens||[]).filter(x=>+x.qtd>0);if(!itens.length)return toast('Gere a lista ou adicione itens antes de enviar');
   const acima=estReqAcimaTeto(r);for(const x of acima){const i=DB.insumos[x.insumoId];if(x.justif)continue;const j=prompt(i.nome+': pedido de '+estQReq(x.qtd,i)+' passa do teto de '+estQReq(estReqTetoDe(i,r.para),i)+' para '+estArmNome(r.para)+'.\n\nJustifique (obrigatório):');if(!j||!j.trim())return toast('Sem justificativa o item acima do teto não pode ser enviado. Reduza a quantidade ou justifique.');x.justif=j.trim();}
   r.status='solicitada';r.enviadaEm=new Date().toISOString();r.por=r.por||quemSou();
@@ -10934,7 +10934,7 @@ function estReqConcluir(id){const r=estRequisicoes().find(x=>x.id===id);if(!r||e
 function estReqConfirmar(id){estReqConcluirModal(id);}
 let estReqSel=null;
 function estReqDestinoPadrao(){const c=estCfg();if(c.armVendas!==EST_ARM_PRINCIPAL)return c.armVendas;const a=estArmazens().find(x=>x.id!==EST_ARM_PRINCIPAL);return a?a.id:'';}
-function estRequisicoesHTML(){if(estReqSel){const r=estRequisicoes().find(x=>x.id===estReqSel);if(r)return estReqEditorHTML(r);estReqSel=null;}
+function estRequisicoesHTML(){if(estReqSel){const r=estRequisicoes().find(x=>x.id===estReqSel);if(estReqMinha(r))return estReqEditorHTML(r);estReqSel=null;}
   const todas=estRequisicoes().filter(r=>pode('req_separar')||setorPermitido(r.para));const multi=estMultiArm();const separa=pode('req_separar');
   const fila=todas.filter(estReqEmFila).sort((a,b)=>(a.enviadaEm||a.criadoEm||'').localeCompare(b.enviadaEm||b.criadoEm||''));
   const outras=todas.filter(r=>!estReqEmFila(r)).sort((a,b)=>((b.data||'')+(b.criadoEm||'')).localeCompare((a.data||'')+(a.criadoEm||'')));
@@ -10950,8 +10950,11 @@ function estRequisicoesHTML(){if(estReqSel){const r=estRequisicoes().find(x=>x.i
   ${outras.length?`<div class="card card-pad" style="margin-top:14px"><div class="ttl" style="margin-bottom:8px">Rascunhos e histórico</div><div class="scroll-x"><table>${cab}<tbody>${outras.slice(0,60).map(linha).join('')}</tbody></table></div></div>`:''}`;}
 function estArmCozinhaRapido(){const arms=estArmazens();if(arms.some(a=>a.id==='cozinha'))return toast('Já existe');arms.push({id:'cozinha',nome:'Cozinha'});estCfg().armVendas='cozinha';save();viewEstoque();toast('Armazém "Cozinha" criado. As vendas passam a baixar dele.');}
 function estReqSetoresDestino(){const s=meusSetores();return setoresSemPrincipal().filter(a=>!s||s.includes(a.id));}
+/* chefe de setor (sem a separação) só requisita para os setores dele, também pelas funções diretas */
+function estReqDestinoOk(arm){return !meusSetores()||pode('req_separar')||estReqSetoresDestino().some(a=>a.id===arm);}
+function estReqMinha(r){return !!r&&(pode('req_separar')||setorPermitido(r.para));}
 function estReqNova(){if(!pode('req_criar'))return toast('Seu acesso não permite criar requisição');
-  const dest=estReqSetoresDestino();const para=dest.length?(dest.some(a=>a.id===estReqDestinoPadrao())?estReqDestinoPadrao():dest[0].id):estReqDestinoPadrao();if(!para)return toast(meusSetores()?'Você não tem setor vinculado para requisitar':'Crie um segundo armazém primeiro');
+  const dest=estReqSetoresDestino();const para=dest.length?(dest.some(a=>a.id===estReqDestinoPadrao())?estReqDestinoPadrao():dest[0].id):estReqDestinoPadrao();if(!para||!estReqDestinoOk(para))return toast(meusSetores()?'Você não tem setor vinculado para requisitar':'Crie um segundo armazém primeiro');
   const r={id:uid(),data:hojeISO(),turno:'dia',de:EST_ARM_PRINCIPAL,para,status:'aberta',pratos:[],itens:[],obs:'',criadoEm:new Date().toISOString(),transfId:'',por:quemSou()};
   estRequisicoes().push(r);estReqSel=r.id;estoqueTab='requisicoes';save();viewEstoque();}
 function estReqAbrir(id){estReqSel=id;estoqueTab='requisicoes';viewEstoque();}
@@ -10997,12 +11000,12 @@ function estReqEditorHTML(r){const fichas=fichasVendaveis().slice().sort((a,b)=>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
       <div class="field" style="margin:0"><label>Data</label><input type="date" class="input" value="${r.data}" ${fechada?'disabled':''} onchange="estReqSet('${r.id}','data',this.value)"></div>
       <div class="field" style="margin:0"><label>Turno</label><select class="input" ${fechada?'disabled':''} onchange="estReqSet('${r.id}','turno',this.value)">${REQ_TURNOS.map(([v,l])=>`<option value="${v}" ${r.turno===v?'selected':''}>${l}</option>`).join('')}</select></div>
-      <div class="field" style="margin:0"><label>De</label>${estArmSelect('rq_de',r.de,`${fechada?'disabled':''} onchange="estReqSet('${r.id}','de',this.value)"`)}</div>
+      <div class="field" style="margin:0"><label>De</label>${meusSetores()&&!pode('req_separar')?`<select class="input" id="rq_de" disabled><option value="${esc(r.de)}">${esc(estArmNome(r.de))}</option></select>`:estArmSelect('rq_de',r.de,`${fechada?'disabled':''} onchange="estReqSet('${r.id}','de',this.value)"`)}</div>
       <div class="field" style="margin:0"><label>Para</label><select class="input" id="rq_para" ${fechada?'disabled':''} onchange="estReqSet('${r.id}','para',this.value)">${(meusSetores()&&!pode('req_separar')?estReqSetoresDestino():estArmazens()).map(a=>`<option value="${esc(a.id)}" ${a.id===r.para?'selected':''}>${esc(a.nome)}</option>`).join('')}</select></div>
       <div class="field" style="margin:0;flex:1 1 200px"><label>Observação</label><input class="input" value="${esc(r.obs||'')}" ${fechada?'disabled':''} placeholder="Ex.: evento à noite, 40 pessoas" onchange="estReqSet('${r.id}','obs',this.value)"></div>
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:${mob?'1fr':'minmax(0,1fr) minmax(0,1.3fr)'};gap:12px;align-items:start">
+  <div style="display:grid;grid-template-columns:${mob?'minmax(0,1fr)':'minmax(0,1fr) minmax(0,1.3fr)'};gap:12px;align-items:start">
     <div class="card card-pad no-print" style="padding:14px 16px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><div style="font-weight:700">1. Previsão de pratos e preparados <span class="gp-mini">${totPratos} no total</span></div>${fechada?'':`<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" style="padding:4px 9px;min-height:0;font-size:12px" title="Média das vendas registradas no mesmo dia da semana, últimas 4 semanas" onclick="estReqPreencherMedia('${r.id}')">Média do dia da semana</button><button class="btn btn-ghost btn-sm" style="padding:4px 9px;min-height:0;font-size:12px" title="Copia a previsão da última requisição do mesmo dia da semana" onclick="estReqCopiarUltima('${r.id}')">Repetir a última</button></div>`}</div>
       <input class="input" placeholder="🔎 Filtrar prato ou preparado" style="margin-bottom:6px;padding:7px 10px;font-size:13px" oninput="filtrarLinhas(this,'#rq_pratos')">
@@ -11033,7 +11036,7 @@ function estReqImprimir(id){const r=estRequisicoes().find(x=>x.id===id);if(!r)re
   pa.innerHTML=pgWrap(pa.innerHTML,'ct');document.body.classList.add('print-contagem');
   const fim=()=>{document.body.classList.remove('print-contagem');pa.innerHTML='';window.removeEventListener('afterprint',fim);};
   window.addEventListener('afterprint',fim);window.print();setTimeout(fim,1500);}
-function estReqSet(id,k,v){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r))return;r[k]=v;save();if(k==='de'||k==='para')viewEstoque();}
+function estReqSet(id,k,v){const r=estRequisicoes().find(x=>x.id===id);if(!r||!estReqEditavel(r)||!estReqMinha(r))return;if(k==='para'&&!estReqDestinoOk(v))return toast('Você só requisita para o seu setor');if(k==='de'&&meusSetores()&&!pode('req_separar'))return toast('A origem da requisição é definida pelo estoque');r[k]=v;save();if(k==='de'||k==='para')viewEstoque();}
 function estReqPrepsHTML(r,prev,fechada){const todos=Object.values(DB.insumos).filter(i=>i.tipo==='preparado').sort((a,b)=>a.nome.localeCompare(b.nome));
   const est=todos.filter(p=>p.estocavel&&prodNoSetor(p,r.para)),hora=todos.filter(p=>!p.estocavel&&(p.comps||[]).length);if(!est.length&&!hora.length)return '';
   const cab=(t,h)=>`<tr><td colspan="2" style="padding:10px 0 2px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--navy);font-weight:700;border:0">${t} <span class="gp-mini" style="text-transform:none;letter-spacing:0;font-weight:400">${h}</span></td></tr>`;
