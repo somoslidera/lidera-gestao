@@ -10,6 +10,7 @@ O Flow não tem homologação: o `index.html` do repo fala com o banco de **prod
 | `serve.py` | Serve o `_site/` em `http://localhost:4179`. Com `--producao`, serve o repo como está (cuidado: banco de produção). |
 | `smoke/` | Teste com Playwright: abre Flow e PDV do `_site/`, confere que nenhuma requisição vai ao Supabase e tira prints em 1280 px e 390 px (regra D9). |
 | `smoke/posicao.mjs` | Teste da aba Estoque → Posição: colunas "Última compra" e "Em pacotes", filtro de unidade e scorecards (Conferir embalagem, Preço subiu, Total em kg), em 1280 e 390 px. `node posicao.mjs` depois do `preview_build.py`. |
+| `smoke/ideal.mjs` | Teste da trava do estoque ideal e crítico: dono, administrador e quem tem a permissão marcada alteram; gerente, chefe e personalizado sem a permissão só veem, na Posição e no cadastro do produto. `node ideal.mjs` depois do `preview_build.py`. |
 
 ## Uso rápido
 
