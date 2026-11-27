@@ -213,6 +213,8 @@ async function dono(largura) {
   // Sair no rodapé do menu (no celular, dentro da gaveta, com 44 px)
   await gaveta(pag, largura);
   const sairMenu = pag.locator(".side-foot .side-sair");
+  const ed = await pag.evaluate(() => { const e = document.querySelector(".side-foot .foot-acts .side-edit"); return [e.scrollWidth, e.clientWidth]; });
+  checa(ed[0] <= ed[1] + 1, `${rot}: "Editar dados do negócio" cortado ao lado do Sair (${ed})`);
   if (cel(largura)) checa(await alvoToque(pag, sairMenu) >= 44, `${rot}: o Sair tem menos de 44 px de toque`);
   checa(!(await pag.locator("#sairTopo").isVisible()), `${rot}: o Sair do topo aparece com o menu à vista`);
   await sairMostraConfirmacao(pag, sairMenu, rot);
