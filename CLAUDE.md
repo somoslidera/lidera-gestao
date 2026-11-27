@@ -223,3 +223,10 @@ Duas frentes mexem no Flow ao mesmo tempo, a Lidera e a Adventure. As duas usam 
 - Peça para o Claude criar a branch e o PR, e testar no preview com o print de 390 px.
 - Você testa no link do preview do PR e, se estiver certo, clica em Merge ou diz ao Claude que pode subir (veja "Trabalho em equipe", passo 7).
 - O Claude não grava no banco de produção, não faz deploy de Edge Function e não mexe em segredo.
+
+## Como revisar mudança de permissão ou de dado
+
+- No link de preview (ou no `tools/serve.py`), use o botão **Simular**: troque o perfil (Dono, cada nível da Equipe ou Personalizado, com setores) e monte cenários de dados (restaurante com setores, produtos em pacote ou caixa). Nada vai para o banco.
+- O perfil passa pelo mesmo código do login de membro. Não cole comandos no console para trocar permissão: use o painel ou `flowSim` (veja `tools/README.md`).
+- O painel existe só no preview. O `index.html` não ganha nada dele, e `tools/smoke/simulacao.mjs` confere isso.
+- Regras do servidor (RLS, Edge Functions, gravação na nuvem) não são simuladas.

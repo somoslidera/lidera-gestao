@@ -5,6 +5,8 @@ O Flow não tem homologação: o `index.html` do repo fala com o banco de **prod
 | Arquivo | Para quê |
 |---|---|
 | `preview_build.py` | Monta `_site/`: tira a URL do Supabase (o app roda no "modo local", só no navegador), força a demonstração no PDV, põe a faixa "PREVIEW · sem banco" e carrega um restaurante de demonstração na primeira visita. Se sobrar qualquer menção ao banco de produção, **o build falha**. |
+| `preview_simulacao.js` | Painel **Simular** do preview (veja abaixo). O `preview_build.py` injeta só no `_site/`; o `index.html` do repo não ganha nada. |
+| `smoke/simulacao.mjs` | Teste do painel Simular: o painel existe no `_site/` e não no `index.html` do repo; Chefe de setor com 1 setor esconde as outras áreas e a Posição mostra só o setor; voltar a dono restaura tudo. 1280 e 390 px. `node simulacao.mjs` depois do `preview_build.py`. |
 | `serve.py` | Serve o `_site/` em `http://localhost:4179`. Com `--producao`, serve o repo como está (cuidado: banco de produção). |
 | `smoke/` | Teste com Playwright: abre Flow e PDV do `_site/`, confere que nenhuma requisição vai ao Supabase e tira prints em 1280 px e 390 px (regra D9). |
 | `smoke/posicao.mjs` | Teste da aba Estoque → Posição: colunas "Última compra" e "Em pacotes", filtro de unidade e scorecards (Conferir embalagem, Preço subiu, Total em kg), em 1280 e 390 px. `node posicao.mjs` depois do `preview_build.py`. |
@@ -19,6 +21,20 @@ cd tools/smoke && npm run smoke         # prints em tools/smoke/prints/
 ```
 
 Para abrir o preview com a base vazia: `?vazio=1`. Para zerar a demonstração, limpe os dados do site no navegador.
+
+## Simular perfil de usuário e cenário de dados (painel "Simular")
+
+No preview, o app abre sempre como **dono** e com o restaurante de demonstração. Para revisar uma mudança que depende de **quem** está logado ou de **como** está o dado, use o botão **Simular** (canto de baixo, à direita, acima da faixa PREVIEW). Nada vai para o banco: tudo fica no navegador de quem abriu.
+
+- **Perfil:** escolha Dono, um nível de `NIVEIS` (Administrador, Gerente, Operador, Estoquista, Estoquista + compras, Chefe de setor, Chefe da produção, Compras, Fiscal, Financeiro) ou Personalizado (marque áreas e permissões). Para níveis com setor, marque os setores. **Aplicar perfil** cria um membro de teste na Equipe ("Simulação do preview") e roda o **mesmo trecho do login de membro** do `index.html` (o `preview_build.py` copia o trecho de `entrarComoCliente` na hora do build; se o login mudar e o trecho sumir, o build falha). O botão vira o selo "Simulando: …". Recarregar a página mantém a simulação. **Voltar a dono** apaga o membro de teste e reabre o app.
+- **Cenários de dados** (só dados fictícios da demonstração):
+  - *Restaurante com setores*: cria Cozinha, Pizzaria e Churrascaria além do principal, vincula categorias aos setores, cria a Farinha de trigo e o preparado Massa de pizza (da Pizzaria) e põe saldo em cada setor pelo livro (entrada + transferência).
+  - *Produtos em pacote e caixa*: arroz em PCT de 5 kg, óleo em CX, refrigerante em FD, feijão com 1 kg por pacote ("confira?") e tomate que chegou em CX sem embalagem.
+  - *Zerar e recarregar demonstração*: apaga o que foi feito neste navegador e recarrega a demonstração.
+  - *Abrir um arquivo .json exportado*: abre um `DB` exportado (botão "Exportar backup (JSON)" nas Configurações) só neste navegador. O painel só lê o arquivo escolhido; nada é enviado. **Nunca coloque esse arquivo no repositório.**
+- **Pelo console** (para testes automáticos): `flowSim.aplicar({nivel:'chefe',setores:['cozinha']})`, `flowSim.setores()`, `flowSim.pacotes()`, `flowSim.dono()`.
+
+O que o painel **não** simula: regras do servidor (RLS do Supabase, Edge Functions, gravação na nuvem, `merge3`, notificações entre sessões), login de verdade (senha, troca de unidade, painel admin/consultor) e o que depende de `CLOUD` ou `ORG` (por exemplo, transferência entre unidades). Isso continua precisando de teste combinado com os responsáveis.
 
 ## Preview por PR (Cloudflare Pages, decisão D5)
 
@@ -48,3 +64,5 @@ Para gravar uma demonstração, rode o roteiro antes no Playwright, contra o pre
 ## Quando o build falha
 
 O `preview_build.py` procura trechos exatos do `index.html` e do `pdv/index.html`, como `const SUPA_URL='…'` e `DEMO=QS.has('demo')||`. Se alguém mudar essas linhas, o build para com a mensagem "O código mudou". Ajuste o padrão no script. Não desligue a conferência.
+
+O mesmo vale para o painel Simular: o build copia o trecho do login de membro de `entrarComoCliente` (de `MEMBRO_PERMS=null;…` até `if(MEMBRO_PERMS){aplicarAcessoMembro();go(MEMBRO_PERMS[0]);}`). Se esse trecho mudar de forma, o build falha. Ajuste `trecho_login()` no `preview_build.py` e rode `tools/smoke/simulacao.mjs`.
