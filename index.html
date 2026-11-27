@@ -1389,6 +1389,12 @@ button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible,
   .ux-conf-box{border-radius:18px 18px 0 0;max-width:none;padding-bottom:22px}
   .ux-conf-b .btn{flex:1;justify-content:center;min-height:46px}
 }
+/* KPI: valor numa linha; kpiFit() reduz a fonte só do que não cabe (27/11: valor na casa dos milhões cortava com 4-5 cartões lado a lado) */
+@media screen{.kpi .k-val{white-space:nowrap}
+.kpi:has(.ic){grid-template-columns:44px minmax(0,1fr)}
+.kpi.kpi-estreito:has(.ic){display:block}
+.kpi.kpi-estreito:has(.ic) .ic{width:34px;height:34px;margin-bottom:8px}
+.kpi .k-lbl,.kpi .k-sub{overflow-wrap:break-word;min-width:0}}
 </style>
 </head>
 <body>
@@ -9480,7 +9486,16 @@ function uxTabelas(root){if(!root)return;root.querySelectorAll('table.tc').forEa
       else{td.setAttribute('data-l',hs[col]||'');const tx=td.textContent.trim();if((!tx||tx==='—'||tx==='-')&&col>0&&!td.querySelector('input,select,button,svg,img,a'))td.classList.add('tc-vazio');}
       col+=span;});});});}
 let _uxRaf=0;
-function uxAplicar(){_uxRaf=0;try{uxTabelas(document.getElementById('view'));uxIcones(document.body);}catch(e){}}
+/* valor de KPI que não cabe no cartão: reduz a fonte até caber (mínimo 12 px); se nem assim, deixa quebrar a linha. Nunca corta. */
+function kpiFit(root){if(!root)return;root.querySelectorAll('.kpi').forEach(k=>{if(k.offsetParent)k.classList.toggle('kpi-estreito',k.getBoundingClientRect().width<200&&!ehMobile());});root.querySelectorAll('.kpi .k-val,.dsh-kpi-val').forEach(el=>{if(!el.offsetParent)return;
+  el.style.fontSize='';el.style.whiteSpace='';el.style.textOverflow='';
+  const card=el.closest('.kpi,.dsh-kpi')||el.parentElement,cr=card.getBoundingClientRect(),pr=parseFloat(getComputedStyle(card).paddingRight)||0;
+  const livre=()=>Math.min(el.clientWidth||1e9,cr.right-pr-el.getBoundingClientRect().left),precisa=()=>el.scrollWidth;
+  const cw=livre(),sw=precisa();if(cw<=0||sw<=cw+1)return;
+  const fs=parseFloat(getComputedStyle(el).fontSize)||20;el.style.fontSize=Math.max(12,Math.floor(fs*cw/sw*0.97*10)/10)+'px';el.style.textOverflow='clip';
+  if(precisa()>livre()+1)el.style.whiteSpace='normal';});}
+function uxAplicar(){_uxRaf=0;try{uxTabelas(document.getElementById('view'));uxIcones(document.body);kpiFit(document.getElementById('view'));}catch(e){}}
+window.addEventListener('resize',()=>{clearTimeout(window._kpiT);window._kpiT=setTimeout(()=>kpiFit(document.getElementById('view')),150);});
 function uxAgendar(){if(!_uxRaf)_uxRaf=requestAnimationFrame(uxAplicar);}
 (function(){const ini=()=>{try{new MutationObserver(uxAgendar).observe(document.body,{childList:true,subtree:true});uxAgendar();}catch(e){}};if(document.body)ini();else document.addEventListener('DOMContentLoaded',ini);})();
 /* o: {titulo, texto (HTML já escapado), sim, nao, perigo, aviso, semFundo} · ok roda só se a pessoa confirmar; naoCb (opcional) só no botão "nao".
@@ -11835,7 +11850,7 @@ function datasAnoCorrigir(){if(!podeFinNota())return toast('Sem permissão para 
   save();closeModal();viewFinanceiro();toast(n+' lançamento'+(n===1?' corrigido':'s corrigidos')+' para '+anoN,5000);}
 /* versão nova publicada: avisa quem ficou com a aba aberta (12/11: aba antiga quase estragou as fichas de dose).
    SÓ em atualização maior: VER_MAIOR sobe junto com o arquivo versao.json do site. Ajuste pequeno não mexe em nenhum dos dois e ninguém é avisado. */
-const VER_MAIOR='2026-11-27';
+const VER_MAIOR='2026-11-27b';
 let VER_ETAG=null;
 async function verChecar(forcar){if(!forcar&&(!/^https?:$/.test(location.protocol)||/^(localhost|127\.|\[::1\])/.test(location.hostname)))return;
   try{if(VER_ETAG===null){VER_ETAG='';try{const h=await fetch(location.pathname+'?v='+Date.now(),{method:'HEAD',cache:'no-store'});if(h.ok)VER_ETAG=h.headers.get('etag')||h.headers.get('last-modified')||'';}catch(e){}}
