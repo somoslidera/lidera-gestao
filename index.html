@@ -1448,8 +1448,8 @@ button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible,
 .tm-p-atual .tm-c{background:#F5F6F9}.tm-p-atual .tm-c .tm-sb{background:#1D3573}.tm-p-atual .tm-c .tm-cd{background:#fff;border:1px solid #E6E8EE;color:#1B2235}.tm-p-atual .tm-c .tm-lb{background:#566074}.tm-p-atual .tm-c .tm-ln{background:#1D3573}
 .tm-p-atual .tm-e{background:#0E1626}.tm-p-atual .tm-e .tm-sb{background:#1D3573}.tm-p-atual .tm-e .tm-cd{background:#172139;border:1px solid #283450;color:#E8EDF6}.tm-p-atual .tm-e .tm-lb{background:#9DA9C2}.tm-p-atual .tm-e .tm-ln{background:#C2A875}
 .tm-p-gala .tm-cd{font-family:'Geist',Inter,sans-serif}
-.tm-p-gala .tm-c{background:linear-gradient(160deg,#E3E7F0,#F1EEE8)}.tm-p-gala .tm-c .tm-sb{background:#0A1128}.tm-p-gala .tm-c .tm-cd{background:linear-gradient(90deg,transparent,#A48A57,transparent) top/100% 1px no-repeat,#fff;color:#0F1730;box-shadow:0 10px 18px -10px rgba(15,23,48,.35)}.tm-p-gala .tm-c .tm-lb{background:#48516B}.tm-p-gala .tm-c .tm-ln{background:#A48A57}
-.tm-p-gala .tm-e{background:radial-gradient(120px 80px at 0 0,rgba(29,53,115,.7),transparent),#070B16}.tm-p-gala .tm-e .tm-sb{background:#04070F;box-shadow:inset -1px 0 0 rgba(201,176,126,.4)}.tm-p-gala .tm-e .tm-cd{background:linear-gradient(90deg,transparent,#E2CB9A,transparent) top/100% 1px no-repeat,rgba(25,35,64,.8);color:#F2EDE2;border:1px solid rgba(214,196,160,.12)}.tm-p-gala .tm-e .tm-lb{background:#B3B9CB}.tm-p-gala .tm-e .tm-ln{background:#D2B77F}
+.tm-p-gala .tm-cd{border-radius:6px}.tm-p-gala .tm-c{background:#F1F2F5}.tm-p-gala .tm-c .tm-sb{background:#0A1128}.tm-p-gala .tm-c .tm-cd{background:linear-gradient(90deg,transparent,#A48A57,transparent) top/100% 1px no-repeat,#fff;color:#0F1730;box-shadow:0 10px 18px -10px rgba(15,23,48,.35)}.tm-p-gala .tm-c .tm-lb{background:#48516B}.tm-p-gala .tm-c .tm-ln{background:#A48A57}
+.tm-p-gala .tm-e{background:radial-gradient(120px 80px at 0 0,rgba(44,78,170,.55),transparent),#0A1023}.tm-p-gala .tm-e .tm-sb{background:#080D1E;box-shadow:inset -1px 0 0 rgba(200,210,240,.12)}.tm-p-gala .tm-e .tm-cd{background:linear-gradient(90deg,transparent,#D9BF8A,transparent) top/100% 1px no-repeat,#111933;color:#F4EFE4;box-shadow:0 0 0 1px rgba(200,210,240,.1)}.tm-p-gala .tm-e .tm-lb{background:#B3B9CB}.tm-p-gala .tm-e .tm-ln{background:#D2B77F}
 .tm-p-linho .tm-cd{font-family:'Figtree',Inter,sans-serif;border-radius:11px}
 .tm-p-linho .tm-c{background:#F2EDE4}.tm-p-linho .tm-c .tm-sb{background:#FBF7F0;box-shadow:inset -1px 0 0 #E6DDCC}.tm-p-linho .tm-c .tm-cd{background:#FFFDF9;color:#1C2540;box-shadow:0 8px 16px -8px rgba(74,56,24,.3)}.tm-p-linho .tm-c .tm-lb{background:#6B6556}.tm-p-linho .tm-c .tm-ln{background:#A48A57}
 .tm-p-linho .tm-e{background:#181612}.tm-p-linho .tm-e .tm-sb{background:#100E0B}.tm-p-linho .tm-e .tm-cd{background:#24211C;color:#F2ECE0}.tm-p-linho .tm-e .tm-lb{background:#C3BAA8}.tm-p-linho .tm-e .tm-ln{background:#D2B47A}
@@ -1492,6 +1492,8 @@ body[data-tema] .dsh-pe-card .dsh-vazio::before{content:"";width:172px;height:86
 body[data-tema] .dsh-pe-card .dsh-vazio br{display:none}
 body[data-tema] .dsh-pe-card .dsh-vazio .btn{margin-top:4px;font-family:Inter,system-ui,sans-serif;letter-spacing:0}
 body[data-tema=linho] .dsh-pe-card .dsh-vazio .btn{font-family:'Figtree',Inter,system-ui,sans-serif}
+/* celular: nenhum botão ou filtro com menos de 44 px de altura nas direções novas */
+@media(max-width:640px){body[data-tema] .btn,body[data-tema] .btn-sm{min-height:44px}body[data-tema] .msel-btn,body[data-tema] .msel.sm .msel-btn{height:44px}body[data-tema] .pill-filter button{min-height:44px}body[data-tema] #view table.tc td .input{min-height:44px}body[data-tema] .modal-head .x{width:44px;height:44px}}
 /* Nova contagem: a busca limpa o display das linhas e elas perdem as colunas; com tema, as colunas voltam (produto | contado | diferença) */
 body[data-tema] #ec_rows [data-id]{display:grid}
 @media(max-width:640px){body[data-tema] #ec_rows [data-id]{grid-template-columns:minmax(0,1fr) 104px 68px!important;gap:10px!important}
@@ -1570,8 +1572,8 @@ body[data-tema=gala] #view .kpi-grid[style*="auto-fi"]{display:flex;flex-wrap:wr
 body[data-tema=gala] #view .kpi-grid[style*="auto-fi"] .kpi{flex:1 1 180px}
 @media(max-width:860px){body[data-tema=gala] #view .kpi-grid.kpi5 .kpi:last-child:nth-child(odd){grid-column:1/-1}}
 @media(min-width:901px){body[data-tema=gala] .dsh-card{padding:24px 26px 20px}}
-@media(max-width:640px){body[data-tema=gala] .topbar h1{font-size:19px}}
-body.dark[data-tema=gala] .input.ux-busca{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23939BB2' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='M20 20l-4.2-4.2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:11px center;background-size:15px}
+@media(max-width:640px){body[data-tema=gala] .topbar h1{font-size:19px}body[data-tema=gala] #estBusca{max-width:none!important;flex:1 1 100%}}
+body.dark[data-tema] .input.ux-busca{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23939BB2' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='M20 20l-4.2-4.2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:11px center;background-size:15px}
 @media(max-width:640px){body[data-tema=gala] .dsh-kpi{padding:16px 18px 14px}body[data-tema=gala] .dsh-kpi-val{font-size:27px}body[data-tema=gala] #view .kpi-grid .kpi{padding:14px 16px 13px}
   body[data-tema=gala] .dsh-head .ttl,body[data-tema=gala] .card-pad>.ttl,body[data-tema=gala] .section-head .ttl{font-size:18px}}
 /* --- abas: sublinhado de latão, como as seções de uma carta --- */
@@ -3277,7 +3279,7 @@ function toggleTheme(){applyTheme(document.body.classList.contains('dark')?'ligh
    Sem escolha, nada muda: o body não ganha data-tema e a fonte extra não é carregada.
    O claro/escuro continua no botão da lua (body.dark); o tema só troca os tokens de cada modo. */
 const TEMAS={
-  gala:{nome:'Noite de gala',ideia:'Elegante como salão à noite: cartões de vidro fosco com fio dourado e números retos, fáceis de ler.',fonte:'Geist:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@1,9..144,500'},
+  gala:{nome:'Noite de gala',ideia:'Salão à noite e carta de vinhos: azul-meia-noite, um fio de latão, títulos de carta e números retos, fáceis de ler.',fonte:'Geist:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@1,9..144,500'},
   linho:{nome:'Linho',ideia:'Claro e quente como toalha de linho: menu lateral claro, cantos macios e mais respiro.',fonte:'Figtree:wght@400;500;600;700;800'},
   marinho:{nome:'Marinho moderno',ideia:'O azul vira fundo: faixa marinho no topo da tela, cartões que flutuam sobre ela, letras modernas.',fonte:'Manrope:wght@500;600;700;800&family=Geist:wght@500;600;700;800'}};
 function temaAtual(){try{const t=localStorage.getItem('flow_tema')||'';return TEMAS[t]?t:'';}catch(e){return '';}}
