@@ -10,6 +10,7 @@ O Flow não tem homologação: o `index.html` do repo fala com o banco de **prod
 | `serve.py` | Serve o `_site/` em `http://localhost:4179`. Com `--producao`, serve o repo como está (cuidado: banco de produção). |
 | `smoke/compra-status.mjs` | Teste do "Comprado / aguardando chegada": marcar na Lista de Compras, aviso na Lista, Posição e Requisição, "Itens a comprar" sem os comprados, nota ou entrada que limpa a marca, o "×" e quem não tem a permissão, em 1280 e 390 px. `node compra-status.mjs` depois do `preview_build.py`. |
 | `smoke/` | Teste com Playwright: abre Flow e PDV do `_site/`, confere que nenhuma requisição vai ao Supabase e tira prints em 1280 px e 390 px (regra D9). |
+| `smoke/subprodutos.mjs` | Teste de "Subprodutos em lote" (Fichas Técnicas → Mais): nasce tudo marcado, desmarcar e aplicar com confirmação, aviso de mudança fora do filtro, cancelar não muda nada, gerente não vê. É recurso por cliente: desligado, ninguém vê; só a Lidera vê o interruptor em Configurações → Conta. `node subprodutos.mjs` depois do `preview_build.py`. |
 | `smoke/posicao.mjs` | Teste da aba Estoque → Posição: colunas "Última compra" e "Em pacotes", filtro de unidade e scorecards (Conferir embalagem, Preço subiu, Total em kg), em 1280 e 390 px. `node posicao.mjs` depois do `preview_build.py`. |
 | `smoke/ideal.mjs` | Teste da trava do estoque ideal e crítico: dono, administrador e quem tem a permissão marcada alteram; gerente, chefe e personalizado sem a permissão só veem, na Posição e no cadastro do produto. `node ideal.mjs` depois do `preview_build.py`. |
 
