@@ -1815,7 +1815,7 @@ body[data-tema=marinho] .theme-toggle{background:rgba(255,255,255,.08)}
    O dourado de TEXTO (#86693A) não pinta mais barra (ficava marrom); a atenção saiu do âmbar (colava no dourado)
    para o laranja, e o ruim foi para o carmim para se afastar do laranja. Conferido com simulação de daltonismo:
    receita × despesas ΔE 33 (claro) e 26 (escuro); bom × ruim e bom × atenção separados também em deuteranopia. */
-body[data-tema]{--d-rec:#1D3573;--d-desp:#AD8736;--green:#0E7C66;--amber:#AD4C08;--red:#B4234A;--green-bg:#E1F3EE;--amber-bg:#FBEBDD;--red-bg:#FAE6EA}
+body[data-tema]{--d-rec:#1D3573;--d-desp:#AD8736;--green:#0C7360;--amber:#AD4C08;--red:#B4234A;--green-bg:#E1F3EE;--amber-bg:#FBEBDD;--red-bg:#FAE6EA}
 body.dark[data-tema]{--d-rec:#6F93EA;--d-desp:#E0BE6A;--green:#45D0AC;--amber:#EE8437;--red:#F0607F;--green-bg:rgba(69,208,172,.14);--amber-bg:rgba(238,132,55,.15);--red-bg:rgba(240,96,127,.15)}
 body.dark[data-tema=marinho]{--d-rec:#8FB0FF}
 body[data-tema] #view .dsh-chart rect[fill="var(--navy)"],body[data-tema] #view .dsh-kpi-vis circle[fill="var(--navy)"]{fill:var(--d-rec)}
@@ -12628,7 +12628,7 @@ function datasAnoCorrigir(){if(!podeFinNota())return toast('Sem permissão para 
   save();closeModal();viewFinanceiro();toast(n+' lançamento'+(n===1?' corrigido':'s corrigidos')+' para '+anoN,5000);}
 /* versão nova publicada: avisa quem ficou com a aba aberta (12/11: aba antiga quase estragou as fichas de dose).
    SÓ em atualização maior: VER_MAIOR sobe junto com o arquivo versao.json do site. Ajuste pequeno não mexe em nenhum dos dois e ninguém é avisado. */
-const VER_MAIOR='2026-11-27c';
+const VER_MAIOR='2026-11-28';
 let VER_ETAG=null;
 async function verChecar(forcar){if(!forcar&&(!/^https?:$/.test(location.protocol)||/^(localhost|127\.|\[::1\])/.test(location.hostname)))return;
   try{if(VER_ETAG===null){VER_ETAG='';try{const h=await fetch(location.pathname+'?v='+Date.now(),{method:'HEAD',cache:'no-store'});if(h.ok)VER_ETAG=h.headers.get('etag')||h.headers.get('last-modified')||'';}catch(e){}}

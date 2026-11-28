@@ -57,7 +57,9 @@ const git = (...a) => execFileSync("git", ["-C", RAIZ, ...a], { encoding: "utf8"
 let ref = process.env.FLOW_TEMA_BASE;
 if (!ref) { try { ref = git("merge-base", "HEAD", "origin/main"); } catch { ref = "origin/main"; } }
 const TMP = await mkdtemp(join(tmpdir(), "flow-tema-"));
-const tar = execFileSync("git", ["-C", RAIZ, "archive", ref, "index.html", "pdv", "versao.json", "tools/preview_build.py", "tools/preview_simulacao.js"], { maxBuffer: 256 * 1024 * 1024 });
+// leva todo tools/preview_* que existir na referência (o preview_mock.js do #56 passou a ser exigido pelo build)
+const prev = git("ls-tree", "-r", "--name-only", ref, "tools/").split("\n").filter((p) => /^tools\/preview_[^/]+$/.test(p));
+const tar = execFileSync("git", ["-C", RAIZ, "archive", ref, "index.html", "pdv", "versao.json", ...prev], { maxBuffer: 256 * 1024 * 1024 });
 execFileSync("tar", ["-x", "-C", TMP], { input: tar });
 execFileSync("python3", [join(TMP, "tools/preview_build.py"), "--out", join(TMP, "_site")], { stdio: "ignore" });
 const atual = await servir(SITE);
@@ -75,6 +77,8 @@ async function abrir(url, largura, modo, tema) {
   pag.on("pageerror", (e) => erros.push(String(e)));
   await pag.goto(url + "/?demo=base", { waitUntil: "load" });   // demo simples (sem tools/preview_mock.js)
   await pag.waitForFunction(() => typeof go === "function" && typeof DB === "object" && DB);
+  // sem transições nem animações: o menu (#57) anima seta e submenu, e medir no meio da animação dá centésimos de px de diferença
+  await pag.addStyleTag({ content: "*,*::before,*::after{transition:none!important;animation:none!important}" });
   await pag.evaluate(() => document.fonts.ready);
   await pag.waitForTimeout(400);
   return { ctx, pag, erros };
