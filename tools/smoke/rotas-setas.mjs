@@ -56,7 +56,7 @@ async function rodar(largura) {
     const s = await pag.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     checa(s <= 1, `${L} ${onde}: a página rola na horizontal (${s}px)`); };
 
-  await pag.goto(BASE + "/", { waitUntil: "load" });
+  await pag.goto(BASE + "/?demo=base", { waitUntil: "load" });   // demo simples (sem tools/preview_mock.js)
   await espera(pag, 2500);
   let e = await est();
   checa(e.c === "dashboard" && e.tr === "", `${L}: no Dashboard o caminho deveria estar vazio (${e.tr})`);

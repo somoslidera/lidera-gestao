@@ -39,7 +39,7 @@ async function rodar(largura) {
   pag.on("pageerror", (e) => erros.push(String(e)));
   pag.on("request", (r) => { if (/supabase\.co/.test(r.url())) banco.push(r.url()); });
   pag.on("dialog", (d) => { dialogos.push(d.message()); d.accept(); });
-  await pag.goto(BASE + "/", { waitUntil: "load" });
+  await pag.goto(BASE + "/?demo=base", { waitUntil: "load" });   // demo simples (sem tools/preview_mock.js)
   await pag.waitForTimeout(2500);
 
   // cenário só no navegador: 3 preparados, um já subproduto com saldo

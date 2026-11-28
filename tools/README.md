@@ -6,6 +6,8 @@ O Flow não tem homologação: o `index.html` do repo fala com o banco de **prod
 |---|---|
 | `smoke/req-margem.mjs` | Teste da margem % sobre a "Média do dia da semana" na requisição: média × 1,2 com +20%, trocar 20% → 40% não acumula, a barra de 0 a 100% recalcula da média, prato digitado à mão fica fora e "Repetir a última" não leva margem, em 1280 e 390 px. `node req-margem.mjs` depois do `preview_build.py`. |
 | `preview_build.py` | Monta `_site/`: tira a URL do Supabase (o app roda no "modo local", só no navegador), força a demonstração no PDV, põe a faixa "PREVIEW · sem banco" e carrega um restaurante de demonstração na primeira visita. Se sobrar qualquer menção ao banco de produção, **o build falha**. |
+| `preview_mock.js` | **Restaurante fictício completo** do preview. O `preview_build.py` injeta só no `_site/`; na primeira visita ele completa a demo de sempre (`buildDemoDados(DEMO_SPECS[0])`, que não muda) com cerca de 3 meses de histórico, gravando pelos caminhos oficiais do app. Tudo é determinístico: datas relativas a hoje e semente fixa. Veja "Dados fictícios do preview" abaixo. |
+| `smoke/mock.mjs` | Teste do restaurante fictício: abre o preview padrão e confere que nenhuma tela principal (Dashboard, Financeiro e abas, DRE, Estoque e todas as abas, Fichas, Folha, Buffet, Desperdícios, Checklists) mostra estado vazio ou só zeros, sem erro de JS, sem chamada ao banco, sem rolagem lateral em 390 px e com os saldos do estoque iguais ao livro; `?demo=base` e `?vazio=1` continuam valendo. 1280 e 390 px. `node mock.mjs` depois do `preview_build.py`. |
 | `preview_simulacao.js` | Painel **Simular** do preview (veja abaixo). O `preview_build.py` injeta só no `_site/`; o `index.html` do repo não ganha nada. |
 | `smoke/simulacao.mjs` | Teste do painel Simular: o painel existe no `_site/` e não no `index.html` do repo; Chefe de setor com 1 setor esconde as outras áreas e a Posição mostra só o setor; voltar a dono restaura tudo. 1280 e 390 px. `node simulacao.mjs` depois do `preview_build.py`. |
 | `serve.py` | Serve o `_site/` em `http://localhost:4179`. Com `--producao`, serve o repo como está (cuidado: banco de produção). |
@@ -34,7 +36,21 @@ cd tools/smoke && npm run smoke         # prints em tools/smoke/prints/
 node lc-derivado.mjs                     # Lista de compras: quanto do bruto vai para cada preparado, em 1280 e 390 px
 ```
 
-Para abrir o preview com a base vazia: `?vazio=1`. Para zerar a demonstração, limpe os dados do site no navegador.
+Para abrir o preview com a base vazia: `?vazio=1`. Com só a demo simples (sem o restaurante fictício completo): `?demo=base`. O parâmetro vale na primeira visita: para trocar, limpe os dados do site no navegador (ou use uma aba anônima).
+
+## Dados fictícios do preview (`preview_mock.js`)
+
+**Regra: toda mudança de tela traz, no mesmo PR, os dados fictícios que a deixam visível no preview (em tools/preview_mock.js). O link de teste nunca pode abrir a tela nova vazia.** Acrescente em `montar()` o que a tela precisa e uma conferência em `smoke/mock.mjs`.
+
+O que o restaurante fictício tem (nomes sempre inventados: Colaborador 1, Sócio 1, Distribuidora Exemplo, Hortifrúti Demo…):
+
+- **Estoque:** cerca de 40 produtos em kg, L e un, vários com embalagem (PCT, CX, FD); armazéns Estoque principal, Produção e Bar (bebidas entram direto no Bar); ideal e crítico preenchidos; livro (`estoqueMov`) com saldo inicial, compras (`estEntradaDeLanc`), baixas por vendas (`estBaixaVendas`), requisições da Produção (`estTransferir`), produções (`estProduzir`), desperdícios (`estPerdaDeDesp`) e 3 contagens (fim dos dois meses anteriores e uma de hoje, com itens não contados e dois zerados). Itens na Lista de Compras, um "Comprado · chega dd/mm", um com preço que subiu e um com embalagem a conferir; requisições do dia aberta, solicitada e pronta.
+- **Fichas:** os 5 pratos do buffet da demo e mais 9 (executivo, feijoada, parmegiana, massa, peixe, marmita, sobremesa, suco, café), preços por canal (iFood e delivery próprio), revenda de bebidas e preparados estocáveis com porção (a feijoada tem 9 ingredientes).
+- **Financeiro:** receita diária por meio de pagamento (com o recebimento pelas regras de cada meio), compras por nota com parcelas e boletos, despesas nos 13 grupos do DRE (CMV perto de 30–33%), custos fixos que viram contas a pagar (pagas, a vencer e uma vencida), contas a receber, metas de faturamento e Controle de CMV dos meses fechados.
+- **Equipe e Folha:** 8 colaboradores CLT e o Sócio 1, com os meses pagos, salários e encargos lançados; três membros com acesso na Equipe.
+- **O resto:** buffet dos últimos 21 dias, checklists com registros e notificações no sino.
+
+Os smokes que foram escritos contra a demo simples abrem `/?demo=base`.
 
 ## Simular perfil de usuário e cenário de dados (painel "Simular")
 

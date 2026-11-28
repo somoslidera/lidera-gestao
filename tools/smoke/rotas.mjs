@@ -66,7 +66,7 @@ async function rodar(largura) {
   };
 
   // abrir: o endereço ganha a tela padrão e mantém o ?parâmetro
-  await pag.goto(BASE + "/?v=123", { waitUntil: "load" });
+  await pag.goto(BASE + "/?demo=base&v=123", { waitUntil: "load" });   // demo simples (sem tools/preview_mock.js)
   await espera(pag, 2500);
   let e = await estado();
   checa(e.h === "#/dashboard" && e.c === "dashboard", `${L}: ao abrir, o endereço não ficou #/dashboard (${e.h}, tela ${e.c})`);
@@ -89,7 +89,7 @@ async function rodar(largura) {
   await aba("Contagem física");
   e = await estado();
   checa(e.h === "#/estoque/contar" && e.et === "contar", `${L}: aba Contagem física deu ${e.h}`);
-  checa(e.s === "?v=123", `${L}: o ?parâmetro sumiu do endereço (${e.s})`);
+  checa(e.s === "?demo=base&v=123", `${L}: o ?parâmetro sumiu do endereço (${e.s})`);
   await pag.screenshot({ path: join(PRINTS, `rotas-contar-${largura}.png`) });
   await semRolagem("Contagem física");
   // a mesma tela de novo não empilha

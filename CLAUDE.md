@@ -24,6 +24,7 @@ Quem usa é dono de restaurante e a equipe dele, e **a maioria usa pelo celular*
 2. Editar o `index.html` (ou `pdv/`, `supabase/`).
 3. Testar local: `python3 tools/preview_build.py && python3 tools/serve.py`, abrir `http://localhost:4179`.
 4. Abrir o PR (o modelo em `.github/pull_request_template.md` já traz a checklist) com a etiqueta **`homologar`**. O Cloudflare Pages gera um link de preview, sem banco e com o restaurante de demonstração: `https://<branch-com-hifens>.flow-preview.pages.dev`, com o nome cortado em 28 caracteres. Por isso, prefira nomes de branch curtos. O link fixo `flow-preview.pages.dev` é a `main`, que já está em produção, e não serve para homologar.
+   **Toda mudança de tela traz, no mesmo PR, os dados fictícios que a deixam visível no preview (em tools/preview_mock.js). O link de teste nunca pode abrir a tela nova vazia.** O preview abre com um restaurante fictício completo (cerca de 3 meses de histórico); `?demo=base` abre só a demo simples e `?vazio=1`, a base vazia. Veja `tools/README.md`.
 5. **Homologação:** quem vai usar testa no link do PR, no celular (390 px) e no computador, e comenta "homologado". Anexar o print no PR.
 6. Tirar a etiqueta `homologar` e fazer o merge. Conferir no ar que a mudança está lá (`flow.somoslidera.com.br`).
 
@@ -227,6 +228,7 @@ Duas frentes mexem no Flow ao mesmo tempo, a Lidera e a Adventure. As duas usam 
 
 ## Como revisar mudança de permissão ou de dado
 
+- O preview já abre com um restaurante fictício completo (`tools/preview_mock.js`): estoque com livro, contagens, requisições e produção; fichas; financeiro de 3 meses; folha; buffet. Teste em cima dele e acrescente lá o que a sua tela precisar.
 - No link de preview (ou no `tools/serve.py`), use o botão **Simular**: troque o perfil (Dono, cada nível da Equipe ou Personalizado, com setores) e monte cenários de dados (restaurante com setores, produtos em pacote ou caixa). Nada vai para o banco.
 - O perfil passa pelo mesmo código do login de membro. Não cole comandos no console para trocar permissão: use o painel ou `flowSim` (veja `tools/README.md`).
 - O painel existe só no preview. O `index.html` não ganha nada dele, e `tools/smoke/simulacao.mjs` confere isso.
