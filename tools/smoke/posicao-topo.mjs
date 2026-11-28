@@ -154,6 +154,22 @@ async function rodar(largura) {
   }
   await pag.evaluate(() => { estoqueFiltro = "Todos"; viewEstoque(); });
 
+  // filtro de unidade é uma lista (como Categoria), dentro da barra; escolher kg filtra só kg e "Todas" limpa
+  const ud = await pag.evaluate(() => {
+    const dd = document.querySelector("#estPosBar #estUniDd");
+    if (!dd) return { tem: false };
+    mselChama("estUniDd", "kg");
+    const u = (window.EST_POS_FILT || []).map((x) => x.uni), f = estoqueUniF, rot = (document.querySelector("#estUniDd .v") || {}).textContent;
+    mselChama("estUniDd", "");
+    return { tem: true, f, u, rot, limpo: estoqueUniF === "" };
+  });
+  checa(ud.tem, `${largura}: a lista "Unidade" não está na barra de filtros`);
+  if (ud.tem) {
+    checa(ud.f === "kg" && ud.u.length > 0 && ud.u.every((x) => x === "kg"), `${largura}: Unidade = kg não filtrou só kg`);
+    checa(/kg/.test(ud.rot || ""), `${largura}: a lista "Unidade" não mostra kg escolhido (${ud.rot})`);
+    checa(ud.limpo, `${largura}: Unidade = Todas não limpou o filtro`);
+  }
+
   // sem podeVerValores(): sem Preço subiu e sem valores em reais no topo
   const sv = await pag.evaluate(() => {
     MEMBRO_PERMS = ["estoque"]; MEMBRO_SUB = { posicao: true, valores: false };

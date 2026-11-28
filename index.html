@@ -10786,7 +10786,9 @@ function estPosKpisHTML(lista,SE){if(!souDoPrincipal())return '';
   if(kg!=null)h+=chip('kg',estoqueUniF==='kg','est-chip-info','Total em kg',esc(estQ(kg,'kg')),'Saldo somado dos produtos em kg e g de '+esc(estoqueFiltro)+'. Clique para ver só os produtos em kg',"estoqueUniF=estoqueUniF==='kg'?'':'kg';viewEstoque()");
   return `<div class="est-chips">${h}</div>`;}
 function estUniPillsHTML(lista){const us=['kg','L','un','g','ml'].filter(u=>lista.some(x=>x.uni===u));if(!us.length)return '';if(estoqueUniF&&!us.includes(estoqueUniF))estoqueUniF='';
-  return `<div class="pill-filter" style="margin:0" title="Com uma unidade escolhida, o custo médio e a última compra ficam em R$ por essa unidade">${[['','Todas'],...us.map(u=>[u,uSym(u)])].map(([k,l])=>`<button class="${estoqueUniF===k?'on':''}" onclick="estoqueUniF='${k}';viewEstoque()">${l}</button>`).join('')}</div>`;}
+  /* lista (como Categoria), não botões: com 4+ unidades os botões empurravam "Colunas" para uma 2ª linha no computador */
+  return mselHTML('estUniDd',{rot:'Unidade',todos:'Todas',sel:estoqueUniF,ops:us.map(u=>({k:u,label:uSym(u),n:lista.filter(x=>x.uni===u).length})),nTodos:lista.length,cb:'estUniSet'});}
+function estUniSet(v){estoqueUniF=v||'';viewEstoque();}
 function estCompraArredonda(q,ins){q=+q||0;if(!(q>0))return 0;const emb=insEmb(ins);if(emb&&emb.qtd>0)return estR(Math.ceil(q/emb.qtd-1e-9)*emb.qtd,3);return estR(q,3);}
 /* aviso ao perfil Compras quando um produto cruza o crítico (uma vez por cruzamento; some quando o saldo volta acima) */
 function estCritAvisos(items){let n=0;(items||estoqueItens()).forEach(x=>{const i=x.ins;if(!(x.crit>0))return;
