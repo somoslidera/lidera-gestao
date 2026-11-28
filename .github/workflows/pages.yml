@@ -29,7 +29,8 @@ jobs:
       - name: Separar só os arquivos do site
         run: |
           mkdir _publicar
-          cp index.html versao.json CNAME _publicar/
+          cp index.html versao.json CNAME manifest.webmanifest sw.js _publicar/
+          cp -R icons _publicar/icons
           cp -R pdv _publicar/pdv
           touch _publicar/.nojekyll
           find _publicar -type f | sort

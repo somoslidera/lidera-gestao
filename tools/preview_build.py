@@ -6,7 +6,7 @@ Uso:
     python3 tools/preview_build.py --out dist
 
 O que faz:
-  1. Copia o site (index.html, pdv/, versao.json) para a pasta de saída.
+  1. Copia o site (index.html, pdv/, versao.json, manifest.webmanifest, sw.js, icons/) para a pasta de saída.
      Não copia CNAME (o preview não pode reivindicar flow.somoslidera.com.br),
      supabase/, tools/ nem .github/.
   2. No index.html, troca a URL do Supabase por vazio. Sem URL o app não cria o
@@ -39,7 +39,7 @@ PROJETO_PROD = "fvcbxorfstqqeewocxkf"
 HOST_PROD = f"https://{PROJETO_PROD}.supabase.co"
 HOST_FALSO = "https://preview-sem-banco.invalid"
 
-COPIAR = ["index.html", "pdv", "versao.json"]
+COPIAR = ["index.html", "pdv", "versao.json", "manifest.webmanifest", "sw.js", "icons"]
 
 FAIXA = """
 <!-- preview_build.py: faixa e demonstração do preview -->
