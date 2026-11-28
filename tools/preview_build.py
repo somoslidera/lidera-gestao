@@ -16,6 +16,9 @@ O que faz:
   4. Troca qualquer outra menção ao host de produção por um host inválido.
   5. Injeta uma faixa "PREVIEW · sem banco", `noindex` e, na primeira visita,
      carrega um restaurante de demonstração.
+  5b. Injeta o painel "Simular" (tools/preview_simulacao.js): troca o perfil de quem
+     está logado e monta cenários de dados, só no navegador. O perfil roda o MESMO
+     trecho do login de membro do index.html, copiado daqui na hora do build.
   6. Confere no fim: se ainda sobrar alguma menção ao projeto de produção, o
      build FALHA. Na dúvida, não sai preview.
 
@@ -73,13 +76,60 @@ def trocar_uma_vez(texto: str, padrao: str, novo: str, onde: str) -> str:
     return novo_texto
 
 
+SIMULACAO = Path(__file__).resolve().parent / "preview_simulacao.js"
+MARCA_TRECHO = "/*@@TRECHO_LOGIN@@*/"
+TRECHO_INICIO = "MEMBRO_PERMS=null;MEMBRO_SUB=null;MEMBRO_SETORES=null;MEMBRO_NOME='';MEMBRO_NIVEL='';"
+TRECHO_FIM_LINHA = "if(MEMBRO_PERMS){aplicarAcessoMembro();go(MEMBRO_PERMS[0]);}"
+
+
+def trecho_login(s: str) -> str:
+    """Copia, do login de membro (entrarComoCliente), o trecho que decide dono × membro e
+    liga MEMBRO_PERMS/SUB/SETORES/NIVEL, mais a linha que aplica o acesso. O painel "Simular"
+    roda exatamente esse código. Se o login mudar de forma que o trecho não seja achado, o
+    build falha (não sai preview com uma simulação diferente do login real)."""
+    onde = "index.html (login de membro)"
+    i = s.find("async function entrarComoCliente(")
+    if i < 0 or s.count("async function entrarComoCliente(") != 1:
+        falhar(f"{onde}: não achei entrarComoCliente. O código mudou: ajuste o preview_build.py.")
+    fim = s.find("\n}\n", i)
+    corpo = s[i:fim]
+    m = re.search(re.escape(TRECHO_INICIO) + r".*?\n  \}\n", corpo, re.S)
+    if not m or corpo.count(TRECHO_INICIO) != 1 or corpo.count(TRECHO_FIM_LINHA) != 1:
+        falhar(f"{onde}: o trecho do login de membro mudou. Ajuste o preview_build.py.")
+    a = m.group(0)
+    for obrig in ("naEquipe", "normMembro(naEquipe)", "MEMBRO_SUB=", "MEMBRO_SETORES=", "MEMBRO_NIVEL="):
+        if obrig not in a:
+            falhar(f"{onde}: o trecho copiado não tem {obrig!r}. Ajuste o preview_build.py.")
+    # a linha que aplica o acesso do membro e a seguinte (o ramo do dono), copiadas do login real
+    k = corpo.find(TRECHO_FIM_LINHA)
+    fim_dono = corpo.find("\n", corpo.find("\n", k) + 1)
+    final = corpo[k:fim_dono if fim_dono > 0 else len(corpo)]
+    linhas = final.split("\n")
+    if len(linhas) != 2 or not linhas[1].strip().startswith("else{go('dashboard')"):
+        falhar(f"{onde}: depois do acesso do membro não veio o ramo do dono (else{{go('dashboard')…}}). Ajuste o preview_build.py.")
+    a = a + "  " + final
+    if "await" in a or "</script" in a:
+        falhar(f"{onde}: o trecho do login passou a ter await ou </script>. Ajuste o preview_build.py.")
+    return a
+
+
+def painel_simulacao(s: str) -> str:
+    js = SIMULACAO.read_text(encoding="utf-8")
+    if js.count(MARCA_TRECHO) != 1:
+        falhar("preview_simulacao.js: falta a marca do trecho do login")
+    js = js.replace(MARCA_TRECHO, "/* --- início: copiado de entrarComoCliente (index.html) --- */\n"
+                    + trecho_login(s) + "\n    /* --- fim do trecho copiado --- */")
+    return "\n<!-- preview_build.py: painel Simular (só no preview) -->\n<script>\n" + js + "\n</script>\n"
+
+
 def montar_index(caminho: Path) -> None:
     s = caminho.read_text(encoding="utf-8")
+    painel = painel_simulacao(s)
     s = trocar_uma_vez(s, r"const SUPA_URL='https://" + PROJETO_PROD + r"\.supabase\.co'",
                        "const SUPA_URL='' /* preview: sem banco */", "index.html")
     s = s.replace(HOST_PROD, HOST_FALSO)
     s = trocar_uma_vez(s, r"<head>", '<head>\n<meta name="robots" content="noindex,nofollow">', "index.html")
-    s = trocar_uma_vez(s, r"</body>", FAIXA + "</body>", "index.html")
+    s = trocar_uma_vez(s, r"</body>", lambda _m: FAIXA + painel + "</body>", "index.html")
     caminho.write_text(s, encoding="utf-8")
 
 
