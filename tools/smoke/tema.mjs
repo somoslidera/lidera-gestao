@@ -1,5 +1,10 @@
 // Teste do tema visual opcional (#45, protótipo): Configurações → Aparência.
-//  1. Seletor DESLIGADO (padrão): o Flow fica idêntico à main. Compara, contra um _site montado da main
+//  1. Seletor DESLIGADO (padrão): o Flow fica idêntico à main, menos a fonte dos números (KPI e dado saem da
+//     serifa e passam para o token --font-num, Inter com algarismos tabulares): fora desses elementos, tudo bate.
+//  4. Fonte dos números: em cada aparência (Atual e as 3 direções), nas telas principais (Dashboard, Financeiro,
+//     DRE, Fluxo, Posição, CMV, Folha, Engenharia, Desperdícios, Buffet…), todo KPI e número de tabela usa a
+//     fonte do token --font-num, e nenhum texto que é só número sai em serifa.
+//  (1, continuação) Compara, contra um _site montado da main
 //     (merge-base), os estilos computados de todos os elementos e o print, no Dashboard, Posição e
 //     Contagem física, em 1280 e 390 px, claro e escuro. Também confere que o body não ganha data-tema
 //     e que nenhuma fonte extra é carregada.
@@ -88,20 +93,35 @@ async function irPara(pag, tela) {
   await pag.waitForTimeout(150);
 }
 
-// ---------- 1. desligado = igual à main ----------
+// ---------- 1. desligado = igual à main, menos a fonte dos números ----------
+// A ÚNICA diferença aceita entre a aparência Atual e a main: KPI e número de dado saem da Fraunces (serifada)
+// e passam para o token --font-num (Inter), com algarismos tabulares. Nesses elementos (NUM_SEL) a fonte, os
+// algarismos e a largura/altura da caixa do texto podem mudar; cor, tamanho da letra, peso, espaçamento e todo
+// o resto têm de bater. Em qualquer outro elemento, tudo tem de bater. O print é comparado com os números
+// escondidos nas duas páginas: fora deles, a tela é idêntica pixel a pixel.
+const NUM_SEL = '.kpi .k-val,.dsh-kpi-val,.dsh-pe-n,.dsh-pe-comp b,.be-num,.calc-box .big b,.dot,.eng-rank,.mod-cost .v,.gp-stat .v,svg text[font-family="var(--font-num)"],[style*="--font-num"]';
 const PROPS = ["color", "background-color", "background-image", "font-family", "font-size", "font-weight", "letter-spacing", "text-transform", "line-height", "padding", "margin", "border-top", "border-bottom", "border-left", "border-right", "border-radius", "box-shadow", "width", "height", "display", "opacity", "backdrop-filter", "font-variant-numeric"];
+const LIVRES = ["font-family", "font-variant-numeric", "width", "height"].map((p) => PROPS.indexOf(p));
+const SERIFA = /fraunces|georgia|times|(^|,)\s*serif\s*$/i;
+const elsDe = () => [document.body, ...document.body.querySelectorAll("*")].filter((e) => !["SCRIPT", "STYLE", "LINK"].includes(e.tagName) && !e.closest("#fsimPainel"));
 async function retrato(pag) {
-  return pag.evaluate((props) => {
-    const els = [document.body, ...document.body.querySelectorAll("*")].filter((e) => !["SCRIPT", "STYLE", "LINK"].includes(e.tagName) && !e.closest("#fsimPainel"));
+  return pag.evaluate(([props, sel, fn]) => {
+    const els = new Function("return (" + fn + ")()")();
     return {
       tema: document.body.getAttribute("data-tema"),
       fontes: [...document.querySelectorAll('link[id^="temaFonte"]')].length,
-      linhas: els.map((e) => { const cs = getComputedStyle(e); return e.tagName + (e.id && !e.closest("svg") ? "#" + e.id : "") + "|" + props.map((p) => cs.getPropertyValue(p)).join("|"); }),
+      token: getComputedStyle(document.body).getPropertyValue("--font-num").trim(),
+      num: els.map((e, i) => (e.matches(sel) ? i : -1)).filter((i) => i >= 0),
+      linhas: els.map((e) => { const cs = getComputedStyle(e); return [e.tagName + (e.id && !e.closest("svg") ? "#" + e.id : ""), ...props.map((p) => cs.getPropertyValue(p))]; }),
     };
-  }, PROPS);
+  }, [PROPS, NUM_SEL, elsDe.toString()]);
 }
-let comparacoes = 0;
-for (const largura of LARGURAS) for (const modo of MODOS) {
+const esconder = (pag, idx) => pag.evaluate(([idx, fn]) => { const els = new Function("return (" + fn + ")()")(); idx.forEach((i) => { if (els[i]) els[i].style.visibility = "hidden"; }); }, [idx, elsDe.toString()]);
+let comparacoes = 0, numsTrocados = 0;
+// uma combinação (largura × modo): devolve as falhas e quantos números trocaram de fonte
+async function compararModo(largura, modo) {
+  const f = []; let nums = 0;
+  const checa = (cond, msg) => { if (!cond) f.push(msg); };
   const a = await abrir(atual.url, largura, modo, "");
   const b = await abrir(base.url, largura, modo, "");
   for (const tela of TELAS) {
@@ -110,15 +130,41 @@ for (const largura of LARGURAS) for (const modo of MODOS) {
     const nome = `desligado ${largura} ${modo} ${tela}`;
     checa(ra.tema === null, `${nome}: body ganhou data-tema="${ra.tema}"`);
     checa(ra.fontes === 0, `${nome}: carregou fonte do tema sem ninguém escolher`);
+    checa(/^'?Inter/.test(ra.token), `${nome}: na aparência Atual o --font-num deveria ser Inter (${ra.token})`);
     checa(ra.linhas.length === rb.linhas.length, `${nome}: ${ra.linhas.length} elementos aqui, ${rb.linhas.length} na main`);
-    const i = ra.linhas.findIndex((l, k) => l !== rb.linhas[k]);
-    checa(i < 0, `${nome}: estilo diferente da main no elemento ${i}:\n     aqui: ${ra.linhas[i]}\n     main: ${rb.linhas[i]}`);
+    const ehNum = new Set(ra.num);
+    const difs = [];
+    ra.linhas.forEach((l, k) => {
+      const m = rb.linhas[k]; if (!m) return;
+      l.forEach((v, j) => {
+        if (v === m[j]) return;
+        if (ehNum.has(k) && LIVRES.includes(j - 1)) return;
+        difs.push(`elemento ${k} ${l[0]}${ehNum.has(k) ? " (número)" : ""}: ${PROPS[j - 1] || "tag"} aqui "${v}", na main "${m[j]}"`);
+      });
+    });
+    checa(!difs.length, `${nome}: ${difs.length} diferença(s) além da fonte dos números:\n     ${difs.slice(0, 5).join("\n     ")}`);
+    const fam = PROPS.indexOf("font-family") + 1, tab = PROPS.indexOf("font-variant-numeric") + 1;
+    ra.num.forEach((k) => {
+      const l = ra.linhas[k];
+      checa(!SERIFA.test(l[fam]) && /^"?Inter/.test(l[fam]), `${nome}: número ${l[0]} fora do token (${l[fam]})`);
+      checa(/tabular-nums/.test(l[tab]), `${nome}: número ${l[0]} sem algarismos tabulares`);
+    });
+    nums += ra.num.length;
+    if (tela === "dashboard" && largura === 1280 && modo === "light") { await a.pag.screenshot({ path: join(PRINTS, "fonte-atual-dashboard-depois.png") }); await b.pag.screenshot({ path: join(PRINTS, "fonte-atual-dashboard-antes.png") }); }
+    await esconder(a.pag, ra.num); await esconder(b.pag, ra.num);
     const pa = await a.pag.screenshot(), pb = await b.pag.screenshot();
-    checa(pa.equals(pb), `${nome}: o print difere da main`);
-    comparacoes++;
+    checa(pa.equals(pb), `${nome}: fora dos números, o print difere da main`);
   }
   checa(!a.erros.length, `desligado ${largura} ${modo}: erro de JavaScript: ${a.erros.join(" | ")}`);
   await a.ctx.close(); await b.ctx.close();
+  return { f, nums };
+}
+for (const largura of LARGURAS) for (const modo of MODOS) {
+  // a fonte chega da internet: se uma das duas páginas mediu antes de a Inter assentar, a largura dos textos difere
+  // em centésimos de pixel. Uma segunda tentativa tira esse ruído; diferença de verdade falha nas duas.
+  let r = await compararModo(largura, modo);
+  if (r.f.length) { avisos.push(`desligado ${largura} ${modo}: 1ª comparação diferiu (${r.f.length}); repetida`); r = await compararModo(largura, modo); }
+  falhas.push(...r.f); numsTrocados += r.nums; comparacoes += TELAS.length;
 }
 
 // ---------- 2. cada direção ligada ----------
@@ -250,8 +296,58 @@ for (const largura of LARGURAS) {
   await ctx.close();
 }
 
+// ---------- 4. fonte dos números: uma só por aparência, nunca serifada ----------
+// Em cada aparência (Atual e as 3 direções), nas telas principais: todo KPI (NUM_SEL) e todo número de tabela
+// (td.num) usa a fonte do token --font-num; e nenhum texto que é só número (valor, %, quantidade) sai em serifa.
+const TELAS_FONTE = [["dashboard", () => go("dashboard")], ["financeiro", () => { finTab = "visao"; go("financeiro"); }], ["dre", () => { finTab = "dre"; go("financeiro"); }],
+  ["fluxo", () => { finTab = "fluxo"; go("financeiro"); }], ["custos-fixos", () => { finTab = "custosfixos"; go("financeiro"); }], ["posicao", () => { estoqueTab = "contagem"; go("estoque"); }],
+  ["lista-de-compras", () => { estoqueTab = "compras"; go("estoque"); }], ["cmv", () => go("cmv")], ["folha", () => go("folha")], ["engenharia", () => go("engenharia")],
+  ["desperdicio", () => go("desperdicio")], ["buffet", () => go("buffet")], ["fichas", () => go("fichas")]];
+let numsFonte = 0;
+for (const tema of ["", ...TEMAS]) for (const largura of LARGURAS) {
+  const { ctx, pag, erros } = await abrir(atual.url, largura, "light", tema);
+  for (const [tela, ir] of TELAS_FONTE) {
+    await pag.evaluate("(" + ir.toString() + ")()");
+    await pag.waitForTimeout(450);
+    const r = await pag.evaluate((sel) => {
+      const prim = (f) => f.split(",")[0].trim().replace(/["']/g, "");
+      const token = prim(getComputedStyle(document.body).getPropertyValue("--font-num"));
+      const vis = (e) => e.getClientRects().length > 0;
+      const alvo = [...document.querySelectorAll("#view " + sel.split(",").join(",#view ") + ",#view td.num")].filter(vis);
+      const fora = alvo.filter((e) => prim(getComputedStyle(e).fontFamily) !== token).map((e) => `${e.className || e.tagName}: ${prim(getComputedStyle(e).fontFamily)}`);
+      const semTab = alvo.filter((e) => !e.matches("td.num") && !/tabular-nums/.test(getComputedStyle(e).fontVariantNumeric)).map((e) => String(e.className || e.tagName));
+      // texto que é só número, em qualquer lugar da tela: não pode estar em serifa
+      const serif = [];
+      document.querySelectorAll("#view *").forEach((e) => {
+        if (!vis(e) || e.closest("script,style")) return;
+        const t = [...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim();
+        if (!/\d/.test(t) || t.replace(/R\$|[\d\s.,%+\-−–—:/x×]/g, "").length > 3) return;
+        const f = getComputedStyle(e).fontFamily;
+        if (/fraunces|georgia|times/i.test(f) || /^\s*serif/i.test(f)) serif.push(`"${t.slice(0, 20)}" (${prim(f)})`);
+      });
+      // o número não pode vazar da caixa em que está (a fonte nova é um pouco mais larga que a serifada)
+      const vaza = alvo.filter((e) => !e.matches("td.num") && !e.closest("svg")).filter((e) => {
+        const rg = document.createRange(); rg.selectNodeContents(e); const q = rg.getBoundingClientRect(); if (!q.width) return false;
+        const p = e.parentElement, pr = p.getBoundingClientRect(), pd = parseFloat(getComputedStyle(p).paddingRight) || 0;
+        return q.right > pr.right - pd + 1 || e.scrollWidth > e.clientWidth + 1;
+      }).map((e) => `"${e.textContent.trim().slice(0, 18)}"`);
+      return { token, n: alvo.length, vaza: [...new Set(vaza)], fora: [...new Set(fora)], semTab: [...new Set(semTab)], serif: [...new Set(serif)], rota: location.hash };
+    }, NUM_SEL);
+    const nome = `fonte ${tema || "atual"} ${largura} ${tela}`;
+    checa(r.token && !SERIFA.test(r.token), `${nome}: o token --font-num está serifado ou vazio (${r.token})`);
+    checa(!r.fora.length, `${nome}: número fora do token ${r.token}: ${r.fora.slice(0, 6).join("; ")}`);
+    checa(!r.semTab.length, `${nome}: KPI sem algarismos tabulares: ${r.semTab.slice(0, 6).join("; ")}`);
+    checa(!r.serif.length, `${nome}: número em fonte serifada: ${r.serif.slice(0, 6).join("; ")}`);
+    checa(!r.vaza.length, `${nome}: número vazando da caixa: ${r.vaza.slice(0, 6).join("; ")}`);
+    numsFonte += r.n;
+    if (largura === 1280 && ["financeiro", "dre", "folha", "engenharia", "cmv"].includes(tela) && (tema === "" || tema === "gala")) await pag.screenshot({ path: join(PRINTS, `fonte-${tema || "atual"}-${tela}.png`) });
+  }
+  checa(!erros.length, `fonte ${tema || "atual"} ${largura}: erro de JavaScript: ${erros.join(" | ")}`);
+  await ctx.close();
+}
+
 await nav.close(); atual.srv.close(); base.srv.close();
 await rm(TMP, { recursive: true, force: true });
 avisos.forEach((a) => console.log("aviso: " + a));
 if (falhas.length) { console.log(`tema: FALHOU (${falhas.length})\n - ` + falhas.join("\n - ")); process.exit(1); }
-console.log(`tema: ok (desligado = main em ${comparacoes} telas; ${telasLigadas} telas com tema, ${medidos} textos com contraste medido; prints em ${PRINTS})`);
+console.log(`tema: ok (desligado = main em ${comparacoes} telas, menos a fonte de ${numsTrocados} números; fonte dos números conferida em ${numsFonte} elementos nas 4 aparências; ${telasLigadas} telas com tema, ${medidos} textos com contraste medido; prints em ${PRINTS})`);
