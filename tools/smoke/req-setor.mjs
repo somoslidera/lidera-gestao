@@ -40,7 +40,7 @@ async function rodar(largura) {
   pag.on("pageerror", (e) => erros.push(String(e)));
   pag.on("request", (r) => { if (/supabase\.co/.test(r.url())) banco.push(r.url()); });
   pag.on("dialog", (d) => d.accept("teste"));
-  await pag.goto(BASE + "/", { waitUntil: "load" });
+  await pag.goto(BASE + "/?demo=base", { waitUntil: "load" });   // demo simples (sem tools/preview_mock.js)
   await pag.waitForTimeout(2500);
 
   // cenário: principal + 3 setores; as vendas baixam da Cozinha (é o destino padrão da requisição)

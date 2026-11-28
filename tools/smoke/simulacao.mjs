@@ -53,7 +53,7 @@ async function rodar(largura) {
   const banco = [];
   pag.on("pageerror", (e) => erros.push(String(e)));
   pag.on("request", (r) => { if (/supabase\.co/.test(r.url())) banco.push(r.url()); });
-  await pag.goto(BASE + "/", { waitUntil: "load" });
+  await pag.goto(BASE + "/?demo=base", { waitUntil: "load" });   // demo simples (sem tools/preview_mock.js)
   await pag.waitForTimeout(2500);
 
   // botão existe, diz "Simular" e não cobre a faixa PREVIEW

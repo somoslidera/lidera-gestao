@@ -60,7 +60,7 @@ async function rodar(largura) {
   pag.on("pageerror", (e) => erros.push(String(e)));
   pag.on("request", (r) => { if (/supabase\.co/.test(r.url())) banco.push(r.url()); });
   pag.on("dialog", (d) => d.dismiss()); // "Registrar no CMV?" depois de salvar: não
-  await pag.goto(BASE + "/", { waitUntil: "load" });
+  await pag.goto(BASE + "/?demo=base", { waitUntil: "load" });   // demo simples (sem tools/preview_mock.js)
   await pag.waitForTimeout(2500);
 
   // caso de teste, só no navegador: 10 itens com saldo 5 e custo 2 + 1 item com saldo 0

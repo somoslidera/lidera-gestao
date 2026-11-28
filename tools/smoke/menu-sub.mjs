@@ -41,7 +41,7 @@ async function abrir(largura) {
   const erros = [], banco = [];
   pag.on("pageerror", (e) => erros.push(String(e)));
   pag.on("request", (r) => { if (/supabase\.co/.test(r.url())) banco.push(r.url()); });
-  await pag.goto(BASE + "/", { waitUntil: "load" });
+  await pag.goto(BASE + "/?demo=base", { waitUntil: "load" });   // demo simples (sem tools/preview_mock.js)
   await pag.waitForFunction(() => typeof go === "function" && typeof DB === "object" && DB);
   await pag.waitForTimeout(1500);
   return { ctx, pag, erros, banco };

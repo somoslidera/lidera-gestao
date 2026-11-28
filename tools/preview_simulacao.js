@@ -112,6 +112,18 @@
     save();refazer();toast('Produtos em pacote e caixa prontos (veja Estoque › Posição)');
   }
 
+  /* preparado com porção e 8 ingredientes (Estoque › Quanto comprar): fictício, id fixo para não duplicar */
+  function cenarioReceita8(){
+    var itens=[['sim-r8-tomate','Tomate italiano','Hortifruti','kg',3000,2],['sim-r8-cebola','Cebola','Hortifruti','kg',800,0],['sim-r8-alho','Alho','Hortifruti','kg',100,0.5],
+      ['sim-r8-azeite','Azeite','Óleos','L',200,0,'GF',0.5],['sim-r8-ovo','Ovo','Frios e Laticínios','un',6,2,'BDJ',30],['sim-r8-creme','Creme de leite','Frios e Laticínios','kg',600,0],
+      ['sim-r8-sal','Sal','Grãos','kg',30,5],['sim-r8-manj','Manjericão','Hortifruti','g',40,0]];
+    itens.forEach(function(x){if(!DB.insumos[x[0]]){var o={id:x[0],nome:x[1],cat:x[2],grupo:'CMV',sub:x[2],tipo:'pronto',uni:x[3],preco:10,qtd:1,fornecedor:'Fornecedor Demo',noEstoque:true};if(x[6]){o.embNome=x[6];o.embQtd=x[7];}DB.insumos[x[0]]=o;}
+      if(x[5])entradaSeVazio(DB.insumos[x[0]],x[5]);});
+    if(!DB.insumos['sim-r8'])DB.insumos['sim-r8']={id:'sim-r8',nome:'Molho da casa (demo)',cat:'Molhos',grupo:'CMV',sub:'Molhos',tipo:'preparado',estocavel:true,uni:'g',rendimento:5000,porcaoBase:250,porcaoNome:'porção',
+      comps:itens.map(function(x){return [x[0],x[4]];}),fornecedor:'',modoPreparo:[],utensilios:'',tempoPreparo:''};
+    save();refazer();toast('Preparado com 8 ingredientes pronto (veja Estoque › Quanto comprar)');
+  }
+
   function zerarDemo(){
     fechar();
     uxConfirma({titulo:'Zerar e recarregar a demonstração?',texto:'Apaga o que você fez neste preview (só neste navegador) e abre o restaurante de demonstração do zero.',sim:'Zerar',nao:'Cancelar',perigo:true},function(){
@@ -194,6 +206,7 @@
       '<div class="fs-t">Cenários de dados</div>'+
       '<button type="button" class="fs-btn" id="fsimSetoresCen">Restaurante com setores<div class="fs-d" style="margin:2px 0 0">Cozinha, Pizzaria e Churrascaria, com produtos e preparados vinculados e saldo em cada um</div></button>'+
       '<button type="button" class="fs-btn" id="fsimPacotes">Produtos em pacote e caixa<div class="fs-d" style="margin:2px 0 0">Arroz em PCT, óleo em CX, refrigerante em FD e notas em CX para conferir</div></button>'+
+      '<button type="button" class="fs-btn" id="fsimReceita8">Preparado com 8 ingredientes<div class="fs-d" style="margin:2px 0 0">Molho da casa com porção de 250 g, ovo em bandeja e azeite em garrafa, para o Quanto comprar</div></button>'+
       '<button type="button" class="fs-btn" id="fsimZerar">Zerar e recarregar demonstração</button>'+
       '<label class="fs-btn" style="display:block">Abrir um arquivo .json exportado<div class="fs-d" style="margin:2px 0 0">Só lê o arquivo escolhido, neste navegador. Nada é enviado. Nunca coloque esse arquivo no repositório.</div><input type="file" accept=".json,application/json" id="fsimArq" style="display:none"></label>'+
       '</div>';
@@ -214,6 +227,7 @@
     if(q('fsimDono'))q('fsimDono').onclick=voltarDono;
     q('fsimSetoresCen').onclick=cenarioSetores;
     q('fsimPacotes').onclick=cenarioPacotes;
+    q('fsimReceita8').onclick=cenarioReceita8;
     q('fsimZerar').onclick=zerarDemo;
     q('fsimArq').onchange=function(){carregarArquivo(this);};
   }
@@ -224,7 +238,7 @@
   }
 
   /* API para o teste automatizado (tools/smoke/simulacao.mjs) e para quem preferir o console */
-  window.flowSim={aplicar:function(st){return aplicar(st);},dono:voltarDono,setores:cenarioSetores,pacotes:cenarioPacotes,estado:lerEstado,abrir:abrir};
+  window.flowSim={aplicar:function(st){return aplicar(st);},dono:voltarDono,setores:cenarioSetores,pacotes:cenarioPacotes,receita8:cenarioReceita8,estado:lerEstado,abrir:abrir};
 
   // recarregou com uma simulação ligada: entra de novo como o membro de teste
   var st0=lerEstado();
