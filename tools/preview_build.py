@@ -16,6 +16,8 @@ O que faz:
   4. Troca qualquer outra menção ao host de produção por um host inválido.
   5. Injeta uma faixa "PREVIEW · sem banco", `noindex` e, na primeira visita,
      carrega um restaurante de demonstração.
+  5a. Injeta os dados fictícios (tools/preview_mock.js): na primeira visita a demonstração vira um
+     restaurante completo, com ~3 meses de histórico. ?demo=base abre só a demonstração simples.
   5b. Injeta o painel "Simular" (tools/preview_simulacao.js): troca o perfil de quem
      está logado e monta cenários de dados, só no navegador. O perfil roda o MESMO
      trecho do login de membro do index.html, copiado daqui na hora do build.
@@ -45,8 +47,8 @@ FAIXA = """
 <div id="flowPreviewFaixa">PREVIEW · sem banco: nada do que você fizer aqui vai para o Flow de verdade</div>
 <script>
 (function(){
-  /* Primeira visita ao preview: troca a base vazia por um restaurante de demonstração.
-     Para começar de uma base vazia, abra com ?vazio=1. */
+  /* Primeira visita ao preview: troca a base vazia por um restaurante de demonstração completo
+     (demo de sempre + tools/preview_mock.js). ?demo=base abre só a demo de sempre; ?vazio=1, a base vazia. */
   try{
     if(typeof sb!=='undefined'&&sb){document.getElementById('flowPreviewFaixa').textContent='ERRO: preview conectado ao banco. Feche esta aba.';return;}
     if(location.search.indexOf('vazio=1')>=0)return;
@@ -54,6 +56,10 @@ FAIXA = """
     if(localStorage.getItem(marca))return;
     if(typeof buildDemoDados!=='function'||typeof DEMO_SPECS==='undefined'||!DEMO_SPECS.length)return;
     DB=buildDemoDados(DEMO_SPECS[0]);
+    /* restaurante fictício completo (tools/preview_mock.js). ?demo=base abre só a demo de sempre. */
+    if(location.search.indexOf('demo=base')<0&&window.flowPreviewMock){
+      try{flowPreviewMock.montar();window.__MOCK=true;}catch(e){console.warn('[preview] dados fictícios não montaram',e);DB=buildDemoDados(DEMO_SPECS[0]);}
+    }
     save();
     localStorage.setItem(marca,'1');
     try{go('dashboard');}catch(e){location.reload();}
@@ -77,6 +83,16 @@ def trocar_uma_vez(texto: str, padrao: str, novo: str, onde: str) -> str:
 
 
 SIMULACAO = Path(__file__).resolve().parent / "preview_simulacao.js"
+MOCK = Path(__file__).resolve().parent / "preview_mock.js"
+
+
+def dados_ficticios() -> str:
+    """Restaurante fictício completo (tools/preview_mock.js), carregado ANTES da faixa: a faixa chama
+    flowPreviewMock.montar() na primeira visita. Só entra no _site/."""
+    js = MOCK.read_text(encoding="utf-8")
+    if "flowPreviewMock" not in js or "</script" in js:
+        falhar("preview_mock.js: falta flowPreviewMock ou tem </script>")
+    return "\n<!-- preview_build.py: dados fictícios do preview (tools/preview_mock.js) -->\n<script>\n" + js + "\n</script>\n"
 MARCA_TRECHO = "/*@@TRECHO_LOGIN@@*/"
 TRECHO_INICIO = "MEMBRO_PERMS=null;MEMBRO_SUB=null;MEMBRO_SETORES=null;MEMBRO_NOME='';MEMBRO_NIVEL='';"
 TRECHO_FIM_LINHA = "if(MEMBRO_PERMS){aplicarAcessoMembro();go(MEMBRO_PERMS[0]);}"
@@ -125,11 +141,12 @@ def painel_simulacao(s: str) -> str:
 def montar_index(caminho: Path) -> None:
     s = caminho.read_text(encoding="utf-8")
     painel = painel_simulacao(s)
+    mock = dados_ficticios()
     s = trocar_uma_vez(s, r"const SUPA_URL='https://" + PROJETO_PROD + r"\.supabase\.co'",
                        "const SUPA_URL='' /* preview: sem banco */", "index.html")
     s = s.replace(HOST_PROD, HOST_FALSO)
     s = trocar_uma_vez(s, r"<head>", '<head>\n<meta name="robots" content="noindex,nofollow">', "index.html")
-    s = trocar_uma_vez(s, r"</body>", lambda _m: FAIXA + painel + "</body>", "index.html")
+    s = trocar_uma_vez(s, r"</body>", lambda _m: mock + FAIXA + painel + "</body>", "index.html")
     caminho.write_text(s, encoding="utf-8")
 
 
