@@ -73,7 +73,7 @@ async function abrir(url, largura, modo, tema) {
   const pag = await ctx.newPage();
   const erros = [];
   pag.on("pageerror", (e) => erros.push(String(e)));
-  await pag.goto(url + "/", { waitUntil: "load" });
+  await pag.goto(url + "/?demo=base", { waitUntil: "load" });   // demo simples (sem tools/preview_mock.js)
   await pag.waitForFunction(() => typeof go === "function" && typeof DB === "object" && DB);
   await pag.evaluate(() => document.fonts.ready);
   await pag.waitForTimeout(400);

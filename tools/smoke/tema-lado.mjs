@@ -39,7 +39,7 @@ async function captura(largura, modo) {
   await ctx.addInitScript(([m, t]) => { try { localStorage.setItem("flow_theme", m); localStorage.setItem("flow_tema", t); } catch (e) {} }, [modo, tema]);
   const pag = await ctx.newPage();
   pag.on("pageerror", (e) => falhas.push(`${modo} ${largura}: erro de JavaScript: ${e}`));
-  await pag.goto(url + "/", { waitUntil: "load" });
+  await pag.goto(url + "/?demo=base", { waitUntil: "load" });   // demo simples (sem tools/preview_mock.js)
   await pag.waitForFunction(() => typeof go === "function" && typeof DB === "object" && DB);
   const out = {};
   for (const tela of TELAS) {

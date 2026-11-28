@@ -1,5 +1,5 @@
-// Teste do acesso à Folha a partir do Financeiro (issue #20): a Folha está nos dois grupos do menu (FINANCEIRO,
-// logo depois de Financeiro, e RH, onde já estava); na Visão Geral do Financeiro (e ao lado de botão que já existe),
+// Teste do acesso à Folha a partir do Financeiro (issue #20, menu atualizado pela decisão D23): no menu, a Folha é
+// subpágina do Financeiro (não é mais item solto no grupo FINANCEIRO) e continua como item em RH; na Visão Geral do Financeiro (e ao lado de botão que já existe),
 // "Folha de pagamento" em #topActions abre a Folha; na Folha, "← Financeiro" volta para a Visão Geral e o texto
 // diz que os lançamentos entram no DRE em Mão-de-Obra (link só para quem abre o DRE). Só aparece para quem tem a
 // área Folha; quem tem só a Folha não ganha o Financeiro. Perfis pelo flowSim (mesmo login de membro). Roda contra o _site/, em 1280 e 390 px.
@@ -32,9 +32,9 @@ const nav = await chromium.launch();
 await mkdir(PRINTS, { recursive: true });
 function checa(cond, msg) { if (!cond) falhas.push(msg); }
 
-// menu: só os blocos que importam (FINANCEIRO = Financeiro seguido de Folha; RH continua com a Folha)
+// menu: só os blocos que importam (FINANCEIRO = só o Financeiro, com a Folha como subpágina; RH continua com a Folha)
 const blocoMenu = (pag, rot) => pag.evaluate((r) => { const out = []; let em = false;
-  for (const e of document.querySelectorAll("#nav > *")) { if (e.classList.contains("lbl")) { em = e.textContent.trim() === r; continue; } if (em) out.push(e.dataset.route); }
+  for (const e of document.querySelectorAll("#nav > *")) { if (e.classList.contains("lbl")) { em = e.textContent.trim() === r; continue; } if (em && e.dataset.route) out.push(e.dataset.route); }
   return out; }, rot);
 
 async function abrir(largura) {
@@ -43,7 +43,7 @@ async function abrir(largura) {
   const erros = [], banco = [];
   pag.on("pageerror", (e) => erros.push(String(e)));
   pag.on("request", (r) => { if (/supabase\.co/.test(r.url())) banco.push(r.url()); });
-  await pag.goto(BASE + "/", { waitUntil: "load" });
+  await pag.goto(BASE + "/?demo=base", { waitUntil: "load" });   // demo simples (sem tools/preview_mock.js)
   await pag.waitForTimeout(2500);
   return { ctx, pag, erros, banco };
 }
@@ -66,12 +66,12 @@ async function dono(largura) {
   const rot = `${largura} dono`;
   const s = await abrir(largura); const { pag } = s;
   const fin = await blocoMenu(pag, "FINANCEIRO"), rh = await blocoMenu(pag, "RH");
-  checa(fin[0] === "financeiro" && fin[1] === "folha", `${rot}: o grupo FINANCEIRO do menu não tem Financeiro seguido de Folha: ${JSON.stringify(fin)}`);
+  checa(JSON.stringify(fin) === '["financeiro"]', `${rot}: o grupo FINANCEIRO do menu tem item solto além do Financeiro: ${JSON.stringify(fin)}`);
   checa(rh.includes("folha"), `${rot}: a Folha saiu do grupo RH: ${JSON.stringify(rh)}`);
   const icones = await pag.evaluate(() => [...document.querySelectorAll('#nav a[data-route="folha"]')].map((a) => (a.querySelector("svg") || {}).outerHTML));
-  checa(icones.length === 2 && icones[0] && icones[0] === icones[1], `${rot}: os dois itens Folha do menu não têm o mesmo ícone`);
-  const nomes = await pag.evaluate(() => [...document.querySelectorAll('#nav a[data-route="folha"]')].map((a) => a.textContent.trim()));
-  checa(nomes.length === 2 && nomes.every((n) => n === "Folha de Pagamento"), `${rot}: a Folha não está nos dois grupos com o mesmo nome: ${JSON.stringify(nomes)}`);
+  checa(icones.length === 1 && icones[0], `${rot}: a Folha do RH sem ícone ou repetida (${icones.length})`);
+  const nomes = await pag.evaluate(() => [...document.querySelectorAll('#nav a[data-route="folha"], #nav [data-sub="financeiro:folha"]')].map((a) => a.textContent.trim()));
+  checa(nomes.length === 2 && nomes.every((n) => n === "Folha de Pagamento"), `${rot}: a Folha não está em RH e dentro do Financeiro com o mesmo nome: ${JSON.stringify(nomes)}`);
   for (const tab of ["visao", "lanc"]) {
     await irFin(pag, tab);
     checa(await visivelNaTela(pag, atalho(pag, "folha")), `${rot}: no Financeiro (${tab}) o atalho "Folha de pagamento" não aparece na tela`);
@@ -90,7 +90,7 @@ async function dono(largura) {
   if (await atalho(pag, "folha").count()) await atalho(pag, "folha").click();
   await pag.waitForTimeout(400);
   checa(await rota(pag) === "folha" && (await pag.locator("#pageTitle").textContent()) === "Folha de Pagamento", `${rot}: o atalho não abriu a Folha (rota ${await rota(pag)})`);
-  checa(await pag.evaluate(() => [...document.querySelectorAll('#nav a[data-route="folha"]')].every((a) => a.classList.contains("active"))), `${rot}: os itens Folha do menu não ficaram marcados`);
+  checa(await pag.evaluate(() => [...document.querySelectorAll('#nav a[data-route="folha"]')].every((a) => a.classList.contains("active")) && document.querySelector('#nav [data-sub="financeiro:folha"]').classList.contains("on")), `${rot}: a Folha do menu (RH e dentro do Financeiro) não ficou marcada`);
   checa(await visivelNaTela(pag, atalho(pag, "financeiro")), `${rot}: na Folha não há "← Financeiro" na tela`);
   const dre = await pag.locator("[data-folha-dre]").innerText().catch(() => "");
   checa(/DRE/.test(dre) && /Mão-de-Obra/.test(dre), `${rot}: a Folha não diz que os lançamentos entram no DRE em Mão-de-Obra (${dre})`);
@@ -126,8 +126,9 @@ async function membro(largura, perfil, rot, espera) {
     }
     checa(await sobra(pag) <= 1, `${largura} ${rot}: o Financeiro rola na horizontal`);
   }
-  const folhaMenu = await pag.evaluate(() => [...document.querySelectorAll('#nav a[data-route="folha"]')].filter((a) => getComputedStyle(a).display !== "none").length);
-  checa(folhaMenu === (espera.folha ? 2 : 0), `${largura} ${rot}: ${folhaMenu} item(ns) Folha visível(is) no menu`);
+  // RH (item) + dentro do Financeiro (subpágina, só para quem também abre o Financeiro)
+  const folhaMenu = await pag.evaluate(() => [...document.querySelectorAll('#nav a[data-route="folha"]')].filter((a) => getComputedStyle(a).display !== "none").length + document.querySelectorAll('#nav .nav-sub:not([hidden]) [data-sub="financeiro:folha"]').length);
+  checa(folhaMenu === (espera.folha ? (espera.financeiro ? 2 : 1) : 0), `${largura} ${rot}: ${folhaMenu} item(ns) Folha no menu`);
   if (!espera.folha) {
     await pag.evaluate(() => go("folha")); await pag.waitForTimeout(300);
     checa(await rota(pag) !== "folha", `${largura} ${rot}: sem a área Folha, abriu a Folha`);

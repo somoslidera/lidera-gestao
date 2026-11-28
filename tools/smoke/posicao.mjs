@@ -1,5 +1,6 @@
 // Teste da aba Estoque → Posição (D15/D18): colunas "Essencial" (padrão) e "Completa", "Última compra"
-// e "Em pacotes", filtro de unidade e scorecards clicáveis. Roda contra o _site/ (sem banco), em 1280 e 390 px.
+// e "Em pacotes", filtro de unidade e os filtros Conferir embalagem, Preço subiu e Total em kg
+// (desde a #48, chips clicáveis na faixa de status #estPosStatus). Roda contra o _site/ (sem banco), em 1280 e 390 px.
 //
 //   python3 ../preview_build.py && node posicao.mjs
 //
@@ -40,7 +41,7 @@ async function rodar(largura) {
   const banco = [];
   pag.on("pageerror", (e) => erros.push(String(e)));
   pag.on("request", (r) => { if (/supabase\.co/.test(r.url())) banco.push(r.url()); });
-  await pag.goto(BASE + "/", { waitUntil: "load" });
+  await pag.goto(BASE + "/?demo=base", { waitUntil: "load" });   // demo simples (sem tools/preview_mock.js)
   await pag.waitForTimeout(2500);
 
   // caso de teste, só no navegador
@@ -197,19 +198,19 @@ async function rodar(largura) {
   checa(/12 × 1 kg/.test(corpo), `${largura}: "12 × 1 kg" não aparece para ${ids.a}`);
   checa(/sem embalagem/.test(corpo), `${largura}: "sem embalagem" não aparece para ${ids.b}`);
   checa(/confira\?/.test(corpo), `${largura}: "confira?" não aparece para ${ids.a}`);
-  checa(await pag.locator("text=Total em kg").count() === 0, `${largura}: Total em kg apareceu sem categoria`);
+  checa(await pag.locator('#estPosStatus .est-chip[data-kpif="kg"]').count() === 0, `${largura}: Total em kg apareceu sem categoria`);
   await pag.screenshot({ path: join(PRINTS, `posicao-${largura}.png`), fullPage: largura < 600 });
 
   // scorecard Conferir embalagem filtra: a (1 kg por pacote) e b (sem embalagem), não d (nome diz 1KG)
-  await pag.locator(".kpi", { hasText: "Conferir embalagem" }).click();
+  await pag.locator('#estPosStatus .est-chip[data-kpif="confemb"]').click();
   await pag.waitForTimeout(300);
   const nomes = await pag.evaluate(() => (window.EST_POS_FILT || []).map((x) => x.nome));
   checa(nomes.length === 2 && nomes.includes(ids.a) && nomes.includes(ids.b), `${largura}: Conferir embalagem filtrou ${JSON.stringify(nomes)}, esperado ${ids.a} e ${ids.b}`);
   await pag.screenshot({ path: join(PRINTS, `posicao-confemb-${largura}.png`) });
-  await pag.locator(".kpi", { hasText: "Conferir embalagem" }).click();
+  await pag.locator('#estPosStatus .est-chip[data-kpif="confemb"]').click();
 
   // scorecard Preço subiu filtra
-  await pag.locator(".kpi", { hasText: "Preço subiu" }).click();
+  await pag.locator('#estPosStatus .est-chip[data-kpif="preco"]').click();
   await pag.waitForTimeout(300);
   const txtPreco = await pag.locator("#estoqueTbody").innerText();
   checa(txtPreco.includes(ids.c) && /▲/.test(txtPreco), `${largura}: Preço subiu não mostra ${ids.c} com ▲`);
@@ -217,15 +218,15 @@ async function rodar(largura) {
   await clicaTh("Custo médio");
   await pag.waitForTimeout(200);
   checa(await pag.evaluate(() => SORT.estoque.k === "custo"), `${largura}: ordenar por Custo médio no Preço subiu não pegou`);
-  await pag.locator(".kpi", { hasText: "Preço subiu" }).click();
+  await pag.locator('#estPosStatus .est-chip[data-kpif="preco"]').click();
   await pag.waitForTimeout(300);
   checa(await pag.evaluate(() => SORT.estoque.k === "comprar"), `${largura}: desligar Preço subiu na Essencial manteve a ordem por Custo médio, que sumiu`);
 
   // categoria escolhida → Total em kg aparece e filtra kg
   await pag.evaluate((cat) => { estoqueFiltro = cat; viewEstoque(); }, ids.cat);
   await pag.waitForTimeout(300);
-  checa(await pag.locator(".kpi", { hasText: "Total em kg" }).count() === 1, `${largura}: Total em kg não apareceu com categoria`);
-  await pag.locator(".kpi", { hasText: "Total em kg" }).click();
+  checa(await pag.locator('#estPosStatus .est-chip[data-kpif="kg"]').count() === 1, `${largura}: Total em kg não apareceu com categoria`);
+  await pag.locator('#estPosStatus .est-chip[data-kpif="kg"]').click();
   await pag.waitForTimeout(300);
   const unis = await pag.evaluate(() => (window.EST_POS_FILT || []).map((x) => x.uni));
   checa(unis.length > 0 && unis.every((u) => u === "kg"), `${largura}: Total em kg não filtrou só kg`);
