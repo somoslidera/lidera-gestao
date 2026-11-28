@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#1D3573" />
 <title>Flow · by Lidera</title>
+<!-- App instalado no celular (#62): manifest, ícones e meta tags do iPhone -->
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
+<meta name="application-name" content="Flow" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Flow" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -1872,6 +1882,31 @@ body[data-tema=marinho]{--font-num:'Geist','Manrope',Inter,system-ui,sans-serif}
 @media(min-width:901px){
   .sidebar{transition:margin-left .2s ease,visibility 0s}
   body.side-off .sidebar{margin-left:-248px;visibility:hidden;transition:margin-left .2s ease,visibility 0s .2s}
+}
+/* ===== Celular instalado como app (#62): safe areas (notch, Dynamic Island, barra de gestos) =====
+   O viewport-fit=cover deixa a página ocupar a tela inteira; estas regras afastam o conteúdo das bordas.
+   No computador e no navegador comum os env() valem 0 e nada muda.
+   No iPhone instalado a barra de status é translúcida (black-translucent, ícones brancos): a faixa
+   body::before pinta o espaço dela com o azul do Flow para os ícones ficarem legíveis. */
+:root{--sa-t:env(safe-area-inset-top,0px);--sa-r:env(safe-area-inset-right,0px);--sa-b:env(safe-area-inset-bottom,0px);--sa-l:env(safe-area-inset-left,0px)}
+body{padding:var(--sa-t) var(--sa-r) 0 var(--sa-l)}
+body::before{content:'';position:fixed;left:0;right:0;top:0;height:var(--sa-t);background:#1D3573;z-index:2147483000;pointer-events:none}
+body.dark::before{background:#0E1626}
+.side-foot{padding-bottom:calc(14px + var(--sa-b))}
+@media(min-width:901px){
+  .sidebar,.main{height:calc(100vh - var(--sa-t))}
+  .content{padding-bottom:calc(28px + var(--sa-b))}
+}
+@media(max-width:900px){
+  .sidebar{padding-top:var(--sa-t);padding-left:var(--sa-l)}
+  .content{padding-bottom:calc(16px + var(--sa-b))}
+}
+@media(max-width:640px){
+  .content{padding-bottom:calc(12px + var(--sa-b))}
+}
+@media print{
+  body{padding:0!important}
+  body::before{display:none!important}
 }
 @media(max-width:900px){
   .side-btn{display:none!important}
@@ -12633,6 +12668,38 @@ function datasAnoCorrigir(){if(!podeFinNota())return toast('Sem permissão para 
   save();closeModal();viewFinanceiro();toast(n+' lançamento'+(n===1?' corrigido':'s corrigidos')+' para '+anoN,5000);}
 /* versão nova publicada: avisa quem ficou com a aba aberta (12/11: aba antiga quase estragou as fichas de dose).
    SÓ em atualização maior: VER_MAIOR sobe junto com o arquivo versao.json do site. Ajuste pequeno não mexe em nenhum dos dois e ninguém é avisado. */
+/* ===== App instalado no celular (#62) =====
+   PWA_INSTALADO: aberto pelo ícone da tela inicial (Android: display-mode standalone; iPhone: navigator.standalone).
+   Marca <html class="pwa">. O service worker (sw.js) só existe para o app ser instalável e mostrar "Sem internet";
+   ele não guarda a página em cache. A dica de instalar aparece uma vez por aparelho, só no celular e fora do app instalado. */
+const PWA_INSTALADO=(()=>{try{return matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone===true;}catch(e){return false;}})();
+document.documentElement.classList.toggle('pwa',PWA_INSTALADO);
+if('serviceWorker' in navigator&&(location.protocol==='https:'||/^(localhost|127\.)/.test(location.hostname)))
+  addEventListener('load',()=>{navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(()=>{});});
+let PWA_PROMPT=null;   // Android/Chrome: o pedido de instalação fica guardado para o botão "Instalar"
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA_PROMPT=e;});
+addEventListener('appinstalled',()=>{PWA_PROMPT=null;pwaDicaFechar();});
+// No app instalado não há barra do navegador: link para outro site sem target abriria por cima do Flow. Abre fora.
+if(PWA_INSTALADO)document.addEventListener('click',e=>{const a=e.target&&e.target.closest&&e.target.closest('a[href]');if(!a||a.target)return;
+  try{const u=new URL(a.href,location.href);if(/^https?:$/.test(u.protocol)&&u.origin!==location.origin){a.target='_blank';a.rel='noopener';}}catch(_){}},true);
+function pwaEhIos(){const ua=navigator.userAgent||'';return /iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);}
+function pwaEhSafari(){const ua=navigator.userAgent||'';return pwaEhIos()&&/Safari\//.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|Instagram|FBAN|FBAV/.test(ua);}
+function pwaDicaVista(){try{return localStorage.getItem('flow_pwa_dica')==='1';}catch(e){return true;}}   // sem armazenamento, não insiste
+function pwaDicaFechar(){const el=document.getElementById('pwaAviso');if(el)el.remove();try{localStorage.setItem('flow_pwa_dica','1');}catch(e){}}
+async function pwaInstalar(){const p=PWA_PROMPT;pwaDicaFechar();if(!p)return;PWA_PROMPT=null;try{p.prompt();await p.userChoice;}catch(e){}}
+function pwaDicaChecar(){try{if(PWA_INSTALADO||pwaDicaVista()||!ehMobile())return;
+  if(document.getElementById('pwaAviso')||document.getElementById('novAviso')||document.getElementById('verAviso'))return;
+  if(!((CLOUD&&ORG&&ORG.id&&PERFIL)||!sb)||ADMIN_MODE)return;                    // só com o app na tela (no preview, modo local)
+  const ios=pwaEhIos();if(ios&&!pwaEhSafari())return;if(!ios&&!PWA_PROMPT)return;   // iPhone só instala pelo Safari; Android só com o pedido do Chrome
+  const d=document.createElement('div');d.id='pwaAviso';d.setAttribute('role','status');
+  d.style.cssText='position:fixed;left:50%;bottom:calc(78px + var(--sa-b));transform:translateX(-50%);z-index:1290;background:var(--navy);color:#fff;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.45;box-shadow:0 8px 28px rgba(0,0,0,.28);width:min(460px,calc(100vw - 24px))';
+  const txt=ios?'No Safari, toque em <b>Compartilhar</b> (o quadrado com a seta ↑) e depois em <b>Adicionar à Tela de Início</b>. O Flow abre direto, em tela cheia.'
+               :'Instale o Flow no celular: ele ganha um ícone na tela inicial e abre direto, em tela cheia.';
+  const bt=ios?'<button class="btn btn-sm" style="background:#fff;color:var(--navy);font-weight:700" onclick="pwaDicaFechar()">Entendi</button>'
+              :'<button class="btn btn-sm" style="background:#fff;color:var(--navy);font-weight:700" onclick="pwaInstalar()">Instalar</button><button class="btn btn-sm" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4)" onclick="pwaDicaFechar()">Agora não</button>';
+  d.innerHTML='<div style="font-weight:700;font-size:14px;margin-bottom:4px">Use o Flow como aplicativo</div><div style="opacity:.92">'+txt+'</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+bt+'</div>';
+  document.body.appendChild(d);}catch(e){}}
+setTimeout(pwaDicaChecar,20000);setInterval(pwaDicaChecar,60000);
 const VER_MAIOR='2026-11-28';
 let VER_ETAG=null;
 async function verChecar(forcar){if(!forcar&&(!/^https?:$/.test(location.protocol)||/^(localhost|127\.|\[::1\])/.test(location.hostname)))return;
@@ -12652,7 +12719,7 @@ const NOVIDADES=[{id:'2026-11-16-boletos-fornecedor',ate:'2026-12-20',titulo:'No
 function novChave(n){return 'flow_nov_'+n.id+'_'+String((PERFIL&&PERFIL.id)||'')+'_'+String(MEMBRO_NOME||'');}
 function novVista(n){try{return localStorage.getItem(novChave(n))==='1';}catch(e){return true;}}   // sem armazenamento no navegador, não insiste
 function novFechar(id,ir){const n=NOVIDADES.find(x=>x.id===id);const el=document.getElementById('novAviso');if(el)el.remove();if(!n)return;try{localStorage.setItem(novChave(n),'1');}catch(e){}if(ir){try{n.ir();}catch(e){}}}
-function novChecar(){try{if(document.getElementById('novAviso')||document.getElementById('verAviso'))return;if(!(CLOUD&&ORG&&ORG.id&&PERFIL)||ADMIN_MODE)return;
+function novChecar(){try{if(document.getElementById('novAviso')||document.getElementById('verAviso')||document.getElementById('pwaAviso'))return;if(!(CLOUD&&ORG&&ORG.id&&PERFIL)||ADMIN_MODE)return;
   const hoje=hojeISO();const n=NOVIDADES.find(x=>hoje<=x.ate&&!novVista(x)&&x.pode());if(!n)return;
   const d=document.createElement('div');d.id='novAviso';d.setAttribute('role','status');
   d.style.cssText='position:fixed;left:50%;bottom:'+(ehMobile()?'calc(78px + env(safe-area-inset-bottom, 0px))':'18px')+';transform:translateX(-50%);z-index:1290;background:var(--navy);color:#fff;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.45;box-shadow:0 8px 28px rgba(0,0,0,.28);width:min(460px,calc(100vw - 24px))';
